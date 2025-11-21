@@ -13,6 +13,9 @@ src/components/LandingPage.jsx
 src/components/GymMode.jsx
 src/components/CompanionChat.jsx
 src/components/AthleteMode
+src/components/NutritionPage
+data/mealSuggestions.js
+
 
 ExerVia Fitness is a dual mode fitness assissant which
 comes with two interfaces Gym Mode and Athlete Mode

@@ -153,25 +153,26 @@ export default function AthleteMode() {
           which uses emoji iconography, bold headings to indicate upcoming features.*/}
 
           {activeTab !== 'dashboard' && (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-6">
-                {activeTab === 'training' ? '💨' : 
-                 activeTab === 'nutrition' ? '🥗' : '📊'}
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-4">
-                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon
-              </h3>
-              <p className="text-gray-400 mb-8 max-w-md mx-auto">
-                This feature is under development. Your AI companion can help with {activeTab} advice in the meantime.
-              </p>
-               {/* As mentioned above button similarly this button is  adapted and created from 
-        https://react.dev/learn/responding-to-events, */}
-              <button 
-                onClick={() => navigate('/companion')}
-                className="athlete-button-primary py-3 px-6"
-              >
-                Ask Companion
-              </button>
+  <div className="text-center py-12">
+    <div className="text-6xl mb-6">
+      {activeTab === 'workouts' ? '💪' : 
+       activeTab === 'nutrition' ? '🥗' : '📊'}
+    </div>
+    <h3 className="text-2xl font-bold text-white mb-4">
+      {activeTab === 'nutrition' ? 'Nutrition Tracker' : `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon`}
+    </h3>
+    <p className="text-gray-400 mb-8 max-w-md mx-auto">
+      {activeTab === 'nutrition' 
+        ? 'Access our full nutrition database to search for foods and track your intake' 
+        : `This feature is under development. Your AI companion can help with ${activeTab} advice in the meantime.`
+      }
+    </p>
+    <button 
+      onClick={() => activeTab === 'nutrition' ? navigate('/nutrition') : navigate('/companion')}
+      className="gym-button-primary py-3 px-6"
+    >
+      {activeTab === 'nutrition' ? 'Open Nutrition Tracker' : 'Ask Companion'}
+    </button>
             </div>
           )}
         </div>

@@ -12,7 +12,7 @@ import FitnessProfileForm from './FitnessProfileForm';
 import GymMode from './components/GymMode';
 import AthleteMode from './components/AthleteMode';
 import CompanionChat from './components/CompanionChat';
-
+import NutritionPage from './components/NutritionPage';
 // This App component is the one that 
 // defines all routes for the web app, acting kinda as 
 //  the root component.
@@ -31,6 +31,7 @@ function App() {
           <Route path="/athlete/:id" element={<AthleteMode />} />
           {/* This is the Companion Chat route */}
           <Route path="/companion" element={<CompanionChat />} />
+          <Route path="/nutrition" element={<NutritionPage />} />
         </Routes>
       </div>
     </Router>
