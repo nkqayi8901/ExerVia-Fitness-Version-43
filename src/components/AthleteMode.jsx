@@ -6,6 +6,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 // adapted from https://react.dev/reference/react/useState and https://react.dev/reference/react/useEffect
 // using these hooks for the state and lifecycle control 
+import AthleteTrainingTab from './AthleteTrainingTab';
 import { useState, useEffect } from 'react';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
@@ -152,29 +153,51 @@ export default function AthleteMode() {
           https://tailwindui.com/components/application-ui/empty-states
           which uses emoji iconography, bold headings to indicate upcoming features.*/}
 
-          {activeTab !== 'dashboard' && (
+          {activeTab === 'dashboard' && (
+  <div className="grid gap-6 md:grid-cols-3">
+    {/* Dashboard cards */}
+  </div>
+)}
+
+{activeTab === 'training' && (
+  <AthleteTrainingTab userId={id} />
+)}
+
+{activeTab === 'nutrition' && (
   <div className="text-center py-12">
-    <div className="text-6xl mb-6">
-      {activeTab === 'workouts' ? '💪' : 
-       activeTab === 'nutrition' ? '🥗' : '📊'}
-    </div>
+    <div className="text-6xl mb-6">🥗</div>
     <h3 className="text-2xl font-bold text-white mb-4">
-      {activeTab === 'nutrition' ? 'Nutrition Tracker' : `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon`}
+      Nutrition Tracker
     </h3>
     <p className="text-gray-400 mb-8 max-w-md mx-auto">
-      {activeTab === 'nutrition' 
-        ? 'Access our full nutrition database to search for foods and track your intake' 
-        : `This feature is under development. Your AI companion can help with ${activeTab} advice in the meantime.`
-      }
+      Access our full nutrition database to search for foods and track your intake
     </p>
     <button 
-      onClick={() => activeTab === 'nutrition' ? navigate('/nutrition') : navigate('/companion')}
+      onClick={() => navigate('/nutrition')}
       className="gym-button-primary py-3 px-6"
     >
-      {activeTab === 'nutrition' ? 'Open Nutrition Tracker' : 'Ask Companion'}
+      Open Nutrition Tracker
     </button>
-            </div>
-          )}
+  </div>
+)}
+
+{activeTab === 'performance' && (
+  <div className="text-center py-12">
+    <div className="text-6xl mb-6">📊</div>
+    <h3 className="text-2xl font-bold text-white mb-4">
+      Performance Coming Soon
+    </h3>
+    <p className="text-gray-400 mb-8 max-w-md mx-auto">
+      This feature is under development. Your AI companion can help with performance advice in the meantime.
+    </p>
+    <button 
+      onClick={() => navigate('/companion')}
+      className="gym-button-primary py-3 px-6"
+    >
+      Ask Companion
+    </button>
+  </div>
+)}
         </div>
       </div>
     </div>

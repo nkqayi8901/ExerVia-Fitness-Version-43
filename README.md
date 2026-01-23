@@ -15,6 +15,8 @@ src/components/CompanionChat.jsx
 src/components/AthleteMode
 src/components/NutritionPage
 data/mealSuggestions.js
+src/components/StrengthProgressTab.jsx
+src/components/AthleteTrainingTab.jsx
 
 
 ExerVia Fitness is a dual mode fitness assissant which
