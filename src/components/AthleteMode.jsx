@@ -1,205 +1,298 @@
-// As Athlete Mode is similar in structure to Gym Mode, you might see the same references
-//watched https://www.youtube.com/watch?v=4PATisReKcQ to understand base of react websites
-//video to get inspiration
-// adapted from https://reactrouter.com/en/main/hooks/use-navigate
-// this is used for navigating between various pages
-import { useParams, useNavigate } from 'react-router-dom';
-// adapted from https://react.dev/reference/react/useState and https://react.dev/reference/react/useEffect
-// using these hooks for the state and lifecycle control 
-import AthleteTrainingTab from './AthleteTrainingTab';
-import { useState, useEffect } from 'react';
-// adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
-// this imports the Supabase client instance which was created in supabaseClient.js
-import { supabase } from '../supabaseClient';
-// similarly with FitnessProfileForm.jsx was able to adapt 
-// with https://www.youtube.com/watch?v=4PATisReKcQ 
-// this is a custom component for the Athlete Mode interface that builds dashboards and features
-// tailored for athletic performance tracking and training plans
-export default function AthleteMode() {
-  const { id } = useParams();
+import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+import { recalcUserState } from "../services/stateEngine";
+
+import Navbar from "./Navbar";
+import JournalPage from "./JournalPage";
+import AthleteTrainingTab from "./AthleteTrainingTab";
+import CommunityHub from "./CommunityHub";
+import WorkoutProgram from "./WorkoutProgram";
+
+function AthleteDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [lastSession, setLastSession] = useState(null);
+  const [lastLift, setLastLift] = useState(null);
 
-//adapted from https://react.dev/reference/react/useEffect to fetch profiles set up
-//and that is adapted from https://supabase.com/docs/reference/javascript/select which selected profile
-//es listed the fetchProfile as got an error from terminal that 
-//it was used before being defined and the vs code terminal gave me the soulution line 29
-  useEffect(() => {
-    fetchProfile();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchProfile = async () => {
-    const { data } = await supabase.from('user_profiles').select('*').eq('id', id).single();
-    setProfile(data);
+  const loadLastSession = async () => {
+    const { data } = await supabase
+      .from("training_sessions")
+      .select("*")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    setLastSession(data || null);
   };
 
-// Was able to adapt https://react.dev/learn/conditional-rendering to create a
-// quick loading state, If profile data is not yet loaded within the useEffect above
-  if (!profile) return (
-    <div className="athlete-body flex items-center justify-center text-white">
-      Loading...
+  const loadLastLift = async () => {
+    const { data } = await supabase
+      .from("strength_logs")
+      .select("*")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    setLastLift(data || null);
+  };
+
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!id) return;
+    loadLastSession();
+    loadLastLift();
+  }, [id]);
+
+
+  const dayMarker = (() => {
+    const now = new Date();
+    const label = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+    return `It's ${label} — build your base.`;
+  })();
+
+
+  return (
+    <div className="page-shell profile-shell">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Athlete Dashboard</h2>
+          <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
+          <div className="page-marker">{dayMarker}</div>
+        </div>
+        <button className="hud-secondary-btn" onClick={() => navigate(`/gym/${id}`)}>
+          Switch to Gym Mode
+        </button>
+      </div>
+
+      <div className="grid-3">
+        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/training`)}>
+          <div className="hud-card-title">TRAINING</div>
+          <div className="hud-big">Training Log</div>
+          <div className="hud-dim">Aerobic efficiency + load</div>
+        </button>
+
+        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/journal`)}>
+          <div className="hud-card-title">JOURNAL</div>
+          <div className="hud-big">Daily Ritual</div>
+          <div className="hud-dim">Mood + system readout</div>
+        </button>
+
+        <button className="hud-card clickable" onClick={() => navigate(`/nutrition`)}>
+          <div className="hud-card-title">NUTRITION</div>
+          <div className="hud-big">Fuel</div>
+          <div className="hud-dim">Search + track meals</div>
+        </button>
+
+        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/profile`)}>
+          <div className="hud-card-title">PROFILE</div>
+          <div className="hud-big">Rank + Level</div>
+          <div className="hud-dim">Identity, badges, progress</div>
+        </button>
+
+        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/community`)}>
+          <div className="hud-card-title">COMMUNITY</div>
+          <div className="hud-big">Social</div>
+          <div className="hud-dim">Groups, forums, challenges</div>
+        </button>
+      </div>
+
+      <div className="quick-add-row">
+        <button className="hud-secondary-btn" onClick={() => navigate(`/athlete/${id}/training`)}>
+          Log session
+        </button>
+        <button className="hud-secondary-btn" onClick={() => navigate(`/athlete/${id}/journal`)}>
+          Open journal
+        </button>
+        <button className="hud-secondary-btn" onClick={() => navigate(`/nutrition`)}>
+          Add meal
+        </button>
+      </div>
+
     </div>
   );
-// below is the universal header section for the website which includes a 
-// back button to return to the previous page 
-// which was adapted from the referenced video https://www.youtube.com/watch?v=4PATisReKcQ aroudnd
-// and https://github.com/kbuika/React-TailwindCSS-starter-with-responsive-header/blob/main/src/layout/header.js
-// this header includes navigation buttons to the AI Companion and Gym Mode ,
-// adapted from https://react.dev/learn/responding-to-events
+}
+
+function AthleteProfileOverview({ profile, userState }) {
+  const navigate = useNavigate();
+  const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
+  const backPath =
+    storedMode === "gym"
+      ? `/gym/${profile?.id || ""}`
+      : `/athlete/${profile?.id || ""}`;
+  const xp = userState?.xp ?? 0;
+  const level = userState?.level ?? 1;
+  const rank = userState?.rank ?? "D";
+  const momentum = userState?.momentum_score ?? 0;
+  const recovery = userState?.recovery_score ?? 0;
+  const fatigue = userState?.fatigue_score ?? 0;
+
   return (
-    <div className="athlete-body">
-      {/* This is the Header section */}
-      <header className="athlete-header">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="athlete-logo">E</div>
-              <h1 className="text-2xl font-bold text-white">Exervia Fitness</h1>
-              <span className="athlete-badge">Athlete Mode</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => navigate('/companion')}
-                className="athlete-button-primary"
-              >
-                AI Companion
-              </button>
-              <button 
-                onClick={() => navigate(`/gym/${id}`)}
-                className="athlete-button-secondary"
-              >
-                Gym Mode
-              </button>
-            </div>
-          </div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Profile</h2>
+          <p className="page-subtitle">Rank, level, and identity snapshot for {profile?.full_name || "athlete"}.</p>
         </div>
-      </header>
-
-      {/* This is a welcome Section adapted from card layouts and user dashboard designs seen on 
-      https://tailwindui.com/components/application-ui/headings, specifically inspired by the
-       dashboard header cards with user welcome messages and status badges , 
-       which connects to supabase and showcases name , primary goal and fitness level */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="athlete-card p-8 mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-3xl font-bold text-white mb-2">Welcome, {profile.full_name}</h2>
-              <p className="text-gray-400 mb-4">Ready to optimize your athletic performance?</p>
-              <div className="flex gap-3">
-                <span className="athlete-badge">{profile.fitness_level}</span>
-                <span className="athlete-badge athlete-badge-red">{profile.primary_goal}</span>
-              </div>
-            </div>
-          </div>
+        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>
+          Back
+        </button>
+      </div>
+      <div className="grid-3">
+        <div className="hud-card">
+          <div className="hud-card-title">RANK</div>
+          <div className="hud-big">{rank}</div>
+          <div className="hud-dim">From training volume + consistency</div>
         </div>
-
-        {/* This is tabs navigation section adapted from tab component patterns 
-        seen on https://tailwindui.com/components/application-ui/navigation/tabs, and 
-        https://github.com/kbuika/React-TailwindCSS-starter-with-responsive-header , 
-        which renders tabs and highlights current active tabs */}
-        <div className="athlete-tab-container mb-8">
-          <div className="flex space-x-2">
-            {['dashboard', 'training', 'nutrition', 'performance'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`athlete-tab ${
-                  activeTab === tab ? 'athlete-tab-active' : 'athlete-tab-inactive'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+        <div className="hud-card">
+          <div className="hud-card-title">LEVEL</div>
+          <div className="hud-big">{level}</div>
+          <div className="hud-dim">Experience progress</div>
         </div>
-
-        {/* This is the content section also adapted from ones seen on 
-         https://tailwindui.com/components/application-ui/cards and https://github.com/kbuika/React-TailwindCSS-starter-with-responsive-header , 
-        including feature cards which creates a dashboard style layout*/}
-        <div className="athlete-card p-8">
-          {activeTab === 'dashboard' && (
-            <div className="grid gap-6 md:grid-cols-3">
-              <div 
-                className="athlete-feature-card"
-                onClick={() => setActiveTab('training')}
-              >
-                <h3 className="text-xl font-bold text-white mb-3">Today's Training</h3>
-                <p className="text-gray-400 mb-4">Endurance & Speed Work</p>
-                <span className="text-orange-400 text-sm font-medium">Ready to start</span>
-              </div>
-
-              <div 
-                className="athlete-feature-card"
-                onClick={() => setActiveTab('performance')}
-              >
-                <h3 className="text-xl font-bold text-white mb-3">Performance</h3>
-                <p className="text-gray-400 mb-4">Track your metrics</p>
-                <span className="text-red-400 text-sm font-medium">View stats</span>
-              </div>
-
-              <div 
-                className="athlete-feature-card"
-                onClick={() => navigate('/companion')}
-              >
-                <h3 className="text-xl font-bold text-white mb-3">AI Companion</h3>
-                <p className="text-gray-400 mb-4">Get sport-specific advice</p>
-                <span className="text-purple-400 text-sm font-medium">Ask AI</span>
-              </div>
-            </div>
-          )}
-          {/* Below is an empty state placeholder for non-dashboard tabs. 
-          Adapted from the Tailwind UI's empty state and feature-under-development patterns website
-          https://tailwindui.com/components/application-ui/empty-states
-          which uses emoji iconography, bold headings to indicate upcoming features.*/}
-
-          {activeTab === 'dashboard' && (
-  <div className="grid gap-6 md:grid-cols-3">
-    {/* Dashboard cards */}
-  </div>
-)}
-
-{activeTab === 'training' && (
-  <AthleteTrainingTab userId={id} />
-)}
-
-{activeTab === 'nutrition' && (
-  <div className="text-center py-12">
-    <div className="text-6xl mb-6">🥗</div>
-    <h3 className="text-2xl font-bold text-white mb-4">
-      Nutrition Tracker
-    </h3>
-    <p className="text-gray-400 mb-8 max-w-md mx-auto">
-      Access our full nutrition database to search for foods and track your intake
-    </p>
-    <button 
-      onClick={() => navigate('/nutrition')}
-      className="gym-button-primary py-3 px-6"
-    >
-      Open Nutrition Tracker
-    </button>
-  </div>
-)}
-
-{activeTab === 'performance' && (
-  <div className="text-center py-12">
-    <div className="text-6xl mb-6">📊</div>
-    <h3 className="text-2xl font-bold text-white mb-4">
-      Performance Coming Soon
-    </h3>
-    <p className="text-gray-400 mb-8 max-w-md mx-auto">
-      This feature is under development. Your AI companion can help with performance advice in the meantime.
-    </p>
-    <button 
-      onClick={() => navigate('/companion')}
-      className="gym-button-primary py-3 px-6"
-    >
-      Ask Companion
-    </button>
-  </div>
-)}
+        <div className="hud-card">
+          <div className="hud-card-title">XP</div>
+          <div className="hud-big">{xp}</div>
+          <div className="hud-dim">Last 7 days</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">MOMENTUM</div>
+          <div className="hud-big">{momentum}</div>
+          <div className="hud-dim">Training intensity signal</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">RECOVERY</div>
+          <div className="hud-big">{recovery}</div>
+          <div className="hud-dim">Readiness score</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">FATIGUE</div>
+          <div className="hud-big">{fatigue}</div>
+          <div className="hud-dim">Load accumulation</div>
         </div>
       </div>
+      <div className="profile-divider" />
+      <details className="profile-explain plain">
+        <summary className="profile-explain-head">
+          <span className="profile-explain-icon" aria-hidden="true">i</span>
+          <div className="profile-explain-title">How to read this</div>
+        </summary>
+        <div className="profile-explain-body">
+          <p>
+            Rank reflects your training volume and consistency across the last 7 days. Level grows with XP, which
+            is earned from both strength logs and training sessions.
+          </p>
+          <p>
+            Momentum rises with intensity and PRs. Recovery is the inverse of fatigue, and Fatigue tracks load
+            accumulation.
+          </p>
+          <div className="profile-explain-divider" />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+export default function AthleteMode() {
+  const { id } = useParams();
+  const [profile, setProfile] = useState(null);
+  const [userState, setUserState] = useState(null);
+  const navigate = useNavigate();
+  const routeLocation = useLocation();
+  const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
+  const themeMode = storedMode === "gym" ? "gym" : "athlete";
+
+  useEffect(() => {
+    if (id) localStorage.setItem("exervia_user_id", id);
+    if (id) {
+      const path = routeLocation.pathname || "";
+      const isSharedPage = path.includes("/profile") || path.includes("/community");
+      if (!isSharedPage) {
+        localStorage.setItem("exervia_active_mode", "athlete");
+      }
+    }
+
+    const setMode = async () => {
+      if (!id) return;
+      await supabase.from("user_state").upsert(
+        { user_id: id, active_mode: "athlete" },
+        { onConflict: "user_id" }
+      );
+    };
+
+    setMode();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", id)
+        .single();
+      setProfile(data);
+    };
+
+    fetchProfile();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchUserState = async () => {
+      const { data } = await supabase
+        .from("user_state")
+        .select("*")
+        .eq("user_id", id)
+        .single();
+      if (!data) {
+        await recalcUserState(id);
+        const { data: refreshed } = await supabase
+          .from("user_state")
+          .select("*")
+          .eq("user_id", id)
+          .single();
+        setUserState(refreshed);
+        return;
+      }
+      setUserState(data);
+    };
+
+    fetchUserState();
+
+    const handler = () => fetchUserState();
+    window.addEventListener("user_state_updated", handler);
+    return () => window.removeEventListener("user_state_updated", handler);
+  }, [id]);
+
+  if (!profile) {
+    return <div className={`hud-bg mode-${themeMode} full-center`}>Loading...</div>;
+  }
+
+  return (
+    <div className={`hud-bg mode-${themeMode}`}>
+      <Navbar modeLabel="ATHLETE MODE" mode={themeMode} userId={id} />
+      <Routes>
+        <Route index element={<AthleteDashboard profile={profile} id={id} userState={userState} />} />
+        <Route
+          path="training"
+          element={
+            <AthleteTrainingTab
+              userId={id}
+              onBack={() => navigate(`/athlete/${id}`)}
+            />
+          }
+        />
+        <Route path="journal" element={<JournalPage mode="athlete" />} />
+        <Route path="program/*" element={<WorkoutProgram mode="athlete" />} />
+        <Route
+          path="profile"
+          element={<AthleteProfileOverview profile={profile} userState={userState} />}
+        />
+        <Route
+          path="community"
+          element={<CommunityHub userId={id} />}
+        />
+      </Routes>
     </div>
   );
 }

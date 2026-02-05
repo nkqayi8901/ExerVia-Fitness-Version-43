@@ -1,404 +1,649 @@
-//watched https://www.youtube.com/watch?v=TNJ6KNSx_jo for inspo for nutrion idea
-//video to get inspiration
-// adapted from https://react.dev/reference/react/useState and https://react.dev/reference/react/useEffect
-// using these hooks for the state and lifecycle control 
-import { useState, useEffect } from 'react';
-// adapted from https://reactrouter.com/en/main/hooks/use-navigate
-// this is used for navigating between various pages
-import { useNavigate, useParams } from 'react-router-dom';
-// adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
-// this imports the Supabase client instance which was created in supabaseClient.js
-import { supabase } from '../supabaseClient';
-// imports meal suggestion data from the separate JSON file for organization
-import { mealSuggestions } from '../data/mealSuggestions';
+// src/components/NutritionPage.jsx
+import { useEffect, useMemo, useState } from "react";
+import Navbar from "./Navbar";
 
-// State management for the search functionality which was adapted from React state patterns
-// custom compeonent for the Nutrition Page that allows users to search for food items
-// and view their nutritional information using the OpenFoodFacts API:
-// https://react.dev/learn/state-a-components-memory
+/**
+ * ExerVia Fuel Protocol (world-class nutrition UX)
+ * Primary: TheMealDB (free)
+ * Secondary: OpenFoodFacts (optional packaged lookup)
+ *
+ * Route: /nutrition
+ */
+
+const MEALDB = "https://www.themealdb.com/api/json/v1/1";
+const OFF_SEARCH =
+  "https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=8&search_terms=";
+
+const GOALS = [
+  { key: "high_protein", label: "High Protein", hint: "lean + performance" },
+  { key: "balanced", label: "Balanced", hint: "steady energy" },
+  { key: "cut", label: "Cut / Lean Out", hint: "high satiety" },
+];
+
+const TIME_WINDOWS = [
+  { key: "15", label: "15 min" },
+  { key: "30", label: "30 min" },
+  { key: "45", label: "45 min" },
+];
+
+const PREFERENCES = [
+  { key: "chicken", label: "Chicken" },
+  { key: "beef", label: "Beef" },
+  { key: "turkey", label: "Turkey" },
+  { key: "seafood", label: "Seafood" },
+  { key: "vegetarian", label: "Vegetarian" },
+  { key: "chickpeas", label: "Chickpeas" },
+  { key: "pork", label: "Pork" },
+];
+
+function clampList(arr, n) {
+  return Array.isArray(arr) ? arr.slice(0, n) : [];
+}
+
+function shuffle(arr) {
+  const a = Array.isArray(arr) ? [...arr] : [];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function normalizeMealList(list) {
+  // ensure minimal fields exist: idMeal, strMeal, strMealThumb
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((m) => m?.idMeal && m?.strMeal)
+    .map((m) => ({
+      idMeal: m.idMeal,
+      strMeal: m.strMeal,
+      strMealThumb: m.strMealThumb,
+    }));
+}
+
+function buildIngredients(meal) {
+  const list = [];
+  for (let i = 1; i <= 20; i++) {
+    const ing = meal?.[`strIngredient${i}`];
+    const meas = meal?.[`strMeasure${i}`];
+    if (ing && ing.trim()) {
+      list.push({ ingredient: ing.trim(), measure: (meas || "").trim() });
+    }
+  }
+  return list;
+}
+
+/**
+ * Health bias:
+ * - Always block desserts + obvious junk
+ * - For CUT: stricter (creamy/fried/buttery etc)
+ */
+function getBadWordsByGoal(goalKey) {
+  const base = [
+    "cake",
+    "cookie",
+    "brownie",
+    "dessert",
+    "pudding",
+    "sweet",
+    "candy",
+    "donut",
+    "doughnut",
+    "ice cream",
+    "fudge",
+    "chocolate bar",
+    "toffee",
+    "syrup",
+  ];
+
+  const generalJunk = [
+    "deep fried",
+    "fried",
+    "battered",
+    "crispy",
+    "nachos",
+    "pizza",
+    "burger",
+    "fries",
+    "loaded",
+    "milkshake",
+  ];
+
+  const cutExtra = [
+    "creamy",
+    "cream",
+    "alfredo",
+    "cheesy",
+    "cheese",
+    "butter",
+    "buttery",
+    "mayo",
+    "mayonnaise",
+    "bacon",
+    "pastry",
+    "pie",
+    "mac and cheese",
+  ];
+
+  if (goalKey === "cut") return [...base, ...generalJunk, ...cutExtra];
+  return [...base, ...generalJunk];
+}
+
+function looksHealthyEnough(name, goalKey) {
+  const n = (name || "").toLowerCase();
+  const bad = getBadWordsByGoal(goalKey);
+  return !bad.some((w) => n.includes(w));
+}
+
+async function mealdbFilterByCategory(category) {
+  const res = await fetch(`${MEALDB}/filter.php?c=${encodeURIComponent(category)}`);
+  const json = await res.json();
+  return normalizeMealList(json?.meals || []);
+}
+
+async function mealdbSearchByName(term) {
+  const res = await fetch(`${MEALDB}/search.php?s=${encodeURIComponent(term)}`);
+  const json = await res.json();
+  return normalizeMealList(json?.meals || []);
+}
+
 export default function NutritionPage() {
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const [query, setQuery] = useState('');
-  const [foods, setFoods] = useState([]);
+  const storedId = localStorage.getItem("exervia_user_id");
+  const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
+  const pageMode = storedMode === "gym" ? "gym" : "athlete";
+
+  const [goal, setGoal] = useState("high_protein");
+  const [timeWindow, setTimeWindow] = useState("30");
+  const [preference, setPreference] = useState("chicken");
+
+  const [mealOfDay, setMealOfDay] = useState(null);
+  const [protocolMeals, setProtocolMeals] = useState([]);
+  const [activeMeal, setActiveMeal] = useState(null);
+
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [dailyMeal, setDailyMeal] = useState(null);
-  const [selectedFood, setSelectedFood] = useState(null);
-  const [mealLog, setMealLog] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // User profile fetch adapted from Supabase select patterns
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (id) {
-        const { data } = await supabase.from('user_profiles').select('*').eq('id', id).single();
-        setProfile(data);
-      }
-    };
-    fetchProfile();
-  }, [id]);
+  const [offQuery, setOffQuery] = useState("");
+  const [offResults, setOffResults] = useState([]);
+  const [offLoading, setOffLoading] = useState(false);
 
-  // Recent searches management 
+  // Persist protocol choices
   useEffect(() => {
-    const saved = localStorage.getItem('recentSearches');
+    const saved = localStorage.getItem("exervia_fuel_protocol");
     if (saved) {
-      setRecentSearches(JSON.parse(saved));
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.goal) setGoal(parsed.goal);
+        if (parsed?.timeWindow) setTimeWindow(parsed.timeWindow);
+        if (parsed?.preference) setPreference(parsed.preference);
+      } catch {
+        // ignore
+      }
     }
   }, []);
 
-  // manages meal log 
   useEffect(() => {
-    const savedMealLog = localStorage.getItem('mealLog');
-    if (savedMealLog) {
-      setMealLog(JSON.parse(savedMealLog));
+    localStorage.setItem(
+      "exervia_fuel_protocol",
+      JSON.stringify({ goal, timeWindow, preference })
+    );
+  }, [goal, timeWindow, preference]);
+
+  const protocolLabel = useMemo(() => {
+    const g = GOALS.find((x) => x.key === goal)?.label || "Protocol";
+    const p = PREFERENCES.find((x) => x.key === preference)?.label || "Fuel";
+    return `${g} • ${p} • ${timeWindow}m`;
+  }, [goal, preference, timeWindow]);
+
+  const cap = useMemo(() => {
+    // more options than before + scales with time window
+    if (timeWindow === "15") return 6;
+    if (timeWindow === "30") return 6;
+    return 6;
+  }, [timeWindow]);
+
+  // --- MealDB fetchers ---
+  const fetchMealOfDay = async () => {
+    // try a few times to avoid a random dessert/junk pick
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const res = await fetch(`${MEALDB}/random.php`);
+        const json = await res.json();
+        const meal = json?.meals?.[0] || null;
+        if (meal && looksHealthyEnough(meal.strMeal, goal)) {
+          setMealOfDay(meal);
+          return;
+        }
+      } catch {
+        // ignore
+      }
     }
-  }, []);
-
-  // Saves meal log 
-  useEffect(() => {
-    localStorage.setItem('mealLog', JSON.stringify(mealLog));
-  }, [mealLog]);
-
-  // Generates random daily meal combination 
-  useEffect(() => {
-    const randomBreakfast = mealSuggestions.morning[Math.floor(Math.random() * mealSuggestions.morning.length)];
-    const randomLunch = mealSuggestions.afternoon[Math.floor(Math.random() * mealSuggestions.afternoon.length)];
-    const randomDinner = mealSuggestions.evening[Math.floor(Math.random() * mealSuggestions.evening.length)];
-    
-    setDailyMeal({
-      breakfast: randomBreakfast,
-      lunch: randomLunch,
-      dinner: randomDinner
-    });
-  }, []);
-
-  // API integration adapted OpenFoodFacts documentation:
-  // https://world.openfoodfacts.org/data and Github example https://github.com/roshanrk44/FoodData_App/tree/main
-  const searchFood = async () => {
-    if (!query.trim()) return;
-    
-    setLoading(true);
+    // fallback (still show something)
     try {
-      const response = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&page_size=12&json=1`
-      );
-      const data = await response.json();
-      setFoods(data.products || []);
-      
-      // Updates the recent searches
-      const updatedSearches = [query, ...recentSearches.filter(item => item !== query)].slice(0, 5);
-      setRecentSearches(updatedSearches);
-      localStorage.setItem('recentSearches', JSON.stringify(updatedSearches));
-    } catch (error) {
-      console.error('Search failed:', error);
-      setFoods([]);
+      const res = await fetch(`${MEALDB}/random.php`);
+      const json = await res.json();
+      setMealOfDay(json?.meals?.[0] || null);
+    } catch {
+      setMealOfDay(null);
     }
-    setLoading(false);
   };
 
-  // Get goal-based description
-  const getGoalDescription = () => {
-    if (!profile) return 'your fitness goals';
-    const goal = profile.primary_goal?.toLowerCase();
-    if (goal.includes('muscle')) return 'muscle building';
-    if (goal.includes('weight')) return 'weight management';
-    if (goal.includes('endurance')) return 'energy and endurance';
-    return 'general fitness';
+  const fetchProtocolMeals = async () => {
+    setError("");
+    setLoading(true);
+    setActiveMeal(null);
+
+    try {
+      /**
+       * preference → sources (category if possible; fallback to name search)
+       * Then: goal health-filter + shuffle + pick cap
+       */
+      let list = [];
+
+      if (preference === "seafood") {
+        list = await mealdbFilterByCategory("Seafood");
+      } else if (preference === "vegetarian") {
+        list = await mealdbFilterByCategory("Vegetarian");
+      } else if (preference === "beef") {
+        list = await mealdbFilterByCategory("Beef");
+      } else if (preference === "pork") {
+        list = await mealdbFilterByCategory("Pork");
+      } else if (preference === "chicken") {
+        // MealDB has a Chicken category (better than searching chicken every time)
+        list = await mealdbFilterByCategory("Chicken");
+        // add a small top-up from name search to diversify
+        const extra = await mealdbSearchByName("chicken");
+        list = [...list, ...extra];
+      } else if (preference === "turkey") {
+        // no reliable category; search is best
+        const a = await mealdbSearchByName("turkey");
+        const b = await mealdbSearchByName("ground turkey");
+        list = [...a, ...b];
+      } else if (preference === "chickpeas") {
+        // search a few common terms
+        const a = await mealdbSearchByName("chickpea");
+        const b = await mealdbSearchByName("chickpeas");
+        const c = await mealdbSearchByName("garbanzo");
+        list = [...a, ...b, ...c];
+      }
+
+      // de-dup by idMeal
+      const seen = new Set();
+      list = list.filter((m) => {
+        if (!m?.idMeal) return false;
+        if (seen.has(m.idMeal)) return false;
+        seen.add(m.idMeal);
+        return true;
+      });
+
+      // Goal-based health strictness
+      list = list.filter((m) => looksHealthyEnough(m?.strMeal, goal));
+
+      // If the filter is too strict (common for turkey/chickpeas), loosen slightly
+      if (list.length < 6) {
+        // remove only dessert words, keep general junk words
+        const dessertOnly = [
+          "cake",
+          "cookie",
+          "brownie",
+          "dessert",
+          "pudding",
+          "sweet",
+          "candy",
+          "donut",
+          "doughnut",
+          "ice cream",
+          "fudge",
+          "toffee",
+          "syrup",
+        ];
+        list = (await (async () => {
+          // rebuild from original preference sources quickly again
+          let raw = [];
+          if (preference === "seafood") raw = await mealdbFilterByCategory("Seafood");
+          else if (preference === "vegetarian") raw = await mealdbFilterByCategory("Vegetarian");
+          else if (preference === "beef") raw = await mealdbFilterByCategory("Beef");
+          else if (preference === "pork") raw = await mealdbFilterByCategory("Pork");
+          else if (preference === "chicken") raw = await mealdbFilterByCategory("Chicken");
+          else if (preference === "turkey") raw = await mealdbSearchByName("turkey");
+          else if (preference === "chickpeas") raw = await mealdbSearchByName("chickpea");
+          raw = normalizeMealList(raw);
+          const s2 = new Set();
+          raw = raw.filter((m) => {
+            if (!m?.idMeal) return false;
+            if (s2.has(m.idMeal)) return false;
+            s2.add(m.idMeal);
+            return true;
+          });
+          return raw.filter((m) => {
+            const n = (m?.strMeal || "").toLowerCase();
+            return !dessertOnly.some((w) => n.includes(w));
+          });
+        })());
+      }
+
+      // Shuffle so "Rebuild Protocol" visibly changes results
+      const picked = clampList(shuffle(list), cap);
+      setProtocolMeals(picked);
+    } catch {
+      setError("Fuel feed failed. Try again.");
+      setProtocolMeals([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Add to daily log function adapted from https://github.com/bhprtk/dailyTracker
-  const addToDailyLog = (food) => {
-    const foodItem = {
-      id: Date.now(), // Unique identifier for deletion
-      name: food.product_name || 'Unknown Food',
-      brand: food.brands || '',
-      calories: food.nutriments?.['energy-kcal'] || 'N/A',
-      protein: food.nutriments?.proteins || '0',
-      carbs: food.nutriments?.carbohydrates || '0',
-      fat: food.nutriments?.fat || '0',
-      timestamp: new Date().toLocaleTimeString()
-    };
-    
-    setMealLog(prev => [...prev, foodItem]);
-    setSelectedFood(null); // Close modal after adding
+  const fetchMealDetail = async (idMeal) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
+      const json = await res.json();
+      const meal = json?.meals?.[0] || null;
+      setActiveMeal(meal);
+    } catch {
+      setActiveMeal(null);
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
-  // Delete from daily log function adapted from https://github.com/bhprtk/dailyTracker
-  const deleteFromDailyLog = (foodId) => {
-    setMealLog(prev => prev.filter(food => food.id !== foodId));
+  // --- OpenFoodFacts ---
+  const searchOpenFoodFacts = async (q) => {
+    const query = (q || offQuery).trim();
+    if (!query) return;
+    setOffLoading(true);
+    try {
+      const res = await fetch(`${OFF_SEARCH}${encodeURIComponent(query)}`);
+      const json = await res.json();
+      setOffResults(json?.products || []);
+    } catch {
+      setOffResults([]);
+    } finally {
+      setOffLoading(false);
+    }
   };
 
-  // Clear all meal logs function
-  const clearAllLogs = () => {
-    setMealLog([]);
-  };
+  // initial load
+  useEffect(() => {
+    fetchMealOfDay();
+    fetchProtocolMeals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-// below is the universal header section for the website which includes a 
-// back button to return to the previous page 
-// which was adapted from the referenced video https://www.youtube.com/watch?v=4PATisReKcQ  
-// and https://github.com/kbuika/React-TailwindCSS-starter-with-responsive-header/blob/main/src/layout/header.js
-// this header includes navigation buttons to the AI Companion and Gym Mode ,
-// adapted from https://react.dev/learn/responding-to-events
+  // When user changes protocol settings, we *don’t* auto-refetch (keeps UX controlled),
+  // but we do update Meal of Day to match goal strictness.
+  useEffect(() => {
+    fetchMealOfDay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goal]);
+
   return (
-    <div className="gym-body">
-      <header className="gym-header">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="gym-logo">E</div>
-              <h1 className="text-2xl font-bold text-white">Exervia Fitness</h1>
-              <span className="gym-badge">Nutrition</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => navigate('/companion')}
-                className="gym-button-primary"
-              >
-                AI Companion
-              </button>
-              <button 
-                onClick={() => window.history.back()}
-                className="text-gray-300 hover:text-white transition-colors"
-              >
-                ← Back
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className={`hud-bg mode-${pageMode}`}>
+      <Navbar modeLabel="NUTRITION" mode={pageMode} userId={storedId} />
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="gym-card p-8">
-          {/* Daily meal suggestion section adapted from clean meal planning patterns */}
-          {dailyMeal && (
-            <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">🍽️</span>
-                <h2 className="text-xl font-bold text-white">Today's Meal Idea</h2>
-              </div>
-              <p className="text-gray-300 mb-4">
-                A balanced day of eating for {getGoalDescription()}
-              </p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3">
-                <span className="text-green-400 font-medium">Breakfast:</span>
-                <p className="text-white">{dailyMeal.breakfast}</p>
-                
-                <span className="text-yellow-400 font-medium">Lunch:</span>
-                <p className="text-white">{dailyMeal.lunch}</p>
-                
-                <span className="text-red-400 font-medium">Dinner:</span>
-                <p className="text-white">{dailyMeal.dinner}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Today's intake section adapted from simple tracking patterns */}
-          {mealLog.length > 0 && (
-            <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📝</span>
-                  <h3 className="text-xl font-bold text-white">Today's Food Intake</h3>
-                </div>
-                <button
-                  onClick={clearAllLogs}
-                  className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
-                >
-                  Clear All
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {mealLog.map((food) => (
-                  <div key={food.id} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="text-white font-semibold">{food.name}</h4>
-                        {food.brand && <p className="text-gray-400 text-sm">{food.brand}</p>}
-                        <p className="text-gray-400 text-xs mt-1">Added at {food.timestamp}</p>
-                      </div>
-                      <button
-                        onClick={() => deleteFromDailyLog(food.id)}
-                        className="text-red-400 hover:text-red-300 text-lg font-bold transition-colors ml-2"
-                        title="Remove item"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-4 gap-2 text-xs">
-                      <div className="text-center">
-                        <span className="text-green-400 font-bold">{food.calories}</span>
-                        <p className="text-gray-400">cal</p>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-blue-400 font-bold">{food.protein}g</span>
-                        <p className="text-gray-400">protein</p>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-yellow-400 font-bold">{food.carbs}g</span>
-                        <p className="text-gray-400">carbs</p>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-red-400 font-bold">{food.fat}g</span>
-                        <p className="text-gray-400">fat</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recent searches section  */}
-          {recentSearches.length > 0 && (
-            <div className="bg-gray-800 rounded-lg p-4 mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🕒</span>
-                <h3 className="text-lg font-semibold text-white">Recent Searches</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {recentSearches.map((search, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      setQuery(search);
-                      searchFood();
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-3 py-1 rounded-full text-sm transition-colors"
-                  >
-                    {search}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🥗</div>
-            <h2 className="text-3xl font-bold text-white mb-4">Nutrition Tracker</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Search for any food item of your choice to see nutritional information. Thanks to OpenFoodFacts database.
+      <div className="page-shell">
+        <div className="page-header">
+          <div>
+            <h2 className="page-title">{protocolLabel}</h2>
+            <p className="page-subtitle">
+              Pick a protocol → Pick a time → Pick a preference → get meals
             </p>
           </div>
 
-          {/* Food search bar with input field and search button
-          handles user input and triggers API search calls adaped from
-           https://react.dev/reference/react-dom/components/input and 
-           https://github.com/roshanrk44/FoodData_App/tree/main  */}
-          <div className="flex gap-4 mb-8">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && searchFood()}
-              placeholder="Search for food items (e.g., banana, chicken, pasta)..."
-              className="flex-1 p-4 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
-            />
-            <button 
-              onClick={searchFood}
-              className="gym-button-primary py-3 px-8 whitespace-nowrap"
-              disabled={loading}
-            >
-              {loading ? 'Searching...' : 'Search Food'}
-            </button>
-          </div>
+          <button
+            className="hud-primary-btn fuel-compact-btn"
+            onClick={fetchProtocolMeals}
+            disabled={loading}
+          >
+            {loading ? "Generating…" : "Generate New Meals"}
+          </button>
+        </div>
 
-          {/* Loading state indicator adapted from common React loading patterns
-          adapted using https://react.dev/learn/conditional-rendering */}
-          {loading && (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Searching OpenFoodFacts database...</p>
-            </div>
-          )}
+        <div className="grid-2">
+          {/* LEFT: Protocol controls + meal of day */}
+          <div className="hud-card">
+            <div className="hud-card-title">PROTOCOL SETTINGS</div>
 
-        {/* Food card grid rendering nutrition details
-          maps over API results and displays product info
-          adapted from https://react.dev/learn/rendering-lists and
-          https://github.com/roshanrk44/FoodData_App/tree/main */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {foods.map((food) => (
-              <div 
-                key={food.code} 
-                onClick={() => setSelectedFood(food)}
-                className="gym-feature-card p-6 hover:transform hover:scale-105 transition-all duration-200 cursor-pointer"
-              >
-                <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">
-                  {food.product_name || 'Unknown Food'}
-                </h3>
-                <p className="text-gray-400 text-sm mb-4">{food.brands}</p>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Calories:</span>
-                    <span className="text-green-400 font-medium">{food.nutriments?.['energy-kcal'] || 'N/A'} kcal</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Protein:</span>
-                    <span className="text-blue-400">{food.nutriments?.proteins || '0'}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Carbs:</span>
-                    <span className="text-yellow-400">{food.nutriments?.carbohydrates || '0'}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Fat:</span>
-                    <span className="text-red-400">{food.nutriments?.fat || '0'}g</span>
-                  </div>
-                </div>
-                {/* Click indicator for detailed food information */}
-                <p className="text-xs text-gray-500 mt-3 text-center">Click for detailed information →</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Food detail modal adapted from overlay UI patterns
-              displays comprehensive food information from OpenFoodFacts API */}
-          {selectedFood && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-              <div className="bg-gray-900 rounded-xl p-6 max-w-lg w-full border border-gray-700 max-h-[80vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  {selectedFood.product_name || "Unknown Food"}
-                </h2>
-                
-
-                <div className="space-y-3 text-gray-300">
-                  <p><span className="font-semibold text-white">Brand:</span> {selectedFood.brands || "N/A"}</p>
-                  <p><span className="font-semibold text-white">Ingredients:</span> {selectedFood.ingredients_text || "Not provided"}</p>
-                  <p><span className="font-semibold text-white">Allergens:</span> {selectedFood.allergens || "None listed"}</p>
-                  <p><span className="font-semibold text-white">NutriScore:</span> {selectedFood.nutriscore_grade || "N/A"}</p>
-                  <p><span className="font-semibold text-white">Serving Size:</span> {selectedFood.serving_size || "N/A"}</p>
-                </div>
-
-                {/* Add to daily log button adapted from simple tracking patterns */}
-                <button
-                  onClick={() => addToDailyLog(selectedFood)}
-                  className="gym-button-primary w-full mt-6 py-3"
-                >
-                  Add to Today's Intake
-                </button>
-
-                <div className="flex justify-end mt-4">
-                  <button 
-                    onClick={() => setSelectedFood(null)}
-                    className="text-gray-400 hover:text-white transition-colors px-4 py-2"
+            <div className="fuel-row">
+              <div className="fuel-label">Goal</div>
+              <div className="fuel-seg">
+                {GOALS.map((g) => (
+                  <button
+                    key={g.key}
+                    className={`fuel-chip ${goal === g.key ? "fuel-chip-active" : ""}`}
+                    onClick={() => setGoal(g.key)}
                   >
-                    Close
+                    <div className="fuel-chip-top">{g.label}</div>
+                    <div className="fuel-chip-sub">{g.hint}</div>
                   </button>
-                </div>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Loading state indicator adapted from common React loading patterns
-          adapted using https://react.dev/learn/conditional-rendering  */}
-          {foods.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Search for any food item of your choice to see nutritional information</p>
-              <p className="text-gray-400 text-sm mt-2">Try searching for food items such as "banana", "chicken breast", or "pasta"</p>
+            <div className="fuel-row">
+              <div className="fuel-label">Time</div>
+              <div className="fuel-seg">
+                {TIME_WINDOWS.map((t) => (
+                  <button
+                    key={t.key}
+                    className={`fuel-chip small ${timeWindow === t.key ? "fuel-chip-active" : ""}`}
+                    onClick={() => setTimeWindow(t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+
+            <div className="fuel-row">
+              <div className="fuel-label">Preference</div>
+              <div className="fuel-seg fuel-seg-wrap">
+                {PREFERENCES.map((p) => (
+                  <button
+                    key={p.key}
+                    className={`fuel-chip small ${preference === p.key ? "fuel-chip-active" : ""}`}
+                    onClick={() => setPreference(p.key)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="hud-dim" style={{ marginTop: 10 }}>
+                Tip: Change settings → hit <b>Rebuild Protocol</b>.
+              </div>
+            </div>
+
+            <div className="hud-divider" />
+
+            <div className="hud-card-title">MEAL OF THE DAY</div>
+            {mealOfDay ? (
+              <button
+                className="fuel-mealofday"
+                onClick={() => fetchMealDetail(mealOfDay.idMeal)}
+              >
+                <img
+                  src={mealOfDay.strMealThumb}
+                  alt={mealOfDay.strMeal}
+                  className="fuel-thumb"
+                />
+                <div>
+                  <div className="fuel-meal-name">{mealOfDay.strMeal}</div>
+                  <div className="hud-dim">Tap to open recipe + shopping list</div>
+                </div>
+              </button>
+            ) : (
+              <div className="hud-dim">Loading daily pick…</div>
+            )}
+          </div>
+
+          {/* RIGHT: Protocol feed */}
+          <div className="hud-card">
+            <div className="hud-card-title">PROTOCOL FEED</div>
+
+            {error ? <div className="fuel-error">{error}</div> : null}
+
+            {loading ? (
+              <div className="hud-dim">Generating meals…</div>
+            ) : protocolMeals.length === 0 ? (
+              <div className="hud-dim">
+                No meals matched the current filters. Try a different preference or switch goal to Balanced.
+              </div>
+            ) : (
+              <div className="fuel-grid">
+                {protocolMeals.map((m) => (
+                  <button
+                    key={m.idMeal}
+                    className="fuel-tile"
+                    onClick={() => fetchMealDetail(m.idMeal)}
+                  >
+                    <img
+                      src={m.strMealThumb}
+                      alt={m.strMeal}
+                      className="fuel-tile-thumb"
+                      loading="lazy"
+                    />
+                    <div className="fuel-tile-name">{m.strMeal}</div>
+                    <div className="fuel-tile-sub">Open recipe</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* MODAL RECIPE VIEW */}
+        {activeMeal && (
+          <div
+            className="fuel-modal-backdrop"
+            onMouseDown={(e) => {
+              // click outside closes
+              if (e.target.classList.contains("fuel-modal-backdrop")) {
+                setActiveMeal(null);
+                setOffResults([]);
+                setOffQuery("");
+              }
+            }}
+          >
+            <div className="fuel-modal" role="dialog" aria-modal="true">
+              <div className="fuel-modal-top">
+                <div>
+                  <div className="fuel-modal-title">{activeMeal.strMeal}</div>
+                  <div className="fuel-detail-tags">
+                    {activeMeal.strCategory ? (
+                      <span className="fuel-tag">{activeMeal.strCategory}</span>
+                    ) : null}
+                    {activeMeal.strArea ? (
+                      <span className="fuel-tag">{activeMeal.strArea}</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <button
+                  className="hud-secondary-btn"
+                  onClick={() => {
+                    setActiveMeal(null);
+                    setOffResults([]);
+                    setOffQuery("");
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              {detailLoading ? (
+                <div className="hud-dim">Opening recipe…</div>
+              ) : (
+                <div className="fuel-modal-body">
+                  <div className="fuel-modal-left">
+                    <img
+                      src={activeMeal.strMealThumb}
+                      alt={activeMeal.strMeal}
+                      className="fuel-detail-img"
+                    />
+                    <div className="hud-divider" />
+                    <div className="fuel-section-title">Shopping List</div>
+
+                    <div className="fuel-shopping">
+                      {buildIngredients(activeMeal).map((x, idx) => (
+                        <div key={`${x.ingredient}-${idx}`} className="fuel-shopping-row">
+                          <div>
+                            <div className="fuel-ing">{x.ingredient}</div>
+                            <div className="hud-dim">{x.measure || "—"}</div>
+                          </div>
+                          <button
+                            className="fuel-off-btn"
+                            onClick={() => {
+                              setOffQuery(x.ingredient);
+                              searchOpenFoodFacts(x.ingredient);
+                            }}
+                            title="Check packaged options (OpenFoodFacts)"
+                          >
+                            Verify
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="fuel-modal-right">
+                    <div className="fuel-section-title">Instructions</div>
+                    <div className="fuel-instructions">
+                      {activeMeal.strInstructions || "No instructions provided."}
+                    </div>
+
+                    <div className="hud-divider" />
+
+                    <div className="fuel-section-title">Optional: OpenFoodFacts Check</div>
+                    <div className="fuel-off">
+                      <div className="fuel-off-bar">
+                        <input
+                          className="fuel-off-input"
+                          value={offQuery}
+                          onChange={(e) => setOffQuery(e.target.value)}
+                          placeholder="Search packaged foods (e.g., greek yogurt, oats)…"
+                          onKeyDown={(e) => e.key === "Enter" && searchOpenFoodFacts()}
+                        />
+                        <button
+                          className="fuel-off-search"
+                          onClick={() => searchOpenFoodFacts()}
+                          disabled={offLoading}
+                        >
+                          {offLoading ? "…" : "Search"}
+                        </button>
+                      </div>
+
+                      {offResults.length > 0 ? (
+                        <div className="fuel-off-results">
+                          {offResults.slice(0, 8).map((p, i) => (
+                            <div key={`${p.code || i}`} className="fuel-off-card">
+                              <div className="fuel-off-name">
+                                {p.product_name || "Unnamed product"}
+                              </div>
+                              <div className="hud-dim">
+                                kcal: {p.nutriments?.["energy-kcal"] ?? "—"} • protein:{" "}
+                                {p.nutriments?.proteins ?? "—"}g • carbs:{" "}
+                                {p.nutriments?.carbohydrates ?? "—"}g • fat:{" "}
+                                {p.nutriments?.fat ?? "—"}g
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="hud-dim">
+                          
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="hud-dim" style={{ marginTop: 12 }}>
+          Data sources: TheMealDB (recipes) + OpenFoodFacts (packaged nutrition).
         </div>
       </div>
     </div>

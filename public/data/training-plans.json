@@ -1,0 +1,114 @@
+[
+  {
+    "id": "hyrox-foundation",
+    "name": "Hyrox Foundation",
+    "sport": "hybrid",
+    "goal": "Hybrid engine + strength endurance",
+    "summary": "4-week build blending running, sled work, and stations.",
+    "defaultFocus": "Race Prep",
+    "durationTarget": 60,
+    "distanceTarget": 8,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Run 40 min", "Sled push/pull technique", "Burpee broad jumps"] },
+      { "week": "Week 2", "sessions": ["Tempo 20 min", "Wall balls + farmer carry", "Row intervals"] },
+      { "week": "Week 3", "sessions": ["Mixed station circuit", "Run 50 min", "Ski erg intervals"] },
+      { "week": "Week 4", "sessions": ["Race simulation", "Recovery 30 min", "Mobility reset"] }
+    ]
+  },
+  {
+    "id": "hybrid-endurance",
+    "name": "Hybrid Endurance",
+    "sport": "hybrid",
+    "goal": "Strength base + endurance conditioning",
+    "summary": "Balanced week with strength intervals and longer cardio blocks.",
+    "defaultFocus": "Base",
+    "durationTarget": 55,
+    "distanceTarget": 6,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Strength density 30 min", "Zone 2 35 min", "Recovery 25 min"] },
+      { "week": "Week 2", "sessions": ["Tempo 15 min", "Carry + sled circuit", "Endurance 50 min"] },
+      { "week": "Week 3", "sessions": ["Speed ladder", "Zone 2 45 min", "Mobility reset"] },
+      { "week": "Week 4", "sessions": ["Test day", "Recovery 30 min", "Endurance 60 min"] }
+    ]
+  },
+  {
+    "id": "10k-build",
+    "name": "10K Build",
+    "sport": "running",
+    "goal": "Race-ready conditioning",
+    "summary": "4-week rhythm with speed and tempo balance.",
+    "defaultFocus": "Race Prep",
+    "durationTarget": 45,
+    "distanceTarget": 7,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Base run 40 min", "Intervals 6x2", "Recovery 30 min"] },
+      { "week": "Week 2", "sessions": ["Tempo 20 min", "Hills 8x30", "Long run 60 min"] },
+      { "week": "Week 3", "sessions": ["Speed ladder", "Base 45 min", "Long run 70 min"] },
+      { "week": "Week 4", "sessions": ["Race simulation", "Recovery 25 min", "Shakeout 20 min"] }
+    ]
+  },
+  {
+    "id": "trail-engine",
+    "name": "Trail Engine",
+    "sport": "trail",
+    "goal": "Endurance + elevation tolerance",
+    "summary": "Build legs, lungs, and cadence for off-road builds.",
+    "defaultFocus": "Base",
+    "durationTarget": 65,
+    "distanceTarget": 9,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Hills 6x60s", "Easy run 30 min", "Strength hike 40 min"] },
+      { "week": "Week 2", "sessions": ["Tempo trail 25 min", "Long trail 75 min", "Mobility reset"] },
+      { "week": "Week 3", "sessions": ["Descents technique", "Endurance 60 min", "Recovery 30 min"] },
+      { "week": "Week 4", "sessions": ["Trail simulation", "Recovery 30 min", "Easy run 40 min"] }
+    ]
+  },
+  {
+    "id": "swim-economy",
+    "name": "Swim Economy",
+    "sport": "swimming",
+    "goal": "Form, aerobic base, and pacing",
+    "summary": "Designed for steady endurance and clean mechanics.",
+    "defaultFocus": "Base",
+    "durationTarget": 50,
+    "distanceTarget": null,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Technique 30 min", "Steady 25 min", "Kick set 20 min"] },
+      { "week": "Week 2", "sessions": ["Pull buoy 30 min", "Intervals 10x50", "Recovery 20 min"] },
+      { "week": "Week 3", "sessions": ["Tempo 20 min", "Long swim 40 min", "Mobility reset"] },
+      { "week": "Week 4", "sessions": ["Test 400m", "Recovery 20 min", "Easy 30 min"] }
+    ]
+  },
+  {
+    "id": "cycling-power-base",
+    "name": "Cycling Power Base",
+    "sport": "cycling",
+    "goal": "Endurance plus torque work",
+    "summary": "Builds aerobic base and leg power.",
+    "defaultFocus": "Base",
+    "durationTarget": 70,
+    "distanceTarget": 18,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Cadence 45 min", "Hill repeats 6x2", "Recovery 30 min"] },
+      { "week": "Week 2", "sessions": ["Zone 2 60 min", "Tempo 20 min", "Core reset"] },
+      { "week": "Week 3", "sessions": ["Power sprints 8x30s", "Endurance 75 min", "Recovery 30 min"] },
+      { "week": "Week 4", "sessions": ["Test ride 45 min", "Recovery 30 min", "Easy spin 35 min"] }
+    ]
+  },
+  {
+    "id": "functional-ignite",
+    "name": "Functional Ignite",
+    "sport": "hybrid",
+    "goal": "Work capacity + mixed modality",
+    "summary": "Circuits, carries, and engine work for hybrid athletes.",
+    "defaultFocus": "Tempo",
+    "durationTarget": 50,
+    "distanceTarget": null,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Carry ladder 20 min", "Assault bike 10x40s", "Core reset"] },
+      { "week": "Week 2", "sessions": ["EMOM 20", "Row intervals 5x500", "Mobility reset"] },
+      { "week": "Week 3", "sessions": ["Sled + burpee circuit", "Run 30 min", "Recovery 20 min"] },
+      { "week": "Week 4", "sessions": ["Mixed test", "Recovery 25 min", "Easy run 30 min"] }
+    ]
+  }
+]

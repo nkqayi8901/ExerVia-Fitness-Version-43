@@ -42,14 +42,33 @@ export default function FitnessProfileForm() {
 
 // see line 27 above for link for reference to insert a profile
   const saveProfile = async () => {
-    const { error } = await supabase
-      .from('user_profiles')
-      .insert([{ full_name: fullName, fitness_level: fitnessLevel, primary_goal: primaryGoal }]);
-    if (!error) {
-      resetForm();
-      fetchProfiles();
-    }
-  };
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .insert([
+      {
+        full_name: fullName,
+        fitness_level: fitnessLevel,
+        primary_goal: primaryGoal
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  // ✅ STEP 2A: STORE USER ID GLOBALLY
+  localStorage.setItem('exervia_user_id', data.id);
+
+  resetForm();
+  fetchProfiles();
+
+  // ✅ SEND USER INTO THE SYSTEM
+  navigate(`/gym/${data.id}`);
+};
+
 //see line 28 above for link for reference to update a profile
   const updateProfile = async () => {
     const { error } = await supabase
@@ -225,7 +244,11 @@ export default function FitnessProfileForm() {
                   <div className="flex gap-2">
                     <button
                       className="profile-button-view"
-                      onClick={() => navigate(`/gym/${profile.id}`)}
+                      onClick={() => {
+  localStorage.setItem('exervia_user_id', profile.id);
+  navigate(`/gym/${profile.id}`);
+}}
+
                     >
                       View
                     </button>

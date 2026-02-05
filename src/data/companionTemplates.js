@@ -66,11 +66,25 @@ export const companionTemplates = {
     ]
   },
   strength: {
-    default: [
-      "For strength gains, focus on lower reps (3-6) with heavier weights. Ensure proper form and allow adequate recovery between sessions!",
-      "Building strength requires heavy compound lifts, proper technique, and sufficient recovery. Progressive overload is key to continuous improvement."
-    ]
-  },
+  gym: [
+    "Heavy day? Lock in your form and own every rep.",
+    "Chase progressive overload — but only if recovery is solid.",
+    "Strength is built in the gym, not rushed through it."
+  ],
+  athlete: [
+    "Strength today supports performance tomorrow — don’t overreach.",
+    "Explosive intent matters more than max load.",
+    "Strength should enhance speed, not steal it."
+  ],
+  hybrid: [
+    "Balance strength and recovery — you’re training for longevity.",
+    "Today’s lift should support tomorrow’s session."
+  ],
+  default: [
+    "For strength gains, focus on lower reps (3–6) with heavier weights.",
+    "Progressive overload plus recovery equals real strength."
+  ]
+},
   general: {
     default: [
       "I'm here to help with your fitness journey! Ask me about workouts, nutrition, recovery, or motivation. What's on your mind today?",

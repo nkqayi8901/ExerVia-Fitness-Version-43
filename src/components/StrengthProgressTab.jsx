@@ -1,179 +1,447 @@
 // src/components/StrengthProgressTab.jsx
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
 import { supabase } from '../supabaseClient';
 
-// This is the Strength Progress Tab component that replaces the "Coming Soon" progress tab
-// It allows weightlifters to log lifts, track personal records, and calculate 1RM
-// Adapted from strength tracking patterns in fitness apps and React state management
+const fallbackPrograms = [
+  {
+    id: 'classic-glute-day',
+    name: 'Classic Glute Day',
+    level: 'Beginner',
+    focus: 'Lower Body',
+    description: 'Glutes and posterior chain with clean fundamentals.',
+    exercises: [
+      { name: 'Barbell Hip Thrust', sets: 4, reps: 8, type: 'weights' },
+      { name: 'Romanian Deadlift', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Glute Bridge', sets: 3, reps: 12, type: 'weights' },
+    ],
+  },
+  {
+    id: 'advanced-push',
+    name: 'Advanced Push Day',
+    level: 'Advanced',
+    focus: 'Push',
+    description: 'Heavy press focus with accessory volume.',
+    exercises: [
+      { name: 'Bench Press', sets: 5, reps: 5, type: 'weights' },
+      { name: 'Overhead Press', sets: 4, reps: 6, type: 'weights' },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Triceps Pushdown', sets: 3, reps: 12, type: 'weights' },
+    ],
+  },
+  {
+    id: 'beginner-shoulders-chest',
+    name: 'Beginner Shoulders + Chest',
+    level: 'Beginner',
+    focus: 'Upper Body',
+    description: 'Low-stress push session to build confidence.',
+    exercises: [
+      { name: 'Dumbbell Shoulder Press', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Incline Push-up', sets: 3, reps: 12, type: 'bodyweight' },
+      { name: 'Cable Fly', sets: 3, reps: 12, type: 'weights' },
+      { name: 'Lateral Raise', sets: 2, reps: 15, type: 'weights' },
+    ],
+  },
+  {
+    id: 'leg-day',
+    name: 'Leg Day',
+    level: 'Intermediate',
+    focus: 'Lower Body',
+    description: 'Squat, hinge, and pump to finish.',
+    exercises: [
+      { name: 'Back Squat', sets: 4, reps: 6, type: 'weights' },
+      { name: 'Deadlift', sets: 3, reps: 5, type: 'weights' },
+      { name: 'Leg Press', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Walking Lunge', sets: 2, reps: 12, type: 'weights' },
+    ],
+  },
+  {
+    id: 'glute-focused-legs',
+    name: 'Glute Focused Legs',
+    level: 'Intermediate',
+    focus: 'Glutes',
+    description: 'Glute bias with hip hinge and single-leg work.',
+    exercises: [
+      { name: 'Barbell Hip Thrust', sets: 4, reps: 8, type: 'weights' },
+      { name: 'Romanian Deadlift', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Walking Lunge', sets: 3, reps: 12, type: 'weights' },
+      { name: 'Cable Kickback', sets: 3, reps: 15, type: 'weights' },
+    ],
+  },
+  {
+    id: 'calf-focus-day',
+    name: 'Calf Focus Day',
+    level: 'Intermediate',
+    focus: 'Lower Body',
+    description: 'Calves and lower-leg resilience.',
+    exercises: [
+      { name: 'Standing Calf Raise', sets: 4, reps: 12, type: 'weights' },
+      { name: 'Seated Calf Raise', sets: 4, reps: 15, type: 'weights' },
+      { name: 'Tibialis Raise', sets: 3, reps: 15, type: 'weights' },
+      { name: 'Farmer Carry', sets: 3, reps: 40, type: 'weights' },
+    ],
+  },
+  {
+    id: 'chest-back-day',
+    name: 'Chest + Back Day',
+    level: 'Intermediate',
+    focus: 'Upper Body',
+    description: 'Push-pull balance for strength and posture.',
+    exercises: [
+      { name: 'Bench Press', sets: 4, reps: 6, type: 'weights' },
+      { name: 'Lat Pulldown', sets: 4, reps: 10, type: 'weights' },
+      { name: 'Incline Dumbbell Press', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Seated Cable Row', sets: 3, reps: 12, type: 'weights' },
+    ],
+  },
+  {
+    id: 'pull-day',
+    name: 'Pull Day',
+    level: 'Advanced',
+    focus: 'Pull',
+    description: 'Back, rear delts, and biceps volume.',
+    exercises: [
+      { name: 'Deadlift', sets: 4, reps: 5, type: 'weights' },
+      { name: 'Pull-up', sets: 3, reps: 8, type: 'bodyweight' },
+      { name: 'Chest Supported Row', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Face Pull', sets: 3, reps: 15, type: 'weights' },
+    ],
+  },
+  {
+    id: 'upper-hypertrophy',
+    name: 'Upper Hypertrophy',
+    level: 'Intermediate',
+    focus: 'Upper Body',
+    description: 'Volume-focused upper body builder.',
+    exercises: [
+      { name: 'Incline Dumbbell Press', sets: 4, reps: 10, type: 'weights' },
+      { name: 'Single-Arm Row', sets: 3, reps: 12, type: 'weights' },
+      { name: 'Lateral Raise', sets: 3, reps: 15, type: 'weights' },
+      { name: 'Biceps Curl', sets: 3, reps: 12, type: 'weights' },
+    ],
+  },
+  {
+    id: 'full-body-foundation',
+    name: 'Full Body Foundation',
+    level: 'Beginner',
+    focus: 'Full Body',
+    description: 'Balanced movements to build strength base.',
+    exercises: [
+      { name: 'Goblet Squat', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Push-up', sets: 3, reps: 10, type: 'bodyweight' },
+      { name: 'Romanian Deadlift', sets: 3, reps: 10, type: 'weights' },
+      { name: 'Plank', sets: 3, reps: 30, type: 'bodyweight' },
+    ],
+  },
+  {
+    id: 'bodyweight-strength',
+    name: 'Bodyweight Strength',
+    level: 'Beginner',
+    focus: 'Bodyweight',
+    description: 'No equipment, full-body control.',
+    exercises: [
+      { name: 'Push-up', sets: 3, reps: 12, type: 'bodyweight' },
+      { name: 'Pull-up', sets: 3, reps: 6, type: 'bodyweight' },
+      { name: 'Bodyweight Squat', sets: 3, reps: 15, type: 'bodyweight' },
+      { name: 'Plank', sets: 3, reps: 30, type: 'bodyweight' },
+    ],
+  },
+];
+
+const exerciseLibrary = [
+  'Bench Press',
+  'Incline Dumbbell Press',
+  'Overhead Press',
+  'Dumbbell Shoulder Press',
+  'Lateral Raise',
+  'Front Raise',
+  'Push-up',
+  'Pull-up',
+  'Lat Pulldown',
+  'Seated Cable Row',
+  'Chest Supported Row',
+  'Single-Arm Row',
+  'Barbell Row',
+  'Deadlift',
+  'Romanian Deadlift',
+  'Back Squat',
+  'Front Squat',
+  'Goblet Squat',
+  'Leg Press',
+  'Walking Lunge',
+  'Bulgarian Split Squat',
+  'Hip Thrust',
+  'Barbell Hip Thrust',
+  'Glute Bridge',
+  'Cable Kickback',
+  'Standing Calf Raise',
+  'Seated Calf Raise',
+  'Tibialis Raise',
+  'Plank',
+  'Face Pull',
+  'Biceps Curl',
+  'Hammer Curl',
+  'Triceps Pushdown',
+  'Triceps Pulldown',
+  'Triceps Overhead Extension',
+  'Cable Fly',
+  'Dips',
+  'Farmer Carry'
+];
+
 const StrengthProgressTab = ({ userId }) => {
-  // State for tracking whether user is logging weights or bodyweight exercises
-  const [mode, setMode] = useState('weights');
-  
-  // Lift data object storing all user inputs for strength log
-  // adapted from rendering lists in React: https://react.dev/learn/rendering-lists
-  const [log, setLog] = useState({
-    exercise: 'squat',
-    reps: '',
-    weight: '',
-    sets: 1,
-    effort: 5,
-    mood: '💪',
-    notes: ''
-  });
-  
- // Object to store personal records fetched from database
-// used for displaying PR Hall of Fame and checking for new personal bests
-// adapted from state management patterns in React: https://react.dev/learn/state-a-components-memory
+  const navigate = useNavigate();
+  const [view, setView] = useState('log');
+  const [banner, setBanner] = useState(null);
+  const [profile, setProfile] = useState(null);
+
   const [personalRecords, setPersonalRecords] = useState({});
-  
-// // Array to store recent lifts fetched from database  
-// displays the user's most recent strength training sessions
-// adapted from rendering lists in React: https://react.dev/learn/rendering-lists
   const [recentLifts, setRecentLifts] = useState([]);
-  
-  // Loading state to prevent duplicate form submissions
-// shows loading feedback during database operations
-// adapted from conditional rendering patterns: https://react.dev/learn/conditional-rendering
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // // Calculated 1RM (One Rep Max) for performance tracking
-// uses Epley formula: weight × (1 + reps/30)
-// standard formula from strength training literature: https://en.wikipedia.org/wiki/One-repetition_maximum
-  const [oneRM, setOneRM] = useState(null);
 
-  
-// Weight exercises configuration with icons
-// primary compound lifts commonly tracked in strength training
-// inspired by strength training apps and exercise databases
+  const [programs, setPrograms] = useState([]);
+  const [programSearch, setProgramSearch] = useState('');
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [sessionQueue, setSessionQueue] = useState([]);
+  const [showAllPrograms, setShowAllPrograms] = useState(false);
+  const [showProgramLibrary, setShowProgramLibrary] = useState(true);
+  const [showCreateProgram, setShowCreateProgram] = useState(false);
+  const [isProgramSaving, setIsProgramSaving] = useState(false);
+  const [newProgram, setNewProgram] = useState({
+    name: '',
+    level: 'Beginner',
+    focus: 'Full Body',
+    description: '',
+    exercises: [
+      { name: '', sets: 3, reps: 10, type: 'weights' }
+    ]
+  });
+  const [creatorSearch, setCreatorSearch] = useState('');
+  const [creatorResults, setCreatorResults] = useState([]);
+  const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
+
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapMode, setSwapMode] = useState('swap');
+  const [swapIndex, setSwapIndex] = useState(null);
+  const [swapQuery, setSwapQuery] = useState('');
+  const [swapResults, setSwapResults] = useState([]);
+  const [isSwapLoading, setIsSwapLoading] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+
   const weightExercises = [
-    { value: 'squat', label: 'Squat', icon: '🏋️' },
-    { value: 'bench_press', label: 'Bench Press', icon: '💪' },
-    { value: 'deadlift', label: 'Deadlift', icon: '🔥' },
-    { value: 'overhead_press', label: 'Overhead Press', icon: '⬆️' },
-    { value: 'barbell_row', label: 'Barbell Row', icon: '🚣‍♂️' },
+    { value: 'squat', label: 'Squat', icon: '' },
+    { value: 'bench_press', label: 'Bench Press', icon: '' },
+    { value: 'deadlift', label: 'Deadlift', icon: '' },
+    { value: 'overhead_press', label: 'Overhead Press', icon: '' },
+    { value: 'barbell_row', label: 'Barbell Row', icon: '' },
   ];
 
-  // Bodyweight exercises configuration with icons
-// fundamental calisthenics movements for strength without equipment
-// similar to bodyweight exercise categorization in fitness applications
   const bodyweightExercises = [
-    { value: 'pushups', label: 'Push-ups', icon: '🤸‍♂️' },
-    { value: 'pullups', label: 'Pull-ups', icon: '🧗' },
-    { value: 'squats', label: 'Bodyweight Squats', icon: '🦵' },
-    { value: 'plank', label: 'Plank', icon: '🛡️' },
-    { value: 'lunges', label: 'Lunges', icon: '👟' },
+    { value: 'pushups', label: 'Push-ups', icon: '' },
+    { value: 'pullups', label: 'Pull-ups', icon: '' },
+    { value: 'squats', label: 'Bodyweight Squats', icon: '' },
+    { value: 'plank', label: 'Plank', icon: '' },
+    { value: 'lunges', label: 'Lunges', icon: '' },
   ];
 
-  // Current exercises based on selected mode
-  const currentExercises = mode === 'weights' ? weightExercises : bodyweightExercises;
+  const normalizeQuery = (value) => value.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 
-  // Calculates 1RM using Epley formula: weight × (1 + reps/30)
-  const calculateOneRM = (weight, reps) => {
-    if (!weight || !reps || reps < 1) return 0;
-    const w = parseFloat(weight);
-    const r = parseInt(reps);
-    return w * (1 + r / 30); // Epley formula
+  const searchLocalExercises = (query) => {
+    const cleaned = normalizeQuery(query);
+    if (!cleaned) return [];
+    return exerciseLibrary
+      .filter(name => normalizeQuery(name).includes(cleaned))
+      .slice(0, 12);
   };
 
-  // Automatically calculate 1RM when inputs change
-  useEffect(() => {
-    if (mode === 'weights' && log.weight && log.reps) {
-      setOneRM(calculateOneRM(log.weight, log.reps));
-    } else {
-      setOneRM(null);
-    }
-  }, [log.weight, log.reps, mode]);
+  const saveFavorites = (items) => {
+    setFavorites(items);
+    localStorage.setItem('exervia_favorite_exercises', JSON.stringify(items));
+  };
 
-  // Main function to handle lift logging
-  const handleLogLift = async () => {
-    if (!log.reps || !log.exercise) {
-      alert('Please fill in at least reps and exercise');
+  const toggleFavorite = (name) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+    if (favorites.includes(normalized)) {
+      saveFavorites(favorites.filter(item => item !== normalized));
+    } else {
+      saveFavorites([...favorites, normalized]);
+    }
+  };
+
+  useEffect(() => {
+    if (!banner) return undefined;
+    const timeout = setTimeout(() => setBanner(null), 3200);
+    return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('companion_hint', {
+        detail: { text: 'Strength Studio: pick a program or log a lift.' }
+      })
+    );
+  }, []);
+
+  const mapSupabaseProgram = (program, source) => ({
+    id: program.id || program.slug || program.name,
+    name: program.name,
+    level: program.level || 'All levels',
+    focus: program.focus || 'Mixed',
+    description: program.description || 'Curated routine',
+    exercises: Array.isArray(program.exercises)
+      ? program.exercises
+      : [],
+    source
+  });
+
+  const fetchProfile = async () => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (data) setProfile(data);
+  };
+
+  const fetchPrograms = async () => {
+    const collected = fallbackPrograms.map(program => ({ ...program, source: 'fallback' }));
+    const { data: templateData } = await supabase
+      .from('program_templates')
+      .select('*')
+      .limit(30);
+
+    if (templateData && templateData.length > 0) {
+      templateData.forEach(template => collected.unshift(mapSupabaseProgram(template, 'template')));
+    }
+
+    const { data: userProgramData } = await supabase
+      .from('user_programs')
+      .select('*')
+      .eq('user_id', userId)
+      .limit(20);
+
+    if (userProgramData && userProgramData.length > 0) {
+      userProgramData.forEach(program => collected.unshift(mapSupabaseProgram(program, 'user')));
+    }
+
+    setPrograms(collected);
+  };
+
+  const handleSelectProgram = (program) => {
+    setSelectedProgram(program);
+    setSessionQueue(program.exercises || []);
+    setShowProgramLibrary(false);
+  };
+
+  const closeSwap = () => {
+    setSwapOpen(false);
+    setSwapIndex(null);
+    setSwapQuery('');
+    setSwapResults([]);
+  };
+
+  const fetchExerciseSearch = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setSwapResults([]);
       return;
     }
 
-    setIsLoading(true);
-    const currentOneRM = calculateOneRM(log.weight, log.reps);
-    
-    // Check if this is a personal record
-    const { data: bestRecord } = await supabase
-      .from('personal_records')
-      .select('one_rm_est')
-      .eq('user_id', userId)
-      .eq('exercise_name', log.exercise)
-      .single();
+    const localMatches = searchLocalExercises(query).map(name => ({
+      name,
+      type: 'weights',
+      sets: sessionQueue[swapIndex]?.sets || 3,
+      reps: sessionQueue[swapIndex]?.reps || 10,
+    }));
+    setSwapResults(localMatches);
 
-    const isPR = !bestRecord || currentOneRM > bestRecord.one_rm_est;
-
-    const liftData = {
-      user_id: userId,
-      exercise_name: log.exercise,
-      exercise_type: mode,
-      weight: mode === 'weights' ? parseFloat(log.weight) || 0 : 0,
-      reps: parseInt(log.reps),
-      sets: parseInt(log.sets),
-      effort_level: log.effort,
-      mood_emoji: log.mood,
-      notes: log.notes,
-      is_personal_best: isPR,
-    };
-// eslint-disable-next-line
-    const { data, error } = await supabase
-      .from('strength_logs')
-      .insert([liftData])
-      .select()
-      .single();
-
-    if (!error) {
-      // If this is a PR, save it and show success message
-      if (isPR) {
-        const prData = {
-          user_id: userId,
-          exercise_name: log.exercise,
-          exercise_type: mode,
-          weight: mode === 'weights' ? parseFloat(log.weight) || 0 : 0,
-          reps: parseInt(log.reps),
-          is_bodyweight: mode === 'bodyweight',
-          one_rm_est: currentOneRM
-        };
-
-        // Save PR to database
-        await supabase.from('personal_records').upsert(prData, { 
-          onConflict: 'user_id,exercise_name,exercise_type' 
-        });
-
-        // Show success message instead of confetti
-        alert(`🏆 NEW PERSONAL RECORD! ${currentOneRM.toFixed(1)}kg estimated 1RM!`);
-      } else {
-        alert('✅ Lift logged successfully! Keep going!');
-      }
-
-      // Reset form after successful submission
-      setLog({
-        exercise: mode === 'weights' ? 'squat' : 'pushups',
-        reps: '',
-        weight: '',
-        sets: 1,
-        effort: 5,
-        mood: '💪',
-        notes: ''
-      });
-      setOneRM(null);
-
-      // Refresh data displays
-      fetchPersonalRecords();
-      fetchRecentLifts();
-    } else {
-      console.error('Error logging lift:', error);
-      alert('Error logging lift. Please try again.');
+    setIsSwapLoading(true);
+    try {
+      const response = await fetch(
+        `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
+      );
+      const payload = await response.json();
+      const remoteResults = (payload.results || [])
+        .map(item => item.name)
+        .filter(Boolean)
+        .map(name => ({
+          name,
+          type: 'weights',
+          sets: sessionQueue[swapIndex]?.sets || 3,
+          reps: sessionQueue[swapIndex]?.reps || 10,
+        }));
+      const merged = [...localMatches, ...remoteResults].filter(
+        (item, index, arr) => arr.findIndex(other => other.name === item.name) === index
+      );
+      setSwapResults(merged.length > 0 ? merged : localMatches);
+    } catch (error) {
+      console.error('Exercise search failed:', error);
+      setSwapResults(localMatches);
     }
-
-    setIsLoading(false);
+    setIsSwapLoading(false);
   };
 
-  // Function to fetch personal records from database
+  const fetchCreatorSearch = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setCreatorResults([]);
+      return;
+    }
+
+    try {
+      const localMatches = searchLocalExercises(query).map(name => ({
+        name,
+        type: 'weights',
+        sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+        reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
+      }));
+      setCreatorResults(localMatches);
+      const response = await fetch(
+        `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
+      );
+      const payload = await response.json();
+      const remoteResults = (payload.results || [])
+        .map(item => item.name)
+        .filter(Boolean)
+        .map(name => ({
+          name,
+          type: 'weights',
+          sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+          reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
+        }));
+      const merged = [...localMatches, ...remoteResults].filter(
+        (item, index, arr) => arr.findIndex(other => other.name === item.name) === index
+      );
+      setCreatorResults(merged.length > 0 ? merged : localMatches);
+    } catch (error) {
+      console.error('Creator exercise search failed:', error);
+      setCreatorResults(searchLocalExercises(query).map(name => ({
+        name,
+        type: 'weights',
+        sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+        reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
+      })));
+    }
+  };
+
+  const handleSwapSelect = (exercise) => {
+    if (swapMode === 'add') {
+      const nextQueue = [...sessionQueue, exercise];
+      setSessionQueue(nextQueue);
+      closeSwap();
+      return;
+    }
+
+    if (swapIndex === null) return;
+    const nextQueue = [...sessionQueue];
+    nextQueue[swapIndex] = exercise;
+    setSessionQueue(nextQueue);
+    closeSwap();
+  };
+
+
   const fetchPersonalRecords = async () => {
     const { data, error } = await supabase
       .from('personal_records')
@@ -189,272 +457,816 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
-  // Function to fetch recent lifts from database
   const fetchRecentLifts = async () => {
     const { data, error } = await supabase
       .from('strength_logs')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(3);
+      .limit(4);
 
     if (!error && data) {
       setRecentLifts(data);
     }
   };
 
-  // Helper function to get exercise label from value
   const getExerciseLabel = (exerciseName) => {
     const allExercises = [...weightExercises, ...bodyweightExercises];
     return allExercises.find(e => e.value === exerciseName)?.label || exerciseName;
   };
 
-  // Load data when component mounts
+  const getExerciseIcon = (exerciseName, exerciseType) => {
+    const list = exerciseType === 'bodyweight' ? bodyweightExercises : weightExercises;
+    return list.find(e => e.value === exerciseName)?.icon || '';
+  };
+
+  const prList = Object.values(personalRecords).sort((a, b) => {
+    const aScore = a.one_rm_est || 0;
+    const bScore = b.one_rm_est || 0;
+    return bScore - aScore;
+  });
+  const topPrs = prList.slice(0, 2);
+  const bestLift = recentLifts.reduce((best, lift) => {
+    const reps = Number(lift.reps) || 0;
+    const sets = Number(lift.sets) || 0;
+    const weight = Number(lift.weight) || 0;
+    const score = weight > 0 ? weight * reps * sets : reps * sets;
+    if (!best || score > best.score) {
+      return { lift, score };
+    }
+    return best;
+  }, null);
+
+  const filteredPrograms = programs.filter(program => {
+    const query = programSearch.toLowerCase();
+    return (
+      program.name.toLowerCase().includes(query) ||
+      (program.focus || '').toLowerCase().includes(query) ||
+      (program.description || '').toLowerCase().includes(query)
+    );
+  });
+  const visiblePrograms = showAllPrograms ? filteredPrograms : filteredPrograms.slice(0, 6);
+
+  const scoreProgram = (program) => {
+    let score = 0;
+    if (!profile) return score;
+    const level = (program.level || '').toLowerCase();
+    const focus = (program.focus || '').toLowerCase();
+    const goal = (profile.primary_goal || '').toLowerCase();
+    const fitnessLevel = (profile.fitness_level || '').toLowerCase();
+
+    if (level.includes(fitnessLevel)) score += 2;
+    if (goal.includes('muscle') && (focus.includes('push') || focus.includes('upper') || focus.includes('lower'))) {
+      score += 2;
+    }
+    if (goal.includes('weight') && (focus.includes('full') || focus.includes('conditioning'))) {
+      score += 2;
+    }
+    if (goal.includes('endurance') && (focus.includes('full') || focus.includes('bodyweight'))) {
+      score += 2;
+    }
+    if (goal.includes('fitness') && focus.includes('full')) score += 1;
+
+    if (recentLifts.length > 0) {
+      const recentTypes = new Set(recentLifts.map(lift => lift.exercise_type));
+      if (recentTypes.has('bodyweight') && focus.includes('bodyweight')) score += 1;
+      if (recentTypes.has('weights') && (focus.includes('push') || focus.includes('pull') || focus.includes('lower') || focus.includes('upper'))) {
+        score += 1;
+      }
+    }
+
+    return score;
+  };
+
+  const recommendedPrograms = [...programs]
+    .sort((a, b) => scoreProgram(b) - scoreProgram(a))
+    .slice(0, 3);
+
+  const updateNewExercise = (index, field, value) => {
+    const next = [...newProgram.exercises];
+    next[index] = { ...next[index], [field]: value };
+    setNewProgram(prev => ({ ...prev, exercises: next }));
+  };
+
+  const addNewExercise = () => {
+    setNewProgram(prev => ({
+      ...prev,
+      exercises: [...prev.exercises, { name: '', sets: 3, reps: 10, type: 'weights' }]
+    }));
+  };
+
+  const removeNewExercise = (index) => {
+    setNewProgram(prev => ({
+      ...prev,
+      exercises: prev.exercises.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const saveNewProgram = async () => {
+    if (!newProgram.name.trim()) {
+      setBanner({ type: 'warn', message: 'Add a program name to continue.' });
+      return;
+    }
+    const cleanedExercises = newProgram.exercises
+      .map(ex => ({
+        name: ex.name.trim(),
+        sets: Number(ex.sets) || 3,
+        reps: Number(ex.reps) || 10,
+        type: ex.type || 'weights'
+      }))
+      .filter(ex => ex.name.length > 0);
+
+    if (cleanedExercises.length === 0) {
+      setBanner({ type: 'warn', message: 'Add at least one exercise.' });
+      return;
+    }
+
+    setIsProgramSaving(true);
+    const { error } = await supabase.from('user_programs').insert([{
+      user_id: userId,
+      name: newProgram.name.trim(),
+      level: newProgram.level,
+      focus: newProgram.focus,
+      description: newProgram.description.trim(),
+      exercises: cleanedExercises
+    }]);
+
+    if (!error) {
+      setBanner({ type: 'success', message: 'Program saved to your library.' });
+      setShowCreateProgram(false);
+      setNewProgram({
+        name: '',
+        level: 'Beginner',
+        focus: 'Full Body',
+        description: '',
+        exercises: [{ name: '', sets: 3, reps: 10, type: 'weights' }]
+      });
+      fetchPrograms();
+    } else {
+      console.error('Error saving program:', error);
+      setBanner({ type: 'error', message: 'Could not save program.' });
+    }
+    setIsProgramSaving(false);
+  };
+
   useEffect(() => {
     if (userId) {
+      fetchProfile();
       fetchPersonalRecords();
       fetchRecentLifts();
+      fetchPrograms();
     }
   }, [userId]);
 
-  // Reset exercise when mode changes
   useEffect(() => {
-    setLog(prev => ({
-      ...prev,
-      exercise: mode === 'weights' ? 'squat' : 'pushups',
-      weight: ''
-    }));
-  }, [mode]);
+    const stored = localStorage.getItem('exervia_favorite_exercises');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setFavorites(parsed);
+      } catch (error) {
+        console.error('Failed to parse favorites', error);
+      }
+    }
+  }, []);
 
   return (
-    <div className="strength-progress-container p-4 max-w-4xl mx-auto">
-      {/* 1RM Calculator Display */}
-      {oneRM && oneRM > 0 && (
-        <div className="mb-6 p-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-3xl border border-yellow-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-1">🏋️‍♂️ Estimated 1RM</h3>
-              <p className="text-sm text-gray-400">Based on Epley Formula</p>
+    <div className="studio-shell">
+      <div className="studio-wrap">
+        <header className="studio-header">
+          <div>
+            <button
+              className="studio-back"
+              onClick={() => {
+                if (userId) {
+                  navigate(`/gym/${userId}`);
+                } else {
+                  navigate(-1);
+                }
+              }}
+              type="button"
+            >
+              {'<- Back'}
+            </button>
+            <div className="studio-kicker">STRENGTH STUDIO</div>
+            <h2 className="studio-title">Progress Ritual</h2>
+            <p className="studio-subtitle">Less noise. More intent. Every set matters.</p>
+          </div>
+          <div className="studio-toggle">
+            <button
+              onClick={() => setView('log')}
+              className={`studio-toggle-btn ${view === 'log' ? 'active' : ''}`}
+            >
+              Log
+            </button>
+            <button
+              onClick={() => setView('story')}
+              className={`studio-toggle-btn ${view === 'story' ? 'active' : ''}`}
+            >
+              Story
+            </button>
+          </div>
+        </header>
+
+        {banner && (
+          <div className={`studio-banner ${banner.type}`}>
+            {banner.message}
+          </div>
+        )}
+
+        {view === 'log' ? (
+          <div className="studio-grid">
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-row">
+              <div className="studio-panel-title">Program Library</div>
+              <button
+                className="studio-mini-btn ghost"
+                onClick={() => setShowProgramLibrary((prev) => !prev)}
+                type="button"
+              >
+                {showProgramLibrary ? 'Collapse list' : 'Show programs'}
+              </button>
+              <button
+                className="studio-mini-btn"
+                onClick={() => {
+                    setNewProgram({
+                      name: '',
+                      level: 'Beginner',
+                      focus: 'Full Body',
+                      description: '',
+                      exercises: [{ name: '', sets: 3, reps: 10, type: 'weights' }]
+                    });
+                    setShowCreateProgram(true);
+                  }}
+                  type="button"
+                >
+                  Create program
+                </button>
+              </div>
+              {showProgramLibrary ? (
+                <>
+                  <input
+                    className="studio-search"
+                    placeholder="Search programs"
+                    value={programSearch}
+                    onChange={(event) => setProgramSearch(event.target.value)}
+                  />
+                  {recommendedPrograms.length > 0 && (
+                    <>
+                      <div className="studio-panel-title">Recommended</div>
+                      <div className="studio-program-grid">
+                        {recommendedPrograms.map((program) => (
+                          <button
+                            key={program.id}
+                            className="studio-program-card"
+                            onClick={() => handleSelectProgram(program)}
+                            type="button"
+                          >
+                            <div className="studio-program-title">{program.name}</div>
+                            <div className="studio-program-sub">{program.focus || 'Strength'}</div>
+                            <div className="studio-program-meta">{program.level || 'All levels'}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <div className="studio-panel-row">
+                    <div className="studio-panel-title">All Programs</div>
+                    {filteredPrograms.length > 6 && (
+                      <button
+                        className="studio-mini-btn"
+                        onClick={() => setShowAllPrograms((prev) => !prev)}
+                        type="button"
+                      >
+                        {showAllPrograms ? 'Collapse list' : 'Show all'}
+                      </button>
+                    )}
+                  </div>
+                  {filteredPrograms.length > 0 ? (
+                    <div className="studio-program-grid">
+                      {visiblePrograms.map((program) => (
+                        <button
+                          key={program.id}
+                          className={`studio-program-card ${selectedProgram?.id === program.id ? 'active' : ''}`}
+                          onClick={() => handleSelectProgram(program)}
+                          type="button"
+                        >
+                          <div className="studio-program-title">{program.name}</div>
+                          <div className="studio-program-sub">{program.focus || 'Strength'}</div>
+                          <div className="studio-program-meta">{program.level || 'All levels'}</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="studio-empty">No programs yet.</div>
+                  )}
+                </>
+              ) : (
+                <div className="studio-empty">Program list collapsed to reduce scroll.</div>
+              )}
+            </section>
+
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-row">
+                <div className="studio-panel-title">Session Preview</div>
+                {selectedProgram && (
+                  <button
+                    className="studio-mini-btn ghost"
+                    onClick={() => {
+                      setSelectedProgram(null);
+                      setSessionQueue([]);
+                      setShowProgramLibrary(true);
+                    }}
+                    type="button"
+                  >
+                    Clear selection
+                  </button>
+                )}
+              </div>
+              {selectedProgram ? (
+                <>
+                  <div className="studio-plan-preview">
+                    <div className="studio-plan-preview-title">{selectedProgram.name}</div>
+                    <div className="studio-plan-preview-sub">
+                      {selectedProgram.description || selectedProgram.goal || 'Custom strength flow'}
+                    </div>
+                    <div className="studio-plan-preview-list">
+                      {(selectedProgram.exercises || []).slice(0, 3).map((exercise, index) => (
+                        <div key={`${exercise.name}-${index}`} className="studio-plan-preview-row">
+                          <span>{exercise.name}</span>
+                          <span>{exercise.sets} x {exercise.reps}</span>
+                        </div>
+                      ))}
+                      {(selectedProgram.exercises || []).length > 3 && (
+                        <div className="studio-plan-preview-more">
+                          + {(selectedProgram.exercises || []).length - 3} more exercises
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    className="studio-queue-btn"
+                    onClick={() =>
+                      navigate(`/gym/${userId}/program/${selectedProgram.id}`, {
+                        state: {
+                          program: {
+                            id: selectedProgram.id,
+                            name: selectedProgram.name,
+                            focus: selectedProgram.goal || selectedProgram.description || 'Strength session',
+                            duration: selectedProgram.duration || '45 min',
+                            exercises: selectedProgram.exercises || []
+                          }
+                        }
+                      })
+                    }
+                    type="button"
+                  >
+                    Open session queue
+                  </button>
+                  <div className="studio-panel-title" style={{ marginTop: 16 }}>
+                    Recent Lifts
+                  </div>
+                  {recentLifts.length > 0 ? (
+                    <div className="studio-recent-list">
+                      {recentLifts.slice(0, 2).map((lift) => (
+                        <div
+                          key={lift.id}
+                          className={`studio-recent-row ${lift.is_personal_best ? 'pr' : ''}`}
+                        >
+                          <div className="studio-recent-main">
+                            <div className="studio-recent-title">
+                              {getExerciseIcon(lift.exercise_name, lift.exercise_type) && (
+                                <span className="studio-recent-icon">
+                                  {getExerciseIcon(lift.exercise_name, lift.exercise_type)}
+                                </span>
+                              )}
+                              {getExerciseLabel(lift.exercise_name)}
+                            </div>
+                            <div className="studio-recent-sub">
+                              {lift.reps} reps
+                              {lift.weight > 0 ? ` · ${lift.weight}kg` : ''}
+                              · {lift.sets} sets · {lift.mood_emoji}
+                            </div>
+                          </div>
+                          <div className="studio-recent-meta">
+                            {new Date(lift.created_at).toLocaleDateString()}
+                            {lift.is_personal_best && <span className="studio-recent-badge">PR</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="studio-empty">No lifts logged yet. Start with one clean set.</div>
+                  )}
+                </>
+              ) : (
+                <div className="studio-empty">Select a program to preview the session.</div>
+              )}
+            </section>
+          </div>
+        ) : (
+          <div className="studio-story">
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Personal Records</div>
+              {prList.length > 0 ? (
+                <div className="studio-pr-grid">
+                  {prList.slice(0, 4).map((pr) => (
+                    <div key={pr.id} className="studio-pr-card">
+                      <div className="studio-pr-top">
+                        <div className="studio-pr-title">{getExerciseLabel(pr.exercise_name)}</div>
+                        {getExerciseIcon(pr.exercise_name, pr.exercise_type) && (
+                          <div className="studio-pr-icon">{getExerciseIcon(pr.exercise_name, pr.exercise_type)}</div>
+                        )}
+                      </div>
+                      <div className="studio-pr-value">
+                        {pr.weight > 0 ? `${pr.weight}kg × ` : ''}{pr.reps}
+                      </div>
+                      <div className="studio-pr-sub">
+                        {pr.one_rm_est ? `${pr.one_rm_est.toFixed(1)}kg est. 1RM` : 'Personal best'}
+                      </div>
+                      <div className="studio-pr-date">
+                        {new Date(pr.achieved_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="studio-empty">
+                  No records yet. Your first lift starts the story.
+                </div>
+              )}
+            </section>
+
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Weekly Highlights</div>
+              {topPrs.length > 0 || bestLift ? (
+                <div className="studio-pr-grid">
+                  {topPrs.map((pr) => (
+                    <div key={`highlight-${pr.id}`} className="studio-pr-card">
+                      <div className="studio-pr-top">
+                        <div className="studio-pr-title">{getExerciseLabel(pr.exercise_name)}</div>
+                      </div>
+                      <div className="studio-pr-value">
+                        {pr.weight > 0 ? `${pr.weight}kg × ` : ''}{pr.reps}
+                      </div>
+                      <div className="studio-pr-sub">Top PR this week</div>
+                      <div className="studio-pr-date">
+                        {new Date(pr.achieved_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                  {bestLift && (
+                    <div className="studio-pr-card">
+                      <div className="studio-pr-top">
+                        <div className="studio-pr-title">Best recent lift</div>
+                      </div>
+                      <div className="studio-pr-value">
+                        {getExerciseLabel(bestLift.lift.exercise_name)}
+                      </div>
+                      <div className="studio-pr-sub">
+                        {bestLift.lift.reps} reps
+                        {bestLift.lift.weight > 0 ? ` · ${bestLift.lift.weight}kg` : ''}
+                        · {bestLift.lift.sets} sets
+                      </div>
+                      <div className="studio-pr-date">
+                        {new Date(bestLift.lift.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="studio-empty">No highlights yet. Your next lift creates one.</div>
+              )}
+            </section>
+
+          </div>
+        )}
+      </div>
+
+      {showCreateProgram && (
+        <div className="studio-swap-backdrop">
+          <div className="studio-swap-panel">
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">Create Program</div>
+                <div className="studio-swap-sub">Build your own template and save it.</div>
+              </div>
+              <button
+                className="studio-swap-close"
+                onClick={() => setShowCreateProgram(false)}
+                type="button"
+              >
+                Close
+              </button>
             </div>
-            <div className="text-right">
-              <div className="text-4xl font-black text-yellow-400">{oneRM.toFixed(1)}kg</div>
-              <div className="text-sm font-bold text-yellow-400">ESTIMATED MAX</div>
+            <div className="studio-swap-body">
+              <div className="studio-form-grid">
+                <label className="studio-form-field">
+                  <span className="studio-input-label">Program name</span>
+                  <input
+                    className="studio-search"
+                    placeholder="Classic Pull Day"
+                    value={newProgram.name}
+                    onChange={(event) => setNewProgram(prev => ({ ...prev, name: event.target.value }))}
+                  />
+                </label>
+                <label className="studio-form-field">
+                  <span className="studio-input-label">Level</span>
+                  <select
+                    className="studio-select"
+                    value={newProgram.level}
+                    onChange={(event) => setNewProgram(prev => ({ ...prev, level: event.target.value }))}
+                  >
+                    <option>Beginner</option>
+                    <option>Intermediate</option>
+                    <option>Advanced</option>
+                  </select>
+                </label>
+                <label className="studio-form-field">
+                  <span className="studio-input-label">Focus</span>
+                  <select
+                    className="studio-select"
+                    value={newProgram.focus}
+                    onChange={(event) => setNewProgram(prev => ({ ...prev, focus: event.target.value }))}
+                  >
+                    <option>Full Body</option>
+                    <option>Upper Body</option>
+                    <option>Lower Body</option>
+                    <option>Push</option>
+                    <option>Pull</option>
+                    <option>Glutes</option>
+                    <option>Bodyweight</option>
+                    <option>Conditioning</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="studio-form-field">
+                <span className="studio-input-label">Description</span>
+                <textarea
+                  className="studio-textarea"
+                  placeholder="Short ritual description"
+                  value={newProgram.description}
+                  onChange={(event) => setNewProgram(prev => ({ ...prev, description: event.target.value }))}
+                />
+              </label>
+
+              <div className="studio-panel-title">Exercises</div>
+              <div className="studio-create-search">
+                {favorites.length > 0 && (
+                  <div className="studio-pinned">
+                    <div className="studio-panel-title">Pinned Favorites</div>
+                    <div className="studio-favorite-row">
+                      {favorites.map(item => (
+                        <button
+                          key={`creator-fav-${item}`}
+                          className="studio-favorite-chip"
+                          onClick={() => {
+                            updateNewExercise(creatorFocusedIndex, 'name', item);
+                            updateNewExercise(creatorFocusedIndex, 'type', 'weights');
+                          }}
+                          type="button"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <input
+                  className="studio-search"
+                  placeholder="Search exercise library"
+                  value={creatorSearch}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setCreatorSearch(next);
+                    fetchCreatorSearch(next);
+                  }}
+                />
+                {creatorResults.length > 0 && (
+                  <div className="studio-creator-results">
+                    {creatorResults.map(result => (
+                      <div
+                        key={`creator-${result.name}`}
+                        className="studio-swap-result"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          updateNewExercise(creatorFocusedIndex, 'name', result.name);
+                          updateNewExercise(creatorFocusedIndex, 'type', result.type);
+                          setCreatorResults([]);
+                          setCreatorSearch('');
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            updateNewExercise(creatorFocusedIndex, 'name', result.name);
+                            updateNewExercise(creatorFocusedIndex, 'type', result.type);
+                            setCreatorResults([]);
+                            setCreatorSearch('');
+                          }
+                        }}
+                      >
+                        <div className="studio-swap-name">{result.name}</div>
+                        <div className="studio-swap-meta">{result.sets} sets · {result.reps} reps</div>
+                        <div className="studio-swap-actions">
+                          <button
+                            className={`studio-queue-swap ${favorites.includes(result.name) ? 'active' : ''}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFavorite(result.name);
+                            }}
+                            type="button"
+                          >
+                            {favorites.includes(result.name) ? 'Pinned' : 'Pin'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="studio-create-list">
+                {newProgram.exercises.map((exercise, index) => (
+                  <div key={`new-ex-${index}`} className="studio-create-row">
+                    <input
+                      className="studio-create-name"
+                      placeholder="Exercise name"
+                      value={exercise.name}
+                      onFocus={() => setCreatorFocusedIndex(index)}
+                      onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
+                    />
+                    <input
+                      className="studio-create-mini"
+                      type="number"
+                      min="1"
+                      value={exercise.sets}
+                      onChange={(event) => updateNewExercise(index, 'sets', event.target.value)}
+                    />
+                    <input
+                      className="studio-create-mini"
+                      type="number"
+                      min="1"
+                      value={exercise.reps}
+                      onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                    />
+                    <select
+                      className="studio-create-mini"
+                      value={exercise.type}
+                      onChange={(event) => updateNewExercise(index, 'type', event.target.value)}
+                    >
+                      <option value="weights">Weights</option>
+                      <option value="bodyweight">Bodyweight</option>
+                    </select>
+                    <div className="studio-create-order">
+                      <button
+                        className="studio-order-btn"
+                        onClick={() => {
+                          if (index === 0) return;
+                          const next = [...newProgram.exercises];
+                          [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                          setNewProgram(prev => ({ ...prev, exercises: next }));
+                        }}
+                        type="button"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="studio-order-btn"
+                        onClick={() => {
+                          if (index === newProgram.exercises.length - 1) return;
+                          const next = [...newProgram.exercises];
+                          [next[index + 1], next[index]] = [next[index], next[index + 1]];
+                          setNewProgram(prev => ({ ...prev, exercises: next }));
+                        }}
+                        type="button"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    <button
+                      className="studio-remove-btn"
+                      onClick={() => removeNewExercise(index)}
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="studio-create-actions">
+                <button className="studio-queue-btn ghost" onClick={addNewExercise} type="button">
+                  Add exercise
+                </button>
+                <button
+                  className="studio-queue-btn"
+                  onClick={saveNewProgram}
+                  type="button"
+                  disabled={isProgramSaving}
+                >
+                  {isProgramSaving ? 'Saving...' : 'Save program'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header section */}
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">Strength Training</h2>
-        <p className="text-gray-400">Log your lifts and watch your power grow</p>
-      </div>
-
-      {/* Mode toggle buttons - weights vs bodyweight */}
-      <div className="flex bg-gray-800/50 p-1 rounded-2xl mb-8 max-w-md mx-auto">
-        <button 
-          onClick={() => setMode('weights')}
-          className={`flex-1 py-4 rounded-xl text-lg font-bold transition-all ${
-            mode === 'weights' 
-              ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-500 border border-yellow-500/30' 
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          🏋️‍♂️ Weights
-        </button>
-        <button 
-          onClick={() => setMode('bodyweight')}
-          className={`flex-1 py-4 rounded-xl text-lg font-bold transition-all ${
-            mode === 'bodyweight' 
-              ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-500 border border-blue-500/30' 
-              : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          🤸‍♂️ Bodyweight
-        </button>
-      </div>
-
-      {/* Main logging card */}
-      <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-3xl p-8 mb-8 border border-gray-700">
-        {/* Exercise selection */}
-        <div className="mb-8">
-          <label className="block text-sm font-bold text-gray-400 mb-4">SELECT EXERCISE</label>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {currentExercises.map((exercise) => (
-              <button
-                key={exercise.value}
-                onClick={() => setLog({...log, exercise: exercise.value})}
-                className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all ${
-                  log.exercise === exercise.value
-                    ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border-2 border-orange-500'
-                    : 'bg-gray-800/50 border border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <span className="text-2xl mb-2">{exercise.icon}</span>
-                <span className="text-xs font-medium text-white text-center">{exercise.label}</span>
+      {swapOpen && (
+        <div className="studio-swap-backdrop">
+          <div className="studio-swap-panel">
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">
+                  {swapMode === 'add' ? 'Add Exercise' : 'Swap Exercise'}
+                </div>
+                <div className="studio-swap-sub">
+                  {swapMode === 'add'
+                    ? 'Search the library and add it to your session.'
+                    : 'Search the library and replace this slot.'}
+                </div>
+              </div>
+              <button className="studio-swap-close" onClick={closeSwap} type="button">
+                Close
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/*  Strength exercise input grid for reps, weight, and sets
-  handles user input for strength training sessions and calculates 1RM
-  adapted from form handling in React: https://react.dev/learn/responding-to-events
-  and input management patterns: https://react.dev/reference/react-dom/components/inpu */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="text-center p-6 bg-gray-800/50 rounded-2xl border border-gray-700">
-            <label className="text-xs font-bold text-gray-400 mb-3 block uppercase">Reps</label>
-            <input 
-              type="number" 
-              placeholder="0" 
-              value={log.reps}
-              onChange={(e) => setLog({...log, reps: e.target.value})}
-              className="bg-transparent text-5xl font-black w-full text-center outline-none text-white"
-            />
-            <div className="text-xs text-gray-500 mt-2">How many reps?</div>
-          </div>
-
-          {mode === 'weights' && (
-            <div className="text-center p-6 bg-gray-800/50 rounded-2xl border border-gray-700">
-              <label className="text-xs font-bold text-gray-400 mb-3 block uppercase">Weight (kg)</label>
-              <input 
-                type="number" 
-                placeholder="0" 
-                value={log.weight}
-                onChange={(e) => setLog({...log, weight: e.target.value})}
-                className="bg-transparent text-5xl font-black w-full text-center outline-none text-white"
-              />
-              <div className="text-xs text-gray-500 mt-2">How much weight?</div>
             </div>
-          )}
-
-          <div className="text-center p-6 bg-gray-800/50 rounded-2xl border border-gray-700">
-            <label className="text-xs font-bold text-gray-400 mb-3 block uppercase">Sets</label>
-            <input 
-              type="number" 
-              placeholder="1" 
-              value={log.sets}
-              onChange={(e) => setLog({...log, sets: e.target.value})}
-              className="bg-transparent text-5xl font-black w-full text-center outline-none text-white"
-              min="1"
-            />
-            <div className="text-xs text-gray-500 mt-2">How many sets?</div>
-          </div>
-        </div>
-
-        {/*  Log button for submitting strength training sessions
-  triggers database insertion and personal record checks
-  adapted from button submission patterns in React forms */}
-        <button 
-          onClick={handleLogLift}
-          disabled={isLoading}
-          className="w-full py-6 bg-gradient-to-r from-yellow-500 to-orange-600 text-black rounded-2xl font-black text-xl shadow-lg shadow-yellow-900/20 hover:shadow-yellow-900/40 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'LOGGING...' : '💥 LOG THE WIN'}
-        </button>
-      </div>
-
-      {/*  PR Hall of Fame section displaying personal strength records
-  shows user's all-time best lifts across different exercises
-  adapted from list rendering patterns in React: https://react.dev/learn/rendering-lists
-  and conditional rendering for empty states: https://react.dev/learn/conditional-rendering */}
-      <div className="bg-gray-800/30 rounded-3xl p-6 mb-8 border border-gray-700">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-white">🏆 Personal Records</h3>
-          <span className="text-sm text-gray-400">
-            {Object.keys(personalRecords).length} records
-          </span>
-        </div>
-        
-        {Object.keys(personalRecords).length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.values(personalRecords).slice(0, 4).map((pr) => (
-              <div 
-                key={pr.id} 
-                className="p-4 bg-gray-800/50 rounded-2xl border border-gray-700 hover:border-yellow-500/50 transition-all"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-bold text-white capitalize">
-                      {getExerciseLabel(pr.exercise_name)}
-                    </h4>
-                    <div className="text-sm text-gray-400">
-                      {pr.is_bodyweight ? 'Bodyweight' : 'Weighted'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black text-yellow-500">
-                      {pr.weight > 0 ? `${pr.weight}kg × ` : ''}{pr.reps}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(pr.achieved_at).toLocaleDateString()}
-                    </div>
+            <div className="studio-swap-body">
+              {favorites.length > 0 && (
+                <div className="studio-pinned">
+                  <div className="studio-panel-title">Pinned Favorites</div>
+                  <div className="studio-favorite-row">
+                    {favorites.map(item => (
+                      <button
+                        key={`swap-fav-${item}`}
+                        className="studio-favorite-chip"
+                        onClick={() => handleSwapSelect({
+                          name: item,
+                          type: 'weights',
+                          sets: sessionQueue[swapIndex]?.sets || 3,
+                          reps: sessionQueue[swapIndex]?.reps || 10,
+                        })}
+                        type="button"
+                      >
+                        {item}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">📊</div>
-            <p className="text-gray-400">No records yet. Log your first lift to start your PR journey!</p>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Lifts section showing latest strength training sessions
-  displays chronological history of logged lifts with personal best indicators
-  adapted from mapping over arrays in React: https://react.dev/learn/rendering-lists
-  and dynamic styling based on state: https://react.dev/learn/conditional-rendering  */}
-      <div className="bg-gray-800/30 rounded-3xl p-6 border border-gray-700">
-        <h3 className="text-xl font-bold text-white mb-6">Recent Lifts</h3>
-        {recentLifts.length > 0 ? (
-          <div className="space-y-4">
-            {recentLifts.map((lift) => (
-              <div 
-                key={lift.id} 
-                className={`p-4 rounded-2xl border transition-all ${
-                  lift.is_personal_best
-                    ? 'border-yellow-500/50 bg-yellow-500/10'
-                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">
-                      {currentExercises.find(e => e.value === lift.exercise_name)?.icon || '💪'}
-                    </span>
-                    <div>
-                      <h4 className="font-bold text-white capitalize">
-                        {getExerciseLabel(lift.exercise_name)}
-                      </h4>
-                      <div className="flex items-center gap-4 text-sm text-gray-400">
-                        <span>{lift.reps} reps</span>
-                        {lift.weight > 0 && <span>{lift.weight}kg</span>}
-                        <span>{lift.sets} sets</span>
-                        <span>{lift.mood_emoji}</span>
+              )}
+              <input
+                className="studio-search"
+                placeholder="Search exercises"
+                value={swapQuery}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSwapQuery(next);
+                  fetchExerciseSearch(next);
+                }}
+              />
+              {isSwapLoading ? (
+                <div className="studio-empty">Searching...</div>
+              ) : (
+                <div className="studio-swap-results">
+                  {swapResults.length > 0 ? (
+                    swapResults.map(result => (
+                      <div
+                        key={result.name}
+                        className="studio-swap-result"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleSwapSelect(result)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            handleSwapSelect(result);
+                          }
+                        }}
+                      >
+                        <div className="studio-swap-name">{result.name}</div>
+                        <div className="studio-swap-meta">
+                          {result.sets} sets · {result.reps} reps
+                        </div>
+                        <div className="studio-swap-actions">
+                          <button
+                            className={`studio-queue-swap ${favorites.includes(result.name) ? 'active' : ''}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFavorite(result.name);
+                            }}
+                            type="button"
+                          >
+                            {favorites.includes(result.name) ? 'Pinned' : 'Pin'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">
-                      {new Date(lift.created_at).toLocaleDateString()}
-                    </div>
-                    {lift.is_personal_best && (
-                      <div className="text-xs text-yellow-400 font-bold mt-1">🏆 PR!</div>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <div className="studio-empty">No results yet. Try another search.</div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">💪</div>
-            <p className="text-gray-400">No lifts logged yet. Start building your strength!</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
