@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import ModeNav from "./ModeNav";
+// Component: Navbar - UI layout and interactions.
+// This component renders the navbar experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = null }) {
   const [userState, setUserState] = useState(null);
 
+// fetchUserState manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchUserState = async () => {
     const userId = localStorage.getItem('exervia_user_id');
     if (!userId) return;
@@ -18,16 +26,26 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     if (!error && data) setUserState(data);
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     fetchUserState();
 
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = () => {
       fetchUserState();
     };
     window.addEventListener("user_state_updated", handler);
 
+    // Render
     return () => window.removeEventListener("user_state_updated", handler);
   }, []);
+
 
   return (
     <nav className="hud-topbar">

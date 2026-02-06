@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+// Component: SystemStatus - UI layout and interactions.
+// This component renders the systemstatus experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 export default function SystemStatus() {
   const [userState, setUserState] = useState(null);
 
+// fetchUserState manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchUserState = async () => {
     const userId = localStorage.getItem('exervia_user_id');
     if (!userId) return;
@@ -22,12 +30,17 @@ export default function SystemStatus() {
     setUserState(data);
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     fetchUserState();
 
     // 🔔 Listen for global state updates
     const handler = () => fetchUserState();
     window.addEventListener('user_state_updated', handler);
+    // Render
     return () => window.removeEventListener('user_state_updated', handler);
   }, []);
 
@@ -38,6 +51,7 @@ export default function SystemStatus() {
     recovery_score = 0,
     momentum_score = 0
   } = userState;
+
 
   return (
     <div className="bg-gray-700 text-white p-4 rounded-lg shadow-md max-w-sm mx-auto mt-4">

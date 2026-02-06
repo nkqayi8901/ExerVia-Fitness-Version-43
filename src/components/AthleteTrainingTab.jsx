@@ -1,10 +1,22 @@
 // src/components/AthleteTrainingTab.jsx
+// this component powers the Athlete Training area,
+// it manages plans, sessions, timers, and reflections,
+// and coordinates UI state with Supabase data,
+// comments below explain each major block
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
+// Component: AthleteTrainingTab - UI layout and interactions.
+// This component renders the athletetrainingtab experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// fallbackPlans provide a local default when the API is empty,
+// they ensure the UI has content for new users,
+// each plan includes a summary + weekly outline,
+// and these are used only if no remote plans exist
 const fallbackPlans = [
   {
     id: 'hyrox-foundation',
@@ -42,6 +54,10 @@ const fallbackPlans = [
   },
 ];
 
+// emptyPlan is the template used when creating a new plan,
+// it keeps form state consistent and avoids undefined fields,
+// outline starts with a single editable week,
+// and values get replaced as the user fills the form
 const emptyPlan = {
   name: '',
   sport: 'running',
@@ -53,6 +69,10 @@ const emptyPlan = {
   outline: [{ week: 'Week 1', sessions: [''] }]
 };
 
+// AthleteTrainingTab is the main training hub for athlete mode,
+// it manages selection, creation, and execution of plans,
+// it controls countdowns, timers, and session logging,
+// and renders the full training UI for this section
 const AthleteTrainingTab = ({ userId, onBack }) => {
   const navigate = useNavigate();
   const [banner, setBanner] = useState(null);
@@ -97,6 +117,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [apiStatus, setApiStatus] = useState('idle');
   const [congratsOpen, setCongratsOpen] = useState(false);
 
+  // focusOptions and sports drive filters + dropdowns,
+  // trainingWorlds define the themed entry points,
+  // these labels are used across the plan library,
+  // and keep the UI copy consistent
   const focusOptions = ['Base', 'Tempo', 'Speed', 'Recovery', 'Race Prep'];
   const sports = ['running', 'cycling', 'swimming', 'hybrid', 'trail'];
   const trainingWorlds = [
@@ -106,6 +130,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     { id: 'swimming', title: 'Flow Pool', subtitle: 'Form and oxygen', sport: 'swimming' },
     { id: 'trail', title: 'Trail Forge', subtitle: 'Elevation resilience', sport: 'trail' }
   ];
+  // outlinePresets provide quick session templates by sport,
+  // they accelerate plan creation with curated weeks,
+  // keys align to focusOptions and sports,
+  // and are used when users select a focus
   const outlinePresets = {
     running: {
       Base: ['Base run 40 min', 'Tempo 20 min', 'Recovery 30 min'],
@@ -144,6 +172,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // calculateEfficiency computes a simple pacing efficiency score,
+  // it returns value, pace, and a readable insight label,
+  // used to give immediate feedback on logged sessions,
+  // returns null when required inputs are missing
   const calculateEfficiency = (distance, time, heartRate) => {
     if (!distance || !time || !heartRate) return null;
     const paceMinutesPerKm = parseFloat(time) / parseFloat(distance);
@@ -163,7 +195,15 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
   };
 
+  // mapPlan normalizes remote plan data into local shape,
+  // converts sport names into supported categories,
+  // adds defaults for missing fields to keep UI stable,
+  // returns null for unsupported plan types
   const mapPlan = (plan, source) => {
+// rawSport manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const rawSport = (plan.sport || 'running').toLowerCase();
     const normalizedSport = ['hyrox', 'functional', 'hybrid'].includes(rawSport) ? 'hybrid' : rawSport;
     if (normalizedSport === 'row') return null;
@@ -182,6 +222,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
   };
 
+  // loadFavorites pulls pinned plan ids from local storage,
+  // keeps user preferences persistent across sessions,
+  // safely handles malformed storage data,
+  // used to initialize the favorites state
   const loadFavorites = () => {
     const stored = localStorage.getItem('exervia_plan_favorites');
     if (!stored) return [];
@@ -192,6 +236,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // loadPinnedOrder restores the custom plan ordering,
+  // this keeps the library layout stable for the user,
+  // safely parses stored order or returns an empty list,
+  // used when rendering the pinned plans list
   const loadPinnedOrder = () => {
     const stored = localStorage.getItem('exervia_plan_pinned_order');
     if (!stored) return [];
@@ -202,16 +250,28 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // saveFavorites writes the favorites list to state + storage,
+  // keeps the UI updated immediately after changes,
+  // persists plan pins across reloads,
+  // used by favorite toggle interactions
   const saveFavorites = (items) => {
     setPlanFavorites(items);
     localStorage.setItem('exervia_plan_favorites', JSON.stringify(items));
   };
 
+  // savePinnedOrder stores the custom ordering of pinned plans,
+  // ensures the pinned list renders in the user’s order,
+  // persists the ordering in local storage,
+  // used when dragging or reordering pins
   const savePinnedOrder = (items) => {
     setPinnedOrder(items);
     localStorage.setItem('exervia_plan_pinned_order', JSON.stringify(items));
   };
 
+  // togglePlanFavorite adds or removes a plan from favorites,
+  // keeps pinned order in sync with favorites,
+  // handles both add and remove flows,
+  // prevents invalid plans from being processed
   const togglePlanFavorite = (plan) => {
     if (!plan?.name) return;
     if (planFavorites.includes(plan.name)) {
@@ -226,6 +286,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // buildOutline generates a 4-week outline from presets,
+  // blends focus, duration, and distance into sessions,
+  // applies week intensity labels for readability,
+  // returns a normalized outline array for new plans
   const buildOutline = (sport, focus, duration, distance) => {
     const durationTag = duration ? `${duration} min` : null;
     const distanceTag = distance ? `${distance} km` : null;
@@ -254,6 +318,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     });
   };
 
+  // fetchExternalPlans loads plans from a public endpoint,
+  // handles API errors and sets the apiStatus flag,
+  // maps external payloads into the local plan shape,
+  // returns a normalized list for aggregation
   const fetchExternalPlans = async () => {
     const endpoint = process.env.REACT_APP_TRAINING_PLANS_API || '/data/training-plans.json';
     setApiStatus('loading');
@@ -274,6 +342,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // fetchPlans aggregates all plan sources,
+  // merges API, templates, and user-created plans,
+  // falls back to local defaults when empty,
+  // and updates the plan list state
   const fetchPlans = async () => {
     const collected = [];
     const apiPlans = await fetchExternalPlans();
@@ -316,6 +388,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setPlans(collected);
   };
 
+  // startPlan applies a selected plan to session state,
+  // sets focus, duration, distance, and notes,
+  // closes the plan panel and opens the pulse view,
+  // and shows a banner confirming the selection
   const startPlan = (plan) => {
     setSelectedPlan(plan);
     setSessionFocus(plan.defaultFocus || 'Base');
@@ -331,6 +407,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setBanner({ type: 'info', message: `${plan.name} loaded. Focus set to ${plan.defaultFocus || 'Base'}.` });
   };
 
+  // openFocusLock triggers the 3-2-1 lock-in flow,
+  // optionally starts the plan before countdown,
+  // resets timer state for the session run,
+  // and sets the banner to guide the user
   const openFocusLock = (plan) => {
     if (plan) {
       startPlan(plan);
@@ -341,6 +421,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setBanner({ type: 'info', message: 'Session starting. Lock in.' });
   };
 
+  // prefillPlanEditor loads a plan into the edit form,
+  // supports editing only for user-owned plans,
+  // populates all fields including outline weeks,
+  // opens the create/edit modal for changes
   const prefillPlanEditor = (plan) => {
     setEditingPlanId(plan.source === 'user' ? plan.id : null);
     setNewPlan({
@@ -356,6 +440,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setShowCreatePlan(true);
   };
 
+  // savePlan validates and persists the current plan draft,
+  // updates user plans in Supabase when applicable,
+  // refreshes the plan list on success,
+  // and handles error feedback via banner
   const savePlan = async () => {
     if (!newPlan.name.trim()) {
       setBanner({ type: 'warn', message: 'Add a plan name to continue.' });
@@ -401,6 +489,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setIsPlanSaving(false);
   };
 
+  // deletePlan removes a user-owned plan from Supabase,
+  // only runs for user plans (not templates or API),
+  // resets selection + closes panels after delete,
+  // and refreshes the plan list on success
   const deletePlan = async () => {
     if (!selectedPlan || selectedPlan.source !== 'user') return;
     const { error } = await supabase
@@ -420,6 +512,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     fetchPlans();
   };
 
+  // efficiency recalculation side-effect,
+  // runs when key metrics change,
+  // currently calculates but does not persist results,
+  // reserved for future inline feedback usage
   useEffect(() => {
     if (session.distance && session.duration && session.heartRate) {
       const efficiency = calculateEfficiency(session.distance, session.duration, session.heartRate);
@@ -427,18 +523,31 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   }, [session.distance, session.duration, session.heartRate]);
 
+  // auto-dismiss banner after a short delay,
+  // keeps notifications visible but non-blocking,
+  // clears timeout on re-render,
+  // prevents banners from stacking
   useEffect(() => {
     if (!banner) return undefined;
     const timeout = setTimeout(() => setBanner(null), 3200);
+    // Render
     return () => clearTimeout(timeout);
   }, [banner]);
 
+  // pulse panel effect for a quick visual cue,
+  // auto-closes the pulse after a short duration,
+  // prevents repeated pulses from lingering,
+  // resets on each activation
   useEffect(() => {
     if (!pulsePanel) return undefined;
     const timeout = setTimeout(() => setPulsePanel(false), 800);
     return () => clearTimeout(timeout);
   }, [pulsePanel]);
 
+  // session timer tick loop,
+  // runs while timerRunning is true,
+  // increments seconds every 1s,
+  // cleans up interval on stop/unmount
   useEffect(() => {
     if (!timerRunning) return undefined;
     const interval = setInterval(() => {
@@ -447,6 +556,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => clearInterval(interval);
   }, [timerRunning]);
 
+  // hides the floor UI after timer starts,
+  // gives users a few seconds before hiding,
+  // resets when timer opens,
+  // clears timeout on unmount
   useEffect(() => {
     if (!timerOpen) return undefined;
     setFloorUiHidden(false);
@@ -456,6 +569,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => clearTimeout(timeout);
   }, [timerOpen]);
 
+  // 3-2-1 countdown flow before session timer,
+  // transitions into timer mode when countdown hits 0,
+  // resets countdown state for next run,
+  // runs only while countdownOpen is true
   useEffect(() => {
     if (!countdownOpen) return undefined;
     if (countdown <= 0) {
@@ -472,6 +589,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => clearTimeout(timer);
   }, [countdownOpen, countdown]);
 
+  // handleLogSession writes the session to Supabase,
+  // computes efficiency metrics when available,
+  // attaches plan info + intention to notes,
+  // resets form state and refreshes user stats
   const handleLogSession = async () => {
     if (!session.duration || !session.sport) {
       setBanner({ type: 'warn', message: 'Please add duration and a sport.' });
@@ -548,12 +669,20 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 
   };
 
+  // finishSession ends the active timer flow,
+  // stops the timer and closes the timer UI,
+  // then delegates to handleLogSession,
+  // keeps session completion in one path
   const finishSession = () => {
     setTimerRunning(false);
     setTimerOpen(false);
     handleLogSession();
   };
 
+  // saveReflection appends a reflection to the last session,
+  // requires a logged session id to update notes,
+  // posts the update to Supabase and shows feedback,
+  // closes the congrats modal after completion
   const saveReflection = async () => {
     const reflection = sessionReflection.trim();
     if (!reflection || !lastLoggedSessionId) {
@@ -578,6 +707,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setCongratsOpen(false);
   };
 
+  // startFinishHold begins the hold-to-finish interaction,
+  // increments progress until it reaches the threshold,
+  // calls finishSession when complete,
+  // ignores repeated starts while active
   const startFinishHold = () => {
     if (isHoldingFinish || holdTimerRef.current) return;
     setIsHoldingFinish(true);
@@ -599,6 +732,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }, step);
   };
 
+  // endFinishHold cancels the hold interaction,
+  // clears the interval and resets progress state,
+  // prevents accidental completion,
+  // called on pointer/touch release
   const endFinishHold = () => {
     if (!holdTimerRef.current) return;
     clearInterval(holdTimerRef.current);
@@ -607,6 +744,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setFinishHold(0);
   };
 
+  // fetchRecentSessions loads the latest sessions for the user,
+  // orders by most recent and limits the list,
+  // updates the recentSessions state,
+  // used to drive recency insights + streaks
   const fetchRecentSessions = async () => {
     const { data, error } = await supabase
       .from('training_sessions')
@@ -620,6 +761,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // initial data load when a user is present,
+  // pulls recent sessions and available plans,
+  // restores favorites + pinned ordering,
+  // runs once per userId change
   useEffect(() => {
     if (userId) {
       fetchRecentSessions();
@@ -629,6 +774,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   }, [userId]);
 
+  // filteredPlans applies search + sport filter,
+  // keeps the library list focused by user input,
+  // matches on name/goal/summary/sport fields,
+  // used to render the program list
   const filteredPlans = plans.filter(plan => {
     const query = planSearch.toLowerCase();
     const sportMatch = planSportFilter ? plan.sport === planSportFilter : false;
@@ -643,10 +792,18 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     );
   });
 
+  // recommendedPlans picks a small subset for quick access,
+  // based on current session sport or focus,
+  // keeps the highlight area concise,
+  // used in the pinned/recommended strip
   const recommendedPlans = plans
     .filter(plan => plan.sport === session.sport || plan.defaultFocus === sessionFocus)
     .slice(0, 3);
 
+  // companion hint uses session + plan context,
+  // crafts a short tip to guide the user,
+  // dispatches a custom event for the orb,
+  // runs when sport or plan selection changes
   useEffect(() => {
     const companionPlan = selectedPlan || recommendedPlans[0];
     const planText = companionPlan ? `${companionPlan.name} could be a strong start today.` : 'Choose a plan to begin.';
@@ -664,11 +821,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     );
   }, [session.sport, selectedPlan, recommendedPlans]);
 
+  // displayPlans limits visible plans for performance,
+  // respects the showAll toggle and search state,
+  // avoids overwhelming the user with long lists,
+  // used by the plan library view
   const displayPlans = (planSportFilter ? filteredPlans : []).slice(
     0,
     showAllPlans || planSearch ? filteredPlans.length : 8
   );
 
+  // getStreak computes consecutive-day activity streaks,
+  // sorts recent sessions by date,
+  // counts contiguous days within a 1-day gap,
+  // returns the current streak length
   const getStreak = () => {
     if (!recentSessions.length) return 0;
     const sorted = [...recentSessions].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -683,6 +848,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return streak;
   };
 
+  // aggregate session stats for summary cards,
+  // compute average duration and efficiency factor,
+  // derive pinned plan ordering and selection,
+  // and prepare timeline context for the UI
   const streak = getStreak();
   const recentDurations = recentSessions
     .map((item) => item.duration_minutes)
@@ -707,22 +876,38 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const timelinePlan = selectedPlan || pinnedPlan || recommendedPlans[0];
   const holdTimerRef = useRef(null);
 
+  // timer values are derived from session or plan,
+  // targetSeconds drives the progress ring,
+  // progress is clamped to 0-1 for UI safety,
+  // used by the lock-in session screen
   const targetMinutes = session.duration || timelinePlan?.durationTarget || 45;
   const targetSeconds = parseInt(targetMinutes, 10) * 60;
   const safeTargetSeconds = Number.isFinite(targetSeconds) ? targetSeconds : 0;
   const timerProgress = safeTargetSeconds ? Math.min(timerSeconds / safeTargetSeconds, 1) : 0;
 
+  // formatTime renders mm:ss for the timer,
+  // keeps the session display clean,
+  // pads with zeros for consistency,
+  // used across timer and countdown UI
   const formatTime = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // breath phase cues during the first minute,
+  // used to guide the user into rhythm,
+  // labels switch based on elapsed time,
+  // only active while timer is open
   const isBreathPhase = timerSeconds <= 60 && timerOpen;
   const breathLabel = timerSeconds <= 30 ? 'Inhale' : 'Exhale';
   const breathHint = timerSeconds <= 30 ? '4 seconds in · 4 seconds hold' : '6 seconds out · reset';
   const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
 
+  // handleBack returns to the parent view,
+  // uses onBack if provided by the container,
+  // falls back to router navigation otherwise,
+  // keeps navigation logic centralized
   const handleBack = () => {
     if (typeof onBack === 'function') {
       onBack();
@@ -733,6 +918,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  // remixPlan clones an existing plan into the editor,
+  // prefixes the name to signal it is a remix,
+  // resets editing id to avoid overwriting originals,
+  // opens the create plan modal with prefilled values
   const remixPlan = (plan) => {
     if (!plan) return;
     setEditingPlanId(null);
@@ -749,6 +938,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setShowCreatePlan(true);
   };
 
+  // cleanup effect for hold-to-finish timer,
+  // clears any active intervals on unmount,
+  // prevents stray timers from running in background,
+  // keeps component lifecycle tidy
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) {
@@ -757,6 +950,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
   }, []);
 
+  // getPlanStory builds a short narrative summary,
+  // tailors the text to focus + sport,
+  // used in the plan preview story block,
+  // keeps tone consistent across the UI
   const getPlanStory = (plan) => {
     const focus = plan?.defaultFocus || 'Base';
     const sport = plan?.sport || 'training';
@@ -767,9 +964,17 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return `Foundational volume to grow your ${sport} capacity.`;
   };
 
+  // render the athlete training experience,
+  // combines plan library, session preview, and logging,
+  // conditionally shows modals and overlays,
+  // and wires up all interactive panels
   return (
     <div className="studio-shell" data-world={activeWorldSport}>
       <div className="studio-wrap">
+        {/* top header with title + back action, */}
+        {/* anchors the page context for the user, */}
+        {/* keeps navigation consistent with other tabs, */}
+        {/* and exposes the back control */}
         <header className="studio-header">
           <div>
             <div className="studio-kicker">ATHLETE STUDIO</div>
@@ -785,13 +990,25 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           </button>
         </header>
 
+        {/* banner for inline feedback messages, */}
+        {/* shows success/warn/error/info status, */}
+        {/* auto-dismisses via effect above, */}
+        {/* kept near the top for visibility */}
         {banner && (
           <div className={`studio-banner ${banner.type}`}>
             {banner.message}
           </div>
         )}
 
+        {/* main content grid for library + preview, */}
+        {/* left panel focuses on plan discovery, */}
+        {/* right panel focuses on session preview, */}
+        {/* layout stays consistent across states */}
         <div className="studio-grid">
+          {/* plan library panel with filters + actions, */}
+          {/* controls create/collapse and search behaviors, */}
+          {/* renders pinned and available plans, */}
+          {/* keeps selection logic in one place */}
           <section className="studio-panel studio-reveal">
               <div className="studio-panel-row">
                 <div className="studio-panel-title">Plan Library</div>
@@ -817,6 +1034,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 </div>
               </div>
 
+            {/* training worlds act as sport filters, */}
+            {/* selecting a world activates its plan list, */}
+            {/* clicking again clears the filter, */}
+            {/* provides a fast entry into plan browsing */}
             <div className="studio-worlds">
               <div className="studio-panel-title">Training Worlds</div>
               <div className="studio-world-grid">
@@ -979,6 +1200,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             )}
           </section>
 
+          {/* session preview panel for the selected plan, */}
+          {/* shows a brief outline + start actions, */}
+          {/* includes recent session history below, */}
+          {/* displays empty state when nothing is selected */}
           <section className="studio-panel studio-reveal">
             <div className="studio-panel-title">Session Preview</div>
             {selectedPlan ? (
@@ -1039,6 +1264,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             ) : (
               <div className="studio-empty">Select a plan to preview the session.</div>
             )}
+            {/* recent sessions list for quick context, */}
+            {/* shows last two sessions by default, */}
+            {/* provides lightweight activity memory, */}
+            {/* falls back to empty state when none exist */}
             <div className="studio-panel-title" style={{ marginTop: 16 }}>
               Recent Sessions
             </div>
@@ -1067,6 +1296,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         </div>
       </div>
 
+      {/* plan detail modal with full outline, */}
+      {/* appears when a plan is opened from the list, */}
+      {/* includes actions to start, pin, remix, delete, */}
+      {/* closes to return to the main layout */}
       {planOpen && selectedPlan && (
         <div className="studio-swap-backdrop">
           <div className="studio-swap-panel">
@@ -1181,6 +1414,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           </div>
       )}
 
+      {/* create/edit plan modal for custom plans, */}
+      {/* collects plan metadata and weekly outline, */}
+      {/* supports auto-fill and week management, */}
+      {/* saves to Supabase on submit */}
       {showCreatePlan && (
         <div className="studio-swap-backdrop">
           <div className="studio-swap-panel">
@@ -1353,6 +1590,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         </div>
       )}
 
+      {/* floor mode timer overlay for active sessions, */}
+      {/* shows live timer, progress bar, and cues, */}
+      {/* allows pausing/resuming and hidden UI mode, */}
+      {/* closes cleanly back to the main view */}
       {timerOpen && (
         <div
           className={`studio-floor-overlay ${floorUiHidden ? 'hidden-ui' : ''}`}
@@ -1449,6 +1690,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         </div>
       )}
 
+      {/* 3-2-1 countdown overlay before the timer starts, */}
+      {/* provides visual lock-in feedback, */}
+      {/* transitions into floor mode when complete, */}
+      {/* uses color ring to emphasize timing */}
       {countdownOpen && (
         <div className="studio-countdown-overlay">
           <div className={`studio-countdown-ring countdown-${countdown}`}>
@@ -1458,6 +1703,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         </div>
       )}
 
+      {/* congrats overlay after session logging, */}
+      {/* allows a quick reflection entry, */}
+      {/* saves reflection back into session notes, */}
+      {/* closes on save or skip */}
       {congratsOpen && (
         <div className="studio-congrats-overlay">
             <div className="studio-congrats-panel">

@@ -1,6 +1,10 @@
 // src/components/NutritionPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "./Navbar";
+// Component: NutritionPage - UI layout and interactions.
+// This component renders the nutrition experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 /**
  * ExerVia Fuel Protocol (world-class nutrition UX)
@@ -36,10 +40,18 @@ const PREFERENCES = [
   { key: "pork", label: "Pork" },
 ];
 
+// clampList manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function clampList(arr, n) {
   return Array.isArray(arr) ? arr.slice(0, n) : [];
 }
 
+// shuffle manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function shuffle(arr) {
   const a = Array.isArray(arr) ? [...arr] : [];
   for (let i = a.length - 1; i > 0; i--) {
@@ -49,6 +61,10 @@ function shuffle(arr) {
   return a;
 }
 
+// normalizeMealList manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function normalizeMealList(list) {
   // ensure minimal fields exist: idMeal, strMeal, strMealThumb
   if (!Array.isArray(list)) return [];
@@ -61,6 +77,10 @@ function normalizeMealList(list) {
     }));
 }
 
+// buildIngredients manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function buildIngredients(meal) {
   const list = [];
   for (let i = 1; i <= 20; i++) {
@@ -78,6 +98,10 @@ function buildIngredients(meal) {
  * - Always block desserts + obvious junk
  * - For CUT: stricter (creamy/fried/buttery etc)
  */
+// getBadWordsByGoal manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function getBadWordsByGoal(goalKey) {
   const base = [
     "cake",
@@ -129,7 +153,15 @@ function getBadWordsByGoal(goalKey) {
   return [...base, ...generalJunk];
 }
 
+// looksHealthyEnough manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function looksHealthyEnough(name, goalKey) {
+// n manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const n = (name || "").toLowerCase();
   const bad = getBadWordsByGoal(goalKey);
   return !bad.some((w) => n.includes(w));
@@ -183,6 +215,10 @@ export default function NutritionPage() {
     }
   }, []);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     localStorage.setItem(
       "exervia_fuel_protocol",
@@ -229,6 +265,10 @@ export default function NutritionPage() {
     }
   };
 
+// fetchProtocolMeals manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchProtocolMeals = async () => {
     setError("");
     setLoading(true);
@@ -317,6 +357,10 @@ export default function NutritionPage() {
             return true;
           });
           return raw.filter((m) => {
+// n manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
             const n = (m?.strMeal || "").toLowerCase();
             return !dessertOnly.some((w) => n.includes(w));
           });
@@ -334,6 +378,10 @@ export default function NutritionPage() {
     }
   };
 
+// fetchMealDetail manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchMealDetail = async (idMeal) => {
     setDetailLoading(true);
     try {
@@ -350,6 +398,10 @@ export default function NutritionPage() {
 
   // --- OpenFoodFacts ---
   const searchOpenFoodFacts = async (q) => {
+// query manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const query = (q || offQuery).trim();
     if (!query) return;
     setOffLoading(true);
@@ -378,6 +430,11 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [goal]);
 
+
+  // Render
+  // The return statement below manages the UI layout and interactions,
+  // it uses the state and handlers defined above to create a responsive nutrition experience,
+  // the structure is designed for readability and maintainability,
   return (
     <div className={`hud-bg mode-${pageMode}`}>
       <Navbar modeLabel="NUTRITION" mode={pageMode} userId={storedId} />

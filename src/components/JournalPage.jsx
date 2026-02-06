@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+// Component: JournalPage - UI layout and interactions.
+// This component renders the journal experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 
 export default function JournalPage({ mode = "gym" }) {
@@ -15,6 +19,10 @@ export default function JournalPage({ mode = "gym" }) {
 
   const userId = useMemo(() => localStorage.getItem("exervia_user_id"), []);
 
+// formatDayKey manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const formatDayKey = (value) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
@@ -24,6 +32,10 @@ export default function JournalPage({ mode = "gym" }) {
     return `${year}-${month}-${day}`;
   };
 
+// fetchQuote manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchQuote = async () => {
     try {
       const res = await fetch("https://api.quotable.io/random");
@@ -34,6 +46,10 @@ export default function JournalPage({ mode = "gym" }) {
     }
   };
 
+// loadEntries manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadEntries = async () => {
     if (!userId) return;
     const { data } = await supabase
@@ -45,6 +61,10 @@ export default function JournalPage({ mode = "gym" }) {
     setEntries(data || []);
   };
 
+// loadRecentActivity manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadRecentActivity = async () => {
     if (!userId) return;
     const [sessionRes, liftRes] = await Promise.all([
@@ -61,6 +81,10 @@ export default function JournalPage({ mode = "gym" }) {
         .order("created_at", { ascending: false })
         .limit(2)
     ]);
+// sessions manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const sessions = (sessionRes.data || []).map((row) => ({
       id: `session-${row.id}`,
       type: "session",
@@ -68,6 +92,10 @@ export default function JournalPage({ mode = "gym" }) {
       title: row.sport ? row.sport.toUpperCase() : "SESSION",
       detail: `${row.duration_minutes || "--"} min · ${row.metrics?.distance || "--"} km`
     }));
+// lifts manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const lifts = (liftRes.data || []).map((row) => ({
       id: `lift-${row.id}`,
       type: "lift",
@@ -81,6 +109,10 @@ export default function JournalPage({ mode = "gym" }) {
     setRecentActivity(combined);
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     fetchQuote();
     loadEntries();
@@ -88,6 +120,10 @@ export default function JournalPage({ mode = "gym" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+// saveJournal manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const saveJournal = async () => {
     if (!userId) return;
     setSaving(true);
@@ -115,16 +151,28 @@ export default function JournalPage({ mode = "gym" }) {
     loadEntries();
   };
 
+// startEdit manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const startEdit = (entry) => {
     setEditingId(entry.id);
     setNotes(entry.notes || "");
   };
 
+// cancelEdit manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const cancelEdit = () => {
     setEditingId(null);
     setNotes("");
   };
 
+// deleteEntry manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const deleteEntry = async (entryId) => {
     if (!userId) return;
     await supabase
@@ -138,6 +186,8 @@ export default function JournalPage({ mode = "gym" }) {
     loadEntries();
   };
 
+
+  // Render
   return (
     <div className="page-shell">
       <div className="page-header">

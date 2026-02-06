@@ -5,6 +5,10 @@ import { useNavigate } from 'react-router-dom';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
 import { supabase } from '../supabaseClient';
+// Component: StrengthProgressTab - UI layout and interactions.
+// This component renders the strengthprogresstab experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 const fallbackPrograms = [
   {
@@ -193,6 +197,10 @@ const exerciseLibrary = [
   'Farmer Carry'
 ];
 
+// StrengthProgressTab manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const StrengthProgressTab = ({ userId }) => {
   const navigate = useNavigate();
   const [view, setView] = useState('log');
@@ -247,8 +255,16 @@ const StrengthProgressTab = ({ userId }) => {
     { value: 'lunges', label: 'Lunges', icon: '' },
   ];
 
+// normalizeQuery manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const normalizeQuery = (value) => value.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 
+// searchLocalExercises manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const searchLocalExercises = (query) => {
     const cleaned = normalizeQuery(query);
     if (!cleaned) return [];
@@ -257,11 +273,19 @@ const StrengthProgressTab = ({ userId }) => {
       .slice(0, 12);
   };
 
+// saveFavorites manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const saveFavorites = (items) => {
     setFavorites(items);
     localStorage.setItem('exervia_favorite_exercises', JSON.stringify(items));
   };
 
+// toggleFavorite manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const toggleFavorite = (name) => {
     const normalized = name.trim();
     if (!normalized) return;
@@ -272,12 +296,21 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!banner) return undefined;
     const timeout = setTimeout(() => setBanner(null), 3200);
+    // Render
     return () => clearTimeout(timeout);
   }, [banner]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent('companion_hint', {
@@ -286,6 +319,10 @@ const StrengthProgressTab = ({ userId }) => {
     );
   }, []);
 
+// mapSupabaseProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const mapSupabaseProgram = (program, source) => ({
     id: program.id || program.slug || program.name,
     name: program.name,
@@ -298,6 +335,10 @@ const StrengthProgressTab = ({ userId }) => {
     source
   });
 
+// fetchProfile manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchProfile = async () => {
     const { data } = await supabase
       .from('user_profiles')
@@ -307,6 +348,10 @@ const StrengthProgressTab = ({ userId }) => {
     if (data) setProfile(data);
   };
 
+// fetchPrograms manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchPrograms = async () => {
     const collected = fallbackPrograms.map(program => ({ ...program, source: 'fallback' }));
     const { data: templateData } = await supabase
@@ -331,12 +376,20 @@ const StrengthProgressTab = ({ userId }) => {
     setPrograms(collected);
   };
 
+// handleSelectProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleSelectProgram = (program) => {
     setSelectedProgram(program);
     setSessionQueue(program.exercises || []);
     setShowProgramLibrary(false);
   };
 
+// closeSwap manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const closeSwap = () => {
     setSwapOpen(false);
     setSwapIndex(null);
@@ -344,6 +397,10 @@ const StrengthProgressTab = ({ userId }) => {
     setSwapResults([]);
   };
 
+// fetchExerciseSearch manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchExerciseSearch = async (query) => {
     if (!query || query.trim().length < 2) {
       setSwapResults([]);
@@ -364,6 +421,10 @@ const StrengthProgressTab = ({ userId }) => {
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
       );
       const payload = await response.json();
+// remoteResults manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
       const remoteResults = (payload.results || [])
         .map(item => item.name)
         .filter(Boolean)
@@ -384,6 +445,10 @@ const StrengthProgressTab = ({ userId }) => {
     setIsSwapLoading(false);
   };
 
+// fetchCreatorSearch manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchCreatorSearch = async (query) => {
     if (!query || query.trim().length < 2) {
       setCreatorResults([]);
@@ -402,6 +467,10 @@ const StrengthProgressTab = ({ userId }) => {
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
       );
       const payload = await response.json();
+// remoteResults manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
       const remoteResults = (payload.results || [])
         .map(item => item.name)
         .filter(Boolean)
@@ -426,6 +495,10 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
+// handleSwapSelect manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleSwapSelect = (exercise) => {
     if (swapMode === 'add') {
       const nextQueue = [...sessionQueue, exercise];
@@ -442,6 +515,10 @@ const StrengthProgressTab = ({ userId }) => {
   };
 
 
+// fetchPersonalRecords manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchPersonalRecords = async () => {
     const { data, error } = await supabase
       .from('personal_records')
@@ -457,6 +534,10 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
+// fetchRecentLifts manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchRecentLifts = async () => {
     const { data, error } = await supabase
       .from('strength_logs')
@@ -470,11 +551,19 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
+// getExerciseLabel manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const getExerciseLabel = (exerciseName) => {
     const allExercises = [...weightExercises, ...bodyweightExercises];
     return allExercises.find(e => e.value === exerciseName)?.label || exerciseName;
   };
 
+// getExerciseIcon manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const getExerciseIcon = (exerciseName, exerciseType) => {
     const list = exerciseType === 'bodyweight' ? bodyweightExercises : weightExercises;
     return list.find(e => e.value === exerciseName)?.icon || '';
@@ -507,12 +596,32 @@ const StrengthProgressTab = ({ userId }) => {
   });
   const visiblePrograms = showAllPrograms ? filteredPrograms : filteredPrograms.slice(0, 6);
 
+// scoreProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const scoreProgram = (program) => {
     let score = 0;
     if (!profile) return score;
+// level manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const level = (program.level || '').toLowerCase();
+// focus manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const focus = (program.focus || '').toLowerCase();
+// goal manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const goal = (profile.primary_goal || '').toLowerCase();
+// fitnessLevel manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fitnessLevel = (profile.fitness_level || '').toLowerCase();
 
     if (level.includes(fitnessLevel)) score += 2;
@@ -542,12 +651,20 @@ const StrengthProgressTab = ({ userId }) => {
     .sort((a, b) => scoreProgram(b) - scoreProgram(a))
     .slice(0, 3);
 
+// updateNewExercise manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const updateNewExercise = (index, field, value) => {
     const next = [...newProgram.exercises];
     next[index] = { ...next[index], [field]: value };
     setNewProgram(prev => ({ ...prev, exercises: next }));
   };
 
+// addNewExercise manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const addNewExercise = () => {
     setNewProgram(prev => ({
       ...prev,
@@ -555,6 +672,10 @@ const StrengthProgressTab = ({ userId }) => {
     }));
   };
 
+// removeNewExercise manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const removeNewExercise = (index) => {
     setNewProgram(prev => ({
       ...prev,
@@ -562,6 +683,10 @@ const StrengthProgressTab = ({ userId }) => {
     }));
   };
 
+// saveNewProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const saveNewProgram = async () => {
     if (!newProgram.name.trim()) {
       setBanner({ type: 'warn', message: 'Add a program name to continue.' });
@@ -609,6 +734,10 @@ const StrengthProgressTab = ({ userId }) => {
     setIsProgramSaving(false);
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (userId) {
       fetchProfile();
@@ -618,6 +747,10 @@ const StrengthProgressTab = ({ userId }) => {
     }
   }, [userId]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     const stored = localStorage.getItem('exervia_favorite_exercises');
     if (stored) {
@@ -633,6 +766,10 @@ const StrengthProgressTab = ({ userId }) => {
   return (
     <div className="studio-shell">
       <div className="studio-wrap">
+        {/* Header section */}
+        {/* Layout grouping for readability. */}
+        {/* Interactive elements live inside this block. */}
+        {/* This is a structural UI container. */}
         <header className="studio-header">
           <div>
             <button
@@ -676,6 +813,10 @@ const StrengthProgressTab = ({ userId }) => {
 
         {view === 'log' ? (
           <div className="studio-grid">
+            {/* Section block */}
+            {/* Layout grouping for readability. */}
+            {/* Interactive elements live inside this block. */}
+            {/* This is a structural UI container. */}
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-row">
               <div className="studio-panel-title">Program Library</div>
@@ -766,6 +907,10 @@ const StrengthProgressTab = ({ userId }) => {
               )}
             </section>
 
+            {/* Section block */}
+            {/* Layout grouping for readability. */}
+            {/* Interactive elements live inside this block. */}
+            {/* This is a structural UI container. */}
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-row">
                 <div className="studio-panel-title">Session Preview</div>
@@ -866,6 +1011,10 @@ const StrengthProgressTab = ({ userId }) => {
           </div>
         ) : (
           <div className="studio-story">
+            {/* Section block */}
+            {/* Layout grouping for readability. */}
+            {/* Interactive elements live inside this block. */}
+            {/* This is a structural UI container. */}
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-title">Personal Records</div>
               {prList.length > 0 ? (
@@ -897,6 +1046,10 @@ const StrengthProgressTab = ({ userId }) => {
               )}
             </section>
 
+            {/* Section block */}
+            {/* Layout grouping for readability. */}
+            {/* Interactive elements live inside this block. */}
+            {/* This is a structural UI container. */}
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-title">Weekly Highlights</div>
               {topPrs.length > 0 || bestLift ? (

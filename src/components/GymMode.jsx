@@ -7,12 +7,24 @@ import Navbar from "./Navbar";
 import JournalPage from "./JournalPage";
 import StrengthProgressTab from "./StrengthProgressTab";
 import WorkoutProgram from "./WorkoutProgram";
+// Component: GymMode - UI layout and interactions.
+// This component renders the gymmode experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// GymDashboard manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function GymDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
   const [lastLift, setLastLift] = useState(null);
   const [lastSession, setLastSession] = useState(null);
 
+// loadLastLift manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadLastLift = async () => {
     const { data } = await supabase
       .from("strength_logs")
@@ -24,6 +36,10 @@ function GymDashboard({ profile, id, userState }) {
     setLastLift(data || null);
   };
 
+// loadLastSession manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadLastSession = async () => {
     const { data } = await supabase
       .from("training_sessions")
@@ -45,6 +61,10 @@ function GymDashboard({ profile, id, userState }) {
   }, [id]);
 
 
+// dayMarker manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const dayMarker = (() => {
     const now = new Date();
     const label = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
@@ -52,6 +72,9 @@ function GymDashboard({ profile, id, userState }) {
   })();
 
 
+
+
+  // Render
   return (
     <div className="page-shell profile-shell">
       <div className="page-header">
@@ -118,10 +141,18 @@ export default function GymMode() {
   const [profile, setProfile] = useState(null);
   const [userState, setUserState] = useState(null);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (id) localStorage.setItem("exervia_user_id", id);
     if (id) localStorage.setItem("exervia_active_mode", "gym");
 
+// setMode manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const setMode = async () => {
       if (!id) return;
       await supabase.from("user_state").upsert(
@@ -133,7 +164,15 @@ export default function GymMode() {
     setMode();
   }, [id]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// fetchProfile manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fetchProfile = async () => {
       const { data } = await supabase
         .from("user_profiles")
@@ -146,9 +185,17 @@ export default function GymMode() {
     fetchProfile();
   }, [id]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!id) return;
 
+// fetchUserState manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fetchUserState = async () => {
       const { data } = await supabase
         .from("user_state")
@@ -170,6 +217,10 @@ export default function GymMode() {
 
     fetchUserState();
 
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = () => fetchUserState();
     window.addEventListener("user_state_updated", handler);
     return () => window.removeEventListener("user_state_updated", handler);

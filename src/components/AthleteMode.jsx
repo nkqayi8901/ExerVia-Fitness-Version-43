@@ -8,12 +8,24 @@ import JournalPage from "./JournalPage";
 import AthleteTrainingTab from "./AthleteTrainingTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
+// Component: AthleteMode - UI layout and interactions.
+// This component renders the athletemode experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// AthleteDashboard manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function AthleteDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
   const [lastSession, setLastSession] = useState(null);
   const [lastLift, setLastLift] = useState(null);
 
+// loadLastSession manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadLastSession = async () => {
     const { data } = await supabase
       .from("training_sessions")
@@ -25,6 +37,10 @@ function AthleteDashboard({ profile, id, userState }) {
     setLastSession(data || null);
   };
 
+// loadLastLift manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const loadLastLift = async () => {
     const { data } = await supabase
       .from("strength_logs")
@@ -45,6 +61,10 @@ function AthleteDashboard({ profile, id, userState }) {
   }, [id]);
 
 
+// dayMarker manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const dayMarker = (() => {
     const now = new Date();
     const label = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
@@ -52,6 +72,9 @@ function AthleteDashboard({ profile, id, userState }) {
   })();
 
 
+
+
+  // Render
   return (
     <div className="page-shell profile-shell">
       <div className="page-header">
@@ -113,6 +136,10 @@ function AthleteDashboard({ profile, id, userState }) {
   );
 }
 
+// AthleteProfileOverview manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function AthleteProfileOverview({ profile, userState }) {
   const navigate = useNavigate();
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
@@ -201,6 +228,10 @@ export default function AthleteMode() {
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const themeMode = storedMode === "gym" ? "gym" : "athlete";
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (id) localStorage.setItem("exervia_user_id", id);
     if (id) {
@@ -211,6 +242,10 @@ export default function AthleteMode() {
       }
     }
 
+// setMode manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const setMode = async () => {
       if (!id) return;
       await supabase.from("user_state").upsert(
@@ -222,7 +257,15 @@ export default function AthleteMode() {
     setMode();
   }, [id]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// fetchProfile manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fetchProfile = async () => {
       const { data } = await supabase
         .from("user_profiles")
@@ -235,9 +278,17 @@ export default function AthleteMode() {
     fetchProfile();
   }, [id]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!id) return;
 
+// fetchUserState manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fetchUserState = async () => {
       const { data } = await supabase
         .from("user_state")
@@ -259,6 +310,10 @@ export default function AthleteMode() {
 
     fetchUserState();
 
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = () => fetchUserState();
     window.addEventListener("user_state_updated", handler);
     return () => window.removeEventListener("user_state_updated", handler);

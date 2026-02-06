@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+// Component: CompanionChat - UI layout and interactions.
+// This component renders the companionchat experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// fetchExercise manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const fetchExercise = async (query) => {
   const url = query
     ? `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&search=${encodeURIComponent(query)}`
@@ -10,6 +18,10 @@ const fetchExercise = async (query) => {
   return res.json();
 };
 
+// stripHtml manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const stripHtml = (value) => {
   if (!value) return "";
   return value.replace(/<[^>]*>/g, "").replace(/\\s+/g, " ").trim();
@@ -25,11 +37,23 @@ export default function CompanionChat({ mode = "gym" }) {
   const messagesEndRef = useRef(null);
   const userId = useMemo(() => localStorage.getItem("exervia_user_id"), []);
 
+// scrollToBottom manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// loadGreeting manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const loadGreeting = async () => {
       const data = await fetchExercise();
       const item = data?.results?.[0];
@@ -48,18 +72,35 @@ export default function CompanionChat({ mode = "gym" }) {
     loadGreeting();
   }, []);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = (event) => {
       if (event?.detail?.text) setHint(event.detail.text);
     };
     window.addEventListener("companion_hint", handler);
+    // Render
     return () => window.removeEventListener("companion_hint", handler);
   }, []);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     scrollToBottom();
   }, [messages, open]);
 
+// handleSend manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
@@ -90,6 +131,10 @@ export default function CompanionChat({ mode = "gym" }) {
 
   const miniMessages = messages.slice(-2);
 
+// The return statement below manages the UI layout and interactions,
+// it uses the state and handlers defined above to create a responsive chat experience,
+// the structure is designed for readability and maintainability,
+// with clear class names for styling and potential future enhancements.
   return (
     <div className="companion-float">
       {!open && (

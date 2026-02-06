@@ -10,6 +10,10 @@ import { supabase } from './supabaseClient';
 // adapted from https://reactrouter.com/en/main/hooks/use-navigate
 // this is used for navigating between various pages
 import { useNavigate } from 'react-router-dom';
+// Component: FitnessProfileForm - UI layout and interactions.
+// This component renders the fitnessprofileform experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 //adapted this with https://www.youtube.com/watch?v=4PATisReKcQ
 // this is a custom component for creating, updating, and managing user fitness profiles
@@ -32,6 +36,10 @@ export default function FitnessProfileForm() {
     fetchProfiles();
   }, []);
 
+// fetchProfiles manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const fetchProfiles = async () => {
     const { data, error } = await supabase
       .from('user_profiles')
@@ -109,6 +117,7 @@ export default function FitnessProfileForm() {
 // back button to return to the previous page 
 // which was adapted from the referenced video https://www.youtube.com/watch?v=4PATisReKcQ aroudnd
 // the and https://github.com/kbuika/React-TailwindCSS-starter-with-responsive-header/blob/main/src/layout/header.js
+   // Render
    return (
     <div className="profile-body">
       <div className="profile-container">

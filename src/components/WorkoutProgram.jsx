@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+// Component: WorkoutProgram - UI layout and interactions.
+// This component renders the workoutprogram experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
 const programs = [
   {
@@ -26,17 +30,31 @@ const programs = [
   }
 ];
 
+// formatTime manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const formatTime = (value) => {
   const minutes = Math.floor(value / 60);
   const seconds = value % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
+// findProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const findProgram = (programId) => programs.find((program) => program.id === programId);
 
+// ProgramList manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function ProgramList({ backPath, backLabel }) {
   const navigate = useNavigate();
 
+
+  // Render
   return (
     <div className="page-shell program-shell">
       <div className="page-header">
@@ -64,6 +82,10 @@ function ProgramList({ backPath, backLabel }) {
   );
 }
 
+// ProgramPreview manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function ProgramPreview({ backPath, backLabel }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,6 +94,10 @@ function ProgramPreview({ backPath, backLabel }) {
   const program = findProgram(programId) || (injectedProgram?.id === programId ? injectedProgram : null);
   const [editedExercises, setEditedExercises] = useState([]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!program) {
       setEditedExercises([]);
@@ -177,6 +203,10 @@ function ProgramPreview({ backPath, backLabel }) {
   );
 }
 
+// ProgramSession manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function ProgramSession({ backPath, backLabel }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -193,6 +223,10 @@ function ProgramSession({ backPath, backLabel }) {
   const currentExercise = exercises[currentIndex];
   const nextExercise = exercises[currentIndex + 1];
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     setCountdownOpen(true);
     setCountdown(3);
@@ -200,6 +234,10 @@ function ProgramSession({ backPath, backLabel }) {
     setTimerRunning(false);
   }, [programId]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!countdownOpen) return;
     if (countdown <= 0) {
@@ -213,6 +251,10 @@ function ProgramSession({ backPath, backLabel }) {
     return () => clearTimeout(timer);
   }, [countdownOpen, countdown]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!timerRunning) return;
     const id = setInterval(() => setTimerSeconds((prev) => prev + 1), 1000);
@@ -223,6 +265,10 @@ function ProgramSession({ backPath, backLabel }) {
     return null;
   }
 
+// handleDone manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleDone = () => {
     if (currentIndex >= exercises.length - 1) {
       navigate(`../${programId}/finish`);
@@ -231,6 +277,10 @@ function ProgramSession({ backPath, backLabel }) {
     setCurrentIndex((prev) => prev + 1);
   };
 
+// handleExerciseInfo manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleExerciseInfo = () => {
     if (!currentExercise) return;
     window.dispatchEvent(
@@ -322,12 +372,20 @@ function ProgramSession({ backPath, backLabel }) {
   );
 }
 
+// ProgramFinish manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function ProgramFinish({ backPath, backLabel }) {
   const navigate = useNavigate();
   const { programId } = useParams();
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     if (!holding) return;
     const start = Date.now();
@@ -344,6 +402,10 @@ function ProgramFinish({ backPath, backLabel }) {
     return () => clearInterval(id);
   }, [holding, navigate, programId]);
 
+// stopHold manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const stopHold = () => {
     setHolding(false);
     setProgress(0);
@@ -380,6 +442,10 @@ function ProgramFinish({ backPath, backLabel }) {
   );
 }
 
+// ProgramCongrats manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 function ProgramCongrats({ backPath, backLabel }) {
   const navigate = useNavigate();
   const { programId } = useParams();

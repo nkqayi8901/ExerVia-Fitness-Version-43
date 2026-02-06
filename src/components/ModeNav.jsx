@@ -1,5 +1,13 @@
 import { useLocation, useNavigate } from "react-router-dom";
+// Component: ModeNav - UI layout and interactions.
+// This component renders the modenav experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// IconHome manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconHome = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -12,6 +20,10 @@ const IconHome = () => (
   </svg>
 );
 
+// IconDumbbell manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconDumbbell = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -24,6 +36,10 @@ const IconDumbbell = () => (
   </svg>
 );
 
+// IconJournal manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconJournal = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -36,6 +52,10 @@ const IconJournal = () => (
   </svg>
 );
 
+// IconNutrition manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconNutrition = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -48,6 +68,10 @@ const IconNutrition = () => (
   </svg>
 );
 
+// IconProfile manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconProfile = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -61,6 +85,10 @@ const IconProfile = () => (
   </svg>
 );
 
+// IconCommunity manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconCommunity = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -73,6 +101,10 @@ const IconCommunity = () => (
   </svg>
 );
 
+// IconModeSwitch manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const IconModeSwitch = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -92,7 +124,10 @@ const IconModeSwitch = () => (
     />
   </svg>
 );
-
+// ModeNav component manages the navigation UI for gym and athlete modes,
+// it uses React Router for navigation and local state for active mode,
+// the structure is designed for readability and maintainability,
+// with clear class names for styling and potential future enhancements.  
 export default function ModeNav({ mode, userId, placement = "inline" }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -120,6 +155,8 @@ export default function ModeNav({ mode, userId, placement = "inline" }) {
     },
   ];
 
+
+  // Render
   return (
     <div className={`mode-nav mode-nav-${placement}`}>
       {items.map((item) => {

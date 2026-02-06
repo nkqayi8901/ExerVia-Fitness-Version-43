@@ -1,7 +1,20 @@
+// Below we import React hooks used throughout this component:
+// useState manages local UI state (tabs, modals, forms, loaded data),
+// useEffect runs side effects like fetching data + realtime subscriptions,
+// useMemo memoises expensive derived values (filtering + sorting lists).
 import { useEffect, useMemo, useState } from "react";
+// adapted from https://reactrouter.com/en/main/hooks/use-navigate
+// useNavigate is used for client-side navigation
 import { useNavigate } from "react-router-dom";
+// supabase client is imported to interact with our backend for data fetching and mutations
 import { supabase } from "../supabaseClient";
+// Component: CommunityHub - UI layout and interactions.
+// This component renders the communityhub experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// This is the main Community Hub component 
+// which serves as the central place for all community interactions
 const forumTracks = [
   { id: "hyrox", title: "Hyrox", subtitle: "Race prep, stations, engine" },
   { id: "running", title: "Running", subtitle: "Tempo, pacing, endurance" },
@@ -9,7 +22,8 @@ const forumTracks = [
   { id: "strength", title: "Strength", subtitle: "Progressions, form, PRs" },
   { id: "mindset", title: "Mindset", subtitle: "Consistency, discipline, recovery" }
 ];
-
+// communitySections defines the different sections of the community hub, 
+// currently only groups but can be expanded to include more like challenges, events, etc.
 const communitySections = [
   {
     id: "groups",
@@ -18,13 +32,17 @@ const communitySections = [
     cta: "Create group"
   }
 ];
-
+// reactionOptions defines the different reactions users can give to posts and replies
 const reactionOptions = [
   { id: "like", label: "Like" },
   { id: "fire", label: "Fire" },
   { id: "insight", label: "Insight" }
 ];
 
+// formatTime manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const formatTime = (value) => {
   if (!value) return "";
   try {
@@ -33,7 +51,8 @@ const formatTime = (value) => {
     return "";
   }
 };
-
+// buildReplyTree takes a flat list of replies and organizes 
+// them into a nested tree structure based on parent-child relationships
 const buildReplyTree = (replies) => {
   if (!replies?.length) return [];
   const map = {};
@@ -51,7 +70,13 @@ const buildReplyTree = (replies) => {
   });
   return roots;
 };
-
+// CommunityHub is the main component for the community section of the app,
+// it manages state for forums, groups, challenges, posts, replies, friends, and more,
+// it also handles all interactions like creating posts, joining groups, adding friends, etc.
+// The UI is organized into tabs for forums, groups, challenges, and friends,
+// with modals for creating new content and managing interactions.
+// The component also sets up realtime subscriptions to update the UI in response to new posts,
+// replies, and messages without needing a page refresh.
 export default function CommunityHub({ userId }) {
   const navigate = useNavigate();
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
@@ -80,7 +105,10 @@ export default function CommunityHub({ userId }) {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [banner, setBanner] = useState("");
-
+// below are state variables to manage the open/close state of various modals for 
+// creating groups, challenges, posts, replies, and adding friends
+// there are also state variables to hold the form data for these modals, as well as
+// state for reaction counts and user reactions on posts and replies
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [createChallengeOpen, setCreateChallengeOpen] = useState(false);
   const [createPostOpen, setCreatePostOpen] = useState(false);
@@ -102,7 +130,11 @@ export default function CommunityHub({ userId }) {
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
   const [newFriendId, setNewFriendId] = useState("");
-
+// loadProfiles takes a list of user ids and fetches their profiles from the backend,
+// it then maps the profiles into a dictionary for easy lookup when displaying posts, 
+// replies, and friends
+// loadFriendStats is similar but it fetches the rank and level of friends to display 
+// in the friend list
   const loadProfiles = async (ids) => {
     const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
     if (!uniqueIds.length) return;
@@ -117,7 +149,9 @@ export default function CommunityHub({ userId }) {
     });
     setProfiles((prev) => ({ ...prev, ...mapped }));
   };
-
+// loadFriendStats is similar but it fetches the rank and level of friends to display
+// in the friend list, it also maps the stats into a dictionary keyed by user id for easy lookup
+// when rendering the friend list and their associated stats
   const loadFriendStats = async (ids) => {
     const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
     if (!uniqueIds.length) return;
@@ -132,7 +166,12 @@ export default function CommunityHub({ userId }) {
     });
     setFriendStats((prev) => ({ ...prev, ...mapped }));
   };
-
+// getFriendStatus is a helper function that takes a friend relationship row and determines
+// the status of the friendship from the perspective of the current user, it returns
+// "accepted" if they are friends, "outgoing" if the current user sent a request,
+// "incoming" if the current user received a request, and "" if there is no relationship
+// this function is used when rendering the friend list to determine what 
+// actions to show for each friend
   const getFriendStatus = (friendRow) => {
     if (friendRow.status === "accepted") return "accepted";
     const currentId = Number(userId);
@@ -141,7 +180,11 @@ export default function CommunityHub({ userId }) {
     if (currentId === requesterId) return "outgoing";
     return "incoming";
   };
-
+// loadFriendMessageSummaries fetches the latest message for 
+// each friend conversation to display
+// in the friend list, and keeps the preview list fresh,
+// it queries the messages table for any messages involving the current user,
+// and then reduces the list to one latest message per friend
   const loadFriendMessageSummaries = async () => {
     if (!userId) return;
     const { data } = await supabase
@@ -159,10 +202,23 @@ export default function CommunityHub({ userId }) {
     });
     setFriendLatest(latest);
   };
-
+// loadForumPosts takes a forum slug and loads the posts for that forum from the backend,
+// it also loads the profiles of the post creators and the replies to those posts,
+// this function is called when the active forum changes and also when a new post is created
+// to refresh the list of posts, it queries the posts table for posts in the specified forum,
+// then it loads the profiles of the post creators and the replies to those posts
+// to display all the relevant information when rendering the forum posts
+// similar functions exist for loading group posts and group information when 
+// the active group changes
+// the function also handles the case where the forum data is not yet 
+// loaded and uses the forumTracks as a fallback
   useEffect(() => {
     if (!userId) return;
     let mounted = true;
+// fetchCommunity manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const fetchCommunity = async () => {
       setLoading(true);
       setBanner("");
@@ -208,11 +264,19 @@ export default function CommunityHub({ userId }) {
       setLoading(false);
     };
     fetchCommunity();
+    // Render
     return () => {
       mounted = false;
     };
   }, [userId]);
-
+// below are useEffect hooks that set up realtime subscriptions to the 
+// backend using Supabase's realtime features,
+// the first subscription listens for new friend messages and 
+// updates the friend list and message threads accordingly,
+// the second subscription listens for new forum posts and replies and
+//  updates the forum threads in realtime,
+// these subscriptions ensure that users see new messages and posts
+//  without needing to refresh the page
   useEffect(() => {
     if (!userId) return () => {};
     const channel = supabase
@@ -240,7 +304,10 @@ export default function CommunityHub({ userId }) {
       supabase.removeChannel(channel);
     };
   }, [userId, selectedFriendId]);
-
+// the second subscription listens for new forum posts and replies,
+// it keeps the thread list and reply list in sync with realtime inserts,
+// this prevents users from missing new activity while they browse,
+// and keeps the UI reactive without a manual refresh
   useEffect(() => {
     if (!userId) return () => {};
     const activeForumId = forums.find((forum) => forum.topic_slug === activeForum)?.id;
@@ -282,6 +349,10 @@ export default function CommunityHub({ userId }) {
     };
   }, [userId, activeForum, forums, forumPosts]);
 
+// derived forum lists and select options are memoised to avoid
+// re-filtering and re-mapping on every render,
+// these values update only when their dependencies change,
+// and help keep scrolling + search snappy for large lists
   const filteredForums = useMemo(() => {
     const source = forums.length ? forums : forumTracks;
     if (!search) return source;
@@ -297,12 +368,20 @@ export default function CommunityHub({ userId }) {
     return forums.length ? forums : forumTracks;
   }, [forums]);
 
+// sync the new post modal forum selector with the active forum,
+// this ensures the modal always defaults to the forum the user is browsing,
+// and prevents stale forum selection if the user switches tabs,
+// the value resets whenever the modal closes
   useEffect(() => {
     if (!createPostOpen) {
       setNewPostForum(activeForum);
     }
   }, [activeForum, createPostOpen]);
 
+// below are the action handlers for create/join/update flows,
+// they call supabase mutations, set banner feedback,
+// and refresh the relevant lists after successful operations,
+// each handler also validates required fields before submitting
   const handleCreateGroup = async () => {
     if (!newGroup.name.trim()) return;
     if (!userId) {
@@ -356,6 +435,10 @@ export default function CommunityHub({ userId }) {
     }
   };
 
+// create a new challenge tied to the current user,
+// validates required fields and normalizes numeric inputs,
+// then refreshes the challenges list after insert,
+// and surfaces any errors via the banner
   const handleCreateChallenge = async () => {
     if (!newChallenge.title.trim()) return;
     if (!userId) {
@@ -385,6 +468,10 @@ export default function CommunityHub({ userId }) {
     setChallenges(data || []);
   };
 
+// create a new forum post for the selected forum,
+// resolves the forum id from the current slug selection,
+// prevents posting if the forum or user is missing,
+// then refreshes the active forum feed after success
   const handleCreatePost = async () => {
     if (!newPost.title.trim()) return;
     const forumSlug = newPostForum || activeForum;
@@ -424,6 +511,10 @@ export default function CommunityHub({ userId }) {
     loadForumPosts(forumSlug);
   };
 
+// create a reply on the active thread or parent reply,
+// validates input and requires authentication,
+// posts to the replies table and refreshes the thread,
+// then clears the reply modal state
   const handleCreateReply = async () => {
     if (!newReply.body.trim() || !activeThreadId) return;
     if (!userId) {
@@ -447,6 +538,10 @@ export default function CommunityHub({ userId }) {
     loadForumPosts(activeForum);
   };
 
+// create a new group chat message in the active group,
+// validates that a group is selected before posting,
+// inserts the post and reloads the group chat list,
+// then closes the modal and clears the draft
   const handleCreateGroupPost = async () => {
     if (!newGroupPost.body.trim()) return;
     if (!activeGroupId) {
@@ -474,6 +569,10 @@ export default function CommunityHub({ userId }) {
     setGroupPosts(data || []);
   };
 
+// send a friend request by numeric user id,
+// validates input, checks that the user exists,
+// inserts the relationship row with ordered ids,
+// then refreshes the friends list and closes the modal
   const handleAddFriend = async () => {
     if (!newFriendId.trim()) return;
     if (!userId) {
@@ -519,6 +618,10 @@ export default function CommunityHub({ userId }) {
     setFriends(data || []);
   };
 
+// handleJoinGroup manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleJoinGroup = async (groupId) => {
     if (!userId) {
       setBanner("Sign in to join a group.");
@@ -545,6 +648,10 @@ export default function CommunityHub({ userId }) {
     loadGroupPosts(groupId);
   };
 
+// accept an incoming friend request,
+// updates the relationship status in the backend,
+// refreshes the friends list on success,
+// and shows feedback via the banner
   const handleAcceptFriend = async (friendRow) => {
     const { error } = await supabase
       .from("community_friends")
@@ -562,6 +669,10 @@ export default function CommunityHub({ userId }) {
     setFriends(data || []);
   };
 
+// reject an incoming friend request,
+// removes the relationship row in the backend,
+// refreshes the friends list on success,
+// and shows feedback via the banner
   const handleRejectFriend = async (friendRow) => {
     const { error } = await supabase
       .from("community_friends")
@@ -579,12 +690,20 @@ export default function CommunityHub({ userId }) {
     setFriends(data || []);
   };
 
+// build the display label for a friend row,
+// resolves the "other" user id from the relationship,
+// falls back to the numeric id if profile data is missing,
+// used throughout the friend list and chat header
   const buildFriendLabel = (friendRow) => {
     const currentId = Number(userId);
     const otherId = friendRow.user_id === currentId ? friendRow.friend_user_id : friendRow.user_id;
     return profiles[otherId] || `User ${otherId}`;
   };
 
+// build the small stats line for a friend row,
+// uses cached rank + level from user_state,
+// falls back to placeholder values if missing,
+// keeps the friend list compact and readable
   const buildFriendMeta = (friendRow) => {
     const currentId = Number(userId);
     const otherId = friendRow.user_id === currentId ? friendRow.friend_user_id : friendRow.user_id;
@@ -593,6 +712,10 @@ export default function CommunityHub({ userId }) {
     return `Rank ${stats.rank || "--"} · Level ${stats.level ?? "--"}`;
   };
 
+// determine whether a friend has unread messages,
+// compares the latest message timestamp to last seen,
+// ignores messages sent by the current user,
+// used to show notification dots in the UI
   const getFriendUnread = (friendRow) => {
     const currentId = Number(userId);
     const otherId = friendRow.user_id === currentId ? friendRow.friend_user_id : friendRow.user_id;
@@ -604,6 +727,10 @@ export default function CommunityHub({ userId }) {
     return new Date(latest.created_at) > new Date(lastSeen);
   };
 
+// load the full message history for a friend pair,
+// orders messages oldest -> newest for chat display,
+// updates the last seen timestamp to suppress unread dots,
+// then refreshes the message summaries list
   const loadFriendMessages = async (friendId) => {
     if (!friendId || !userId) return;
     const currentId = Number(userId);
@@ -620,6 +747,10 @@ export default function CommunityHub({ userId }) {
     loadFriendMessageSummaries();
   };
 
+// send a new private message to the selected friend,
+// inserts the message into the backend,
+// reloads the conversation and summary list,
+// and clears the draft input on success
   const handleSendFriendMessage = async () => {
     if (!friendMessageDraft.trim() || !selectedFriendId || !userId) return;
     const currentId = Number(userId);
@@ -650,6 +781,10 @@ export default function CommunityHub({ userId }) {
     setFriendMessages(next.data || []);
   };
 
+// delete a forum post owned by the current user,
+// validates user authentication and ownership,
+// removes the post from the backend,
+// then reloads the active forum feed
   const handleDeletePost = async (postId) => {
     if (!userId) return;
     const { error } = await supabase
@@ -665,6 +800,10 @@ export default function CommunityHub({ userId }) {
     loadForumPosts(activeForum);
   };
 
+// delete a reply owned by the current user,
+// validates user authentication and ownership,
+// removes the reply from the backend,
+// then reloads the active forum thread list
   const handleDeleteReply = async (replyId) => {
     if (!userId) return;
     const { error } = await supabase
@@ -680,6 +819,10 @@ export default function CommunityHub({ userId }) {
     loadForumPosts(activeForum);
   };
 
+// handleJoinChallenge manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
   const handleJoinChallenge = async (challengeId) => {
     if (!userId) {
       setBanner("Sign in to join a challenge.");
@@ -699,6 +842,10 @@ export default function CommunityHub({ userId }) {
     setBanner("Challenge joined.");
   };
 
+// load all posts for a forum slug,
+// then fetch replies and reactions for those posts,
+// builds lookup tables for quick render access,
+// and loads author profile names for display
   const loadForumPosts = async (forumSlug, forumList = forums) => {
     const forumId = forumList.find((forum) => forum.topic_slug === forumSlug)?.id;
     if (!forumId) return;
@@ -750,6 +897,10 @@ export default function CommunityHub({ userId }) {
     setUserReactions(nextUserReactions);
   };
 
+// sort threads based on selected mode,
+// newest uses post timestamps,
+// top uses reply count per thread,
+// active uses the latest reply activity per thread
   const sortedForumPosts = useMemo(() => {
     if (!forumPosts.length) return [];
     const copy = [...forumPosts];
@@ -758,14 +909,30 @@ export default function CommunityHub({ userId }) {
     }
     if (threadSort === "top") {
       return copy.sort((a, b) => {
+// aCount manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
         const aCount = (postReplies[a.id] || []).length;
+// bCount manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
         const bCount = (postReplies[b.id] || []).length;
         return bCount - aCount;
       });
     }
     if (threadSort === "active") {
       return copy.sort((a, b) => {
+// aLatest manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
         const aLatest = (postReplies[a.id] || []).slice(-1)[0]?.created_at || a.created_at;
+// bLatest manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
         const bLatest = (postReplies[b.id] || []).slice(-1)[0]?.created_at || b.created_at;
         return new Date(bLatest) - new Date(aLatest);
       });
@@ -773,10 +940,18 @@ export default function CommunityHub({ userId }) {
     return copy;
   }, [forumPosts, postReplies, threadSort]);
 
+// compute unread count for all friends,
+// uses latest message + last seen logic per friend,
+// keeps the badge count in sync with realtime updates,
+// recalculates when message or friend state changes
   const unreadCount = useMemo(() => {
     return friends.reduce((count, friend) => (getFriendUnread(friend) ? count + 1 : count), 0);
   }, [friends, friendLatest, friendLastSeen, userId]);
 
+// build the "Thread Pulse" list (top 5 active threads),
+// counts replies per thread and sorts descending,
+// used in the sidebar for quick navigation,
+// recalculates when posts or replies change
   const threadPulse = useMemo(() => {
     if (!forumPosts.length) return [];
     return [...forumPosts]
@@ -788,11 +963,19 @@ export default function CommunityHub({ userId }) {
       .slice(0, 5);
   }, [forumPosts, postReplies]);
 
+// determine the most active thread id,
+// used to display the "Most active" badge,
+// falls back to null if there are no threads,
+// recalculates when threadPulse changes
   const mostActiveId = useMemo(() => {
     if (!threadPulse.length) return null;
     return threadPulse[0].post.id;
   }, [threadPulse]);
 
+// toggle collapsed state for a thread,
+// keeps the UI compact when threads get long,
+// stores collapsed flags by post id,
+// allows per-thread expand/collapse
   const toggleCollapse = (postId) => {
     setCollapsedThreads((prev) => ({
       ...prev,
@@ -800,6 +983,10 @@ export default function CommunityHub({ userId }) {
     }));
   };
 
+// handle a reaction toggle for posts or replies,
+// adds or removes a reaction for the current user,
+// updates local reaction counts immediately,
+// and stores reaction ids for quick un-react
   const handleReact = async ({ postId, replyId, reaction }) => {
     if (!userId) {
       setBanner("Sign in to react.");
@@ -849,6 +1036,10 @@ export default function CommunityHub({ userId }) {
     setReactionCounts((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
   };
 
+// load group chat posts for the active group,
+// orders newest -> oldest for chat display,
+// and loads profile labels for message authors,
+// called when group selection changes
   const loadGroupPosts = async (groupId) => {
     const { data } = await supabase
       .from("community_group_posts")
@@ -861,6 +1052,10 @@ export default function CommunityHub({ userId }) {
     }
   };
 
+// render replies recursively as a nested tree,
+// supports multi-level replies with indentation,
+// includes reaction buttons and reply/delete actions,
+// used inside each forum thread card
   const renderReplies = (replyNodes, level = 0, rootPostId = null) => {
     if (!replyNodes?.length) return null;
     return replyNodes.map((reply) => {
@@ -920,13 +1115,25 @@ export default function CommunityHub({ userId }) {
     });
   };
 
+// derive current group and membership state,
+// used to show join/leave actions in group chat,
+// keeps the main render logic clean,
+// recalculates when groups or memberships update
   const activeGroup = groups.find((group) => group.id === activeGroupId) || null;
   const isMember = activeGroupId
     ? memberships.some((membership) => membership.group_id === activeGroupId)
     : false;
 
+// render the full Community Hub layout,
+// includes header, tabs, sidebar, and main feed,
+// conditionally renders forum/group/challenge views,
+// and attaches modals for creation flows
   return (
     <div className="community-shell" data-user={userId || ""}>
+      {/* header block with title + summary copy, */}
+      {/* visually anchors the community section, */}
+      {/* aligns action buttons to the right, */}
+      {/* and keeps the page identity consistent */}
       <div className="community-header">
         <div>
           <div className="community-kicker">COMMUNITY</div>
@@ -947,6 +1154,10 @@ export default function CommunityHub({ userId }) {
           </button>
         </div>
       </div>
+      {/* top-level tabs to switch between forums/groups/challenges, */}
+      {/* keeps the main content scoped to one view at a time, */}
+      {/* updates the activeTab state on click, */}
+      {/* and controls which sidebar + feed panels render */}
       <div className="community-tabs">
         <button
           className={`community-tab ${activeTab === "forums" ? "active" : ""}`}
@@ -973,7 +1184,16 @@ export default function CommunityHub({ userId }) {
       {banner && <div className="studio-banner info">{banner}</div>}
       {loading && <div className="community-empty">Loading community...</div>}
 
+      {/* main layout grid that pairs sidebar + feed, */}
+      {/* keeps navigation lists on the left, */}
+      {/* renders the selected tab content on the right, */}
+      {/* and stays consistent across all community views */}
       <div className="community-grid">
+        {/* Sidebar */}
+        {/* sidebar area with tab-specific navigation + actions, */}
+        {/* shows forums, groups, or challenges depending on active tab, */}
+        {/* includes quick actions and thread pulse summaries, */}
+        {/* keeps discovery elements in a predictable column */}
         <aside className="community-sidebar">
           {activeTab === "forums" && (
             <div className="community-panel">
@@ -1101,7 +1321,15 @@ export default function CommunityHub({ userId }) {
 
         </aside>
 
+        {/* main feed area for the active tab content, */}
+        {/* shows threads, group chat, or challenges, */}
+        {/* keeps primary interactions on the right panel, */}
+        {/* and pairs with the sidebar for navigation */}
         <main className="community-feed">
+          {/* forum threads panel with sorting + reactions, */}
+          {/* renders posts, reply trees, and thread actions, */}
+          {/* supports collapse to keep long threads manageable, */}
+          {/* and shows empty state when no posts exist */}
           {activeTab === "forums" && (
             <div className="community-panel">
               <div className="community-panel-title">Forum Threads</div>
@@ -1182,6 +1410,10 @@ export default function CommunityHub({ userId }) {
             </div>
           )}
 
+          {/* group chat panel for the selected group, */}
+          {/* shows join/send actions based on membership, */}
+          {/* displays the message list for the active group, */}
+          {/* and includes a perks summary below */}
           {activeTab === "groups" && (
             <div className="community-panel">
               <div className="community-panel-title">
@@ -1233,6 +1465,10 @@ export default function CommunityHub({ userId }) {
             </div>
           )}
 
+          {/* challenge list panel with join CTAs, */}
+          {/* shows challenge metadata and tags, */}
+          {/* encourages participation via simple buttons, */}
+          {/* and displays an empty state if none exist */}
           {activeTab === "challenges" && (
             <div className="community-panel">
               <div className="community-panel-title">Weekly Challenges</div>
@@ -1258,6 +1494,10 @@ export default function CommunityHub({ userId }) {
             </div>
           )}
 
+          {/* your circle summary panel for social status, */}
+          {/* highlights group + friend counts at a glance, */}
+          {/* provides quick CTAs to create or add, */}
+          {/* and anchors the friends list below */}
           <div className="community-panel">
             <div className="community-panel-title">Your Circle</div>
             <div className="community-circle-grid">
@@ -1284,6 +1524,10 @@ export default function CommunityHub({ userId }) {
                 <button className="hud-secondary-btn">Coming soon</button>
               </div>
             </div>
+            {/* friends list with status + actions, */}
+            {/* shows incoming/outgoing/accepted states, */}
+            {/* exposes accept/reject/message buttons, */}
+            {/* and renders an empty state when none exist */}
             <div className="community-friends-list">
               {friends.map((friend) => {
                 const status = getFriendStatus(friend);
@@ -1335,6 +1579,10 @@ export default function CommunityHub({ userId }) {
                 <div className="community-empty">No connections yet. Add a friend to start.</div>
               )}
             </div>
+            {/* private chat panel for the selected friend, */}
+            {/* shows message history + composer, */}
+            {/* updates in realtime via subscriptions, */}
+            {/* can be closed to return to the list */}
             {selectedFriendId && (
               <div className="community-friend-chat">
                 <div className="community-panel-title">Private Chat</div>
@@ -1385,6 +1633,10 @@ export default function CommunityHub({ userId }) {
         </main>
       </div>
 
+      {/* create group modal with name/goal/privacy fields, */}
+      {/* opened from quick actions or group panel, */}
+      {/* writes a new group and auto-joins the user, */}
+      {/* closes on cancel or successful submit */}
       {createGroupOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
@@ -1422,6 +1674,10 @@ export default function CommunityHub({ userId }) {
         </div>
       )}
 
+      {/* create challenge modal for weekly goals, */}
+      {/* collects type/target/duration inputs, */}
+      {/* inserts a new challenge and refreshes the list, */}
+      {/* closes on cancel or submit */}
       {createChallengeOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
@@ -1465,6 +1721,10 @@ export default function CommunityHub({ userId }) {
         </div>
       )}
 
+      {/* create forum post modal, */}
+      {/* allows forum selection + title/body entry, */}
+      {/* inserts a new post and reloads the active forum, */}
+      {/* closes on cancel or successful post */}
       {createPostOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
@@ -1507,6 +1767,10 @@ export default function CommunityHub({ userId }) {
         </div>
       )}
 
+      {/* reply modal for forum threads, */}
+      {/* supports replying to a post or nested reply, */}
+      {/* posts the reply then refreshes the thread list, */}
+      {/* closes on cancel or submit */}
       {createReplyOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
@@ -1529,6 +1793,10 @@ export default function CommunityHub({ userId }) {
         </div>
       )}
 
+      {/* group message modal for active group chat, */}
+      {/* sends a message to the selected group, */}
+      {/* reloads group chat after posting, */}
+      {/* closes on cancel or send */}
       {createGroupPostOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
@@ -1551,6 +1819,10 @@ export default function CommunityHub({ userId }) {
         </div>
       )}
 
+      {/* add friend modal using numeric user id, */}
+      {/* validates the user and inserts a friend request, */}
+      {/* refreshes the friends list after send, */}
+      {/* closes on cancel or submit */}
       {addFriendOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">

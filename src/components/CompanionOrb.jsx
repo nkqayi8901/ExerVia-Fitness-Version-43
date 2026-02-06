@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+// Component: CompanionOrb - UI layout and interactions.
+// This component renders the companionorb experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
 
+// fetchExercise manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const fetchExercise = async (query) => {
   const url = query
     ? `https://wger.de/api/v2/exerciseinfo/?language=2&limit=10&search=${encodeURIComponent(query)}`
@@ -10,6 +18,10 @@ const fetchExercise = async (query) => {
   return res.json();
 };
 
+// stripHtml manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
 const stripHtml = (value) => {
   if (!value) return "";
   return value.replace(/<[^>]*>/g, "").replace(/\\s+/g, " ").trim();
@@ -49,8 +61,16 @@ export default function CompanionOrb() {
     setPopLoading(false);
   }, [hintText]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
     let active = true;
+// loadTooltip manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const loadTooltip = async () => {
       if (hintText) {
         setTooltip(hintText);
@@ -65,12 +85,21 @@ export default function CompanionOrb() {
       setTooltip(desc ? `${name}: ${desc.slice(0, 90)}...` : name);
     };
     loadTooltip();
+    // Render
     return () => {
       active = false;
     };
   }, [location.pathname, mode, userId, hintText, loadPopout]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = async (event) => {
       const context = event?.detail || {};
       const query = context.name || "";
@@ -82,7 +111,15 @@ export default function CompanionOrb() {
     return () => window.removeEventListener("companion_knowledge", handler);
   }, [location.pathname, mode, userId, hintText]);
 
+// lifecycle hook for side effects,
+// runs when dependencies change,
+// keeps data and UI in sync,
+// cleans up to prevent leaks
   useEffect(() => {
+// handler manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
     const handler = (event) => {
       const nextText = event?.detail?.text || "";
       setHintText(nextText);
@@ -93,6 +130,7 @@ export default function CompanionOrb() {
     window.addEventListener("companion_hint", handler);
     return () => window.removeEventListener("companion_hint", handler);
   }, []);
+
 
   return (
     <div className="companion-orb-shell">
