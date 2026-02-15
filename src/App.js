@@ -4,8 +4,6 @@ import LandingPage from "./components/LandingPage";
 import FitnessProfileForm from "./FitnessProfileForm";
 import GymMode from "./components/GymMode";
 import AthleteMode from "./components/AthleteMode";
-import CompanionChat from "./components/CompanionChat";
-import CompanionOrb from "./components/CompanionOrb";
 import NutritionPage from "./components/NutritionPage";
 import JournalPage from "./components/JournalPage";
 
@@ -21,13 +19,11 @@ function App() {
           <Route path="/gym/:id/*" element={<GymMode />} />
           <Route path="/athlete/:id/*" element={<AthleteMode />} />
 
-          <Route path="/companion" element={<CompanionChat />} />
           <Route path="/nutrition" element={<NutritionPage />} />
 
           {/* optional standalone journal route */}
           <Route path="/journal" element={<JournalPage />} />
         </Routes>
-        <CompanionOrb />
       </div>
     </Router>
   );

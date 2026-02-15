@@ -2,12 +2,14 @@
 // useState manages local UI state (tabs, modals, forms, loaded data),
 // useEffect runs side effects like fetching data + realtime subscriptions,
 // useMemo memoises expensive derived values (filtering + sorting lists).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 // adapted from https://reactrouter.com/en/main/hooks/use-navigate
 // useNavigate is used for client-side navigation
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 // supabase client is imported to interact with our backend for data fetching and mutations
 import { supabase } from "../supabaseClient";
+import { recalcUserState } from "../services/stateEngine";
+import { trackDailyActivity } from "../services/activityTracker";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -22,21 +24,11 @@ const forumTracks = [
   { id: "strength", title: "Strength", subtitle: "Progressions, form, PRs" },
   { id: "mindset", title: "Mindset", subtitle: "Consistency, discipline, recovery" }
 ];
-// communitySections defines the different sections of the community hub, 
-// currently only groups but can be expanded to include more like challenges, events, etc.
-const communitySections = [
-  {
-    id: "groups",
-    title: "Accountability Groups",
-    sub: "Small crews with shared goals.",
-    cta: "Create group"
-  }
-];
 // reactionOptions defines the different reactions users can give to posts and replies
 const reactionOptions = [
-  { id: "like", label: "Like" },
-  { id: "fire", label: "Fire" },
-  { id: "insight", label: "Insight" }
+  { id: "like", label: "Like", emoji: "👍" },
+  { id: "fire", label: "Fire", emoji: "🔥" },
+  { id: "insight", label: "Insight", emoji: "💡" }
 ];
 
 // formatTime manages a focused piece of logic,
@@ -46,7 +38,23 @@ const reactionOptions = [
 const formatTime = (value) => {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleString();
+    const now = Date.now();
+    const ts = new Date(value).getTime();
+    if (Number.isNaN(ts)) return "";
+    const diffMs = now - ts;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hr ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+    return new Date(value).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   } catch {
     return "";
   }
@@ -77,20 +85,30 @@ const buildReplyTree = (replies) => {
 // with modals for creating new content and managing interactions.
 // The component also sets up realtime subscriptions to update the UI in response to new posts,
 // replies, and messages without needing a page refresh.
-export default function CommunityHub({ userId }) {
+export default function CommunityHub({ userId, forceGroupRoom = false, forceThreadPage = false }) {
   const navigate = useNavigate();
+  const { groupId: routeGroupId, threadId: routeThreadId } = useParams();
+  const routePrefix =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/gym/")
+      ? "gym"
+      : "athlete";
+  const communityBasePath = `/${routePrefix}/${userId || ""}/community`;
+  const groupRoomPath = (groupId) => `${communityBasePath}/group/${groupId}`;
+  const threadPath = (threadId) => `${communityBasePath}/thread/${threadId}`;
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
   const [activeTab, setActiveTab] = useState("forums");
   const [activeForum, setActiveForum] = useState("hyrox");
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [search, setSearch] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
   const [forums, setForums] = useState([]);
   const [groups, setGroups] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [forumPosts, setForumPosts] = useState([]);
-  const [groupPosts, setGroupPosts] = useState([]);
   const [postReplies, setPostReplies] = useState({});
+  const [globalForumPosts, setGlobalForumPosts] = useState([]);
+  const [globalPostReplies, setGlobalPostReplies] = useState({});
   const [profiles, setProfiles] = useState({});
   const [friendStats, setFriendStats] = useState({});
   const [selectedFriendId, setSelectedFriendId] = useState(null);
@@ -99,8 +117,9 @@ export default function CommunityHub({ userId }) {
   const [friendLastSeen, setFriendLastSeen] = useState({});
   const [friendLatest, setFriendLatest] = useState({});
   const [activeThreadId, setActiveThreadId] = useState(null);
+  const [routeThread, setRouteThread] = useState(null);
+  const [routeThreadReplies, setRouteThreadReplies] = useState([]);
   const [threadSort, setThreadSort] = useState("newest");
-  const [collapsedThreads, setCollapsedThreads] = useState({});
   const [memberships, setMemberships] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -112,7 +131,6 @@ export default function CommunityHub({ userId }) {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [createChallengeOpen, setCreateChallengeOpen] = useState(false);
   const [createPostOpen, setCreatePostOpen] = useState(false);
-  const [createGroupPostOpen, setCreateGroupPostOpen] = useState(false);
   const [createReplyOpen, setCreateReplyOpen] = useState(false);
   const [addFriendOpen, setAddFriendOpen] = useState(false);
 
@@ -125,11 +143,32 @@ export default function CommunityHub({ userId }) {
   });
   const [newPost, setNewPost] = useState({ title: "", body: "" });
   const [newPostForum, setNewPostForum] = useState(activeForum);
-  const [newGroupPost, setNewGroupPost] = useState({ body: "" });
   const [newReply, setNewReply] = useState({ body: "", parentId: null });
+  const [groupRoomId, setGroupRoomId] = useState(null);
+  const [groupRoomPosts, setGroupRoomPosts] = useState([]);
+  const [groupRoomMembers, setGroupRoomMembers] = useState([]);
+  const [groupRoomDraft, setGroupRoomDraft] = useState("");
+  const [groupRoomLoading, setGroupRoomLoading] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
   const [newFriendId, setNewFriendId] = useState("");
+  const friendChatListRef = useRef(null);
+  const [expandedPostIds, setExpandedPostIds] = useState({});
+  const [forumThreadCounts, setForumThreadCounts] = useState({});
+  const [pinnedThreadIds, setPinnedThreadIds] = useState({});
+  const [recentThreadIds, setRecentThreadIds] = useState({});
+  const [collapsedThreadIds, setCollapsedThreadIds] = useState({});
+  const [groupMemberCounts, setGroupMemberCounts] = useState({});
+  const [groupLastActive, setGroupLastActive] = useState({});
+  const [challengeParticipantCounts, setChallengeParticipantCounts] = useState({});
+  const [challengeMyProgress, setChallengeMyProgress] = useState({});
+
+  const recordEngagementAction = async (actionType) => {
+    if (!userId) return;
+    await trackDailyActivity(userId, actionType);
+    await recalcUserState(userId);
+    window.dispatchEvent(new Event("user_state_updated"));
+  };
 // loadProfiles takes a list of user ids and fetches their profiles from the backend,
 // it then maps the profiles into a dictionary for easy lookup when displaying posts, 
 // replies, and friends
@@ -202,6 +241,58 @@ export default function CommunityHub({ userId }) {
     });
     setFriendLatest(latest);
   };
+
+  const loadForumThreadCounts = async () => {
+    const { data } = await supabase.from("community_posts").select("id,forum_id");
+    const counts = {};
+    (data || []).forEach((post) => {
+      if (!post.forum_id) return;
+      counts[post.forum_id] = (counts[post.forum_id] || 0) + 1;
+    });
+    setForumThreadCounts(counts);
+  };
+
+  const loadGroupStats = async () => {
+    const [{ data: memberData }, { data: postData }] = await Promise.all([
+      supabase.from("community_group_members").select("group_id"),
+      supabase
+        .from("community_group_posts")
+        .select("group_id,created_at")
+        .order("created_at", { ascending: false })
+    ]);
+
+    const counts = {};
+    (memberData || []).forEach((row) => {
+      if (!row.group_id) return;
+      counts[row.group_id] = (counts[row.group_id] || 0) + 1;
+    });
+
+    const latestByGroup = {};
+    (postData || []).forEach((row) => {
+      if (!row.group_id || latestByGroup[row.group_id]) return;
+      latestByGroup[row.group_id] = row.created_at;
+    });
+
+    setGroupMemberCounts(counts);
+    setGroupLastActive(latestByGroup);
+  };
+
+  const loadChallengeStats = async () => {
+    const { data } = await supabase
+      .from("community_challenge_participants")
+      .select("challenge_id,user_id,progress");
+    const counts = {};
+    const mine = {};
+    (data || []).forEach((row) => {
+      if (!row.challenge_id) return;
+      counts[row.challenge_id] = (counts[row.challenge_id] || 0) + 1;
+      if (Number(row.user_id) === Number(userId)) {
+        mine[row.challenge_id] = Number(row.progress || 0);
+      }
+    });
+    setChallengeParticipantCounts(counts);
+    setChallengeMyProgress(mine);
+  };
 // loadForumPosts takes a forum slug and loads the posts for that forum from the backend,
 // it also loads the profiles of the post creators and the replies to those posts,
 // this function is called when the active forum changes and also when a new post is created
@@ -237,21 +328,67 @@ export default function CommunityHub({ userId }) {
             )
         )
       );
-      const [forumRes, groupRes, challengeRes, membershipRes, friendRes] = await Promise.all([
+      const [
+        forumRes,
+        groupRes,
+        challengeRes,
+        membershipRes,
+        friendRes,
+        forumPostRes,
+        groupMemberRes,
+        groupPostRes,
+        challengeParticipantRes
+      ] = await Promise.all([
         supabase.from("community_forums").select("*").order("created_at", { ascending: true }),
         supabase.from("community_groups").select("*").order("created_at", { ascending: false }),
         supabase.from("community_challenges").select("*").order("created_at", { ascending: false }),
-        supabase.from("community_group_members").select("*").eq("user_id", userId),
+        supabase.from("community_group_members").select("*").eq("user_id", Number(userId)),
         supabase
           .from("community_friends")
           .select("*")
-          .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`)
+          .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`),
+        supabase.from("community_posts").select("id,forum_id"),
+        supabase.from("community_group_members").select("group_id,user_id"),
+        supabase.from("community_group_posts").select("group_id,created_at").order("created_at", { ascending: false }),
+        supabase.from("community_challenge_participants").select("challenge_id,user_id,progress")
       ]);
       if (!mounted) return;
       setForums(forumRes.data || []);
       setGroups(groupRes.data || []);
       setChallenges(challengeRes.data || []);
       setMemberships(membershipRes.data || []);
+      const threadCounts = {};
+      (forumPostRes.data || []).forEach((post) => {
+        if (!post.forum_id) return;
+        threadCounts[post.forum_id] = (threadCounts[post.forum_id] || 0) + 1;
+      });
+      setForumThreadCounts(threadCounts);
+
+      const groupCounts = {};
+      (groupMemberRes.data || []).forEach((row) => {
+        if (!row.group_id) return;
+        groupCounts[row.group_id] = (groupCounts[row.group_id] || 0) + 1;
+      });
+      setGroupMemberCounts(groupCounts);
+      const groupLatest = {};
+      (groupPostRes.data || []).forEach((row) => {
+        if (!row.group_id || groupLatest[row.group_id]) return;
+        groupLatest[row.group_id] = row.created_at;
+      });
+      setGroupLastActive(groupLatest);
+
+      const challengeCounts = {};
+      const challengeMine = {};
+      (challengeParticipantRes.data || []).forEach((row) => {
+        if (!row.challenge_id) return;
+        challengeCounts[row.challenge_id] = (challengeCounts[row.challenge_id] || 0) + 1;
+        if (Number(row.user_id) === Number(userId)) {
+          challengeMine[row.challenge_id] = Number(row.progress || 0);
+        }
+      });
+      setChallengeParticipantCounts(challengeCounts);
+      setChallengeMyProgress(challengeMine);
+
       const friendList = friendRes.data || [];
       setFriends(friendList);
       const friendIds = friendList.flatMap((row) => [row.user_id, row.friend_user_id]);
@@ -269,6 +406,39 @@ export default function CommunityHub({ userId }) {
       mounted = false;
     };
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const key = `community_pinned_threads_${userId}`;
+      const raw = localStorage.getItem(key);
+      setPinnedThreadIds(raw ? JSON.parse(raw) : {});
+    } catch {
+      setPinnedThreadIds({});
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const key = `community_pinned_threads_${userId}`;
+    localStorage.setItem(key, JSON.stringify(pinnedThreadIds));
+  }, [pinnedThreadIds, userId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setRecentThreadIds((prev) => {
+        const next = {};
+        Object.entries(prev).forEach(([postId, createdMs]) => {
+          if (now - Number(createdMs) < 12000) {
+            next[postId] = createdMs;
+          }
+        });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 // below are useEffect hooks that set up realtime subscriptions to the 
 // backend using Supabase's realtime features,
 // the first subscription listens for new friend messages and 
@@ -323,6 +493,11 @@ export default function CommunityHub({ userId }) {
           if (!post || !activeForumId) return;
           if (post.forum_id !== activeForumId) return;
           setForumPosts((prev) => [post, ...prev]);
+          setForumThreadCounts((prev) => ({
+            ...prev,
+            [post.forum_id]: (prev[post.forum_id] || 0) + 1
+          }));
+          setRecentThreadIds((prev) => ({ ...prev, [post.id]: Date.now() }));
           if (post.created_by) loadProfiles([post.created_by]);
         }
       )
@@ -354,19 +529,33 @@ export default function CommunityHub({ userId }) {
 // these values update only when their dependencies change,
 // and help keep scrolling + search snappy for large lists
   const filteredForums = useMemo(() => {
-    const source = forums.length ? forums : forumTracks;
-    if (!search) return source;
-    const query = search.toLowerCase();
-    return source.filter(
-      (forum) =>
-        (forum.title || "").toLowerCase().includes(query) ||
-        (forum.subtitle || "").toLowerCase().includes(query)
-    );
-  }, [forums, search]);
+    return forums.length ? forums : forumTracks;
+  }, [forums]);
+
+  const forumTitleById = useMemo(() => {
+    const map = {};
+    forums.forEach((forum) => {
+      map[forum.id] = forum.title || forum.topic_slug || "Forum";
+    });
+    return map;
+  }, [forums]);
+
+  const forumThreadCountsBySlug = useMemo(() => {
+    const next = {};
+    filteredForums.forEach((forum) => {
+      const slug = forum.topic_slug || forum.id;
+      const count = forumThreadCounts[forum.id] || 0;
+      next[slug] = count;
+    });
+    return next;
+  }, [filteredForums, forumThreadCounts]);
 
   const forumSelectOptions = useMemo(() => {
     return forums.length ? forums : forumTracks;
   }, [forums]);
+
+  const tabOrder = ["forums", "groups", "challenges", "circle"];
+  const activeTabIndex = Math.max(tabOrder.indexOf(activeTab), 0);
 
 // sync the new post modal forum selector with the active forum,
 // this ensures the modal always defaults to the forum the user is browsing,
@@ -377,6 +566,70 @@ export default function CommunityHub({ userId }) {
       setNewPostForum(activeForum);
     }
   }, [activeForum, createPostOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = search.trim().toLowerCase();
+    if (activeTab !== "forums" || !query || !forums.length) {
+      setGlobalForumPosts([]);
+      setGlobalPostReplies({});
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadGlobalSearchResults = async () => {
+      const forumIds = forums.map((forum) => forum.id).filter(Boolean);
+      if (!forumIds.length) return;
+
+      const { data: posts } = await supabase
+        .from("community_posts")
+        .select("*")
+        .in("forum_id", forumIds)
+        .order("created_at", { ascending: false });
+
+      const filteredPosts = (posts || []).filter((post) => {
+        const title = (post.title || "").toLowerCase();
+        const body = (post.body || "").toLowerCase();
+        return title.includes(query) || body.includes(query);
+      });
+
+      if (cancelled) return;
+      setGlobalForumPosts(filteredPosts);
+
+      if (!filteredPosts.length) {
+        setGlobalPostReplies({});
+        return;
+      }
+
+      const postIds = filteredPosts.map((post) => post.id);
+      const { data: replyData } = await supabase
+        .from("community_post_replies")
+        .select("*")
+        .in("post_id", postIds)
+        .order("created_at", { ascending: true });
+
+      const groupedReplies = {};
+      (replyData || []).forEach((reply) => {
+        if (!groupedReplies[reply.post_id]) groupedReplies[reply.post_id] = [];
+        groupedReplies[reply.post_id].push(reply);
+      });
+
+      if (cancelled) return;
+      setGlobalPostReplies(groupedReplies);
+
+      const authorIds = [
+        ...filteredPosts.map((post) => post.created_by),
+        ...(replyData || []).map((reply) => reply.created_by)
+      ];
+      loadProfiles(authorIds);
+    };
+
+    loadGlobalSearchResults();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, search, forums]);
 
 // below are the action handlers for create/join/update flows,
 // they call supabase mutations, set banner feedback,
@@ -427,11 +680,10 @@ export default function CommunityHub({ userId }) {
       .eq("user_id", userId);
     setGroups(groupData || []);
     setMemberships(membershipData || []);
+    await loadGroupStats();
     setActiveTab("groups");
     if (data?.id) {
-      setActiveGroupId(data.id);
-      loadGroupPosts(data.id);
-      setCreateGroupPostOpen(true);
+      await openGroupRoom(data.id);
     }
   };
 
@@ -466,6 +718,7 @@ export default function CommunityHub({ userId }) {
       .select("*")
       .order("created_at", { ascending: false });
     setChallenges(data || []);
+    await loadChallengeStats();
   };
 
 // create a new forum post for the selected forum,
@@ -508,6 +761,8 @@ export default function CommunityHub({ userId }) {
     setNewPost({ title: "", body: "" });
     setNewPostForum(forumSlug);
     setBanner("Post created.");
+    await recordEngagementAction("community_post");
+    await loadForumThreadCounts();
     loadForumPosts(forumSlug);
   };
 
@@ -535,38 +790,78 @@ export default function CommunityHub({ userId }) {
     }
     setCreateReplyOpen(false);
     setNewReply({ body: "", parentId: null });
+    await recordEngagementAction("community_reply");
+    if (forceThreadPage && selectedThread?.id) {
+      const { data: replyData } = await supabase
+        .from("community_post_replies")
+        .select("*")
+        .eq("post_id", selectedThread.id)
+        .order("created_at", { ascending: true });
+      setRouteThreadReplies(replyData || []);
+      return;
+    }
     loadForumPosts(activeForum);
   };
 
-// create a new group chat message in the active group,
-// validates that a group is selected before posting,
-// inserts the post and reloads the group chat list,
-// then closes the modal and clears the draft
-  const handleCreateGroupPost = async () => {
-    if (!newGroupPost.body.trim()) return;
-    if (!activeGroupId) {
-      setBanner("Select a group first.");
+  const loadGroupRoom = async (groupId) => {
+    if (!groupId) return;
+    setGroupRoomLoading(true);
+    const [{ data: postsData }, { data: memberData }] = await Promise.all([
+      supabase
+        .from("community_group_posts")
+        .select("*")
+        .eq("group_id", groupId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("community_group_members")
+        .select("*")
+        .eq("group_id", groupId)
+    ]);
+    setGroupRoomPosts(postsData || []);
+    setGroupRoomMembers(memberData || []);
+    const profileIds = [
+      ...(postsData || []).map((post) => post.created_by),
+      ...(memberData || []).map((member) => member.user_id)
+    ];
+    loadProfiles(profileIds);
+    setGroupRoomLoading(false);
+  };
+
+  const openGroupRoom = async (groupId) => {
+    if (!groupId) return;
+    const member = memberships.some(
+      (membership) => Number(membership.group_id) === Number(groupId)
+    );
+    if (!member) {
+      setBanner("Join group first to open room.");
+      return;
+    }
+    setActiveGroupId(groupId);
+    setGroupRoomId(groupId);
+    await loadGroupRoom(groupId);
+  };
+
+  const handleSendGroupRoomPost = async () => {
+    if (!groupRoomDraft.trim() || !groupRoomId) return;
+    if (!userId) {
+      setBanner("Sign in to post in group room.");
       return;
     }
     const { error } = await supabase.from("community_group_posts").insert([
       {
-        group_id: activeGroupId,
-        body: newGroupPost.body.trim(),
+        group_id: groupRoomId,
+        body: groupRoomDraft.trim(),
         created_by: userId
       }
     ]);
     if (error) {
-      setBanner(error.message || "Could not post in group.");
+      setBanner(error.message || "Could not post in room.");
       return;
     }
-    setCreateGroupPostOpen(false);
-    setNewGroupPost({ body: "" });
-    const { data } = await supabase
-      .from("community_group_posts")
-      .select("*")
-      .eq("group_id", activeGroupId)
-      .order("created_at", { ascending: false });
-    setGroupPosts(data || []);
+    setGroupRoomDraft("");
+    await loadGroupRoom(groupRoomId);
+    await loadGroupStats();
+    await recordEngagementAction("community_post");
   };
 
 // send a friend request by numeric user id,
@@ -622,19 +917,29 @@ export default function CommunityHub({ userId }) {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-  const handleJoinGroup = async (groupId) => {
+  const handleJoinGroup = async (groupId, openAfterJoin = false) => {
     if (!userId) {
       setBanner("Sign in to join a group.");
+      return;
+    }
+    const alreadyMember = memberships.some(
+      (membership) => Number(membership.group_id) === Number(groupId)
+    );
+    if (alreadyMember) {
+      setBanner("Already joined.");
+      if (openAfterJoin) {
+        navigate(groupRoomPath(groupId));
+      }
       return;
     }
     const { error } = await supabase.from("community_group_members").insert([
       {
         group_id: groupId,
-        user_id: userId,
+        user_id: Number(userId),
         role: "member"
       }
     ]);
-    if (error) {
+    if (error && error.code !== "23505") {
       setBanner(error.message || "Could not join group.");
       return;
     }
@@ -642,10 +947,38 @@ export default function CommunityHub({ userId }) {
     const { data: membershipData } = await supabase
       .from("community_group_members")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", Number(userId));
     setMemberships(membershipData || []);
     setActiveGroupId(groupId);
-    loadGroupPosts(groupId);
+    await loadGroupStats();
+    if (openAfterJoin) {
+      navigate(groupRoomPath(groupId));
+    }
+  };
+
+  const handleLeaveGroup = async (groupId) => {
+    if (!userId || !groupId) return;
+    const { error } = await supabase
+      .from("community_group_members")
+      .delete()
+      .eq("group_id", groupId)
+      .eq("user_id", Number(userId));
+    if (error) {
+      setBanner(error.message || "Could not leave group.");
+      return;
+    }
+    setBanner("Left group.");
+    const { data: membershipData } = await supabase
+      .from("community_group_members")
+      .select("*")
+      .eq("user_id", Number(userId));
+    setMemberships(membershipData || []);
+    await loadGroupStats();
+    if (Number(groupRoomId) === Number(groupId) || Number(activeGroupId) === Number(groupId)) {
+      setGroupRoomId(null);
+      setActiveGroupId(null);
+      navigate(communityBasePath);
+    }
   };
 
 // accept an incoming friend request,
@@ -688,6 +1021,29 @@ export default function CommunityHub({ userId }) {
       .select("*")
       .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`);
     setFriends(data || []);
+  };
+
+  const handleRemoveFriend = async (friendRow) => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from("community_friends")
+      .delete()
+      .eq("id", friendRow.id);
+    if (error) {
+      setBanner(error.message || "Could not remove friend.");
+      return;
+    }
+    setBanner("Friend removed.");
+    const { data } = await supabase
+      .from("community_friends")
+      .select("*")
+      .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`);
+    setFriends(data || []);
+    if (Number(selectedFriendId) === Number(friendRow.user_id) || Number(selectedFriendId) === Number(friendRow.friend_user_id)) {
+      setSelectedFriendId(null);
+      setFriendMessages([]);
+      setFriendMessageDraft("");
+    }
   };
 
 // build the display label for a friend row,
@@ -797,6 +1153,11 @@ export default function CommunityHub({ userId }) {
       return;
     }
     setBanner("Post deleted.");
+    if (forceThreadPage) {
+      navigate(communityBasePath);
+      return;
+    }
+    await loadForumThreadCounts();
     loadForumPosts(activeForum);
   };
 
@@ -816,6 +1177,10 @@ export default function CommunityHub({ userId }) {
       return;
     }
     setBanner("Reply deleted.");
+    if (forceThreadPage && selectedThread?.id) {
+      setRouteThreadReplies((prev) => prev.filter((reply) => reply.id !== replyId));
+      return;
+    }
     loadForumPosts(activeForum);
   };
 
@@ -835,11 +1200,24 @@ export default function CommunityHub({ userId }) {
         progress: 0
       }
     ]);
-    if (error) {
+    if (error && error.code !== "23505") {
       setBanner(error.message || "Could not join challenge.");
       return;
     }
-    setBanner("Challenge joined.");
+    setBanner(error?.code === "23505" ? "Already joined challenge." : "Challenge joined.");
+    await loadChallengeStats();
+  };
+
+  const togglePinnedThread = (postId) => {
+    setPinnedThreadIds((prev) => {
+      const next = { ...prev };
+      if (next[postId]) {
+        delete next[postId];
+      } else {
+        next[postId] = true;
+      }
+      return next;
+    });
   };
 
 // load all posts for a forum slug,
@@ -897,48 +1275,71 @@ export default function CommunityHub({ userId }) {
     setUserReactions(nextUserReactions);
   };
 
-// sort threads based on selected mode,
-// newest uses post timestamps,
-// top uses reply count per thread,
-// active uses the latest reply activity per thread
+// sort threads based on selected mode:
+// newest by post timestamp, top by reply count,
+// active by latest post/reply activity with tie-breakers
   const sortedForumPosts = useMemo(() => {
-    if (!forumPosts.length) return [];
-    const copy = [...forumPosts];
+    const usingGlobalForumSearch = Boolean(search.trim());
+    const sourcePosts = usingGlobalForumSearch ? globalForumPosts : forumPosts;
+    const sourceReplies = usingGlobalForumSearch ? globalPostReplies : postReplies;
+    if (!sourcePosts.length) return [];
+    const copy = [...sourcePosts];
+    const getReplyCount = (postId) => (sourceReplies[postId] || []).length;
+    const getLatestActivityMs = (post) => {
+      const replies = sourceReplies[post.id] || [];
+      const latestReplyMs = replies.reduce((latest, reply) => {
+        const ms = Date.parse(reply.created_at || "");
+        return Number.isNaN(ms) ? latest : Math.max(latest, ms);
+      }, 0);
+      const postMs = Date.parse(post.created_at || "");
+      return Math.max(Number.isNaN(postMs) ? 0 : postMs, latestReplyMs);
+    };
+    const pinnedDelta = (a, b) =>
+      (pinnedThreadIds[b.id] ? 1 : 0) - (pinnedThreadIds[a.id] ? 1 : 0);
+
     if (threadSort === "newest") {
-      return copy.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return copy.sort((a, b) => {
+        const delta = pinnedDelta(a, b);
+        if (delta !== 0) return delta;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
     }
     if (threadSort === "top") {
       return copy.sort((a, b) => {
-// aCount manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-        const aCount = (postReplies[a.id] || []).length;
-// bCount manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-        const bCount = (postReplies[b.id] || []).length;
+        const delta = pinnedDelta(a, b);
+        if (delta !== 0) return delta;
+        const aCount = getReplyCount(a.id);
+        const bCount = getReplyCount(b.id);
         return bCount - aCount;
       });
     }
     if (threadSort === "active") {
       return copy.sort((a, b) => {
-// aLatest manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-        const aLatest = (postReplies[a.id] || []).slice(-1)[0]?.created_at || a.created_at;
-// bLatest manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-        const bLatest = (postReplies[b.id] || []).slice(-1)[0]?.created_at || b.created_at;
-        return new Date(bLatest) - new Date(aLatest);
+        const delta = pinnedDelta(a, b);
+        if (delta !== 0) return delta;
+        const bLatestMs = getLatestActivityMs(b);
+        const aLatestMs = getLatestActivityMs(a);
+        if (bLatestMs !== aLatestMs) return bLatestMs - aLatestMs;
+
+        const bCount = getReplyCount(b.id);
+        const aCount = getReplyCount(a.id);
+        if (bCount !== aCount) return bCount - aCount;
+
+        return new Date(b.created_at) - new Date(a.created_at);
       });
     }
-    return copy;
-  }, [forumPosts, postReplies, threadSort]);
+    return copy.sort((a, b) => pinnedDelta(a, b));
+  }, [forumPosts, postReplies, globalForumPosts, globalPostReplies, threadSort, search, pinnedThreadIds]);
+
+  const filteredThreadPosts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return sortedForumPosts;
+    return sortedForumPosts.filter((post) => {
+      const title = (post.title || "").toLowerCase();
+      const body = (post.body || "").toLowerCase();
+      return title.includes(query) || body.includes(query);
+    });
+  }, [sortedForumPosts, search]);
 
 // compute unread count for all friends,
 // uses latest message + last seen logic per friend,
@@ -953,15 +1354,18 @@ export default function CommunityHub({ userId }) {
 // used in the sidebar for quick navigation,
 // recalculates when posts or replies change
   const threadPulse = useMemo(() => {
-    if (!forumPosts.length) return [];
-    return [...forumPosts]
+    const usingGlobalForumSearch = Boolean(search.trim());
+    const sourcePosts = usingGlobalForumSearch ? globalForumPosts : forumPosts;
+    const sourceReplies = usingGlobalForumSearch ? globalPostReplies : postReplies;
+    if (!sourcePosts.length) return [];
+    return [...sourcePosts]
       .map((post) => ({
         post,
-        count: (postReplies[post.id] || []).length
+        count: (sourceReplies[post.id] || []).length
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [forumPosts, postReplies]);
+  }, [forumPosts, postReplies, globalForumPosts, globalPostReplies, search]);
 
 // determine the most active thread id,
 // used to display the "Most active" badge,
@@ -972,16 +1376,23 @@ export default function CommunityHub({ userId }) {
     return threadPulse[0].post.id;
   }, [threadPulse]);
 
-// toggle collapsed state for a thread,
-// keeps the UI compact when threads get long,
-// stores collapsed flags by post id,
-// allows per-thread expand/collapse
-  const toggleCollapse = (postId) => {
-    setCollapsedThreads((prev) => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }));
-  };
+  const selectedThread = useMemo(() => {
+    if (forceThreadPage) return routeThread;
+    return null;
+  }, [forceThreadPage, routeThread]);
+
+  const selectedThreadReplies = useMemo(() => {
+    if (forceThreadPage) return routeThreadReplies;
+    const usingGlobalForumSearch = Boolean(search.trim());
+    const sourceReplies = usingGlobalForumSearch ? globalPostReplies : postReplies;
+    if (!selectedThread) return [];
+    return sourceReplies[selectedThread.id] || [];
+  }, [forceThreadPage, routeThreadReplies, postReplies, globalPostReplies, selectedThread, search]);
+
+  const selectedThreadReplyTree = useMemo(() => {
+    if (!selectedThreadReplies.length) return [];
+    return buildReplyTree(selectedThreadReplies);
+  }, [selectedThreadReplies]);
 
 // handle a reaction toggle for posts or replies,
 // adds or removes a reaction for the current user,
@@ -1034,22 +1445,7 @@ export default function CommunityHub({ userId }) {
     }
     setUserReactions((prev) => ({ ...prev, [key]: data?.id }));
     setReactionCounts((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
-  };
-
-// load group chat posts for the active group,
-// orders newest -> oldest for chat display,
-// and loads profile labels for message authors,
-// called when group selection changes
-  const loadGroupPosts = async (groupId) => {
-    const { data } = await supabase
-      .from("community_group_posts")
-      .select("*")
-      .eq("group_id", groupId)
-      .order("created_at", { ascending: false });
-    setGroupPosts(data || []);
-    if (data?.length) {
-      loadProfiles(data.map((post) => post.created_by));
-    }
+    await recordEngagementAction("community_reaction");
   };
 
 // render replies recursively as a nested tree,
@@ -1065,7 +1461,8 @@ export default function CommunityHub({ userId }) {
         <div key={reply.id} className={`community-reply-card ${level > 0 ? "nested" : ""}`}>
           <div className="community-reply-body">{reply.body}</div>
           <div className="community-thread-meta">
-            {author} - {formatTime(reply.created_at)}
+            <span className="community-meta-pill community-meta-author">{author}</span>
+            <span className="community-meta-pill">{formatTime(reply.created_at)}</span>
           </div>
           <div className="community-reaction-row">
             {reactionOptions.map((option) => {
@@ -1080,31 +1477,34 @@ export default function CommunityHub({ userId }) {
                     handleReact({ postId: rootPostId || reply.post_id, replyId: reply.id, reaction: option.id })
                   }
                 >
-                  {option.label} {count}
+                  <span className="community-reaction-emoji" aria-hidden="true">{option.emoji}</span>
+                  <span className="community-reaction-count">{count}</span>
                 </button>
               );
             })}
           </div>
-          <button
-            className="community-reply-btn"
-            onClick={() => {
-              setActiveThreadId(reply.post_id);
-              setNewReply({ body: "", parentId: reply.id });
-              setCreateReplyOpen(true);
-            }}
-            type="button"
-          >
-            Reply
-          </button>
-          {Number(userId) === Number(reply.created_by) && (
+          <div className="community-reply-actions">
             <button
-              className="community-reply-btn danger"
-              onClick={() => handleDeleteReply(reply.id)}
+              className="studio-back community-action-btn community-primary-btn"
+              onClick={() => {
+                setActiveThreadId(reply.post_id);
+                setNewReply({ body: "", parentId: reply.id });
+                setCreateReplyOpen(true);
+              }}
               type="button"
             >
-              Delete
+              Reply
             </button>
-          )}
+            {Number(userId) === Number(reply.created_by) && (
+              <button
+                className="community-reply-btn danger"
+                onClick={() => handleDeleteReply(reply.id)}
+                type="button"
+              >
+                Delete
+              </button>
+            )}
+          </div>
           {reply.children?.length > 0 && (
             <div className="community-replies">
               {renderReplies(reply.children, level + 1, rootPostId || reply.post_id)}
@@ -1116,72 +1516,430 @@ export default function CommunityHub({ userId }) {
   };
 
 // derive current group and membership state,
-// used to show join/leave actions in group chat,
+// used to show join/open actions in groups tab,
 // keeps the main render logic clean,
 // recalculates when groups or memberships update
-  const activeGroup = groups.find((group) => group.id === activeGroupId) || null;
-  const isMember = activeGroupId
-    ? memberships.some((membership) => membership.group_id === activeGroupId)
+  const activeGroup = groups.find((group) => Number(group.id) === Number(groupRoomId || activeGroupId)) || null;
+  const isGroupMember = (groupId) =>
+    memberships.some((membership) => Number(membership.group_id) === Number(groupId));
+  const groupPrivacyLabel = (privacy) => {
+    if (privacy === "open") return "Open";
+    if (privacy === "request") return "Request";
+    return "Invite";
+  };
+  const challengeTypeMeta = {
+    distance: { label: "Distance", icon: "KM" },
+    time: { label: "Time", icon: "TM" },
+    streak: { label: "Streak", icon: "ST" }
+  };
+  const visibleGroups = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase();
+    if (!query) return groups;
+    return groups.filter((group) => {
+      const name = String(group.name || "").toLowerCase();
+      const goal = String(group.goal || "").toLowerCase();
+      return name.includes(query) || goal.includes(query);
+    });
+  }, [groups, groupSearch]);
+  const joinedGroups = useMemo(() => {
+    const query = groupSearch.trim().toLowerCase();
+    const base = groups.filter((group) => isGroupMember(group.id));
+    if (!query) return base;
+    return base.filter((group) => {
+      const name = String(group.name || "").toLowerCase();
+      const goal = String(group.goal || "").toLowerCase();
+      return name.includes(query) || goal.includes(query);
+    });
+  }, [groups, memberships, groupSearch]);
+  const discoverGroups = useMemo(() => {
+    const next = visibleGroups.filter((group) => !isGroupMember(group.id));
+    return groupSearch.trim() ? next : next.slice(0, 12);
+  }, [visibleGroups, memberships, groupSearch]);
+  const joinedChallengeIds = useMemo(() => {
+    return new Set(Object.keys(challengeMyProgress).map((id) => Number(id)));
+  }, [challengeMyProgress]);
+  const selectedThreadRepliesCollapsed = selectedThread
+    ? Boolean(collapsedThreadIds[selectedThread.id])
     : false;
+
+  const renderEmptyState = ({ icon = "i", title, sub, ctaLabel, onCta }) => (
+    <div className="community-empty community-empty-state">
+      <div className="community-empty-icon" aria-hidden="true">{icon}</div>
+      <div className="community-empty-title">{title}</div>
+      {sub && <div className="community-empty-sub">{sub}</div>}
+      {ctaLabel && onCta && (
+        <button className="studio-back community-cta-btn community-primary-btn" type="button" onClick={onCta}>
+          {ctaLabel}
+        </button>
+      )}
+    </div>
+  );
+
+  useEffect(() => {
+    if (!selectedFriendId) return;
+    const list = friendChatListRef.current;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
+  }, [friendMessages, selectedFriendId]);
+
+  useEffect(() => {
+    if (!forceGroupRoom || !routeGroupId || !userId) return;
+    if (Number(groupRoomId) === Number(routeGroupId)) return;
+    let cancelled = false;
+
+    const openRoutedRoom = async () => {
+      setActiveTab("groups");
+      const localMember = memberships.some(
+        (membership) =>
+          Number(membership.group_id) === Number(routeGroupId) &&
+          Number(membership.user_id) === Number(userId)
+      );
+
+      let member = localMember;
+      if (!member) {
+        const { data } = await supabase
+          .from("community_group_members")
+          .select("group_id,user_id")
+          .eq("group_id", routeGroupId)
+          .eq("user_id", userId)
+          .limit(1);
+        member = Array.isArray(data) && data.length > 0;
+      }
+
+      if (cancelled) return;
+      if (!member) {
+        setBanner("Join group first to open room.");
+        navigate(communityBasePath);
+        return;
+      }
+
+      setActiveGroupId(routeGroupId);
+      setGroupRoomId(routeGroupId);
+      await loadGroupRoom(routeGroupId);
+    };
+
+    openRoutedRoom();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceGroupRoom, routeGroupId, userId, memberships, groupRoomId]);
+
+  useEffect(() => {
+    if (!forceThreadPage || !routeThreadId || !userId) return;
+    let cancelled = false;
+
+    const loadThreadRoute = async () => {
+      setActiveTab("forums");
+      const numericThreadId = Number(routeThreadId);
+      if (!Number.isFinite(numericThreadId)) {
+        navigate(communityBasePath);
+        return;
+      }
+
+      const { data: threadData } = await supabase
+        .from("community_posts")
+        .select("*")
+        .eq("id", numericThreadId)
+        .single();
+
+      if (cancelled) return;
+      if (!threadData) {
+        setBanner("Thread not found.");
+        navigate(communityBasePath);
+        return;
+      }
+
+      const { data: replyData } = await supabase
+        .from("community_post_replies")
+        .select("*")
+        .eq("post_id", numericThreadId)
+        .order("created_at", { ascending: true });
+
+      if (cancelled) return;
+      setActiveThreadId(numericThreadId);
+      setRouteThread(threadData);
+      setRouteThreadReplies(replyData || []);
+      loadProfiles([threadData.created_by, ...(replyData || []).map((reply) => reply.created_by)]);
+    };
+
+    loadThreadRoute();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceThreadPage, routeThreadId, userId]);
+
+  const renderGroupRoom = (isRouteMode = false) => (
+    <div className={`community-group-room-shell ${isRouteMode ? "route-mode" : ""}`}>
+      <div className="community-group-room-head">
+        <div className="community-group-room-head-left">
+          <button
+            className="studio-back community-cta-btn"
+            onClick={() => {
+              setGroupRoomId(null);
+              navigate(communityBasePath);
+            }}
+            type="button"
+          >
+            {'<- Back to groups'}
+          </button>
+          <div>
+            <div className="community-group-room-title">{activeGroup?.name || "Group room"}</div>
+            <div className="community-group-room-sub">{activeGroup?.goal || "Live chat for your group."}</div>
+          </div>
+        </div>
+        <div className="community-group-room-head-meta">
+          <span className="community-room-chip">{groupRoomMembers.length} members</span>
+          <span className="community-room-chip">{groupRoomPosts.length} messages</span>
+          {activeGroup?.privacy && (
+            <span className="community-room-chip">{groupPrivacyLabel(activeGroup.privacy)}</span>
+          )}
+        </div>
+      </div>
+      <div className="community-group-room-layout">
+        <aside className="community-group-room-left">
+          <div className="community-panel-title">Channels</div>
+          <button type="button" className="community-room-channel active"># general</button>
+          <button type="button" className="community-room-channel"># check-ins</button>
+          <button type="button" className="community-room-channel"># plans</button>
+        </aside>
+        <section className="community-group-room-center">
+          <div className="community-group-room-messages">
+            {groupRoomLoading && renderEmptyState({ icon: "...", title: "Loading room", sub: "Syncing latest messages." })}
+            {!groupRoomLoading && !groupRoomPosts.length && (
+              renderEmptyState({ icon: "💬", title: "No messages yet", sub: "Start the room with your first message." })
+            )}
+            {!groupRoomLoading &&
+              groupRoomPosts.map((post) => {
+                const authorName = profiles[post.created_by] || `User ${post.created_by}`;
+                const initial = String(authorName).charAt(0).toUpperCase();
+                const isSelf = Number(post.created_by) === Number(userId);
+                return (
+                  <div key={post.id} className={`community-group-room-msg-row ${isSelf ? "self" : ""}`}>
+                    <div className={`community-group-room-msg ${isSelf ? "self" : ""}`}>
+                      <div className="community-group-room-msg-head">
+                        <span className="community-group-room-avatar" aria-hidden="true">{initial}</span>
+                        <span className="community-group-room-author">{authorName}</span>
+                        <span className="community-group-room-time">{formatTime(post.created_at)}</span>
+                      </div>
+                      <div className="community-group-room-body">{post.body}</div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+          <div className="community-group-room-inputbar">
+            <input
+              className="community-modal-input community-group-room-input"
+              placeholder="Message #general"
+              value={groupRoomDraft}
+              onChange={(event) => setGroupRoomDraft(event.target.value)}
+            />
+            <button className="studio-back community-cta-btn community-primary-btn" onClick={handleSendGroupRoomPost}>
+              Send
+            </button>
+          </div>
+        </section>
+        <aside className="community-group-room-right">
+          <div className="community-panel-title">Members ({groupRoomMembers.length})</div>
+          <div className="community-group-room-members">
+            {groupRoomMembers.map((member) => (
+              <div key={member.id} className="community-group-room-member">
+                <span className="community-notification-dot mini" />
+                <span>{profiles[member.user_id] || `User ${member.user_id}`}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
 
 // render the full Community Hub layout,
 // includes header, tabs, sidebar, and main feed,
 // conditionally renders forum/group/challenge views,
 // and attaches modals for creation flows
   return (
-    <div className="community-shell" data-user={userId || ""}>
-      {/* header block with title + summary copy, */}
-      {/* visually anchors the community section, */}
-      {/* aligns action buttons to the right, */}
-      {/* and keeps the page identity consistent */}
-      <div className="community-header">
-        <div>
-          <div className="community-kicker">COMMUNITY</div>
-          <h2 className="community-title">Train With Others</h2>
-          <p className="community-sub">
-            Accountability, forums, and challenges built for serious athletes.
-          </p>
+    <div className={`community-shell ${forceGroupRoom ? "community-shell-room-mode" : ""} ${forceThreadPage ? "community-shell-thread-mode" : ""}`} data-user={userId || ""}>
+      {!forceGroupRoom && !forceThreadPage && (
+        <>
+          {/* header block with title + summary copy, */}
+          {/* visually anchors the community section, */}
+          {/* aligns action buttons to the right, */}
+          {/* and keeps the page identity consistent */}
+          <div className="community-header">
+            <div>
+              <button className="studio-back" onClick={() => navigate(backPath)} type="button">
+                {'<- Back'}
+              </button>
+              <div className="community-kicker">COMMUNITY</div>
+              <h2 className="community-title">Train With Others</h2>
+              <p className="community-sub">
+                Accountability, forums, and challenges built for serious athletes.
+              </p>
+            </div>
+            <div className="community-cta-row">
+              <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
+                Create group
+              </button>
+              <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
+                Add friend
+              </button>
+            </div>
+          </div>
+          {/* top-level tabs to switch between forums/groups/challenges, */}
+          {/* keeps the main content scoped to one view at a time, */}
+          {/* updates the activeTab state on click, */}
+          {/* and controls which sidebar + feed panels render */}
+          <div className="community-tabs community-main-tabs">
+            <button
+              className={`community-tab ${activeTab === "forums" ? "active" : ""}`}
+              onClick={() => setActiveTab("forums")}
+              type="button"
+            >
+              Forums
+            </button>
+            <button
+              className={`community-tab ${activeTab === "groups" ? "active" : ""}`}
+              onClick={() => setActiveTab("groups")}
+              type="button"
+            >
+              Groups
+            </button>
+            <button
+              className={`community-tab ${activeTab === "challenges" ? "active" : ""}`}
+              onClick={() => setActiveTab("challenges")}
+              type="button"
+            >
+              Challenges
+            </button>
+            <button
+              className={`community-tab ${activeTab === "circle" ? "active" : ""}`}
+              onClick={() => setActiveTab("circle")}
+              type="button"
+            >
+              Your Circle
+            </button>
+            <span
+              className="community-tabs-indicator"
+              aria-hidden="true"
+              style={{ transform: `translateX(${activeTabIndex * 100}%)` }}
+            />
+          </div>
+        </>
+      )}
+      {forceGroupRoom && (
+        <div className="community-group-room-route-panel">
+          {!groupRoomId && renderEmptyState({ icon: "...", title: "Loading room", sub: "Fetching group messages." })}
+          {groupRoomId && renderGroupRoom(true)}
         </div>
-        <div className="community-cta-row">
-          <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>
-            Back
-          </button>
-          <button className="hud-secondary-btn" onClick={() => setCreateGroupOpen(true)}>
-            Create group
-          </button>
-          <button className="hud-secondary-btn" onClick={() => setAddFriendOpen(true)}>
-            Add friend
-          </button>
+      )}
+      {forceThreadPage && (
+        <div className="community-thread-route-panel">
+          {!selectedThread && renderEmptyState({ icon: "...", title: "Loading thread", sub: "Fetching thread details." })}
+          {selectedThread && (
+            <div className="community-thread-modal">
+              <div className="community-thread-modal-head-card">
+                <div className="community-thread-modal-head">
+                  <div className="community-thread-head-main">
+                    <div className="community-feed-title community-thread-modal-title">{selectedThread.title}</div>
+                    <div className="community-thread-meta">
+                      <span className="community-meta-pill community-meta-author">
+                        {profiles[selectedThread.created_by] || selectedThread.created_by || "Anonymous"}
+                      </span>
+                      <span className="community-meta-pill">{formatTime(selectedThread.created_at)}</span>
+                      <span className="community-meta-pill">{selectedThreadReplies.length} replies</span>
+                    </div>
+                  </div>
+                  <button className="community-thread-close-btn" onClick={() => navigate(communityBasePath)} type="button" aria-label="Back to community">
+                    ×
+                  </button>
+                </div>
+                <div className="community-thread-body-card">
+                  <div className="community-section-label">Original Post</div>
+                  <div className="community-feed-sub community-thread-modal-body">
+                    {selectedThread.body || "No details yet."}
+                  </div>
+                </div>
+                <div className="community-reaction-row community-thread-modal-reactions">
+                  {reactionOptions.map((option) => {
+                    const key = `post:${selectedThread.id}-${option.id}`;
+                    const count = reactionCounts[key] || 0;
+                    const active = Boolean(userReactions[key]);
+                    return (
+                      <button
+                        key={option.id}
+                        className={`community-reaction-btn ${active ? "active" : ""}`}
+                        onClick={() => handleReact({ postId: selectedThread.id, reaction: option.id })}
+                      >
+                        <span className="community-reaction-emoji" aria-hidden="true">{option.emoji}</span>
+                        <span className="community-reaction-count">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="community-thread-actions community-thread-modal-actions community-thread-modal-quick-actions">
+                  <button
+                    className="studio-back community-action-btn community-primary-btn"
+                    type="button"
+                    onClick={() => {
+                      setActiveThreadId(selectedThread.id);
+                      setNewReply({ body: "", parentId: null });
+                      setCreateReplyOpen(true);
+                    }}
+                  >
+                    Reply
+                  </button>
+                  {Number(userId) === Number(selectedThread.created_by) && (
+                    <button
+                      className="community-reply-btn danger"
+                      type="button"
+                      onClick={async () => {
+                        await handleDeletePost(selectedThread.id);
+                        navigate(communityBasePath);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="community-thread-comments-section">
+                <div className="community-thread-comments-head">
+                  <div className="community-section-label">
+                    Replies {selectedThreadReplies.length > 0 ? `(${selectedThreadReplies.length})` : ""}
+                  </div>
+                  <button
+                    type="button"
+                    className="community-thread-collapse-btn"
+                    onClick={() =>
+                      setCollapsedThreadIds((prev) => ({
+                        ...prev,
+                        [selectedThread.id]: !prev[selectedThread.id]
+                      }))
+                    }
+                  >
+                    {selectedThreadRepliesCollapsed ? "Expand replies" : "Collapse replies"}
+                  </button>
+                </div>
+                <div className={`community-thread-replies-wrap ${selectedThreadRepliesCollapsed ? "collapsed" : ""}`}>
+                  {selectedThreadRepliesCollapsed ? (
+                    renderEmptyState({ icon: "↕", title: "Thread collapsed", sub: "Expand replies to continue reading." })
+                  ) : selectedThreadReplyTree.length > 0 ? (
+                    <div className="community-replies">{renderReplies(selectedThreadReplyTree, 0, selectedThread.id)}</div>
+                  ) : (
+                    renderEmptyState({ icon: "💬", title: "No replies yet", sub: "Start the first response on this thread." })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-      {/* top-level tabs to switch between forums/groups/challenges, */}
-      {/* keeps the main content scoped to one view at a time, */}
-      {/* updates the activeTab state on click, */}
-      {/* and controls which sidebar + feed panels render */}
-      <div className="community-tabs">
-        <button
-          className={`community-tab ${activeTab === "forums" ? "active" : ""}`}
-          onClick={() => setActiveTab("forums")}
-          type="button"
-        >
-          Forums
-        </button>
-        <button
-          className={`community-tab ${activeTab === "groups" ? "active" : ""}`}
-          onClick={() => setActiveTab("groups")}
-          type="button"
-        >
-          Groups
-        </button>
-        <button
-          className={`community-tab ${activeTab === "challenges" ? "active" : ""}`}
-          onClick={() => setActiveTab("challenges")}
-          type="button"
-        >
-          Challenges
-        </button>
-      </div>
-      {banner && <div className="studio-banner info">{banner}</div>}
+      )}
+      {!forceGroupRoom && !forceThreadPage && (
+        <>
+      {banner && <div className="community-banner info">{banner}</div>}
       {loading && <div className="community-empty">Loading community...</div>}
 
       {/* main layout grid that pairs sidebar + feed, */}
@@ -1189,137 +1947,6 @@ export default function CommunityHub({ userId }) {
       {/* renders the selected tab content on the right, */}
       {/* and stays consistent across all community views */}
       <div className="community-grid">
-        {/* Sidebar */}
-        {/* sidebar area with tab-specific navigation + actions, */}
-        {/* shows forums, groups, or challenges depending on active tab, */}
-        {/* includes quick actions and thread pulse summaries, */}
-        {/* keeps discovery elements in a predictable column */}
-        <aside className="community-sidebar">
-          {activeTab === "forums" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Forums</div>
-              <input
-                className="community-search"
-                placeholder="Search forums"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <div className="community-forum-actions">
-                <button
-                  className="hud-secondary-btn"
-                  onClick={() => {
-                    const defaultForum =
-                      activeForum ||
-                      (forums[0]?.topic_slug ?? forumTracks[0]?.id ?? "");
-                    setNewPostForum(defaultForum);
-                    setCreatePostOpen(true);
-                  }}
-                >
-                  New post
-                </button>
-              </div>
-              <div className="community-forum-list">
-                {filteredForums.map((forum) => (
-                  <button
-                    key={forum.id}
-                    className={`community-forum-item ${activeForum === (forum.topic_slug || forum.id) ? "active" : ""}`}
-                    onClick={() => {
-                      const slug = forum.topic_slug || forum.id;
-                      setActiveForum(slug);
-                      loadForumPosts(slug);
-                    }}
-                    type="button"
-                  >
-                    <div className="community-forum-title">{forum.title}</div>
-                    <div className="community-forum-sub">{forum.subtitle}</div>
-                  </button>
-                ))}
-                {!filteredForums.length && (
-                  <div className="community-empty">No forums match that search.</div>
-                )}
-              </div>
-              <div className="community-thread-pulse">
-                <div className="community-panel-title">Thread Pulse</div>
-                {threadPulse.map(({ post, count }) => (
-                  <button
-                    key={post.id}
-                    className={`community-thread-row ${activeThreadId === post.id ? "active" : ""}`}
-                    onClick={() => setActiveThreadId(post.id)}
-                    type="button"
-                  >
-                    <div className="community-thread-row-main">
-                      <div className="community-thread-row-title">{post.title}</div>
-                      <div className="community-thread-row-sub">{count} replies</div>
-                    </div>
-                    {post.id === mostActiveId && (
-                      <span className="community-thread-badge">Most active</span>
-                    )}
-                  </button>
-                ))}
-                {!threadPulse.length && (
-                  <div className="community-empty">No threads yet.</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "groups" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Groups</div>
-              <div className="community-group-list">
-                {groups.map((group) => {
-                  const joined = memberships.some((item) => item.group_id === group.id);
-                  return (
-                    <button
-                      key={group.id}
-                      className={`community-forum-item ${activeGroupId === group.id ? "active" : ""}`}
-                      onClick={() => {
-                        setActiveGroupId(group.id);
-                        loadGroupPosts(group.id);
-                      }}
-                      type="button"
-                    >
-                      <div className="community-forum-title">{group.name}</div>
-                      <div className="community-forum-sub">{joined ? "Joined" : "Not joined"}</div>
-                    </button>
-                  );
-                })}
-                {!groups.length && <div className="community-empty">No groups yet.</div>}
-              </div>
-              <div className="community-forum-actions">
-                <button className="hud-secondary-btn" onClick={() => setCreateGroupOpen(true)}>
-                  Create group
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "challenges" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Challenges</div>
-              <div className="community-group-list">
-                {challenges.map((challenge) => (
-                  <div key={challenge.id} className="community-feed-card">
-                    <div className="community-feed-title">{challenge.title}</div>
-                    <div className="community-feed-sub">
-                      {challenge.type || "challenge"} - {challenge.duration_days || 7} days
-                    </div>
-                    <button className="hud-secondary-btn" onClick={() => handleJoinChallenge(challenge.id)}>
-                      Join
-                    </button>
-                  </div>
-                ))}
-                {!challenges.length && <div className="community-empty">No challenges yet.</div>}
-              </div>
-              <div className="community-forum-actions">
-                <button className="hud-secondary-btn" onClick={() => setCreateChallengeOpen(true)}>
-                  Create challenge
-                </button>
-              </div>
-            </div>
-          )}
-
-        </aside>
 
         {/* main feed area for the active tab content, */}
         {/* shows threads, group chat, or challenges, */}
@@ -1333,37 +1960,134 @@ export default function CommunityHub({ userId }) {
           {activeTab === "forums" && (
             <div className="community-panel">
               <div className="community-panel-title">Forum Threads</div>
-              <div className="community-thread-toolbar">
-                <div className="community-thread-label">Sort</div>
-                <select
-                  className="community-thread-select"
-                  value={threadSort}
-                  onChange={(event) => setThreadSort(event.target.value)}
+              <div className="community-forum-topbar">
+                <input
+                  className="community-search"
+                  placeholder="Search threads"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                <button
+                  className="studio-back community-cta-btn community-primary-btn"
+                  onClick={() => {
+                    const defaultForum =
+                      activeForum ||
+                      (forums[0]?.topic_slug ?? forumTracks[0]?.id ?? "");
+                    setNewPostForum(defaultForum);
+                    setCreatePostOpen(true);
+                  }}
                 >
-                  <option value="newest">Newest</option>
-                  <option value="top">Top</option>
-                  <option value="active">Most active</option>
-                </select>
+                  New post
+                </button>
               </div>
-              {sortedForumPosts.map((post) => {
-                const replies = postReplies[post.id] || [];
-                const replyTree = buildReplyTree(replies);
+              <div className="community-tabs community-topic-tabs">
+                {filteredForums.map((forum) => {
+                  const slug = forum.topic_slug || forum.id;
+                  const count = forumThreadCountsBySlug[slug] || 0;
+                  return (
+                    <button
+                      key={forum.id}
+                      className={`community-tab ${activeForum === slug ? "active" : ""}`}
+                      onClick={() => {
+                        setActiveForum(slug);
+                        loadForumPosts(slug);
+                      }}
+                      type="button"
+                    >
+                      <span>{forum.title}</span>
+                      <span className="community-forum-count-pill">
+                        {count} {count === 1 ? "thread" : "threads"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="community-thread-toolbar">
+                <div className="community-thread-toolbar-left">
+                  <div className="community-thread-label">Sort</div>
+                  <select
+                    className="community-thread-select"
+                    value={threadSort}
+                    onChange={(event) => setThreadSort(event.target.value)}
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="top">Top</option>
+                    <option value="active">Most active</option>
+                  </select>
+                </div>
+                <div className="community-thread-count">
+                  {filteredThreadPosts.length} {filteredThreadPosts.length === 1 ? "thread" : "threads"}
+                </div>
+              </div>
+              <div className="community-thread-list">
+              {filteredThreadPosts.map((post) => {
+                const usingGlobalForumSearch = Boolean(search.trim());
+                const repliesByPost = usingGlobalForumSearch ? globalPostReplies : postReplies;
+                const replies = repliesByPost[post.id] || [];
                 const author = profiles[post.created_by] || post.created_by || "Anonymous";
-                const isCollapsed = collapsedThreads[post.id];
+                const forumTitle = forumTitleById[post.forum_id];
                 const isMostActive = post.id === mostActiveId;
+                const previewText = post.body || "No details yet.";
+                const isExpanded = Boolean(expandedPostIds[post.id]);
+                const isLong = previewText.length > 220;
+                const isPinned = Boolean(pinnedThreadIds[post.id]);
+                const isRecent = Boolean(recentThreadIds[post.id]);
                 return (
-                  <div key={post.id} className="community-feed-card">
+                  <div
+                    key={post.id}
+                    className={`community-feed-card community-thread-card ${isRecent ? "new-thread" : ""}`}
+                  >
                     <div className="community-feed-title">
-                      {post.title}
+                      <button
+                        className="community-thread-open-link"
+                        type="button"
+                        onClick={() => {
+                          setActiveThreadId(post.id);
+                          navigate(threadPath(post.id));
+                        }}
+                      >
+                        {post.title}
+                      </button>
                       {isMostActive && <span className="community-thread-badge">Most active</span>}
+                      {isPinned && <span className="community-thread-badge pinned">Pinned</span>}
+                      {isRecent && <span className="community-thread-badge fresh">New</span>}
                     </div>
-                    <div className="community-feed-sub">{post.body || "No details yet."}</div>
+                    <div className={`community-feed-sub community-thread-preview ${isExpanded ? "expanded" : "collapsed"}`}>
+                      {previewText}
+                    </div>
+                    {isLong && (
+                      <button
+                        type="button"
+                        className="community-readmore-btn"
+                        onClick={() =>
+                          setExpandedPostIds((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
+                        }
+                      >
+                        {isExpanded ? "Show less" : "Read more"}
+                      </button>
+                    )}
                     <div className="community-thread-meta">
-                      {author} - {formatTime(post.created_at)} - {replies.length} replies
+                      <span className="community-meta-pill community-meta-author">{author}</span>
+                      <span className="community-meta-pill">{formatTime(post.created_at)}</span>
+                      <span className="community-meta-pill">{replies.length} replies</span>
+                      {usingGlobalForumSearch && forumTitle && (
+                        <span className="community-meta-pill">{forumTitle}</span>
+                      )}
                     </div>
                     <div className="community-thread-actions">
                       <button
-                        className="hud-secondary-btn"
+                        className="studio-back community-action-btn"
+                        type="button"
+                        onClick={() => {
+                          setActiveThreadId(post.id);
+                          navigate(threadPath(post.id));
+                        }}
+                      >
+                        Open thread
+                      </button>
+                      <button
+                        className="studio-back community-action-btn"
+                        type="button"
                         onClick={() => {
                           setActiveThreadId(post.id);
                           setNewReply({ body: "", parentId: null });
@@ -1372,99 +2096,149 @@ export default function CommunityHub({ userId }) {
                       >
                         Reply
                       </button>
-                      <button className="hud-secondary-btn" onClick={() => toggleCollapse(post.id)}>
-                        {isCollapsed ? "Expand" : "Collapse"}
+                      <button
+                        className="studio-back community-action-btn"
+                        type="button"
+                        onClick={() => togglePinnedThread(post.id)}
+                      >
+                        {isPinned ? "Unpin" : "Pin"}
                       </button>
                       {Number(userId) === Number(post.created_by) && (
-                        <button className="hud-secondary-btn danger" onClick={() => handleDeletePost(post.id)}>
+                        <button className="hud-secondary-btn danger" type="button" onClick={() => handleDeletePost(post.id)}>
                           Delete
                         </button>
                       )}
                     </div>
-                    <div className="community-reaction-row">
-                      {reactionOptions.map((option) => {
-                        const key = `post:${post.id}-${option.id}`;
-                        const count = reactionCounts[key] || 0;
-                        const active = Boolean(userReactions[key]);
-                        return (
-                          <button
-                            key={option.id}
-                            className={`community-reaction-btn ${active ? "active" : ""}`}
-                            onClick={() => handleReact({ postId: post.id, reaction: option.id })}
-                          >
-                            {option.label} {count}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {!isCollapsed && replyTree.length > 0 && (
-                      <div className="community-replies">{renderReplies(replyTree, 0, post.id)}</div>
-                    )}
-                    {isCollapsed && <div className="community-empty">Thread collapsed.</div>}
                   </div>
                 );
               })}
-              {!forumPosts.length && (
-                <div className="community-empty">No posts yet. Start the first thread.</div>
-              )}
+              </div>
+              {!filteredThreadPosts.length &&
+                renderEmptyState({
+                  icon: "CHAT",
+                  title: search.trim() ? "No matching threads" : "No forum threads yet",
+                  sub: search.trim()
+                    ? `Nothing matched "${search.trim()}". Try another keyword.`
+                    : "Start the first thread and spark the conversation.",
+                  ctaLabel: search.trim() ? null : "Start first thread",
+                  onCta: search.trim()
+                    ? null
+                    : () => {
+                        const defaultForum =
+                          activeForum ||
+                          (forums[0]?.topic_slug ?? forumTracks[0]?.id ?? "");
+                        setNewPostForum(defaultForum);
+                        setCreatePostOpen(true);
+                      }
+                })}
             </div>
           )}
 
-          {/* group chat panel for the selected group, */}
-          {/* shows join/send actions based on membership, */}
-          {/* displays the message list for the active group, */}
-          {/* and includes a perks summary below */}
+
+          {/* groups discovery + joined sections */}
+          {/* discover list comes first */}
+          {/* joined groups are shown below */}
+          {/* join routes into room immediately */}
           {activeTab === "groups" && (
             <div className="community-panel">
-              <div className="community-panel-title">
-                {activeGroup?.name ? `Group Chat - ${activeGroup.name}` : "Group Chat"}
-              </div>
-              {activeGroupId ? (
-                <>
-                  {!isMember && (
-                    <div className="community-chat-actions">
-                      <button className="hud-secondary-btn" onClick={() => handleJoinGroup(activeGroupId)}>
-                        Join group
-                      </button>
-                    </div>
-                  )}
-                  {isMember && (
-                    <div className="community-chat-actions">
-                      <button className="hud-secondary-btn" onClick={() => setCreateGroupPostOpen(true)}>
-                        Send message
-                      </button>
-                    </div>
-                  )}
-                  <div className="community-chat-list">
-                    {groupPosts.map((post) => (
-                      <div key={post.id} className="community-chat-message">
-                        <div className="community-chat-body">{post.body}</div>
-                        <div className="community-chat-meta">
-                          {profiles[post.created_by] || post.created_by || "Anonymous"} - {formatTime(post.created_at)}
-                        </div>
+              <div className="community-panel-title">Find Groups</div>
+              <input
+                className="community-search"
+                placeholder="Search groups (e.g. Keto Diet Group)"
+                value={groupSearch}
+                onChange={(event) => setGroupSearch(event.target.value)}
+              />
+
+              <div className="community-panel-title">Discover Groups</div>
+              <div className="community-scroll-list community-group-list community-group-square-grid">
+                {discoverGroups.map((group) => {
+                  const members = groupMemberCounts[group.id] || 0;
+                  const lastActive = groupLastActive[group.id];
+                  return (
+                    <div key={group.id} className="community-forum-item community-group-square">
+                      <div className="community-forum-title">{group.name}</div>
+                      <div className="community-group-meta-line">
+                        <span className="community-meta-pill">{members} members</span>
+                        <span className="community-meta-pill">{groupPrivacyLabel(group.privacy)}</span>
                       </div>
-                    ))}
-                    {!groupPosts.length && (
-                      <div className="community-empty">
-                        {isMember ? "No messages yet. Start the chat." : "Join the group to see the chat."}
+                      <div className="community-forum-sub">{group.goal || "Community group"}</div>
+                      <div className="community-group-activity-row">
+                        <span className={`community-notification-dot mini ${lastActive ? "" : "idle"}`} />
+                        <span>{lastActive ? `Active ${formatTime(lastActive)}` : "No chat activity yet"}</span>
                       </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="community-empty">Select a group to open the chat.</div>
-              )}
-              <div className="community-panel-title" style={{ marginTop: 16 }}>
-                Perks
+                      <div className="community-group-item-actions">
+                        <button
+                          type="button"
+                          className="studio-back community-cta-btn community-group-open-btn"
+                          onClick={() => handleJoinGroup(group.id, true)}
+                        >
+                          Join group
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="community-perks">
-                <div>Weekly accountability pings</div>
-                <div>Shared goal tracking</div>
-                <div>Group-only challenges</div>
+              {!discoverGroups.length &&
+                renderEmptyState({
+                  icon: "👥",
+                  title: "No groups found",
+                  sub: "Try a different search or create a new group.",
+                  ctaLabel: "Create group",
+                  onCta: () => setCreateGroupOpen(true)
+                })}
+
+              <div className="community-panel-title">Joined Groups</div>
+              <div className="community-scroll-list community-group-list community-group-square-grid">
+                {joinedGroups.map((group) => {
+                  const members = groupMemberCounts[group.id] || 0;
+                  const lastActive = groupLastActive[group.id];
+                  return (
+                    <div
+                      key={group.id}
+                      className={`community-forum-item community-group-square ${activeGroupId === group.id ? "active" : ""}`}
+                    >
+                      <div className="community-forum-title">{group.name}</div>
+                      <div className="community-group-meta-line">
+                        <span className="community-meta-pill">{members} members</span>
+                        <span className="community-meta-pill">{groupPrivacyLabel(group.privacy)}</span>
+                      </div>
+                      <div className="community-forum-sub">{group.goal || "Community group"}</div>
+                      <div className="community-group-activity-row">
+                        <span className={`community-notification-dot mini ${lastActive ? "" : "idle"}`} />
+                        <span>{lastActive ? `Active ${formatTime(lastActive)}` : "No chat activity yet"}</span>
+                      </div>
+                      <div className="community-group-item-actions">
+                        <button
+                          type="button"
+                          className="studio-back community-cta-btn community-primary-btn community-group-open-btn"
+                          onClick={() => {
+                            setActiveGroupId(group.id);
+                            navigate(groupRoomPath(group.id));
+                          }}
+                        >
+                          Open room
+                        </button>
+                        <button
+                          type="button"
+                          className="studio-back community-cta-btn community-group-open-btn"
+                          onClick={() => handleLeaveGroup(group.id)}
+                        >
+                          Leave
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              {!joinedGroups.length &&
+                renderEmptyState({
+                  icon: "👥",
+                  title: "No joined groups yet",
+                  sub: "Join a group above and it will appear here."
+                })}
             </div>
           )}
-
           {/* challenge list panel with join CTAs, */}
           {/* shows challenge metadata and tags, */}
           {/* encourages participation via simple buttons, */}
@@ -1472,25 +2246,58 @@ export default function CommunityHub({ userId }) {
           {activeTab === "challenges" && (
             <div className="community-panel">
               <div className="community-panel-title">Weekly Challenges</div>
-              {challenges.map((challenge) => (
-                <div key={challenge.id} className="community-feed-card">
-                  <div className="community-feed-title">{challenge.title}</div>
-                  <div className="community-feed-sub">
-                    {challenge.type || "challenge"} - {challenge.duration_days || 7} days - Target{" "}
-                    {challenge.target_value || "--"}
+              {challenges.map((challenge) => {
+                const type = String(challenge.type || "distance").toLowerCase();
+                const typeMeta = challengeTypeMeta[type] || { label: "Challenge", icon: "GO" };
+                const participants = challengeParticipantCounts[challenge.id] || 0;
+                const targetValue = Number(challenge.target_value || 0);
+                const myProgress = Number(challengeMyProgress[challenge.id] || 0);
+                const completion = targetValue > 0 ? Math.min((myProgress / targetValue) * 100, 100) : 0;
+                const joined = joinedChallengeIds.has(Number(challenge.id));
+                const createdAtMs = Date.parse(challenge.created_at || "");
+                const durationDays = Number(challenge.duration_days || 7);
+                const elapsedDays =
+                  Number.isNaN(createdAtMs) ? 0 : Math.floor((Date.now() - createdAtMs) / 86400000);
+                const daysRemaining = Math.max(durationDays - elapsedDays, 0);
+                return (
+                  <div key={challenge.id} className="community-feed-card community-challenge-card">
+                    <div className="community-challenge-head">
+                      <div className="community-challenge-type-icon" aria-hidden="true">{typeMeta.icon}</div>
+                      <div>
+                        <div className="community-feed-title">{challenge.title}</div>
+                        <div className="community-feed-sub">
+                          {typeMeta.label} challenge - target {challenge.target_value || "--"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="community-challenge-stats">
+                      <span className="community-meta-pill">{participants} joined</span>
+                      <span className="community-meta-pill">{daysRemaining} days left</span>
+                      <span className="community-meta-pill">You: {myProgress || 0}</span>
+                    </div>
+                    <div className="community-challenge-progress">
+                      <div className="community-challenge-progress-fill" style={{ width: `${completion}%` }} />
+                    </div>
+                    <div className="community-tags">
+                      <span>{typeMeta.label}</span>
+                      <span>{durationDays} days</span>
+                    </div>
+                    <button
+                      className="studio-back community-cta-btn"
+                      onClick={() => handleJoinChallenge(challenge.id)}
+                      disabled={joined}
+                    >
+                      {joined ? "Joined" : "Join challenge"}
+                    </button>
                   </div>
-                  <div className="community-tags">
-                    <span>{challenge.type || "challenge"}</span>
-                    <span>{challenge.duration_days || 7} days</span>
-                  </div>
-                  <button className="hud-secondary-btn" onClick={() => handleJoinChallenge(challenge.id)}>
-                    Join challenge
-                  </button>
-                </div>
-              ))}
-              {!challenges.length && (
-                <div className="community-empty">No challenges yet. Create the first one.</div>
-              )}
+                );
+              })}
+              {!challenges.length &&
+                renderEmptyState({
+                  icon: "🏁",
+                  title: "No challenges yet",
+                  sub: "Create the first challenge and get people moving."
+                })}
             </div>
           )}
 
@@ -1498,140 +2305,153 @@ export default function CommunityHub({ userId }) {
           {/* highlights group + friend counts at a glance, */}
           {/* provides quick CTAs to create or add, */}
           {/* and anchors the friends list below */}
-          <div className="community-panel">
-            <div className="community-panel-title">Your Circle</div>
-            <div className="community-circle-grid">
-              <div className="community-circle-card">
-                <div className="community-circle-title">Accountability Groups</div>
-                <div className="community-circle-sub">{memberships.length} groups joined</div>
-                <button className="hud-secondary-btn" onClick={() => setCreateGroupOpen(true)}>
-                  Create group
-                </button>
-              </div>
-              <div className="community-circle-card">
-                <div className="community-circle-title">
-                  Friends List
-                  {unreadCount > 0 && <span className="community-notification-pill">{unreadCount}</span>}
-                </div>
-                <div className="community-circle-sub">{friends.length} connections</div>
-                <button className="hud-secondary-btn" onClick={() => setAddFriendOpen(true)}>
-                  Add friends
-                </button>
-              </div>
-              <div className="community-circle-card">
-                <div className="community-circle-title">Group Chats</div>
-                <div className="community-circle-sub">Make a private chat for your crew.</div>
-                <button className="hud-secondary-btn">Coming soon</button>
-              </div>
-            </div>
-            {/* friends list with status + actions, */}
-            {/* shows incoming/outgoing/accepted states, */}
-            {/* exposes accept/reject/message buttons, */}
-            {/* and renders an empty state when none exist */}
-            <div className="community-friends-list">
-              {friends.map((friend) => {
-                const status = getFriendStatus(friend);
-                const label = buildFriendLabel(friend);
-                const otherId = friend.user_id === Number(userId) ? friend.friend_user_id : friend.user_id;
-                const hasUnread = getFriendUnread(friend);
-                return (
-                  <div key={friend.id} className="community-friend-card">
-                    <div>
-                      <div className="community-friend-title-row">
-                        <div className="community-friend-title">{label}</div>
-                        {hasUnread && <span className="community-notification-dot" />}
-                      </div>
-                      <div className="community-friend-sub">
-                        {buildFriendMeta(friend)}
-                      </div>
-                      <div className="community-friend-sub">
-                        {status === "accepted" ? "Connected" : status === "outgoing" ? "Request sent" : "Request received"}
-                      </div>
-                    </div>
-                    <div className="community-friend-actions">
-                      {status === "incoming" && (
-                        <>
-                          <button className="hud-secondary-btn" onClick={() => handleAcceptFriend(friend)}>
-                            Accept
-                          </button>
-                          <button className="hud-secondary-btn danger" onClick={() => handleRejectFriend(friend)}>
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {status === "accepted" && (
-                        <button
-                          className="hud-secondary-btn"
-                          onClick={() => {
-                            setSelectedFriendId(otherId);
-                            loadFriendMessages(otherId);
-                          }}
-                        >
-                          Message
-                          {hasUnread && <span className="community-notification-dot mini" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {!friends.length && (
-                <div className="community-empty">No connections yet. Add a friend to start.</div>
-              )}
-            </div>
-            {/* private chat panel for the selected friend, */}
-            {/* shows message history + composer, */}
-            {/* updates in realtime via subscriptions, */}
-            {/* can be closed to return to the list */}
-            {selectedFriendId && (
-              <div className="community-friend-chat">
-                <div className="community-panel-title">Private Chat</div>
-                <div className="community-friend-chat-head">
-                  <div className="community-friend-title">
-                    {profiles[selectedFriendId] || `User ${selectedFriendId}`}
-                  </div>
-                  <button
-                    className="hud-secondary-btn"
-                    onClick={() => {
-                      setSelectedFriendId(null);
-                      setFriendMessages([]);
-                    }}
-                  >
-                    Close
+          {activeTab === "circle" && (
+            <div className="community-panel">
+              <div className="community-panel-title">Your Circle</div>
+              <div className="community-circle-grid">
+                <div className="community-circle-card">
+                  <div className="community-circle-title">Accountability Groups</div>
+                  <div className="community-circle-sub">{memberships.length} groups joined</div>
+                  <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
+                    Create group
                   </button>
                 </div>
-                <div className="community-friend-chat-list">
-                  {friendMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`community-friend-chat-bubble ${
-                        Number(msg.user_id) === Number(userId) ? "me" : "them"
-                      }`}
-                    >
-                      <div>{msg.body}</div>
-                      <div className="community-chat-meta">{formatTime(msg.created_at)}</div>
+                <div className="community-circle-card">
+                  <div className="community-circle-title">
+                    Friends List
+                    {unreadCount > 0 && <span className="community-notification-pill">{unreadCount}</span>}
+                  </div>
+                  <div className="community-circle-sub">{friends.length} connections</div>
+                  <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
+                    Add friends
+                  </button>
+                </div>
+              </div>
+              {/* friends list with status + actions, */}
+              {/* shows incoming/outgoing/accepted states, */}
+              {/* exposes accept/reject/message buttons, */}
+              {/* and renders an empty state when none exist */}
+              <div className="community-friends-list">
+                {friends.map((friend) => {
+                  const status = getFriendStatus(friend);
+                  const label = buildFriendLabel(friend);
+                  const otherId = friend.user_id === Number(userId) ? friend.friend_user_id : friend.user_id;
+                  const hasUnread = getFriendUnread(friend);
+                  return (
+                    <div key={friend.id} className="community-friend-card">
+                      <div>
+                        <div className="community-friend-title-row">
+                          <div className="community-friend-title">{label}</div>
+                          {hasUnread && <span className="community-notification-dot" />}
+                        </div>
+                        <div className="community-friend-sub">
+                          {buildFriendMeta(friend)}
+                        </div>
+                        <div className="community-friend-sub">
+                          {status === "accepted" ? "Connected" : status === "outgoing" ? "Request sent" : "Request received"}
+                        </div>
+                      </div>
+                      <div className="community-friend-actions">
+                        {status === "incoming" && (
+                          <>
+                            <button className="studio-back community-cta-btn" onClick={() => handleAcceptFriend(friend)}>
+                              Accept
+                            </button>
+                            <button className="hud-secondary-btn danger" onClick={() => handleRejectFriend(friend)}>
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {status === "accepted" && (
+                          <>
+                            <button
+                              className="studio-back community-cta-btn"
+                              onClick={() => {
+                                setSelectedFriendId(otherId);
+                                loadFriendMessages(otherId);
+                              }}
+                            >
+                              Message
+                              {hasUnread && <span className="community-notification-dot mini" />}
+                            </button>
+                            <button className="hud-secondary-btn danger" onClick={() => handleRemoveFriend(friend)}>
+                              Remove
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {!friendMessages.length && (
-                    <div className="community-empty">No messages yet. Say hello.</div>
+                  );
+                })}
+                {!friends.length &&
+                  renderEmptyState({
+                    icon: "🤝",
+                    title: "No connections yet",
+                    sub: "Add a friend to start private chat."
+                  })}
+              </div>
+              {/* private chat panel for the selected friend, */}
+              {/* shows message history + composer, */}
+              {/* updates in realtime via subscriptions, */}
+              {/* can be closed to return to the list */}
+              {selectedFriendId && (
+                <div className="community-friend-chat">
+                  <div className="community-panel-title">Private Chat</div>
+                  <div className="community-friend-chat-head">
+                    <div className="community-friend-title">
+                      {profiles[selectedFriendId] || `User ${selectedFriendId}`}
+                    </div>
+                    <button
+                      className="studio-back community-cta-btn"
+                      onClick={() => {
+                        setSelectedFriendId(null);
+                        setFriendMessages([]);
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="community-friend-chat-list" ref={friendChatListRef}>
+                    {friendMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`community-friend-chat-bubble ${
+                          Number(msg.user_id) === Number(userId) ? "me" : "them"
+                        }`}
+                      >
+                        <div>{msg.body}</div>
+                        <div className="community-chat-meta">{formatTime(msg.created_at)}</div>
+                      </div>
+                    ))}
+                    {!friendMessages.length &&
+                      renderEmptyState({
+                        icon: "💬",
+                        title: "No messages yet",
+                        sub: "Say hello and kick things off."
+                      })}
+                  </div>
+                  <div className="community-friend-chat-input">
+                    <input
+                      className="community-modal-input"
+                      placeholder="Write a message"
+                      value={friendMessageDraft}
+                      onChange={(event) => setFriendMessageDraft(event.target.value)}
+                    />
+                    <button className="studio-back community-cta-btn" onClick={handleSendFriendMessage}>
+                      Send
+                    </button>
+                  </div>
+                  {friendMessageDraft.trim().length > 0 && (
+                    <div className="community-typing-indicator">Typing...</div>
                   )}
                 </div>
-                <div className="community-friend-chat-input">
-                  <input
-                    className="community-modal-input"
-                    placeholder="Write a message"
-                    value={friendMessageDraft}
-                    onChange={(event) => setFriendMessageDraft(event.target.value)}
-                  />
-                  <button className="hud-secondary-btn" onClick={handleSendFriendMessage}>
-                    Send
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
+        </>
+      )}
 
       {/* create group modal with name/goal/privacy fields, */}
       {/* opened from quick actions or group panel, */}
@@ -1663,10 +2483,10 @@ export default function CommunityHub({ userId }) {
               <option value="open">Open</option>
             </select>
             <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setCreateGroupOpen(false)}>
+              <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(false)}>
                 Cancel
               </button>
-              <button className="hud-secondary-btn" onClick={handleCreateGroup}>
+              <button className="studio-back community-cta-btn" onClick={handleCreateGroup}>
                 Create
               </button>
             </div>
@@ -1710,10 +2530,10 @@ export default function CommunityHub({ userId }) {
               onChange={(event) => setNewChallenge((prev) => ({ ...prev, durationDays: event.target.value }))}
             />
             <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setCreateChallengeOpen(false)}>
+              <button className="studio-back community-cta-btn" onClick={() => setCreateChallengeOpen(false)}>
                 Cancel
               </button>
-              <button className="hud-secondary-btn" onClick={handleCreateChallenge}>
+              <button className="studio-back community-cta-btn" onClick={handleCreateChallenge}>
                 Create
               </button>
             </div>
@@ -1756,10 +2576,10 @@ export default function CommunityHub({ userId }) {
               onChange={(event) => setNewPost((prev) => ({ ...prev, body: event.target.value }))}
             />
             <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setCreatePostOpen(false)}>
+              <button className="studio-back community-cta-btn" onClick={() => setCreatePostOpen(false)}>
                 Cancel
               </button>
-              <button className="hud-secondary-btn" onClick={handleCreatePost}>
+              <button className="studio-back community-cta-btn" onClick={handleCreatePost}>
                 Post
               </button>
             </div>
@@ -1772,7 +2592,7 @@ export default function CommunityHub({ userId }) {
       {/* posts the reply then refreshes the thread list, */}
       {/* closes on cancel or submit */}
       {createReplyOpen && (
-        <div className="community-modal-backdrop">
+        <div className="community-modal-backdrop community-modal-backdrop-top">
           <div className="community-modal">
             <div className="community-modal-title">Reply</div>
             <textarea
@@ -1782,37 +2602,11 @@ export default function CommunityHub({ userId }) {
               onChange={(event) => setNewReply((prev) => ({ ...prev, body: event.target.value }))}
             />
             <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setCreateReplyOpen(false)}>
+              <button className="studio-back community-cta-btn" onClick={() => setCreateReplyOpen(false)}>
                 Cancel
               </button>
-              <button className="hud-secondary-btn" onClick={handleCreateReply}>
+              <button className="studio-back community-cta-btn" onClick={handleCreateReply}>
                 Reply
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* group message modal for active group chat, */}
-      {/* sends a message to the selected group, */}
-      {/* reloads group chat after posting, */}
-      {/* closes on cancel or send */}
-      {createGroupPostOpen && (
-        <div className="community-modal-backdrop">
-          <div className="community-modal">
-            <div className="community-modal-title">Send group message</div>
-            <textarea
-              className="community-modal-textarea"
-              placeholder="Message"
-              value={newGroupPost.body}
-              onChange={(event) => setNewGroupPost((prev) => ({ ...prev, body: event.target.value }))}
-            />
-            <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setCreateGroupPostOpen(false)}>
-                Cancel
-              </button>
-              <button className="hud-secondary-btn" onClick={handleCreateGroupPost}>
-                Send
               </button>
             </div>
           </div>
@@ -1834,10 +2628,10 @@ export default function CommunityHub({ userId }) {
               onChange={(event) => setNewFriendId(event.target.value)}
             />
             <div className="community-modal-actions">
-              <button className="hud-secondary-btn" onClick={() => setAddFriendOpen(false)}>
+              <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(false)}>
                 Cancel
               </button>
-              <button className="hud-secondary-btn" onClick={handleAddFriend}>
+              <button className="studio-back community-cta-btn" onClick={handleAddFriend}>
                 Send request
               </button>
             </div>

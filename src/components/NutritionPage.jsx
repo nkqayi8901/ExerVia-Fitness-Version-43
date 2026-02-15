@@ -1,6 +1,9 @@
 // src/components/NutritionPage.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import { emptyDay, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
+import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -180,6 +183,7 @@ async function mealdbSearchByName(term) {
 }
 
 export default function NutritionPage() {
+  const navigate = useNavigate();
   const storedId = localStorage.getItem("exervia_user_id");
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const pageMode = storedMode === "gym" ? "gym" : "athlete";
@@ -199,6 +203,7 @@ export default function NutritionPage() {
   const [offQuery, setOffQuery] = useState("");
   const [offResults, setOffResults] = useState([]);
   const [offLoading, setOffLoading] = useState(false);
+  const [saveBanner, setSaveBanner] = useState("");
 
   // Persist protocol choices
   useEffect(() => {
@@ -416,6 +421,38 @@ export default function NutritionPage() {
     }
   };
 
+  const handleSaveMealToLogs = async () => {
+    if (!activeMeal?.strMeal || !storedId) return;
+
+    const mealName = String(activeMeal.strMeal).trim();
+    const dayKey = getTodayLogKey();
+    const local = getLogsStore(storedId);
+    const currentDay = local.byDate?.[dayKey] || emptyDay();
+    const alreadyLogged = (currentDay.meals || []).some(
+      (entry) => String(entry?.text || "").trim().toLowerCase() === mealName.toLowerCase()
+    );
+
+    const nextDay = alreadyLogged
+      ? currentDay
+      : {
+          ...currentDay,
+          meals: [...(currentDay.meals || []), { id: `meal-${Date.now()}`, text: mealName }],
+        };
+
+    saveLogsStore(storedId, {
+      ...local,
+      byDate: {
+        ...(local.byDate || {}),
+        [dayKey]: nextDay,
+      },
+    });
+
+    await Promise.all([saveMealToLibrary(storedId, mealName, "recipe"), upsertDailyLog(storedId, dayKey, nextDay)]);
+
+    setSaveBanner(`${mealName} saved to Logs.`);
+    navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
+  };
+
   // initial load
   useEffect(() => {
     fetchMealOfDay();
@@ -442,9 +479,16 @@ export default function NutritionPage() {
       <div className="page-shell">
         <div className="page-header">
           <div>
+            <button
+              className="studio-back"
+              onClick={() => navigate(pageMode === "athlete" ? `/athlete/${storedId}` : `/gym/${storedId}`)}
+              type="button"
+            >
+              {'<- Back'}
+            </button>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
-              Pick a protocol → Pick a time → Pick a preference → get meals
+              Pick a protocol → Pick a time → Pick a preference → Get meals
             </p>
           </div>
 
@@ -507,7 +551,7 @@ export default function NutritionPage() {
                 ))}
               </div>
               <div className="hud-dim" style={{ marginTop: 10 }}>
-                Tip: Change settings → hit <b>Rebuild Protocol</b>.
+                Tip: Change settings → hit <b>Generate New Meals</b>.
               </div>
             </div>
 
@@ -595,17 +639,25 @@ export default function NutritionPage() {
                     ) : null}
                   </div>
                 </div>
-
-                <button
-                  className="hud-secondary-btn"
-                  onClick={() => {
-                    setActiveMeal(null);
-                    setOffResults([]);
-                    setOffQuery("");
-                  }}
-                >
-                  ✕ Close
-                </button>
+                <div className="fuel-modal-actions">
+                  <button
+                    className="studio-back fuel-save-btn"
+                    onClick={handleSaveMealToLogs}
+                    type="button"
+                  >
+                    Save to logs
+                  </button>
+                  <button
+                    className="hud-secondary-btn"
+                    onClick={() => {
+                      setActiveMeal(null);
+                      setOffResults([]);
+                      setOffQuery("");
+                    }}
+                  >
+                    ✕ Close
+                  </button>
+                </div>
               </div>
 
               {detailLoading ? (
@@ -702,7 +754,13 @@ export default function NutritionPage() {
         <div className="hud-dim" style={{ marginTop: 12 }}>
           Data sources: TheMealDB (recipes) + OpenFoodFacts (packaged nutrition).
         </div>
+        {saveBanner ? (
+          <div className="studio-banner success" style={{ marginTop: 12 }}>
+            {saveBanner}
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
+

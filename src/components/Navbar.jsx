@@ -8,6 +8,17 @@ import ModeNav from "./ModeNav";
 
 export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = null }) {
   const [userState, setUserState] = useState(null);
+  const xp = userState?.xp ?? 0;
+  const level = userState?.level ?? 1;
+  const rank = userState?.rank ?? "E";
+  const safeLevel = Math.max(1, level);
+  const levelStartXp = 100 * Math.pow(safeLevel - 1, 2);
+  const nextLevelXp = 100 * Math.pow(safeLevel, 2);
+  const levelSpan = Math.max(1, nextLevelXp - levelStartXp);
+  const levelProgressPct = Math.max(
+    0,
+    Math.min(100, Math.round(((xp - levelStartXp) / levelSpan) * 100))
+  );
 
 // fetchUserState manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -62,17 +73,26 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
       )}
 
       <div className="hud-stats">
-        <div className="hud-pill">
-          <span className="hud-dim">LV</span>
-          <span className="hud-strong">{userState?.level ?? 1}</span>
+        <div className="hud-stats-row">
+          <div className="hud-pill">
+            <span className="hud-dim">LV</span>
+            <span className="hud-strong">{level}</span>
+          </div>
+          <div className="hud-pill">
+            <span className="hud-dim">RANK</span>
+            <span className="hud-strong">{rank}</span>
+          </div>
+          <div className="hud-pill">
+            <span className="hud-dim">XP</span>
+            <span className="hud-strong">{xp}</span>
+          </div>
         </div>
-        <div className="hud-pill">
-          <span className="hud-dim">RANK</span>
-          <span className="hud-strong">{userState?.rank ?? 'E'}</span>
-        </div>
-        <div className="hud-pill">
-          <span className="hud-dim">XP</span>
-          <span className="hud-strong">{userState?.xp ?? 0}</span>
+        <div className="hud-progress-inline" aria-label={`Level progress ${levelProgressPct}%`}>
+          <span className="hud-progress-lv">LV {safeLevel}</span>
+          <div className="hud-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelProgressPct}>
+            <div className="hud-progress-fill" style={{ width: `${levelProgressPct}%` }} />
+          </div>
+          <span className="hud-progress-lv">LV {safeLevel + 1}</span>
         </div>
       </div>
     </nav>

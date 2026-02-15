@@ -5,6 +5,7 @@ import { recalcUserState } from "../services/stateEngine";
 
 import Navbar from "./Navbar";
 import JournalPage from "./JournalPage";
+import LogsPage from "./LogsPage";
 import AthleteTrainingTab from "./AthleteTrainingTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
@@ -83,7 +84,7 @@ function AthleteDashboard({ profile, id, userState }) {
           <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
           <div className="page-marker">{dayMarker}</div>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/gym/${id}`)}>
+        <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
           Switch to Gym Mode
         </button>
       </div>
@@ -99,6 +100,12 @@ function AthleteDashboard({ profile, id, userState }) {
           <div className="hud-card-title">JOURNAL</div>
           <div className="hud-big">Daily Ritual</div>
           <div className="hud-dim">Mood + system readout</div>
+        </button>
+
+        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/logs`)}>
+          <div className="hud-card-title">LOGS</div>
+          <div className="hud-big">Daily Signals</div>
+          <div className="hud-dim">Weight, water, meals, training</div>
         </button>
 
         <button className="hud-card clickable" onClick={() => navigate(`/nutrition`)}>
@@ -121,13 +128,16 @@ function AthleteDashboard({ profile, id, userState }) {
       </div>
 
       <div className="quick-add-row">
-        <button className="hud-secondary-btn" onClick={() => navigate(`/athlete/${id}/training`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/training`)}>
           Log session
         </button>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/athlete/${id}/journal`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/logs`)}>
+          Open logs
+        </button>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/journal`)}>
           Open journal
         </button>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/nutrition`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
       </div>
@@ -150,20 +160,27 @@ function AthleteProfileOverview({ profile, userState }) {
   const xp = userState?.xp ?? 0;
   const level = userState?.level ?? 1;
   const rank = userState?.rank ?? "D";
-  const momentum = userState?.momentum_score ?? 0;
+  const streak = userState?.streak_days ?? 0;
   const recovery = userState?.recovery_score ?? 0;
   const fatigue = userState?.fatigue_score ?? 0;
+  const safeLevel = Math.max(1, level);
+  const levelStartXp = 100 * Math.pow(safeLevel - 1, 2);
+  const nextLevelXp = 100 * Math.pow(safeLevel, 2);
+  const levelSpan = Math.max(1, nextLevelXp - levelStartXp);
+  const xpIntoLevel = Math.max(0, xp - levelStartXp);
+  const xpRemaining = Math.max(0, nextLevelXp - xp);
+  const levelProgressPct = Math.max(0, Math.min(100, Math.round((xpIntoLevel / levelSpan) * 100)));
 
   return (
     <div className="page-shell">
       <div className="page-header">
         <div>
+          <button className="studio-back" onClick={() => navigate(backPath)} type="button">
+            {'<- Back'}
+          </button>
           <h2 className="page-title">Profile</h2>
           <p className="page-subtitle">Rank, level, and identity snapshot for {profile?.full_name || "athlete"}.</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>
-          Back
-        </button>
       </div>
       <div className="grid-3">
         <div className="hud-card">
@@ -182,9 +199,9 @@ function AthleteProfileOverview({ profile, userState }) {
           <div className="hud-dim">Last 7 days</div>
         </div>
         <div className="hud-card">
-          <div className="hud-card-title">MOMENTUM</div>
-          <div className="hud-big">{momentum}</div>
-          <div className="hud-dim">Training intensity signal</div>
+          <div className="hud-card-title">STREAK</div>
+          <div className="hud-big">{streak}</div>
+          <div className="hud-dim">Consecutive active days</div>
         </div>
         <div className="hud-card">
           <div className="hud-card-title">RECOVERY</div>
@@ -195,6 +212,18 @@ function AthleteProfileOverview({ profile, userState }) {
           <div className="hud-card-title">FATIGUE</div>
           <div className="hud-big">{fatigue}</div>
           <div className="hud-dim">Load accumulation</div>
+        </div>
+      </div>
+      <div className="hud-card profile-progress-card">
+        <div className="profile-progress-head">
+          <div className="hud-card-title">PROGRESSION</div>
+          <div className="profile-progress-level">Level {safeLevel} · Rank {rank}</div>
+        </div>
+        <div className="profile-progress-sub">
+          {xp} XP · {xpRemaining} XP to Level {safeLevel + 1}
+        </div>
+        <div className="profile-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelProgressPct}>
+          <div className="profile-progress-fill" style={{ width: `${levelProgressPct}%` }} />
         </div>
       </div>
       <div className="profile-divider" />
@@ -209,8 +238,8 @@ function AthleteProfileOverview({ profile, userState }) {
             is earned from both strength logs and training sessions.
           </p>
           <p>
-            Momentum rises with intensity and PRs. Recovery is the inverse of fatigue, and Fatigue tracks load
-            accumulation.
+            Streak rises when you perform at least one qualifying action in a day (training, journal, post, reply,
+            or reaction). Recovery is the inverse of fatigue, and Fatigue tracks load accumulation.
           </p>
           <div className="profile-explain-divider" />
         </div>
@@ -225,8 +254,7 @@ export default function AthleteMode() {
   const [userState, setUserState] = useState(null);
   const navigate = useNavigate();
   const routeLocation = useLocation();
-  const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
-  const themeMode = storedMode === "gym" ? "gym" : "athlete";
+  const themeMode = "athlete";
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -338,6 +366,7 @@ export default function AthleteMode() {
           }
         />
         <Route path="journal" element={<JournalPage mode="athlete" />} />
+        <Route path="logs" element={<LogsPage mode="athlete" />} />
         <Route path="program/*" element={<WorkoutProgram mode="athlete" />} />
         <Route
           path="profile"
@@ -346,6 +375,14 @@ export default function AthleteMode() {
         <Route
           path="community"
           element={<CommunityHub userId={id} />}
+        />
+        <Route
+          path="community/group/:groupId"
+          element={<CommunityHub userId={id} forceGroupRoom />}
+        />
+        <Route
+          path="community/thread/:threadId"
+          element={<CommunityHub userId={id} forceThreadPage />}
         />
       </Routes>
     </div>

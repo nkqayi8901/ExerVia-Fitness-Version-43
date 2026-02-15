@@ -5,7 +5,9 @@ import { recalcUserState } from "../services/stateEngine";
 
 import Navbar from "./Navbar";
 import JournalPage from "./JournalPage";
+import LogsPage from "./LogsPage";
 import StrengthProgressTab from "./StrengthProgressTab";
+import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
 // Component: GymMode - UI layout and interactions.
 // This component renders the gymmode experience and wires up its local UI state.
@@ -83,7 +85,7 @@ function GymDashboard({ profile, id, userState }) {
           <p className="page-subtitle">Welcome back, {profile.full_name}. Build the system.</p>
           <div className="page-marker">{dayMarker}</div>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/athlete/${id}`)}>
+        <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/athlete/${id}`)}>
           Switch to Athlete Mode
         </button>
       </div>
@@ -101,19 +103,25 @@ function GymDashboard({ profile, id, userState }) {
           <div className="hud-dim">Mood + system readout</div>
         </button>
 
+        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/logs`)}>
+          <div className="hud-card-title">LOGS</div>
+          <div className="hud-big">Daily Signals</div>
+          <div className="hud-dim">Weight, water, meals, training</div>
+        </button>
+
         <button className="hud-card clickable" onClick={() => navigate(`/nutrition`)}>
           <div className="hud-card-title">NUTRITION</div>
           <div className="hud-big">Fuel</div>
           <div className="hud-dim">Search + track meals</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/profile`)}>
+        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/profile`)}>
           <div className="hud-card-title">PROFILE</div>
           <div className="hud-big">Rank + Level</div>
           <div className="hud-dim">Identity, badges, progress</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/community`)}>
+        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/community`)}>
           <div className="hud-card-title">COMMUNITY</div>
           <div className="hud-big">Social</div>
           <div className="hud-dim">Groups, forums, challenges</div>
@@ -121,17 +129,113 @@ function GymDashboard({ profile, id, userState }) {
       </div>
 
       <div className="quick-add-row">
-        <button className="hud-secondary-btn" onClick={() => navigate(`/gym/${id}/progress`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/progress`)}>
           Log lift
         </button>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/gym/${id}/journal`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/logs`)}>
+          Open logs
+        </button>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/journal`)}>
           Open journal
         </button>
-        <button className="hud-secondary-btn" onClick={() => navigate(`/nutrition`)}>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
       </div>
 
+    </div>
+  );
+}
+
+function GymProfileOverview({ profile, userState }) {
+  const navigate = useNavigate();
+  const xp = userState?.xp ?? 0;
+  const level = userState?.level ?? 1;
+  const rank = userState?.rank ?? "D";
+  const streak = userState?.streak_days ?? 0;
+  const recovery = userState?.recovery_score ?? 0;
+  const fatigue = userState?.fatigue_score ?? 0;
+  const safeLevel = Math.max(1, level);
+  const levelStartXp = 100 * Math.pow(safeLevel - 1, 2);
+  const nextLevelXp = 100 * Math.pow(safeLevel, 2);
+  const levelSpan = Math.max(1, nextLevelXp - levelStartXp);
+  const xpIntoLevel = Math.max(0, xp - levelStartXp);
+  const xpRemaining = Math.max(0, nextLevelXp - xp);
+  const levelProgressPct = Math.max(0, Math.min(100, Math.round((xpIntoLevel / levelSpan) * 100)));
+
+  return (
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <button className="studio-back" onClick={() => navigate(`/gym/${profile?.id || ""}`)} type="button">
+            {"<- Back"}
+          </button>
+          <h2 className="page-title">Profile</h2>
+          <p className="page-subtitle">Rank, level, and identity snapshot for {profile?.full_name || "athlete"}.</p>
+        </div>
+      </div>
+      <div className="grid-3">
+        <div className="hud-card">
+          <div className="hud-card-title">RANK</div>
+          <div className="hud-big">{rank}</div>
+          <div className="hud-dim">From training volume + consistency</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">LEVEL</div>
+          <div className="hud-big">{level}</div>
+          <div className="hud-dim">Experience progress</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">XP</div>
+          <div className="hud-big">{xp}</div>
+          <div className="hud-dim">Last 7 days</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">STREAK</div>
+          <div className="hud-big">{streak}</div>
+          <div className="hud-dim">Consecutive active days</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">RECOVERY</div>
+          <div className="hud-big">{recovery}</div>
+          <div className="hud-dim">Readiness score</div>
+        </div>
+        <div className="hud-card">
+          <div className="hud-card-title">FATIGUE</div>
+          <div className="hud-big">{fatigue}</div>
+          <div className="hud-dim">Load accumulation</div>
+        </div>
+      </div>
+      <div className="hud-card profile-progress-card">
+        <div className="profile-progress-head">
+          <div className="hud-card-title">PROGRESSION</div>
+          <div className="profile-progress-level">Level {safeLevel} · Rank {rank}</div>
+        </div>
+        <div className="profile-progress-sub">
+          {xp} XP · {xpRemaining} XP to Level {safeLevel + 1}
+        </div>
+        <div className="profile-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelProgressPct}>
+          <div className="profile-progress-fill" style={{ width: `${levelProgressPct}%` }} />
+        </div>
+      </div>
+      <div className="profile-divider" />
+      <details className="profile-explain plain">
+        <summary className="profile-explain-head">
+          <span className="profile-explain-icon" aria-hidden="true">i</span>
+          <div className="profile-explain-title">How to read this</div>
+        </summary>
+        <div className="profile-explain-body">
+          <p>
+            Rank reflects your training volume and consistency across the last 7 days. Level grows with XP, which
+            is earned from both strength logs and training sessions.
+          </p>
+          <p>
+            Streak rises when you perform at least one qualifying action in a day (training, journal, post, reply,
+            or reaction). Recovery is the inverse of fatigue, and Fatigue tracks load accumulation.
+          </p>
+          <div className="profile-explain-divider" />
+        </div>
+      </details>
     </div>
   );
 }
@@ -237,7 +341,12 @@ export default function GymMode() {
         <Route index element={<GymDashboard profile={profile} id={id} userState={userState} />} />
         <Route path="progress" element={<StrengthProgressTab userId={id} />} />
         <Route path="journal" element={<JournalPage mode="gym" />} />
+        <Route path="logs" element={<LogsPage mode="gym" />} />
         <Route path="program/*" element={<WorkoutProgram mode="gym" />} />
+        <Route path="profile" element={<GymProfileOverview profile={profile} userState={userState} />} />
+        <Route path="community" element={<CommunityHub userId={id} />} />
+        <Route path="community/group/:groupId" element={<CommunityHub userId={id} forceGroupRoom />} />
+        <Route path="community/thread/:threadId" element={<CommunityHub userId={id} forceThreadPage />} />
       </Routes>
     </div>
   );

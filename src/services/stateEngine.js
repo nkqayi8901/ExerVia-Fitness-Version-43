@@ -17,6 +17,13 @@ export async function recalcUserState(userId) {
     .eq('user_id', userId)
     .gte('created_at', since);
 
+  const { data: activityDays } = await supabase
+    .from('daily_activity')
+    .select('activity_date')
+    .eq('user_id', userId)
+    .order('activity_date', { ascending: false })
+    .limit(120);
+
   let xp = 0;
   let fatigue = 0;
   let momentum = 0;
@@ -60,6 +67,31 @@ export async function recalcUserState(userId) {
   const fatigue_score = Math.min(Math.round(fatigue), 100);
   const recovery_score = Math.max(100 - fatigue_score, 0);
   const momentum_score = Math.round(momentum);
+  const streak_days = (() => {
+    const rows = activityDays || [];
+    if (!rows.length) return 0;
+
+    const uniqueDays = Array.from(new Set(rows.map((row) => row.activity_date))).sort().reverse();
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayKey = yesterday.toISOString().slice(0, 10);
+
+    const first = uniqueDays[0];
+    if (first !== todayKey && first !== yesterdayKey) return 0;
+
+    let streak = 1;
+    let prevDate = new Date(`${first}T00:00:00Z`);
+    for (let i = 1; i < uniqueDays.length; i += 1) {
+      const currentDate = new Date(`${uniqueDays[i]}T00:00:00Z`);
+      const diffDays = Math.round((prevDate - currentDate) / 86400000);
+      if (diffDays !== 1) break;
+      streak += 1;
+      prevDate = currentDate;
+    }
+    return streak;
+  })();
 
   // ✅ IMPORTANT: upsert ensures row exists
   await supabase
@@ -72,6 +104,7 @@ export async function recalcUserState(userId) {
       fatigue_score,
       recovery_score,
       momentum_score,
+      streak_days,
       last_activity: now.toISOString(),
       updated_at: now.toISOString(),
     }, { onConflict: 'user_id' });

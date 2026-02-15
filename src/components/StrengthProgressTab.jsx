@@ -1,6 +1,6 @@
 // src/components/StrengthProgressTab.jsx
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
@@ -159,43 +159,679 @@ const fallbackPrograms = [
 const exerciseLibrary = [
   'Bench Press',
   'Incline Dumbbell Press',
+  'Flat Dumbbell Bench Press',
+  'Incline Barbell Bench Press',
+  'Decline Bench Press',
+  'Decline Dumbbell Press',
+  'Pec Deck',
+  'Push-up (Feet Elevated)',
+  'Svend Press',
+  'Guillotine Press',
   'Overhead Press',
   'Dumbbell Shoulder Press',
+  'Arnold Press',
+  'Upright Row',
+  'Cable Lateral Raise',
+  'Rear Delt Fly (Dumbbell)',
+  'Reverse Pec Deck',
+  'Cuban Press',
+  'Bradford Press',
+  'Machine Shoulder Press',
   'Lateral Raise',
   'Front Raise',
   'Push-up',
-  'Pull-up',
+  'Pull up',
+  'Assisted Pull-up',
+  'Chin-up',
+  'Neutral-Grip Pull-up',
   'Lat Pulldown',
+  'Straight-Arm Pulldown',
   'Seated Cable Row',
   'Chest Supported Row',
   'Single-Arm Row',
+  'T Bar Row',
+  'Pendlay Row',
+  'Meadows Row',
+  'Inverted Row',
+  'Machine Row',
+  'Rack Pull',
   'Barbell Row',
   'Deadlift',
   'Romanian Deadlift',
+  'Good Morning',
+  'Single Leg Romanian Deadlift',
   'Back Squat',
   'Front Squat',
   'Goblet Squat',
+  'Hack Squat',
+  'Smith Machine Squat',
+  'Step Ups',
+  'Reverse Lunge',
+  'Curtsy Lunge',
+  'Sissy Squat',
+  'Box Squat',
+  'Cyclist Squat',
   'Leg Press',
   'Walking Lunge',
   'Bulgarian Split Squat',
+  'Lying Leg Curl',
+  'Seated Leg Curl',
+  'Nordic Hamstring Curl',
+  'Glute-Ham Raise',
   'Hip Thrust',
   'Barbell Hip Thrust',
   'Glute Bridge',
   'Cable Kickback',
   'Standing Calf Raise',
   'Seated Calf Raise',
+  'Donkey Calf Raise',
+  'Single-Leg Calf Raise',
+  'Calf Press (Leg Press)',
   'Tibialis Raise',
   'Plank',
+  'Hanging Leg Raise',
+  "Captain's Chair Leg Raise",
+  'Cable Crunch',
+  'Decline Sit-Up',
+  'Ab Wheel Rollout',
+  'Russian Twist',
+  'Bicycle Crunch',
+  'Dead Bug',
+  'Pallof Press',
   'Face Pull',
   'Biceps Curl',
+  'EZ-Bar Curl',
+  'Preacher Curl',
+  'Concentration Curl',
+  'Incline Dumbbell Curl',
+  'Cable Curl',
+  'Spider Curl',
+  'Reverse Curl',
   'Hammer Curl',
   'Triceps Pushdown',
   'Triceps Pulldown',
   'Triceps Overhead Extension',
+  'Skull Crushers',
+  'Close-Grip Bench Press',
+  'Bench Dips',
+  'Cable Overhead Triceps Extension',
+  'JM Press',
+  'Tate Press',
   'Cable Fly',
   'Dips',
-  'Farmer Carry'
+  'Farmer Carry',
+  'Sled Push',
+  'Sled Pull',
+  'Suitcase Carry',
+  'Yoke Carry',
+  'Kettlebell Swing',
+  'Battle Ropes'
 ];
+
+const exerciseGuideDefaults = {
+  'Bulgarian Split Squat': [
+    'Set rear foot on a bench and find a stable stance.',
+    'Lower until front thigh is near parallel with a tall chest.',
+    'Drive through the front heel and keep knee tracking over toes.'
+  ],
+  'Flat Dumbbell Bench Press': [
+    'Set shoulder blades and keep feet planted.',
+    'Lower dumbbells with control to chest level.',
+    'Press up and keep wrists stacked over elbows.'
+  ],
+  'Incline Barbell Bench Press': [
+    'Set the bench to a slight incline and brace.',
+    'Lower the bar to upper chest with steady control.',
+    'Press up while keeping your upper back tight.'
+  ],
+  'Decline Bench Press': [
+    'Secure your feet and brace your core.',
+    'Lower the bar to the lower chest with control.',
+    'Press up without bouncing off the chest.'
+  ],
+  'Pec Deck': [
+    'Set the seat so handles align with mid chest.',
+    'Bring elbows together without shrugging.',
+    'Control the return and keep tension on the chest.'
+  ],
+  'Back Squat': [
+    'Brace your core and keep the bar over mid foot.',
+    'Sit down and back while keeping your chest up.',
+    'Drive up by pushing the floor and keeping knees aligned.'
+  ],
+  'Deadlift': [
+    'Set your hips, grip the bar, and brace hard.',
+    'Push the floor away and keep the bar close to the body.',
+    'Lock out with hips and glutes, then lower with control.'
+  ],
+  'Rack Pull': [
+    'Set bar at knee height and brace hard.',
+    'Drive hips forward and keep bar close.',
+    'Lower under control to the pins.'
+  ],
+  'T-Bar Row': [
+    'Hinge at the hips and keep a flat back.',
+    'Row the handle toward lower ribs.',
+    'Lower with control and keep tension.'
+  ],
+  'Pendlay Row': [
+    'Start with a strong hinge and flat back.',
+    'Pull bar from floor to lower chest.',
+    'Reset on the floor each rep.'
+  ],
+  'Inverted Row': [
+    'Set body in a straight line under the bar.',
+    'Pull chest to the bar with elbows down.',
+    'Lower under control without sagging.'
+  ],
+  'Straight-Arm Pulldown': [
+    'Set hips back and keep arms straight.',
+    'Pull the bar to your thighs using lats.',
+    'Return with control without bending elbows.'
+  ],
+  'Bench Press': [
+    'Set your shoulder blades and plant your feet.',
+    'Lower the bar to mid chest with elbows at a steady angle.',
+    'Press up while keeping your upper back tight.'
+  ],
+  'Overhead Press': [
+    'Brace your core and stack ribs over hips.',
+    'Press straight up and move head through at the top.',
+    'Lower under control to the upper chest.'
+  ],
+  'Dumbbell Shoulder Press': [
+    'Start with dumbbells at shoulder height and brace.',
+    'Press up without flaring ribs.',
+    'Lower to a controlled stop at shoulder height.'
+  ],
+  'Arnold Press': [
+    'Start with palms facing you at chest level.',
+    'Press up while rotating palms forward.',
+    'Lower back down and rotate under control.'
+  ],
+  'Upright Row': [
+    'Grip bar just inside shoulder width.',
+    'Pull elbows up and out to upper chest.',
+    'Lower under control without shrugging.'
+  ],
+  'Pull-up': [
+    'Start from a dead hang with shoulders engaged.',
+    'Pull chest toward the bar with elbows down.',
+    'Lower under control to full extension.'
+  ],
+  'Assisted Pull-up': [
+    'Use band or machine for support.',
+    'Pull chest toward the bar with control.',
+    'Lower slowly to full extension.'
+  ],
+  'Chin-up': [
+    'Use an underhand grip and brace.',
+    'Pull chin over the bar with elbows down.',
+    'Lower under control to full extension.'
+  ],
+  'Push-up': [
+    'Set hands under shoulders and keep a tight plank.',
+    'Lower with elbows at a steady angle.',
+    'Press up while keeping hips level.'
+  ],
+  'Leg Press': [
+    'Set feet shoulder width on the platform.',
+    'Lower until knees are at a strong angle.',
+    'Press through the mid foot to lockout.'
+  ],
+  'Hack Squat': [
+    'Set feet mid platform and brace core.',
+    'Lower with control keeping back flat.',
+    'Drive up through the heels.'
+  ],
+  'Smith Machine Squat': [
+    'Set feet slightly forward and brace.',
+    'Lower with control and keep torso steady.',
+    'Drive up through the mid foot.'
+  ],
+  'Step-Ups': [
+    'Use a stable box and plant full foot.',
+    'Drive up through the lead leg.',
+    'Lower under control without collapsing.'
+  ],
+  'Reverse Lunge': [
+    'Step back and drop the rear knee.',
+    'Keep front knee tracking over toes.',
+    'Drive up through the front heel.'
+  ],
+  'Lying Leg Curl': [
+    'Set the pad just above the heels.',
+    'Curl up without lifting hips.',
+    'Lower with control and keep tension.'
+  ],
+  'Seated Leg Curl': [
+    'Set pad above the ankles and brace.',
+    'Curl down using hamstrings only.',
+    'Return with control to full extension.'
+  ],
+  'Nordic Hamstring Curl': [
+    'Brace core and keep hips extended.',
+    'Lower slowly using hamstrings to resist.',
+    'Push up lightly if needed to reset.'
+  ],
+  'Standing Calf Raise': [
+    'Place toes on the edge and keep legs straight.',
+    'Rise onto the balls of your feet.',
+    'Lower with control for a full stretch.'
+  ],
+  'Seated Calf Raise': [
+    'Set pad on thighs and keep feet planted.',
+    'Rise onto the balls of your feet.',
+    'Lower with control to full stretch.'
+  ],
+  'Hip Thrust': [
+    'Set upper back on a bench and brace core.',
+    'Drive hips up and squeeze glutes at the top.',
+    'Lower with control without losing tension.'
+  ],
+  'Barbell Hip Thrust': [
+    'Set the bar over hips with padding.',
+    'Drive through heels and lock out hips.',
+    'Lower with control and keep ribs down.'
+  ],
+  'Glute Bridge': [
+    'Plant feet hip width and brace core.',
+    'Drive hips up and squeeze glutes.',
+    'Lower with control without arching.'
+  ],
+  'Walking Lunge': [
+    'Step forward and drop the back knee.',
+    'Keep front knee aligned over the foot.',
+    'Drive through the front heel to step forward.'
+  ],
+  'Donkey Calf Raise': [
+    'Hinge at hips and keep knees soft.',
+    'Rise onto the balls of your feet.',
+    'Lower slowly for a full stretch.'
+  ],
+  'Single-Leg Calf Raise': [
+    'Stand tall and keep balance.',
+    'Rise onto the ball of one foot.',
+    'Lower with control and repeat.'
+  ],
+  'Kettlebell Swing': [
+    'Hinge at hips with a flat back.',
+    'Snap hips forward to drive the bell.',
+    'Let the bell swing back under control.'
+  ],
+  'Decline Dumbbell Press': [
+    'Set the bench to a decline and brace.',
+    'Lower dumbbells to chest level with control.',
+    'Press up and keep wrists stacked.'
+  ],
+  'Push-up (Feet Elevated)': [
+    'Place feet on a stable platform and brace.',
+    'Lower with elbows at a steady angle.',
+    'Press up while keeping hips level.'
+  ],
+  'Svend Press': [
+    'Press plates together at chest height.',
+    'Push straight out while maintaining squeeze.',
+    'Return with control and keep tension.'
+  ],
+  'Guillotine Press': [
+    'Use a light load and keep shoulders set.',
+    'Lower the bar to the upper chest/neck line.',
+    'Press up smoothly without flaring elbows.'
+  ],
+  'Meadows Row': [
+    'Set a strong hinge and brace your core.',
+    'Row the bar toward the hip with control.',
+    'Lower slowly and keep your back flat.'
+  ],
+  'Neutral-Grip Pull-up': [
+    'Grip handles with palms facing in.',
+    'Pull chest toward the bar with control.',
+    'Lower under control to full extension.'
+  ],
+  'Machine Row': [
+    'Set chest support and brace core.',
+    'Row handles toward your ribs.',
+    'Return under control and keep tension.'
+  ],
+  'Cable Lateral Raise': [
+    'Stand tall and keep slight elbow bend.',
+    'Raise the cable to shoulder height.',
+    'Lower slowly without swinging.'
+  ],
+  'Rear Delt Fly (Dumbbell)': [
+    'Hinge forward with a flat back.',
+    'Raise dumbbells out to the sides.',
+    'Lower slowly and keep tension.'
+  ],
+  'Reverse Pec Deck': [
+    'Set seat to shoulder height.',
+    'Pull handles back with elbows slightly bent.',
+    'Return under control without shrugging.'
+  ],
+  'Cuban Press': [
+    'Raise elbows to shoulder height.',
+    'Externally rotate forearms upward.',
+    'Press overhead with control.'
+  ],
+  'Bradford Press': [
+    'Start with bar at the front rack position.',
+    'Press up and move bar behind the head.',
+    'Press again to return to the front.'
+  ],
+  'Machine Shoulder Press': [
+    'Set the seat so handles align with shoulders.',
+    'Press up without flaring ribs.',
+    'Lower with control to a full stop.'
+  ],
+  'EZ-Bar Curl': [
+    'Keep elbows tucked by your sides.',
+    'Curl the bar up without swinging.',
+    'Lower slowly and keep tension.'
+  ],
+  'Preacher Curl': [
+    'Set upper arms on the pad.',
+    'Curl up without lifting shoulders.',
+    'Lower slowly to full extension.'
+  ],
+  'Concentration Curl': [
+    'Brace elbow against inner thigh.',
+    'Curl with a slow, controlled tempo.',
+    'Lower without losing tension.'
+  ],
+  'Incline Dumbbell Curl': [
+    'Set bench to an incline and brace.',
+    'Curl with elbows behind the torso.',
+    'Lower slowly to full extension.'
+  ],
+  'Cable Curl': [
+    'Stand tall and keep elbows pinned.',
+    'Curl the handle up with control.',
+    'Lower slowly without swinging.'
+  ],
+  'Spider Curl': [
+    'Lie chest down on an incline bench.',
+    'Curl with elbows forward and stable.',
+    'Lower under control to full extension.'
+  ],
+  'Reverse Curl': [
+    'Use an overhand grip and brace.',
+    'Curl up without swinging.',
+    'Lower slowly and keep tension.'
+  ],
+  'Skull Crushers': [
+    'Keep elbows tucked and upper arms still.',
+    'Lower the bar toward the forehead.',
+    'Extend back up without flaring elbows.'
+  ],
+  'Close-Grip Bench Press': [
+    'Grip the bar just inside shoulder width.',
+    'Lower to mid chest with control.',
+    'Press up while keeping elbows tucked.'
+  ],
+  'Bench Dips': [
+    'Set hands on a bench and brace core.',
+    'Lower hips with elbows back.',
+    'Press up without shrugging.'
+  ],
+  'Cable Overhead Triceps Extension': [
+    'Keep elbows high and close together.',
+    'Extend the rope upward with control.',
+    'Return slowly to full stretch.'
+  ],
+  'JM Press': [
+    'Lower the bar in a hybrid press path.',
+    'Stop above the chest with elbows tucked.',
+    'Press back up with control.'
+  ],
+  'Tate Press': [
+    'Start with dumbbells over the chest.',
+    'Lower toward the chest with elbows out.',
+    'Press back up without flaring.'
+  ],
+  'Curtsy Lunge': [
+    'Step back and across behind the lead leg.',
+    'Lower with control and keep torso upright.',
+    'Drive up through the front heel.'
+  ],
+  'Sissy Squat': [
+    'Stay tall and let knees travel forward.',
+    'Lower with control while keeping hips open.',
+    'Drive up through the quads.'
+  ],
+  'Box Squat': [
+    'Sit back to a box with control.',
+    'Pause briefly without relaxing.',
+    'Drive up through the mid foot.'
+  ],
+  'Cyclist Squat': [
+    'Keep heels elevated and torso upright.',
+    'Lower with knees forward and control.',
+    'Drive up through the quads.'
+  ],
+  'Good Morning': [
+    'Set bar on upper back and brace core.',
+    'Hinge at hips with a flat back.',
+    'Return by driving hips forward.'
+  ],
+  'Single-Leg Romanian Deadlift': [
+    'Hinge on one leg and keep hips square.',
+    'Lower with control and keep back flat.',
+    'Drive up through the standing heel.'
+  ],
+  'Glute-Ham Raise': [
+    'Set the machine and brace core.',
+    'Lower slowly with hamstrings controlling.',
+    'Pull back up without jerking.'
+  ],
+  'Calf Press (Leg Press)': [
+    'Set feet on the bottom edge of the platform.',
+    'Press through the balls of the feet.',
+    'Lower slowly for a full stretch.'
+  ],
+  'Hanging Leg Raise': [
+    'Brace your core and keep legs straight.',
+    'Raise legs without swinging.',
+    'Lower slowly with control.'
+  ],
+  "Captain's Chair Leg Raise": [
+    'Brace your core and keep back flat.',
+    'Raise knees toward the chest.',
+    'Lower slowly without swinging.'
+  ],
+  'Cable Crunch': [
+    'Kneel and brace core.',
+    'Crunch down by rounding the spine.',
+    'Return slowly to full stretch.'
+  ],
+  'Decline Sit-Up': [
+    'Brace core and keep feet locked.',
+    'Sit up with controlled tempo.',
+    'Lower slowly without bouncing.'
+  ],
+  'Ab Wheel Rollout': [
+    'Brace core and keep hips locked.',
+    'Roll out slowly without sagging.',
+    'Pull back using abs and lats.'
+  ],
+  'Russian Twist': [
+    'Sit tall with core braced.',
+    'Rotate smoothly side to side.',
+    'Keep movement controlled.'
+  ],
+  'Bicycle Crunch': [
+    'Keep lower back pressed down.',
+    'Rotate elbow toward opposite knee.',
+    'Move with steady control.'
+  ],
+  'Dead Bug': [
+    'Press lower back into the floor.',
+    'Extend opposite arm and leg slowly.',
+    'Return with control and repeat.'
+  ],
+  'Pallof Press': [
+    'Brace core and stand tall.',
+    'Press the handle straight out.',
+    'Resist rotation and return slowly.'
+  ],
+  'Sled Push': [
+    'Set a strong forward lean and brace.',
+    'Drive through legs with short steps.',
+    'Keep hands firm and torso stable.'
+  ],
+  'Sled Pull': [
+    'Lean back slightly and brace core.',
+    'Pull with steady steps and control.',
+    'Keep shoulders down and back.'
+  ],
+  'Suitcase Carry': [
+    'Hold the load at your side and brace.',
+    'Walk with tall posture and steady steps.',
+    'Avoid leaning toward the weight.'
+  ],
+  'Yoke Carry': [
+    'Brace core and set the frame.',
+    'Walk with short, steady steps.',
+    'Keep chest tall and breathing controlled.'
+  ],
+  'Battle Ropes': [
+    'Set an athletic stance and brace.',
+    'Drive the ropes with steady rhythm.',
+    'Keep shoulders down and core tight.'
+  ]
+};
+
+const exerciseGroups = {
+  Chest: [
+    'Bench Press',
+    'Flat Dumbbell Bench Press',
+    'Incline Dumbbell Press',
+    'Incline Barbell Bench Press',
+    'Decline Bench Press',
+    'Decline Dumbbell Press',
+    'Cable Fly',
+    'Pec Deck',
+    'Push-up',
+    'Push-up (Feet Elevated)',
+    'Svend Press',
+    'Guillotine Press',
+    'Dips'
+  ],
+  Back: [
+    'Pull-up',
+    'Assisted Pull-up',
+    'Chin-up',
+    'Neutral-Grip Pull-up',
+    'Lat Pulldown',
+    'Straight-Arm Pulldown',
+    'Seated Cable Row',
+    'Chest Supported Row',
+    'Single-Arm Row',
+    'Barbell Row',
+    'T-Bar Row',
+    'Pendlay Row',
+    'Meadows Row',
+    'Inverted Row',
+    'Machine Row',
+    'Rack Pull'
+  ],
+  Shoulders: [
+    'Overhead Press',
+    'Dumbbell Shoulder Press',
+    'Arnold Press',
+    'Machine Shoulder Press',
+    'Lateral Raise',
+    'Cable Lateral Raise',
+    'Front Raise',
+    'Rear Delt Fly (Dumbbell)',
+    'Reverse Pec Deck',
+    'Upright Row',
+    'Cuban Press',
+    'Bradford Press',
+    'Face Pull'
+  ],
+  Biceps: [
+    'Biceps Curl',
+    'EZ-Bar Curl',
+    'Preacher Curl',
+    'Concentration Curl',
+    'Incline Dumbbell Curl',
+    'Cable Curl',
+    'Spider Curl',
+    'Reverse Curl',
+    'Hammer Curl'
+  ],
+  Triceps: [
+    'Triceps Pushdown',
+    'Triceps Pulldown',
+    'Triceps Overhead Extension',
+    'Skull Crushers',
+    'Close-Grip Bench Press',
+    'Bench Dips',
+    'Cable Overhead Triceps Extension',
+    'JM Press',
+    'Tate Press'
+  ],
+  'Legs - Quads & Glutes': [
+    'Back Squat',
+    'Front Squat',
+    'Goblet Squat',
+    'Hack Squat',
+    'Smith Machine Squat',
+    'Box Squat',
+    'Cyclist Squat',
+    'Leg Press',
+    'Walking Lunge',
+    'Reverse Lunge',
+    'Curtsy Lunge',
+    'Step-Ups',
+    'Sissy Squat',
+    'Bulgarian Split Squat',
+    'Hip Thrust',
+    'Barbell Hip Thrust',
+    'Glute Bridge',
+    'Cable Kickback'
+  ],
+  'Legs - Hamstrings': [
+    'Deadlift',
+    'Romanian Deadlift',
+    'Single-Leg Romanian Deadlift',
+    'Good Morning',
+    'Lying Leg Curl',
+    'Seated Leg Curl',
+    'Nordic Hamstring Curl',
+    'Glute-Ham Raise'
+  ],
+  Calves: [
+    'Standing Calf Raise',
+    'Seated Calf Raise',
+    'Donkey Calf Raise',
+    'Single-Leg Calf Raise',
+    'Calf Press (Leg Press)',
+    'Tibialis Raise'
+  ],
+  Core: [
+    'Plank',
+    'Hanging Leg Raise',
+    "Captain's Chair Leg Raise",
+    'Cable Crunch',
+    'Decline Sit-Up',
+    'Ab Wheel Rollout',
+    'Russian Twist',
+    'Bicycle Crunch',
+    'Dead Bug',
+    'Pallof Press'
+  ],
+  'Conditioning & Carries': [
+    'Farmer Carry',
+    'Suitcase Carry',
+    'Yoke Carry',
+    'Sled Push',
+    'Sled Pull',
+    'Kettlebell Swing',
+    'Battle Ropes'
+  ]
+};
 
 // StrengthProgressTab manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -211,6 +847,7 @@ const StrengthProgressTab = ({ userId }) => {
   const [recentLifts, setRecentLifts] = useState([]);
 
   const [programs, setPrograms] = useState([]);
+  const [pinnedProgramIds, setPinnedProgramIds] = useState([]);
   const [programSearch, setProgramSearch] = useState('');
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [sessionQueue, setSessionQueue] = useState([]);
@@ -218,26 +855,36 @@ const StrengthProgressTab = ({ userId }) => {
   const [showProgramLibrary, setShowProgramLibrary] = useState(true);
   const [showCreateProgram, setShowCreateProgram] = useState(false);
   const [isProgramSaving, setIsProgramSaving] = useState(false);
+  const [deletingProgramId, setDeletingProgramId] = useState(null);
   const [newProgram, setNewProgram] = useState({
     name: '',
     level: 'Beginner',
     focus: 'Full Body',
     description: '',
-    exercises: [
-      { name: '', sets: 3, reps: 10, type: 'weights' }
-    ]
+    exercises: []
   });
+  const [lastAddedExerciseIndex, setLastAddedExerciseIndex] = useState(null);
+  const lastAddedTimeoutRef = useRef(null);
+  const exerciseListRef = useRef(null);
+  const createProgramBodyRef = useRef(null);
+  const previousExerciseCountRef = useRef(0);
+  const shouldAutoScrollOnAddRef = useRef(false);
   const [creatorSearch, setCreatorSearch] = useState('');
   const [creatorResults, setCreatorResults] = useState([]);
   const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
 
   const [swapOpen, setSwapOpen] = useState(false);
-  const [swapMode, setSwapMode] = useState('swap');
+  const [swapMode] = useState('swap');
   const [swapIndex, setSwapIndex] = useState(null);
   const [swapQuery, setSwapQuery] = useState('');
   const [swapResults, setSwapResults] = useState([]);
   const [isSwapLoading, setIsSwapLoading] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideExercise, setGuideExercise] = useState(null);
+  const [guideDetails, setGuideDetails] = useState(null);
+  const [guideLoading, setGuideLoading] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const pinnedProgramsStorageKey = userId ? `exervia_pinned_programs_${userId}` : null;
 
   const weightExercises = [
     { value: 'squat', label: 'Squat', icon: '' },
@@ -261,6 +908,56 @@ const StrengthProgressTab = ({ userId }) => {
 // and output feeds the UI state or data flow
   const normalizeQuery = (value) => value.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 
+// getExerciseGuideDefaults manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
+  const getExerciseGuideDefaults = (name) => {
+    const key = name?.trim();
+    return key ? exerciseGuideDefaults[key] || [] : [];
+  };
+
+// getExerciseTypeForName manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
+  const getExerciseTypeForName = (name) => {
+    const normalized = name?.toLowerCase() || '';
+    if (normalized.includes('push-up') || normalized.includes('pull-up') || normalized.includes('chin-up')) {
+      return 'bodyweight';
+    }
+    if ([
+      'plank',
+      'dead bug',
+      'pallof press',
+      'bicycle crunch',
+      'russian twist',
+      'ab wheel rollout',
+      'hanging leg raise',
+      "captain's chair leg raise",
+      'decline sit-up',
+      'cable crunch'
+    ].includes(normalized)) {
+      return 'bodyweight';
+    }
+    if (normalized.includes('carry') || normalized.includes('sled') || normalized.includes('battle ropes')) {
+      return 'conditioning';
+    }
+    return 'weights';
+  };
+
+// buildExerciseTemplate manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
+  const buildExerciseTemplate = (name, sets, reps) => ({
+    name,
+    type: getExerciseTypeForName(name),
+    sets: sets || 3,
+    reps: reps || 10,
+  });
+
+
 // searchLocalExercises manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -273,7 +970,8 @@ const StrengthProgressTab = ({ userId }) => {
       .slice(0, 12);
   };
 
-// saveFavorites manages a focused piece of logic,
+// saveFavorites manages a focused piece
+// of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
@@ -293,6 +991,45 @@ const StrengthProgressTab = ({ userId }) => {
       saveFavorites(favorites.filter(item => item !== normalized));
     } else {
       saveFavorites([...favorites, normalized]);
+    }
+  };
+
+// handleExerciseGuide manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
+  const handleExerciseGuide = async (exercise) => {
+    if (!exercise?.name) return;
+    setGuideExercise(exercise);
+    setGuideOpen(true);
+    setGuideLoading(true);
+    setGuideDetails(null);
+    try {
+      const response = await fetch(
+        `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&name=${encodeURIComponent(exercise.name)}`
+      );
+      const data = await response.json();
+      const result = data?.results?.[0];
+      const description = result?.description
+        ? result.description.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+        : '';
+      const muscles = (result?.muscles || []).map((item) => item.name).filter(Boolean);
+      const equipment = (result?.equipment || []).map((item) => item.name).filter(Boolean);
+      const apiSteps = description
+        ? description.split('.').map((part) => part.trim()).filter(Boolean).slice(0, 4)
+        : [];
+      const fallbackSteps = getExerciseGuideDefaults(exercise.name);
+      const steps = apiSteps.length > 0 ? apiSteps : fallbackSteps;
+      setGuideDetails({
+        description,
+        muscles,
+        equipment,
+        steps
+      });
+    } catch (error) {
+      console.error('Guide fetch failed:', error);
+    } finally {
+      setGuideLoading(false);
     }
   };
 
@@ -318,6 +1055,32 @@ const StrengthProgressTab = ({ userId }) => {
       })
     );
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (lastAddedTimeoutRef.current) clearTimeout(lastAddedTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const currentCount = newProgram.exercises.length;
+    const previousCount = previousExerciseCountRef.current;
+
+    if (
+      showCreateProgram &&
+      shouldAutoScrollOnAddRef.current &&
+      currentCount > previousCount &&
+      createProgramBodyRef.current
+    ) {
+      createProgramBodyRef.current.scrollTo({
+        top: createProgramBodyRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+      shouldAutoScrollOnAddRef.current = false;
+    }
+
+    previousExerciseCountRef.current = currentCount;
+  }, [newProgram.exercises.length, showCreateProgram]);
 
 // mapSupabaseProgram manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -386,6 +1149,45 @@ const StrengthProgressTab = ({ userId }) => {
     setShowProgramLibrary(false);
   };
 
+  const savePinnedPrograms = (items) => {
+    setPinnedProgramIds(items);
+    if (pinnedProgramsStorageKey) {
+      localStorage.setItem(pinnedProgramsStorageKey, JSON.stringify(items));
+    }
+  };
+
+  const toggleProgramPin = (programId) => {
+    if (!programId) return;
+    if (pinnedProgramIds.includes(programId)) {
+      savePinnedPrograms(pinnedProgramIds.filter((id) => id !== programId));
+    } else {
+      savePinnedPrograms([...pinnedProgramIds, programId]);
+      setShowAllPrograms(false);
+    }
+  };
+
+  const handleRemixProgram = (program) => {
+    if (!program) return;
+    const remixedExercises = (program.exercises || []).map((exercise) => ({
+      name: exercise.name || '',
+      sets: Number(exercise.sets) || 3,
+      reps: Number(exercise.reps) || 10,
+      type: exercise.type || getExerciseTypeForName(exercise.name)
+    }));
+
+    setNewProgram({
+      name: `Remix · ${program.name || 'Custom Program'}`,
+      level: program.level || 'Beginner',
+      focus: program.focus || 'Full Body',
+      description: program.description || '',
+      exercises: remixedExercises
+    });
+    setCreatorSearch('');
+    setCreatorResults([]);
+    setCreatorFocusedIndex(0);
+    setShowCreateProgram(true);
+  };
+
 // closeSwap manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -407,12 +1209,13 @@ const StrengthProgressTab = ({ userId }) => {
       return;
     }
 
-    const localMatches = searchLocalExercises(query).map(name => ({
-      name,
-      type: 'weights',
-      sets: sessionQueue[swapIndex]?.sets || 3,
-      reps: sessionQueue[swapIndex]?.reps || 10,
-    }));
+    const localMatches = searchLocalExercises(query).map(name =>
+      buildExerciseTemplate(
+        name,
+        sessionQueue[swapIndex]?.sets || 3,
+        sessionQueue[swapIndex]?.reps || 10
+      )
+    );
     setSwapResults(localMatches);
 
     setIsSwapLoading(true);
@@ -428,12 +1231,13 @@ const StrengthProgressTab = ({ userId }) => {
       const remoteResults = (payload.results || [])
         .map(item => item.name)
         .filter(Boolean)
-        .map(name => ({
-          name,
-          type: 'weights',
-          sets: sessionQueue[swapIndex]?.sets || 3,
-          reps: sessionQueue[swapIndex]?.reps || 10,
-        }));
+        .map(name =>
+          buildExerciseTemplate(
+            name,
+            sessionQueue[swapIndex]?.sets || 3,
+            sessionQueue[swapIndex]?.reps || 10
+          )
+        );
       const merged = [...localMatches, ...remoteResults].filter(
         (item, index, arr) => arr.findIndex(other => other.name === item.name) === index
       );
@@ -456,12 +1260,13 @@ const StrengthProgressTab = ({ userId }) => {
     }
 
     try {
-      const localMatches = searchLocalExercises(query).map(name => ({
-        name,
-        type: 'weights',
-        sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-        reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
-      }));
+      const localMatches = searchLocalExercises(query).map(name =>
+        buildExerciseTemplate(
+          name,
+          newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+          newProgram.exercises[creatorFocusedIndex]?.reps || 10
+        )
+      );
       setCreatorResults(localMatches);
       const response = await fetch(
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
@@ -474,24 +1279,26 @@ const StrengthProgressTab = ({ userId }) => {
       const remoteResults = (payload.results || [])
         .map(item => item.name)
         .filter(Boolean)
-        .map(name => ({
-          name,
-          type: 'weights',
-          sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-          reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
-        }));
+        .map(name =>
+          buildExerciseTemplate(
+            name,
+            newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+            newProgram.exercises[creatorFocusedIndex]?.reps || 10
+          )
+        );
       const merged = [...localMatches, ...remoteResults].filter(
         (item, index, arr) => arr.findIndex(other => other.name === item.name) === index
       );
       setCreatorResults(merged.length > 0 ? merged : localMatches);
     } catch (error) {
       console.error('Creator exercise search failed:', error);
-      setCreatorResults(searchLocalExercises(query).map(name => ({
-        name,
-        type: 'weights',
-        sets: newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-        reps: newProgram.exercises[creatorFocusedIndex]?.reps || 10,
-      })));
+      setCreatorResults(searchLocalExercises(query).map(name =>
+        buildExerciseTemplate(
+          name,
+          newProgram.exercises[creatorFocusedIndex]?.sets || 3,
+          newProgram.exercises[creatorFocusedIndex]?.reps || 10
+        )
+      ));
     }
   };
 
@@ -594,6 +1401,7 @@ const StrengthProgressTab = ({ userId }) => {
       (program.description || '').toLowerCase().includes(query)
     );
   });
+  const pinnedPrograms = programs.filter((program) => pinnedProgramIds.includes(program.id));
   const visiblePrograms = showAllPrograms ? filteredPrograms : filteredPrograms.slice(0, 6);
 
 // scoreProgram manages a focused piece of logic,
@@ -661,15 +1469,42 @@ const StrengthProgressTab = ({ userId }) => {
     setNewProgram(prev => ({ ...prev, exercises: next }));
   };
 
+  const addExerciseFromPick = (name, typeOverride) => {
+    if (!name) return;
+    shouldAutoScrollOnAddRef.current = true;
+    const newExercise = buildExerciseTemplate(name, 3, 10);
+    if (typeOverride) newExercise.type = typeOverride;
+    setNewProgram(prev => {
+      const nextIndex = prev.exercises.length;
+      setLastAddedExerciseIndex(nextIndex);
+      if (lastAddedTimeoutRef.current) clearTimeout(lastAddedTimeoutRef.current);
+      lastAddedTimeoutRef.current = setTimeout(() => setLastAddedExerciseIndex(null), 1600);
+      return {
+        ...prev,
+        exercises: [...prev.exercises, newExercise]
+      };
+    });
+    setCreatorResults([]);
+    setCreatorSearch('');
+    setBanner({ type: 'success', message: `Added ${name}` });
+  };
+
 // addNewExercise manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const addNewExercise = () => {
-    setNewProgram(prev => ({
-      ...prev,
-      exercises: [...prev.exercises, { name: '', sets: 3, reps: 10, type: 'weights' }]
-    }));
+    shouldAutoScrollOnAddRef.current = true;
+    setNewProgram(prev => {
+      const nextIndex = prev.exercises.length;
+      setLastAddedExerciseIndex(nextIndex);
+      if (lastAddedTimeoutRef.current) clearTimeout(lastAddedTimeoutRef.current);
+      lastAddedTimeoutRef.current = setTimeout(() => setLastAddedExerciseIndex(null), 1600);
+      return {
+        ...prev,
+        exercises: [...prev.exercises, { name: '', sets: 3, reps: 10, type: 'weights' }]
+      };
+    });
   };
 
 // removeNewExercise manages a focused piece of logic,
@@ -724,7 +1559,7 @@ const StrengthProgressTab = ({ userId }) => {
         level: 'Beginner',
         focus: 'Full Body',
         description: '',
-        exercises: [{ name: '', sets: 3, reps: 10, type: 'weights' }]
+        exercises: []
       });
       fetchPrograms();
     } else {
@@ -732,6 +1567,43 @@ const StrengthProgressTab = ({ userId }) => {
       setBanner({ type: 'error', message: 'Could not save program.' });
     }
     setIsProgramSaving(false);
+  };
+
+// deleteUserProgram manages a focused piece of logic,
+// it keeps behavior isolated for readability,
+// inputs are validated before mutation when needed,
+// and output feeds the UI state or data flow
+  const deleteUserProgram = async (program, event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!program || program.source !== 'user' || !program.id) return;
+    const confirmed = window.confirm(`Delete "${program.name}" from your library?`);
+    if (!confirmed) return;
+
+    setDeletingProgramId(program.id);
+    const { error } = await supabase
+      .from('user_programs')
+      .delete()
+      .eq('id', program.id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting program:', error);
+      setBanner({ type: 'error', message: 'Could not delete program.' });
+      setDeletingProgramId(null);
+      return;
+    }
+
+    setPrograms((prev) => prev.filter((item) => item.id !== program.id));
+    if (selectedProgram?.id === program.id) {
+      setSelectedProgram(null);
+      setSessionQueue([]);
+      setShowProgramLibrary(true);
+    }
+    setBanner({ type: 'success', message: 'Program removed.' });
+    setDeletingProgramId(null);
   };
 
 // lifecycle hook for side effects,
@@ -762,6 +1634,30 @@ const StrengthProgressTab = ({ userId }) => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!pinnedProgramsStorageKey) return;
+    const stored = localStorage.getItem(pinnedProgramsStorageKey);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setPinnedProgramIds(parsed);
+        if (parsed.length > 0) setShowAllPrograms(false);
+      }
+    } catch (error) {
+      console.error('Failed to parse pinned programs', error);
+    }
+  }, [pinnedProgramsStorageKey]);
+
+  useEffect(() => {
+    if (programs.length === 0 || pinnedProgramIds.length === 0) return;
+    const validProgramIds = new Set(programs.map((program) => program.id));
+    const nextPinned = pinnedProgramIds.filter((id) => validProgramIds.has(id));
+    if (nextPinned.length !== pinnedProgramIds.length) {
+      savePinnedPrograms(nextPinned);
+    }
+  }, [programs, pinnedProgramIds]);
 
   return (
     <div className="studio-shell">
@@ -827,16 +1723,19 @@ const StrengthProgressTab = ({ userId }) => {
               >
                 {showProgramLibrary ? 'Collapse list' : 'Show programs'}
               </button>
-              <button
-                className="studio-mini-btn"
-                onClick={() => {
+                <button
+                  className="studio-mini-btn"
+                  onClick={() => {
                     setNewProgram({
                       name: '',
                       level: 'Beginner',
                       focus: 'Full Body',
                       description: '',
-                      exercises: [{ name: '', sets: 3, reps: 10, type: 'weights' }]
+                      exercises: []
                     });
+                    setCreatorSearch('');
+                    setCreatorResults([]);
+                    setLastAddedExerciseIndex(null);
                     setShowCreateProgram(true);
                   }}
                   type="button"
@@ -852,7 +1751,50 @@ const StrengthProgressTab = ({ userId }) => {
                     value={programSearch}
                     onChange={(event) => setProgramSearch(event.target.value)}
                   />
-                  {recommendedPrograms.length > 0 && (
+                  {!programSearch.trim() && pinnedPrograms.length > 0 && (
+                    <>
+                      <div className="studio-panel-title">Pinned Programs</div>
+                      <div className="studio-program-grid">
+                        {pinnedPrograms.map((program) => (
+                          <button
+                            key={`pinned-${program.id}`}
+                            className={`studio-program-card ${selectedProgram?.id === program.id ? 'active' : ''}`}
+                            onClick={() => handleSelectProgram(program)}
+                            type="button"
+                          >
+                            <span
+                              className={`studio-program-pin ${pinnedProgramIds.includes(program.id) ? 'active' : ''}`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                toggleProgramPin(program.id);
+                              }}
+                              role="button"
+                              aria-label={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                              title={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                            >
+                              {pinnedProgramIds.includes(program.id) ? '★' : '☆'}
+                            </span>
+                            {program.source === 'user' && (
+                              <span
+                                className="studio-program-delete"
+                                onClick={(event) => deleteUserProgram(program, event)}
+                                role="button"
+                                aria-label={`Delete ${program.name}`}
+                                title={`Delete ${program.name}`}
+                              >
+                                {deletingProgramId === program.id ? '...' : 'x'}
+                              </span>
+                            )}
+                            <div className="studio-program-title">{program.name}</div>
+                            <div className="studio-program-sub">{program.focus || 'Strength'}</div>
+                            <div className="studio-program-meta">{program.level || 'All levels'}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {!programSearch.trim() && recommendedPrograms.length > 0 && (
                     <>
                       <div className="studio-panel-title">Recommended</div>
                       <div className="studio-program-grid">
@@ -863,6 +1805,30 @@ const StrengthProgressTab = ({ userId }) => {
                             onClick={() => handleSelectProgram(program)}
                             type="button"
                           >
+                            <span
+                              className={`studio-program-pin ${pinnedProgramIds.includes(program.id) ? 'active' : ''}`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                toggleProgramPin(program.id);
+                              }}
+                              role="button"
+                              aria-label={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                              title={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                            >
+                              {pinnedProgramIds.includes(program.id) ? '★' : '☆'}
+                            </span>
+                            {program.source === 'user' && (
+                              <span
+                                className="studio-program-delete"
+                                onClick={(event) => deleteUserProgram(program, event)}
+                                role="button"
+                                aria-label={`Delete ${program.name}`}
+                                title={`Delete ${program.name}`}
+                              >
+                                {deletingProgramId === program.id ? '...' : 'x'}
+                              </span>
+                            )}
                             <div className="studio-program-title">{program.name}</div>
                             <div className="studio-program-sub">{program.focus || 'Strength'}</div>
                             <div className="studio-program-meta">{program.level || 'All levels'}</div>
@@ -892,6 +1858,30 @@ const StrengthProgressTab = ({ userId }) => {
                           onClick={() => handleSelectProgram(program)}
                           type="button"
                         >
+                          <span
+                            className={`studio-program-pin ${pinnedProgramIds.includes(program.id) ? 'active' : ''}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleProgramPin(program.id);
+                            }}
+                            role="button"
+                            aria-label={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                            title={pinnedProgramIds.includes(program.id) ? `Unpin ${program.name}` : `Pin ${program.name}`}
+                          >
+                            {pinnedProgramIds.includes(program.id) ? '★' : '☆'}
+                          </span>
+                          {program.source === 'user' && (
+                            <span
+                              className="studio-program-delete"
+                              onClick={(event) => deleteUserProgram(program, event)}
+                              role="button"
+                              aria-label={`Delete ${program.name}`}
+                              title={`Delete ${program.name}`}
+                            >
+                              {deletingProgramId === program.id ? '...' : 'x'}
+                            </span>
+                          )}
                           <div className="studio-program-title">{program.name}</div>
                           <div className="studio-program-sub">{program.focus || 'Strength'}</div>
                           <div className="studio-program-meta">{program.level || 'All levels'}</div>
@@ -938,7 +1928,13 @@ const StrengthProgressTab = ({ userId }) => {
                     <div className="studio-plan-preview-list">
                       {(selectedProgram.exercises || []).slice(0, 3).map((exercise, index) => (
                         <div key={`${exercise.name}-${index}`} className="studio-plan-preview-row">
-                          <span>{exercise.name}</span>
+                          <button
+                            className="studio-exercise-link"
+                            onClick={() => handleExerciseGuide(exercise)}
+                            type="button"
+                          >
+                            {exercise.name}
+                          </button>
                           <span>{exercise.sets} x {exercise.reps}</span>
                         </div>
                       ))}
@@ -949,60 +1945,34 @@ const StrengthProgressTab = ({ userId }) => {
                       )}
                     </div>
                   </div>
-                  <button
-                    className="studio-queue-btn"
-                    onClick={() =>
-                      navigate(`/gym/${userId}/program/${selectedProgram.id}`, {
-                        state: {
-                          program: {
-                            id: selectedProgram.id,
-                            name: selectedProgram.name,
-                            focus: selectedProgram.goal || selectedProgram.description || 'Strength session',
-                            duration: selectedProgram.duration || '45 min',
-                            exercises: selectedProgram.exercises || []
+                  <div className="studio-queue-actions studio-session-preview-actions">
+                    <button
+                      className="studio-queue-btn"
+                      onClick={() =>
+                        navigate(`/gym/${userId}/program/${selectedProgram.id}`, {
+                          state: {
+                            program: {
+                              id: selectedProgram.id,
+                              name: selectedProgram.name,
+                              focus: selectedProgram.goal || selectedProgram.description || 'Strength session',
+                              duration: selectedProgram.duration || '45 min',
+                              exercises: selectedProgram.exercises || []
+                            }
                           }
-                        }
-                      })
-                    }
-                    type="button"
-                  >
-                    Open session queue
-                  </button>
-                  <div className="studio-panel-title" style={{ marginTop: 16 }}>
-                    Recent Lifts
+                        })
+                      }
+                      type="button"
+                    >
+                      Start session queue
+                    </button>
+                    <button
+                      className="studio-queue-btn ghost"
+                      onClick={() => handleRemixProgram(selectedProgram)}
+                      type="button"
+                    >
+                      Remix plan
+                    </button>
                   </div>
-                  {recentLifts.length > 0 ? (
-                    <div className="studio-recent-list">
-                      {recentLifts.slice(0, 2).map((lift) => (
-                        <div
-                          key={lift.id}
-                          className={`studio-recent-row ${lift.is_personal_best ? 'pr' : ''}`}
-                        >
-                          <div className="studio-recent-main">
-                            <div className="studio-recent-title">
-                              {getExerciseIcon(lift.exercise_name, lift.exercise_type) && (
-                                <span className="studio-recent-icon">
-                                  {getExerciseIcon(lift.exercise_name, lift.exercise_type)}
-                                </span>
-                              )}
-                              {getExerciseLabel(lift.exercise_name)}
-                            </div>
-                            <div className="studio-recent-sub">
-                              {lift.reps} reps
-                              {lift.weight > 0 ? ` · ${lift.weight}kg` : ''}
-                              · {lift.sets} sets · {lift.mood_emoji}
-                            </div>
-                          </div>
-                          <div className="studio-recent-meta">
-                            {new Date(lift.created_at).toLocaleDateString()}
-                            {lift.is_personal_best && <span className="studio-recent-badge">PR</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="studio-empty">No lifts logged yet. Start with one clean set.</div>
-                  )}
                 </>
               ) : (
                 <div className="studio-empty">Select a program to preview the session.</div>
@@ -1095,10 +2065,12 @@ const StrengthProgressTab = ({ userId }) => {
           </div>
         )}
       </div>
-
+{/* CreateProgram is used to create the program template, User may opt to use this CreateProgram 
+feature if they think they'll benefit from it. as various user's have differeent needs
+the createPRogram helps resolve this problem  */}
       {showCreateProgram && (
         <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+          <div className="studio-swap-panel studio-create-program-panel">
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Create Program</div>
@@ -1106,18 +2078,22 @@ const StrengthProgressTab = ({ userId }) => {
               </div>
               <button
                 className="studio-swap-close"
-                onClick={() => setShowCreateProgram(false)}
+                onClick={() => {
+                  setShowCreateProgram(false);
+                  setCreatorSearch('');
+                  setCreatorResults([]);
+                }}
                 type="button"
               >
                 Close
               </button>
             </div>
-            <div className="studio-swap-body">
+            <div className="studio-swap-body" ref={createProgramBodyRef}>
               <div className="studio-form-grid">
                 <label className="studio-form-field">
                   <span className="studio-input-label">Program name</span>
                   <input
-                    className="studio-search"
+                    className="studio-form-input"
                     placeholder="Classic Pull Day"
                     value={newProgram.name}
                     onChange={(event) => setNewProgram(prev => ({ ...prev, name: event.target.value }))}
@@ -1164,7 +2140,9 @@ const StrengthProgressTab = ({ userId }) => {
                 />
               </label>
 
-              <div className="studio-panel-title">Exercises</div>
+              <div className="studio-panel-title">
+                Exercises {newProgram.exercises.length > 0 && `(${newProgram.exercises.length})`}
+              </div>
               <div className="studio-create-search">
                 {favorites.length > 0 && (
                   <div className="studio-pinned">
@@ -1175,8 +2153,7 @@ const StrengthProgressTab = ({ userId }) => {
                           key={`creator-fav-${item}`}
                           className="studio-favorite-chip"
                           onClick={() => {
-                            updateNewExercise(creatorFocusedIndex, 'name', item);
-                            updateNewExercise(creatorFocusedIndex, 'type', 'weights');
+                            addExerciseFromPick(item, getExerciseTypeForName(item));
                           }}
                           type="button"
                         >
@@ -1196,6 +2173,29 @@ const StrengthProgressTab = ({ userId }) => {
                     fetchCreatorSearch(next);
                   }}
                 />
+                {creatorResults.length === 0 && !creatorSearch.trim() && (
+                  <div className="studio-exercise-groups">
+                    {Object.entries(exerciseGroups).map(([group, items]) => (
+                      <div key={group} className="studio-exercise-group">
+                        <div className="studio-exercise-group-title">{group}</div>
+                        <div className="studio-exercise-group-list">
+                          {items.map((item) => (
+                            <button
+                              key={`group-${group}-${item}`}
+                              className="studio-exercise-chip"
+                              onClick={() => {
+                                addExerciseFromPick(item, getExerciseTypeForName(item));
+                              }}
+                              type="button"
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {creatorResults.length > 0 && (
                   <div className="studio-creator-results">
                     {creatorResults.map(result => (
@@ -1205,15 +2205,13 @@ const StrengthProgressTab = ({ userId }) => {
                         role="button"
                         tabIndex={0}
                         onClick={() => {
-                          updateNewExercise(creatorFocusedIndex, 'name', result.name);
-                          updateNewExercise(creatorFocusedIndex, 'type', result.type);
+                          addExerciseFromPick(result.name, result.type);
                           setCreatorResults([]);
                           setCreatorSearch('');
                         }}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
-                            updateNewExercise(creatorFocusedIndex, 'name', result.name);
-                            updateNewExercise(creatorFocusedIndex, 'type', result.type);
+                            addExerciseFromPick(result.name, result.type);
                             setCreatorResults([]);
                             setCreatorSearch('');
                           }
@@ -1238,77 +2236,58 @@ const StrengthProgressTab = ({ userId }) => {
                   </div>
                 )}
               </div>
-              <div className="studio-create-list">
-                {newProgram.exercises.map((exercise, index) => (
-                  <div key={`new-ex-${index}`} className="studio-create-row">
-                    <input
-                      className="studio-create-name"
-                      placeholder="Exercise name"
-                      value={exercise.name}
-                      onFocus={() => setCreatorFocusedIndex(index)}
-                      onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
-                    />
-                    <input
-                      className="studio-create-mini"
-                      type="number"
-                      min="1"
-                      value={exercise.sets}
-                      onChange={(event) => updateNewExercise(index, 'sets', event.target.value)}
-                    />
-                    <input
-                      className="studio-create-mini"
-                      type="number"
-                      min="1"
-                      value={exercise.reps}
-                      onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
-                    />
-                    <select
-                      className="studio-create-mini"
-                      value={exercise.type}
-                      onChange={(event) => updateNewExercise(index, 'type', event.target.value)}
-                    >
-                      <option value="weights">Weights</option>
-                      <option value="bodyweight">Bodyweight</option>
-                    </select>
-                    <div className="studio-create-order">
-                      <button
-                        className="studio-order-btn"
-                        onClick={() => {
-                          if (index === 0) return;
-                          const next = [...newProgram.exercises];
-                          [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                          setNewProgram(prev => ({ ...prev, exercises: next }));
-                        }}
-                        type="button"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        className="studio-order-btn"
-                        onClick={() => {
-                          if (index === newProgram.exercises.length - 1) return;
-                          const next = [...newProgram.exercises];
-                          [next[index + 1], next[index]] = [next[index], next[index + 1]];
-                          setNewProgram(prev => ({ ...prev, exercises: next }));
-                        }}
-                        type="button"
-                      >
-                        ↓
-                      </button>
+              <div className="studio-create-list" ref={exerciseListRef}>
+                {newProgram.exercises.length > 0 ? (
+                  <>
+                    <div className="studio-create-head">
+                      <span>Exercise</span>
+                      <span>Sets</span>
+                      <span>Reps</span>
+                      <span>Remove</span>
                     </div>
-                    <button
-                      className="studio-remove-btn"
-                      onClick={() => removeNewExercise(index)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+                    {newProgram.exercises.map((exercise, index) => (
+                      <div
+                        key={`new-ex-${index}`}
+                        className={`studio-create-row ${lastAddedExerciseIndex === index ? 'studio-pulse' : ''}`}
+                      >
+                        <input
+                          className="studio-create-name"
+                          placeholder="Exercise name"
+                          value={exercise.name}
+                          onFocus={() => setCreatorFocusedIndex(index)}
+                          onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
+                        />
+                        <input
+                          className="studio-create-mini"
+                          type="number"
+                          min="1"
+                          value={exercise.sets}
+                          onChange={(event) => updateNewExercise(index, 'sets', event.target.value)}
+                        />
+                        <input
+                          className="studio-create-mini"
+                          type="number"
+                          min="1"
+                          value={exercise.reps}
+                          onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                        />
+                        <button
+                          className="studio-remove-btn"
+                          onClick={() => removeNewExercise(index)}
+                          type="button"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="studio-empty">Add your first exercise to start building the plan.</div>
+                )}
               </div>
               <div className="studio-create-actions">
                 <button className="studio-queue-btn ghost" onClick={addNewExercise} type="button">
-                  Add exercise
+                  + Add blank row
                 </button>
                 <button
                   className="studio-queue-btn"
@@ -1351,12 +2330,15 @@ const StrengthProgressTab = ({ userId }) => {
                       <button
                         key={`swap-fav-${item}`}
                         className="studio-favorite-chip"
-                        onClick={() => handleSwapSelect({
-                          name: item,
-                          type: 'weights',
-                          sets: sessionQueue[swapIndex]?.sets || 3,
-                          reps: sessionQueue[swapIndex]?.reps || 10,
-                        })}
+                        onClick={() =>
+                          handleSwapSelect(
+                            buildExerciseTemplate(
+                              item,
+                              sessionQueue[swapIndex]?.sets || 3,
+                              sessionQueue[swapIndex]?.reps || 10
+                            )
+                          )
+                        }
                         type="button"
                       >
                         {item}
@@ -1412,9 +2394,126 @@ const StrengthProgressTab = ({ userId }) => {
                       </div>
                     ))
                   ) : (
-                    <div className="studio-empty">No results yet. Try another search.</div>
+                    <>
+                      {swapQuery.trim() ? (
+                        <div className="studio-empty">No results yet. Try another search.</div>
+                      ) : (
+                        <div className="studio-exercise-groups">
+                          {Object.entries(exerciseGroups).map(([group, items]) => (
+                            <div key={`swap-${group}`} className="studio-exercise-group">
+                              <div className="studio-exercise-group-title">{group}</div>
+                              <div className="studio-exercise-group-list">
+                                {items.map((item) => (
+                                  <button
+                                    key={`swap-${group}-${item}`}
+                                    className="studio-exercise-chip"
+                                    onClick={() =>
+                                      handleSwapSelect(
+                                        buildExerciseTemplate(
+                                          item,
+                                          sessionQueue[swapIndex]?.sets || 3,
+                                          sessionQueue[swapIndex]?.reps || 10
+                                        )
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    {item}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* exercise guide modal for quick learning, */}
+      {/* opens from session preview exercise names, */}
+      {/* shows a short description without leaving the page, */}
+      {/* closes with the standard modal close button */}
+      {guideOpen && (
+        <div className="studio-swap-backdrop">
+          <div className="studio-swap-panel">
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">Exercise Guide</div>
+                <div className="studio-swap-sub">Quick overview before you start.</div>
+              </div>
+              <button
+                className="studio-swap-close"
+                onClick={() => {
+                  setGuideOpen(false);
+                  setGuideDetails(null);
+                }}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            <div className="studio-swap-body">
+              {guideExercise ? (
+                <div className="studio-guide-content">
+                  <div className="studio-guide-title">{guideExercise.name}</div>
+                  <div className="studio-guide-meta">
+                    {guideExercise.sets} sets · {guideExercise.reps} reps
+                  </div>
+                  {guideLoading ? (
+                    <div className="studio-empty">Loading guide...</div>
+                  ) : (
+                    <div className="studio-guide-text">
+                      {guideDetails?.description || 'No guide yet. Focus on control and form.'}
+                    </div>
+                  )}
+                  {!guideLoading && (
+                    <div className="studio-guide-sections">
+                      <div className="studio-guide-section">
+                        <div className="studio-guide-label">Muscles</div>
+                        <div className="studio-guide-chips">
+                          {(guideDetails?.muscles?.length ? guideDetails.muscles : ['Full body']).map((item) => (
+                            <span key={`muscle-${item}`} className="studio-guide-chip">{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="studio-guide-section">
+                        <div className="studio-guide-label">Equipment</div>
+                        <div className="studio-guide-chips">
+                          {(guideDetails?.equipment?.length ? guideDetails.equipment : ['Bodyweight']).map((item) => (
+                            <span key={`equip-${item}`} className="studio-guide-chip">{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="studio-guide-section">
+                        <div className="studio-guide-label">Step by step</div>
+                        <ol className="studio-guide-steps">
+                          {(guideDetails?.steps?.length
+                            ? guideDetails.steps
+                            : ['Set your stance and brace core.', 'Move with control through full range.', 'Keep form tight and breathe steadily.']
+                          ).map((item, idx) => (
+                            <li key={`step-${idx}`}>{item}</li>
+                          ))}
+                        </ol>
+                      </div>
+                      <div className="studio-guide-section">
+                        <div className="studio-guide-label">Common mistakes</div>
+                        <ul className="studio-guide-steps">
+                          <li>Rushing reps or bouncing at the bottom.</li>
+                          <li>Shortening range of motion.</li>
+                          <li>Letting form break as fatigue builds.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="studio-empty">No exercise selected.</div>
               )}
             </div>
           </div>
@@ -1425,3 +2524,5 @@ const StrengthProgressTab = ({ userId }) => {
 };
 
 export default StrengthProgressTab;
+
+

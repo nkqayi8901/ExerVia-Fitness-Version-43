@@ -68,6 +68,19 @@ const IconNutrition = () => (
   </svg>
 );
 
+const IconLogs = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M5 5h14v14H5zM9 3v4M15 3v4M8 11h8M8 15h5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // IconProfile manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -144,9 +157,10 @@ export default function ModeNav({ mode, userId, placement = "inline" }) {
       path: mode === "gym" ? `${base}/progress` : `${base}/training`,
     },
     { key: "journal", label: "Journal", icon: IconJournal, path: `${base}/journal` },
+    { key: "logs", label: "Logs", icon: IconLogs, path: `${base}/logs` },
     { key: "nutrition", label: "Nutrition", icon: IconNutrition, path: "/nutrition" },
-    { key: "profile", label: "Profile", icon: IconProfile, path: `/athlete/${id}/profile` },
-    { key: "community", label: "Community", icon: IconCommunity, path: `/athlete/${id}/community` },
+    { key: "profile", label: "Profile", icon: IconProfile, path: `${base}/profile` },
+    { key: "community", label: "Community", icon: IconCommunity, path: `${base}/community` },
     {
       key: "mode",
       label: mode === "gym" ? "Athlete Mode" : "Gym Mode",

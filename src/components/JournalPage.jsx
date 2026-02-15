@@ -1,55 +1,236 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
-// Component: JournalPage - UI layout and interactions.
-// This component renders the journal experience and wires up its local UI state.
-// Sections below are grouped to keep the layout and user flow readable.
-// Comment blocks explain intent without changing behavior.
+import { recalcUserState } from "../services/stateEngine";
+import { trackDailyActivity } from "../services/activityTracker";
 
+const SLOT_PREFIX = {
+  morning: "MORNING_PREP::",
+  evening: "EVENING_REFLECTION::",
+};
+
+const FALLBACK_QUOTES = [
+  { content: "Consistency creates identity.", author: "ExerVia" },
+  { content: "Discipline is self-respect in action.", author: "ExerVia" },
+  { content: "Recovery is part of performance.", author: "ExerVia" },
+  { content: "Small wins compound faster than motivation fades.", author: "ExerVia" },
+  { content: "Train with intent. Reflect with honesty.", author: "ExerVia" },
+];
+
+const emptyMorning = {
+  intention: "",
+  sessionFocus: "",
+  nonNegotiable: "",
+};
+
+const emptyEvening = {
+  wentWell: "",
+  feltHard: "",
+  adjustTomorrow: "",
+};
+
+function formatDayKey(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseStructuredEntry(entry) {
+  const raw = entry?.notes || "";
+  if (raw.startsWith(SLOT_PREFIX.morning)) {
+    try {
+      const data = JSON.parse(raw.slice(SLOT_PREFIX.morning.length));
+      return { slot: "morning", data };
+    } catch {
+      return { slot: "morning", data: { ...emptyMorning } };
+    }
+  }
+  if (raw.startsWith(SLOT_PREFIX.evening)) {
+    try {
+      const data = JSON.parse(raw.slice(SLOT_PREFIX.evening.length));
+      return { slot: "evening", data };
+    } catch {
+      return { slot: "evening", data: { ...emptyEvening } };
+    }
+  }
+  return null;
+}
+
+function buildStructuredNotes(slot, payload) {
+  return `${SLOT_PREFIX[slot]}${JSON.stringify(payload)}`;
+}
+
+function pickFallbackQuote() {
+  const day = new Date().getDate();
+  return FALLBACK_QUOTES[day % FALLBACK_QUOTES.length];
+}
+
+function normalizeQuotePayload(raw) {
+  if (!raw) return null;
+
+  if (Array.isArray(raw) && raw.length > 0) {
+    const first = raw[0];
+    if (first?.q) return { content: String(first.q), author: String(first.a || "Unknown") };
+    if (first?.quote) return { content: String(first.quote), author: String(first.author || "Unknown") };
+    if (first?.content) return { content: String(first.content), author: String(first.author || "Unknown") };
+  }
+
+  if (raw?.q) return { content: String(raw.q), author: String(raw.a || "Unknown") };
+  if (raw?.quote) return { content: String(raw.quote), author: String(raw.author || "Unknown") };
+  if (raw?.content) return { content: String(raw.content), author: String(raw.author || "Unknown") };
+
+  return null;
+}
+
+async function fetchJsonWithTimeout(url, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default function JournalPage({ mode = "gym" }) {
   const navigate = useNavigate();
-  const [quote, setQuote] = useState(null);
-
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [entries, setEntries] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-
   const userId = useMemo(() => localStorage.getItem("exervia_user_id"), []);
 
-// formatDayKey manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const formatDayKey = (value) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  const [quote, setQuote] = useState(null);
+  const [entries, setEntries] = useState([]);
 
-// fetchQuote manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const fetchQuote = async () => {
-    try {
-      const res = await fetch("https://api.quotable.io/random");
-      const json = await res.json();
-      setQuote({ content: json.content, author: json.author });
-    } catch {
-      setQuote({ content: "Discipline is a form of self-respect.", author: "SYSTEM" });
+  const [morning, setMorning] = useState({ ...emptyMorning });
+  const [evening, setEvening] = useState({ ...emptyEvening });
+  const [activeSlot, setActiveSlot] = useState("morning");
+  const [editingTarget, setEditingTarget] = useState(null);
+
+  const [savingSlot, setSavingSlot] = useState("");
+
+  const todayKey = formatDayKey(new Date());
+
+  const structuredEntries = useMemo(
+    () => entries.map((entry) => ({ entry, structured: parseStructuredEntry(entry) })),
+    [entries]
+  );
+
+  const todayMorningEntry = useMemo(
+    () =>
+      structuredEntries.find(
+        ({ entry, structured }) => structured?.slot === "morning" && formatDayKey(entry.created_at) === todayKey
+      )?.entry || null,
+    [structuredEntries, todayKey]
+  );
+
+  const todayEveningEntry = useMemo(
+    () =>
+      structuredEntries.find(
+        ({ entry, structured }) => structured?.slot === "evening" && formatDayKey(entry.created_at) === todayKey
+      )?.entry || null,
+    [structuredEntries, todayKey]
+  );
+
+  const thisMonthEntries = useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    return structuredEntries.filter(({ entry, structured }) => {
+      if (!structured) return false;
+      const d = new Date(entry.created_at);
+      return d.getMonth() === month && d.getFullYear() === year;
+    }).length;
+  }, [structuredEntries]);
+
+  const historyDays = useMemo(() => {
+    const map = new Map();
+
+    structuredEntries.forEach(({ entry, structured }) => {
+      const dayKey = formatDayKey(entry.created_at);
+      if (!dayKey) return;
+      if (!map.has(dayKey)) {
+        map.set(dayKey, {
+          dayKey,
+          morning: null,
+          evening: null,
+        });
+      }
+      if (!structured) return;
+      const row = map.get(dayKey);
+      if (structured.slot === "morning") row.morning = { entry, data: structured.data };
+      if (structured.slot === "evening") row.evening = { entry, data: structured.data };
+    });
+
+    return Array.from(map.values())
+      .filter((d) => d.morning || d.evening)
+      .sort((a, b) => new Date(b.dayKey) - new Date(a.dayKey));
+  }, [structuredEntries]);
+
+  const dayInOneGlance = useMemo(() => {
+    const morningData = todayMorningEntry ? parseStructuredEntry(todayMorningEntry)?.data : null;
+    const eveningData = todayEveningEntry ? parseStructuredEntry(todayEveningEntry)?.data : null;
+
+    if (!morningData && !eveningData) {
+      return "Set your morning intention to start the day with clear direction.";
     }
+    if (morningData && !eveningData) {
+      return "Morning is set. Close the day with a short evening reflection.";
+    }
+    if (!morningData && eveningData) {
+      return "You reflected tonight. Add tomorrow's morning prep for a full daily cycle.";
+    }
+
+    return `Today: ${morningData?.intention || "steady focus"}. Next adjustment: ${eveningData?.adjustTomorrow || "keep building consistency"}.`;
+  }, [todayMorningEntry, todayEveningEntry]);
+
+  const isDayComplete = Boolean(todayMorningEntry && todayEveningEntry);
+
+  const fetchQuote = async () => {
+    const legacyCacheKey = `exervia_quote_${todayKey}`;
+    const cacheKey = `exervia_quote_v2_${todayKey}`;
+    localStorage.removeItem(legacyCacheKey);
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsedCache = JSON.parse(cached);
+        if (parsedCache?.source === "api" && parsedCache?.content) {
+          setQuote(parsedCache);
+          return;
+        }
+        localStorage.removeItem(cacheKey);
+      } catch {
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
+    const sources = [
+      "https://quoteslate.vercel.app/api/quotes/random",
+      "https://api.quotable.io/random",
+      "https://zenquotes.io/api/today",
+      "https://api.allorigins.win/raw?url=https://zenquotes.io/api/today",
+    ];
+
+    for (const source of sources) {
+      const json = await fetchJsonWithTimeout(source);
+      const parsed = normalizeQuotePayload(json);
+      if (parsed?.content) {
+        const payload = { ...parsed, source: "api" };
+        setQuote(payload);
+        localStorage.setItem(cacheKey, JSON.stringify(payload));
+        return;
+      }
+    }
+
+    const fallback = pickFallbackQuote();
+    setQuote(fallback);
   };
 
-// loadEntries manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
   const loadEntries = async () => {
     if (!userId) return;
     const { data } = await supabase
@@ -57,224 +238,305 @@ export default function JournalPage({ mode = "gym" }) {
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(120);
     setEntries(data || []);
   };
 
-// loadRecentActivity manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const loadRecentActivity = async () => {
-    if (!userId) return;
-    const [sessionRes, liftRes] = await Promise.all([
-      supabase
-        .from("training_sessions")
-        .select("id, created_at, duration_minutes, metrics, sport")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(2),
-      supabase
-        .from("strength_logs")
-        .select("id, created_at, reps, sets, weight, exercise_name")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(2)
-    ]);
-// sessions manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-    const sessions = (sessionRes.data || []).map((row) => ({
-      id: `session-${row.id}`,
-      type: "session",
-      created_at: row.created_at,
-      title: row.sport ? row.sport.toUpperCase() : "SESSION",
-      detail: `${row.duration_minutes || "--"} min · ${row.metrics?.distance || "--"} km`
-    }));
-// lifts manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-    const lifts = (liftRes.data || []).map((row) => ({
-      id: `lift-${row.id}`,
-      type: "lift",
-      created_at: row.created_at,
-      title: row.exercise_name ? row.exercise_name.toUpperCase() : "LIFT",
-      detail: `${row.reps || "--"} reps · ${row.sets || "--"} sets${row.weight ? ` · ${row.weight}kg` : ""}`
-    }));
-    const combined = [...sessions, ...lifts]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 2);
-    setRecentActivity(combined);
-  };
-
-// lifecycle hook for side effects,
-// runs when dependencies change,
-// keeps data and UI in sync,
-// cleans up to prevent leaks
   useEffect(() => {
     fetchQuote();
     loadEntries();
-    loadRecentActivity();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-// saveJournal manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const saveJournal = async () => {
-    if (!userId) return;
-    setSaving(true);
+  useEffect(() => {
+    if (editingTarget) return;
+    const morningStructured = todayMorningEntry ? parseStructuredEntry(todayMorningEntry) : null;
+    const eveningStructured = todayEveningEntry ? parseStructuredEntry(todayEveningEntry) : null;
 
-    if (editingId) {
-      await supabase
-        .from("journal_entries")
-        .update({
-          notes,
-        })
-        .eq("id", editingId)
-        .eq("user_id", userId);
+    setMorning({ ...emptyMorning, ...(morningStructured?.data || {}) });
+    setEvening({ ...emptyEvening, ...(eveningStructured?.data || {}) });
+  }, [todayMorningEntry, todayEveningEntry, editingTarget]);
+
+  const resetToTodayState = () => {
+    const morningStructured = todayMorningEntry ? parseStructuredEntry(todayMorningEntry) : null;
+    const eveningStructured = todayEveningEntry ? parseStructuredEntry(todayEveningEntry) : null;
+    setMorning({ ...emptyMorning, ...(morningStructured?.data || {}) });
+    setEvening({ ...emptyEvening, ...(eveningStructured?.data || {}) });
+  };
+
+  const startEditFromHistory = (slot, entry, data) => {
+    setEditingTarget({ id: entry.id, slot, dayKey: formatDayKey(entry.created_at) });
+    setActiveSlot(slot);
+    if (slot === "morning") {
+      setMorning({ ...emptyMorning, ...(data || {}) });
     } else {
-      await supabase.from("journal_entries").insert([{
-        user_id: userId,
-        mode,
-        notes,
-      }]);
+      setEvening({ ...emptyEvening, ...(data || {}) });
     }
-
-    setSaving(false);
-    setNotes("");
-    setEditingId(null);
-    window.dispatchEvent(new Event("journal_updated"));
-    loadEntries();
   };
 
-// startEdit manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const startEdit = (entry) => {
-    setEditingId(entry.id);
-    setNotes(entry.notes || "");
+  const cancelHistoryEdit = () => {
+    setEditingTarget(null);
+    resetToTodayState();
   };
 
-// cancelEdit manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const cancelEdit = () => {
-    setEditingId(null);
-    setNotes("");
-  };
-
-// deleteEntry manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const deleteEntry = async (entryId) => {
+  const saveSlot = async (slot) => {
     if (!userId) return;
-    await supabase
-      .from("journal_entries")
-      .delete()
-      .eq("id", entryId)
-      .eq("user_id", userId);
-    if (editingId === entryId) {
-      cancelEdit();
+
+    const payload = slot === "morning" ? morning : evening;
+    const hasContent = Object.values(payload).some((v) => String(v || "").trim().length > 0);
+    if (!hasContent) return;
+
+    const notes = buildStructuredNotes(slot, payload);
+    const existingEntry = editingTarget?.slot === slot
+      ? { id: editingTarget.id, created_at: editingTarget.dayKey }
+      : (slot === "morning" ? todayMorningEntry : todayEveningEntry);
+
+    if (existingEntry) {
+      const confirmed = window.confirm(
+        editingTarget?.slot === slot
+          ? `Update this ${slot === "morning" ? "Morning Prep" : "Evening Reflection"} entry?`
+          : (slot === "morning"
+            ? "Update today\u2019s Morning Prep?"
+            : "Update today\u2019s Evening Reflection?")
+      );
+      if (!confirmed) return;
     }
-    loadEntries();
+
+    setSavingSlot(slot);
+
+    let error = null;
+    try {
+      if (existingEntry) {
+        const result = await supabase
+          .from("journal_entries")
+          .update({ notes })
+          .eq("id", existingEntry.id)
+          .eq("user_id", userId);
+        error = result.error;
+      } else {
+        const result = await supabase.from("journal_entries").insert([
+          {
+            user_id: userId,
+            mode,
+            notes,
+          },
+        ]);
+        error = result.error;
+      }
+
+      if (!error) {
+        await trackDailyActivity(userId, "journal_entry");
+        await recalcUserState(userId);
+        window.dispatchEvent(new Event("user_state_updated"));
+        window.dispatchEvent(new Event("journal_updated"));
+        await loadEntries();
+        if (editingTarget?.slot === slot) {
+          setEditingTarget(null);
+        }
+      }
+    } finally {
+      setSavingSlot("");
+    }
   };
 
-
-  // Render
   return (
-    <div className="page-shell">
+    <div className="page-shell journal-shell">
       <div className="page-header">
         <div>
+          <button
+            className="studio-back"
+            onClick={() => navigate(mode === "athlete" ? `/athlete/${userId}` : `/gym/${userId}`)}
+            type="button"
+          >
+            {'<- Back'}
+          </button>
           <h2 className="page-title">Journal</h2>
+          <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
         </div>
-        <button
-          className="hud-secondary-btn"
-          onClick={() => navigate(mode === "athlete" ? `/athlete/${userId}` : `/gym/${userId}`)}
-        >
-          Back to Dashboard
-        </button>
       </div>
 
-      <div className="grid-2">
-        <div className="hud-card">
-          <div className="hud-card-title">RECENT TRAINING</div>
-          <div className="hud-dim">Your last two sessions or lifts.</div>
-          <div className="studio-recent-list" style={{ marginTop: 16 }}>
-            {recentActivity.length > 0 ? (
-              recentActivity.map((item) => (
-                <div key={item.id} className="studio-recent-row">
-                  <div className="studio-recent-main">
-                    <div className="studio-recent-title">{item.title}</div>
-                    <div className="studio-recent-sub">{item.detail}</div>
-                  </div>
-                  <div className="studio-recent-meta">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="studio-empty">No sessions logged yet.</div>
-            )}
-          </div>
+      <div className="grid-2 journal-meta-grid">
+        <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>
+          <div className="hud-card-title">YOUR DAY IN ONE GLANCE</div>
+          {isDayComplete && <div className="journal-complete-pill">Day complete</div>}
+          <div className="journal-summary-text">{dayInOneGlance}</div>
+          <div className="journal-summary-foot">{thisMonthEntries} entries this month</div>
         </div>
 
-        <div className="hud-card">
+        <div className="hud-card journal-quote-card">
           <div className="hud-card-title">QUOTE OF THE DAY</div>
           <div className="quote-box">
             <div className="quote-text">"{quote?.content || "..."}"</div>
-            <div className="quote-author">- {quote?.author || "SYSTEM"}</div>
+            <div className="quote-author">- {quote?.author || "ExerVia"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="journal-premium-grid">
+        <div className="hud-card journal-slot-card">
+          <div className="journal-slot-top">
+            <div className="hud-card-title">DAILY CHECK-IN</div>
+            <div className="journal-slot-pill">
+              {editingTarget?.slot === activeSlot
+                ? `Editing ${new Date(editingTarget.dayKey).toLocaleDateString()}`
+                : (activeSlot === "morning"
+                ? (todayMorningEntry ? "Updated today" : "Open")
+                : (todayEveningEntry ? "Updated today" : "Open"))}
+            </div>
           </div>
 
-          <div className="hud-divider" />
+          {editingTarget && (
+            <div className="journal-editing-row">
+              <div className="hud-dim">Editing history entry</div>
+              <button className="studio-back journal-action-btn" type="button" onClick={cancelHistoryEdit}>
+                Cancel
+              </button>
+            </div>
+          )}
 
-          <div className="hud-card-title">NOTES</div>
-          <textarea
-            className="hud-textarea"
-            placeholder="Write what mattered today. Training, mindset, diet, stress..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-
-          <button className="hud-primary-btn" onClick={saveJournal} disabled={saving}>
-            {saving ? "Saving..." : editingId ? "Update Entry" : "Save Journal Entry"}
-          </button>
-          {editingId && (
-            <button className="hud-secondary-btn journal-cancel-btn" onClick={cancelEdit} type="button">
-              Cancel edit
+          <div className="journal-switch" role="tablist" aria-label="Daily check-in sections">
+            <button
+              className={`journal-switch-btn${activeSlot === "morning" ? " active" : ""}`}
+              onClick={() => setActiveSlot("morning")}
+              type="button"
+            >
+              Morning Prep
             </button>
+            <button
+              className={`journal-switch-btn${activeSlot === "evening" ? " active" : ""}`}
+              onClick={() => setActiveSlot("evening")}
+              type="button"
+            >
+              Evening Reflection
+            </button>
+          </div>
+
+          {activeSlot === "morning" ? (
+            <>
+              <div className="journal-field-block">
+                <label className="journal-field-label">Today&apos;s intention</label>
+                <input
+                  className="journal-input"
+                  placeholder="What matters most today?"
+                  value={morning.intention}
+                  onChange={(e) => setMorning((prev) => ({ ...prev, intention: e.target.value }))}
+                />
+              </div>
+
+              <div className="journal-field-block">
+                <label className="journal-field-label">Session focus</label>
+                <input
+                  className="journal-input"
+                  placeholder="Main training or health focus"
+                  value={morning.sessionFocus}
+                  onChange={(e) => setMorning((prev) => ({ ...prev, sessionFocus: e.target.value }))}
+                />
+              </div>
+
+              <div className="journal-field-block">
+                <label className="journal-field-label">One non-negotiable</label>
+                <input
+                  className="journal-input"
+                  placeholder="One thing you will complete"
+                  value={morning.nonNegotiable}
+                  onChange={(e) => setMorning((prev) => ({ ...prev, nonNegotiable: e.target.value }))}
+                />
+              </div>
+
+              <button className="hud-primary-btn" onClick={() => saveSlot("morning")} disabled={savingSlot === "morning"}>
+                {savingSlot === "morning" ? "Saving..." : todayMorningEntry ? "Update Morning Prep" : "Save Morning Prep"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="journal-field-block">
+                <label className="journal-field-label">What went well</label>
+                <textarea
+                  className="journal-textarea"
+                  placeholder="Highlight one win from today"
+                  value={evening.wentWell}
+                  onChange={(e) => setEvening((prev) => ({ ...prev, wentWell: e.target.value }))}
+                />
+              </div>
+
+              <div className="journal-field-block">
+                <label className="journal-field-label">What felt hard</label>
+                <textarea
+                  className="journal-textarea"
+                  placeholder="Name the friction honestly"
+                  value={evening.feltHard}
+                  onChange={(e) => setEvening((prev) => ({ ...prev, feltHard: e.target.value }))}
+                />
+              </div>
+
+              <div className="journal-field-block">
+                <label className="journal-field-label">Adjust for tomorrow</label>
+                <textarea
+                  className="journal-textarea"
+                  placeholder="One change for tomorrow"
+                  value={evening.adjustTomorrow}
+                  onChange={(e) => setEvening((prev) => ({ ...prev, adjustTomorrow: e.target.value }))}
+                />
+              </div>
+
+              <button className="hud-primary-btn" onClick={() => saveSlot("evening")} disabled={savingSlot === "evening"}>
+                {savingSlot === "evening" ? "Saving..." : todayEveningEntry ? "Update Evening Reflection" : "Save Evening Reflection"}
+              </button>
+            </>
           )}
         </div>
       </div>
 
       <div className="hud-card journal-entries">
-        <div className="hud-card-title">RECENT ENTRIES</div>
-        {entries.length === 0 && (
-          <div className="hud-dim">No entries yet.</div>
-        )}
-        {entries.map((entry) => (
-          <div key={entry.id} className="journal-entry-row">
-            <div>
-              <div className="journal-entry-meta">
-                {new Date(entry.created_at).toLocaleString()} - {entry.mode?.toUpperCase() || "MODE"}
-              </div>
-              <div className="journal-entry-notes">
-                {entry.notes || "No notes added."}
-              </div>
+        <div className="hud-card-title">ENTRY HISTORY</div>
+        {historyDays.length === 0 && <div className="hud-dim">No entries yet.</div>}
+
+        {historyDays.map((day) => (
+          <div key={day.dayKey} className="journal-history-day">
+            <div className="journal-history-date">{new Date(day.dayKey).toLocaleDateString()}</div>
+
+            <div className="journal-history-slot">
+              <div className="journal-history-slot-title">Morning Prep</div>
+              {day.morning ? (
+                <>
+                  <div className="journal-history-line"><span>Intention:</span> {day.morning.data?.intention || "-"}</div>
+                  <div className="journal-history-line"><span>Focus:</span> {day.morning.data?.sessionFocus || "-"}</div>
+                  <div className="journal-history-line"><span>Non-negotiable:</span> {day.morning.data?.nonNegotiable || "-"}</div>
+                  <div className="journal-history-actions">
+                    <button
+                      className="studio-back journal-action-btn"
+                      type="button"
+                      onClick={() => startEditFromHistory("morning", day.morning.entry, day.morning.data)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="journal-history-empty">No morning entry</div>
+              )}
             </div>
-            <div className="journal-entry-actions">
-              <button className="hud-secondary-btn" onClick={() => startEdit(entry)} type="button">
-                Edit
-              </button>
-              <button className="hud-secondary-btn danger" onClick={() => deleteEntry(entry.id)} type="button">
-                Delete
-              </button>
+
+            <div className="journal-history-slot">
+              <div className="journal-history-slot-title">Evening Reflection</div>
+              {day.evening ? (
+                <>
+                  <div className="journal-history-line"><span>Went well:</span> {day.evening.data?.wentWell || "-"}</div>
+                  <div className="journal-history-line"><span>Felt hard:</span> {day.evening.data?.feltHard || "-"}</div>
+                  <div className="journal-history-line"><span>Adjust:</span> {day.evening.data?.adjustTomorrow || "-"}</div>
+                  <div className="journal-history-actions">
+                    <button
+                      className="studio-back journal-action-btn"
+                      type="button"
+                      onClick={() => startEditFromHistory("evening", day.evening.entry, day.evening.data)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="journal-history-empty">No evening entry</div>
+              )}
             </div>
           </div>
         ))}

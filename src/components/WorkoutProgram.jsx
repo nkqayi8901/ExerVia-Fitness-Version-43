@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+import { queueLogsTrainingPrefill } from "../services/logsStorage";
 // Component: WorkoutProgram - UI layout and interactions.
 // This component renders the workoutprogram experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -29,6 +30,38 @@ const programs = [
     ]
   }
 ];
+
+const REP_RANGE_OPTIONS = ["1-3", "4-6", "7-9", "10-12", "13-15", "Failure"];
+const MAX_SETS = 10;
+
+const normalizeRepTarget = (value) => {
+  if (value === null || value === undefined) return "10-12";
+  const raw = String(value).trim();
+  if (!raw) return "10-12";
+  if (/failure/i.test(raw)) return "Failure";
+  if (REP_RANGE_OPTIONS.includes(raw)) return raw;
+  if (/[a-zA-Z]/.test(raw)) return raw;
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isNaN(parsed)) {
+    if (parsed <= 3) return "1-3";
+    if (parsed <= 6) return "4-6";
+    if (parsed <= 9) return "7-9";
+    if (parsed <= 12) return "10-12";
+    return "13-15";
+  }
+
+  const firstSegment = raw.split("-")[0];
+  const firstValue = Number.parseInt(firstSegment, 10);
+  if (!Number.isNaN(firstValue)) {
+    if (firstValue <= 3) return "1-3";
+    if (firstValue <= 6) return "4-6";
+    if (firstValue <= 9) return "7-9";
+    if (firstValue <= 12) return "10-12";
+    return "13-15";
+  }
+  return "10-12";
+};
 
 // formatTime manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -62,7 +95,7 @@ function ProgramList({ backPath, backLabel }) {
           <h2 className="page-title">Workout Programs</h2>
           <p className="page-subtitle">Pick a plan and lock in.</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
 
       <div className="program-list">
@@ -74,7 +107,7 @@ function ProgramList({ backPath, backLabel }) {
           >
             <div className="program-list-title">{program.name}</div>
             <div className="program-list-sub">{program.focus}</div>
-            <div className="program-list-meta">{program.exercises.length} exercises ? {program.duration}</div>
+            <div className="program-list-meta">{program.exercises.length} exercises · {program.duration}</div>
           </button>
         ))}
       </div>
@@ -91,8 +124,41 @@ function ProgramPreview({ backPath, backLabel }) {
   const location = useLocation();
   const { programId } = useParams();
   const injectedProgram = location.state?.program;
-  const program = findProgram(programId) || (injectedProgram?.id === programId ? injectedProgram : null);
+  const program =
+    findProgram(programId) ||
+    (String(injectedProgram?.id || "") === String(programId || "") ? injectedProgram : null);
   const [editedExercises, setEditedExercises] = useState([]);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideExercise, setGuideExercise] = useState(null);
+  const [guideDetails, setGuideDetails] = useState(null);
+  const [guideLoading, setGuideLoading] = useState(false);
+
+
+  const handleExerciseGuide = async (exercise) => {
+    if (!exercise?.name) return;
+    setGuideExercise(exercise);
+    setGuideOpen(true);
+    setGuideLoading(true);
+    setGuideDetails(null);
+    try {
+      const response = await fetch(
+        `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&name=${encodeURIComponent(exercise.name)}`
+      );
+      const data = await response.json();
+      const result = data?.results?.[0];
+      const description = result?.description
+        ? result.description.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+        : '';
+      const steps = description
+        ? description.split('.').map((part) => part.trim()).filter(Boolean).slice(0, 4)
+        : [];
+      setGuideDetails({ description, steps });
+    } catch (error) {
+      console.error('Guide fetch failed:', error);
+    } finally {
+      setGuideLoading(false);
+    }
+  };
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -108,7 +174,7 @@ function ProgramPreview({ backPath, backLabel }) {
         ...exercise,
         id: exercise.id || `${program.id}-${index}`,
         sets: Number(exercise.sets) || 1,
-        reps: exercise.reps ?? "10",
+        reps: normalizeRepTarget(exercise.reps),
         weight: exercise.weight ?? ""
       }))
     );
@@ -121,7 +187,7 @@ function ProgramPreview({ backPath, backLabel }) {
           <div>
             <h2 className="page-title">Program not found</h2>
           </div>
-          <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+          <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
         </div>
       </div>
     );
@@ -134,57 +200,74 @@ function ProgramPreview({ backPath, backLabel }) {
           <h2 className="page-title">{program.name}</h2>
           <p className="page-subtitle">{program.focus}</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
 
       <div className="hud-card program-preview">
         <div className="hud-card-title">Program Overview</div>
-        <div className="program-preview-meta">{program.exercises.length} exercises ? {program.duration}</div>
+        <div className="program-preview-meta">{program.exercises.length} exercises · {program.duration}</div>
         <div className="program-preview-head">
           <span />
           <span className="program-preview-head-label">Sets</span>
-          <span className="program-preview-head-label">Reps</span>
+          <span className="program-preview-head-label">Rep Range</span>
           <span className="program-preview-head-label">Weight (kg)</span>
         </div>
         <div className="program-preview-list">
           {editedExercises.map((exercise, index) => (
             <div key={exercise.id} className="program-preview-row">
-              <span>{exercise.name}</span>
-              <span className="program-preview-edit">
-                <input
-                  type="number"
-                  min="1"
-                  className="program-preview-input"
-                  value={exercise.sets}
-                  onChange={(event) => {
-                    const next = [...editedExercises];
-                    next[index] = { ...next[index], sets: Number(event.target.value) || 1 };
-                    setEditedExercises(next);
-                  }}
-                />
-                <input
-                  type="text"
-                  className="program-preview-input"
-                  value={exercise.reps}
-                  onChange={(event) => {
-                    const next = [...editedExercises];
-                    next[index] = { ...next[index], reps: event.target.value };
-                    setEditedExercises(next);
-                  }}
-                />
-                <input
-                  type="number"
-                  min="0"
-                  className="program-preview-input"
-                  value={exercise.weight ?? ""}
-                  onChange={(event) => {
-                    const next = [...editedExercises];
-                    const value = event.target.value === "" ? "" : Number(event.target.value);
-                    next[index] = { ...next[index], weight: value };
-                    setEditedExercises(next);
-                  }}
-                />
-              </span>
+              <button
+                className="program-exercise-link"
+                onClick={() => handleExerciseGuide(exercise)}
+                type="button"
+              >
+                {exercise.name}
+              </button>
+              <input
+                type="number"
+                min="1"
+                max={MAX_SETS}
+                className="program-preview-input"
+                value={exercise.sets}
+                onChange={(event) => {
+                  const rawValue = Number(event.target.value);
+                  const normalizedSets = Number.isNaN(rawValue)
+                    ? 1
+                    : Math.min(MAX_SETS, Math.max(1, rawValue));
+                  const next = [...editedExercises];
+                  next[index] = { ...next[index], sets: normalizedSets };
+                  setEditedExercises(next);
+                }}
+              />
+              <select
+                className="program-preview-input"
+                value={exercise.reps}
+                onChange={(event) => {
+                  const next = [...editedExercises];
+                  next[index] = { ...next[index], reps: event.target.value };
+                  setEditedExercises(next);
+                }}
+              >
+                {REP_RANGE_OPTIONS.map((rangeOption) => (
+                  <option key={rangeOption} value={rangeOption}>
+                    {rangeOption}
+                  </option>
+                ))}
+                {!REP_RANGE_OPTIONS.includes(exercise.reps) && (
+                  <option value={exercise.reps}>{exercise.reps}</option>
+                )}
+              </select>
+              <input
+                type="number"
+                min="0"
+                className="program-preview-input"
+                value={exercise.weight ?? ""}
+                onChange={(event) => {
+                  const next = [...editedExercises];
+                  const value = event.target.value === "" ? "" : Number(event.target.value);
+                  next[index] = { ...next[index], weight: value };
+                  setEditedExercises(next);
+                }}
+              />
             </div>
           ))}
         </div>
@@ -199,6 +282,61 @@ function ProgramPreview({ backPath, backLabel }) {
           Start program
         </button>
       </div>
+
+      {guideOpen && (
+        <div className="studio-swap-backdrop">
+          <div className="studio-swap-panel">
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">Exercise Guide</div>
+                <div className="studio-swap-sub">Quick overview before you start.</div>
+              </div>
+              <button
+                className="studio-swap-close"
+                onClick={() => {
+                  setGuideOpen(false);
+                  setGuideDetails(null);
+                }}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            <div className="studio-swap-body">
+              {guideExercise ? (
+                <div className="studio-guide-content">
+                  <div className="studio-guide-title">{guideExercise.name}</div>
+                  <div className="studio-guide-meta">
+                    {guideExercise.sets} sets · {normalizeRepTarget(guideExercise.reps)} rep range
+                  </div>
+                  {guideLoading ? (
+                    <div className="studio-empty">Loading guide...</div>
+                  ) : (
+                    <>
+                      <div className="studio-guide-text">
+                        {guideDetails?.description || 'No guide yet. Focus on control and form.'}
+                      </div>
+                      <div className="studio-guide-section">
+                        <div className="studio-guide-label">Step by step</div>
+                        <ol className="studio-guide-steps">
+                          {(guideDetails?.steps?.length
+                            ? guideDetails.steps
+                            : ['Set your stance and brace core.', 'Move with control through full range.', 'Keep form tight and breathe steadily.']
+                          ).map((item, idx) => (
+                            <li key={`preview-step-${idx}`}>{item}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="studio-empty">No exercise selected.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -219,9 +357,15 @@ function ProgramSession({ backPath, backLabel }) {
   const [countdownOpen, setCountdownOpen] = useState(true);
   const [countdown, setCountdown] = useState(3);
 
-  const exercises = useMemo(() => program?.exercises || [], [program]);
+  const exercises = useMemo(
+    () =>
+      (program?.exercises || []).map((exercise) => ({
+        ...exercise,
+        reps: normalizeRepTarget(exercise.reps)
+      })),
+    [program]
+  );
   const currentExercise = exercises[currentIndex];
-  const nextExercise = exercises[currentIndex + 1];
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -271,10 +415,15 @@ function ProgramSession({ backPath, backLabel }) {
 // and output feeds the UI state or data flow
   const handleDone = () => {
     if (currentIndex >= exercises.length - 1) {
-      navigate(`../${programId}/finish`);
+      navigate(`../${programId}/finish`, { state: { ...location.state } });
       return;
     }
     setCurrentIndex((prev) => prev + 1);
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex <= 0) return;
+    setCurrentIndex((prev) => prev - 1);
   };
 
 // handleExerciseInfo manages a focused piece of logic,
@@ -304,7 +453,7 @@ function ProgramSession({ backPath, backLabel }) {
           <h2 className="page-title">{program.name}</h2>
           <p className="page-subtitle">Lock in. One rep at a time.</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
 
       <div className="program-top">
@@ -318,17 +467,14 @@ function ProgramSession({ backPath, backLabel }) {
             <button className="hud-secondary-btn" onClick={() => setTimerSeconds(0)}>Reset</button>
           </div>
         </div>
-
-        <div className="hud-card program-status">
-          <div className="hud-card-title">Session Status</div>
-          <div className="program-status-main">Exercise {currentIndex + 1} of {exercises.length}</div>
-          <div className="program-status-sub">Stay smooth and control the tempo.</div>
-        </div>
       </div>
 
       {currentExercise && (
         <div className="program-deck">
           <div className="hud-card program-card active">
+            <div className="hud-card-title">Session Status</div>
+            <div className="program-status-main">Exercise {currentIndex + 1} of {exercises.length}</div>
+            <div className="program-status-sub">Stay smooth and control the tempo.</div>
             <div className="program-card-head">
               <button className="program-card-title" onClick={handleExerciseInfo} type="button">
                 {currentExercise.name}
@@ -336,27 +482,23 @@ function ProgramSession({ backPath, backLabel }) {
               <span className="program-card-badge">Active</span>
             </div>
             <div className="program-card-meta">
-              {currentExercise.sets} sets · {currentExercise.reps} reps
+              {currentExercise.sets} sets · {currentExercise.reps} rep range
               {Number(currentExercise.weight) > 0 ? ` · ${currentExercise.weight}kg` : ""} · {currentExercise.rest} rest
             </div>
             <div className="program-card-focus">{currentExercise.focus}</div>
-            <button className="hud-secondary-btn program-done" onClick={handleDone}>
-              Done - keep {currentExercise.reps} reps
-            </button>
-          </div>
-
-          {nextExercise && (
-            <div className="hud-card program-card peek">
-              <div className="program-card-head">
-                <div className="program-card-title">{nextExercise.name}</div>
-                <span className="program-card-badge muted">Next</span>
-              </div>
-              <div className="program-card-meta">
-                {nextExercise.sets} sets · {nextExercise.reps} reps
-                {Number(nextExercise.weight) > 0 ? ` · ${nextExercise.weight}kg` : ""} · {nextExercise.rest} rest
-              </div>
+            <div className="program-session-actions">
+              <button
+                className="hud-secondary-btn program-back-step"
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+              >
+                Previous exercise
+              </button>
+              <button className="hud-secondary-btn program-done" onClick={handleDone}>
+                Complete exercise
+              </button>
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -378,6 +520,7 @@ function ProgramSession({ backPath, backLabel }) {
 // and output feeds the UI state or data flow
 function ProgramFinish({ backPath, backLabel }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { programId } = useParams();
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -396,7 +539,7 @@ function ProgramFinish({ backPath, backLabel }) {
       if (next >= 100) {
         clearInterval(id);
         setHolding(false);
-        navigate(`../${programId}/congrats`);
+        navigate(`../${programId}/congrats`, { state: { ...location.state } });
       }
     }, 50);
     return () => clearInterval(id);
@@ -418,7 +561,7 @@ function ProgramFinish({ backPath, backLabel }) {
           <h2 className="page-title">Finish Session</h2>
           <p className="page-subtitle">Hold to complete the session.</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
 
       <div className="hud-card program-finish">
@@ -446,10 +589,33 @@ function ProgramFinish({ backPath, backLabel }) {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-function ProgramCongrats({ backPath, backLabel }) {
+function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { programId } = useParams();
-  const program = findProgram(programId);
+  const injectedProgram = location.state?.program;
+  const program = injectedProgram || findProgram(programId);
+  const resolvedUserId = userId || localStorage.getItem("exervia_user_id") || "";
+  const logsPath = mode === "athlete" ? `/athlete/${resolvedUserId}/logs` : `/gym/${resolvedUserId}/logs`;
+
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    const durationText = String(program?.duration || "");
+    const minutesMatch = durationText.match(/\d+/);
+    const minutes = minutesMatch ? Number(minutesMatch[0]) : "";
+    const planName = program?.name || "Program";
+    queueLogsTrainingPrefill(resolvedUserId, {
+      source: "session_completion",
+      type: mode === "athlete" ? "Training Program" : "Workout Program",
+      title: planName,
+      minutes,
+      notes: `${planName} completed`,
+    });
+    const redirectTimer = setTimeout(() => {
+      navigate(logsPath, { state: location.state });
+    }, 1800);
+    return () => clearTimeout(redirectTimer);
+  }, [location.state, logsPath, mode, navigate, program?.name, resolvedUserId]);
 
   return (
     <div className="page-shell program-shell">
@@ -458,13 +624,26 @@ function ProgramCongrats({ backPath, backLabel }) {
           <h2 className="page-title">Session Complete</h2>
           <p className="page-subtitle">{program?.name || "Program"} finished.</p>
         </div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
 
       <div className="hud-card program-complete">
+        <div className="program-celebration" aria-hidden="true">
+          {[...Array(10)].map((_, index) => (
+            <span key={`program-spark-${index}`} className={`program-spark spark-${index + 1}`} />
+          ))}
+          <div className="program-celebration-badge">✓</div>
+        </div>
         <div className="program-complete-main">Locked in. Great work.</div>
-        <div className="program-complete-sub">Log the session and recover well.</div>
-        <button className="hud-secondary-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <div className="program-complete-sub">{program?.name || "Program"} logged.</div>
+        <div className="program-complete-sub">Session captured. Redirecting to Logs...</div>
+        <button
+          className="studio-back program-back-btn"
+          onClick={() => navigate(logsPath, { state: location.state })}
+        >
+          Open logs
+        </button>
+        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
       </div>
     </div>
   );
@@ -481,7 +660,8 @@ export default function WorkoutProgram({ mode }) {
       <Route path=":programId" element={<ProgramPreview backPath={backPath} backLabel={backLabel} />} />
       <Route path=":programId/session" element={<ProgramSession backPath={backPath} backLabel={backLabel} />} />
       <Route path=":programId/finish" element={<ProgramFinish backPath={backPath} backLabel={backLabel} />} />
-      <Route path=":programId/congrats" element={<ProgramCongrats backPath={backPath} backLabel={backLabel} />} />
+      <Route path=":programId/congrats" element={<ProgramCongrats backPath={backPath} backLabel={backLabel} mode={mode} userId={id} />} />
     </Routes>
   );
 }
+
