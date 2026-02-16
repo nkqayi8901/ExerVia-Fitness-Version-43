@@ -38,6 +38,18 @@ const templateTypeOptions = [
   { id: "recipe", label: "Recipes" }
 ];
 
+const templateFocusOptions = [
+  { id: "all", label: "All Focus" },
+  { id: "upper body", label: "Upper" },
+  { id: "lower body", label: "Lower" },
+  { id: "full body", label: "Full Body" },
+  { id: "push", label: "Push" },
+  { id: "pull", label: "Pull" },
+  { id: "glutes", label: "Glutes" },
+  { id: "bodyweight", label: "Bodyweight" },
+  { id: "conditioning", label: "Conditioning" }
+];
+
 // formatTime manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -197,9 +209,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateCommentDrafts, setTemplateCommentDrafts] = useState({});
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateTypeFilter, setTemplateTypeFilter] = useState("all");
+  const [templateFocusFilter, setTemplateFocusFilter] = useState("all");
   const [templateSort, setTemplateSort] = useState("top");
   const [templateDeckIndex, setTemplateDeckIndex] = useState(0);
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
+  const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
+  const [templateDeckExpanded, setTemplateDeckExpanded] = useState(false);
+  const [templateSkippedMap, setTemplateSkippedMap] = useState({});
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
 
   useEffect(() => {
@@ -1897,6 +1913,20 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const query = templateSearch.trim().toLowerCase();
     const list = sharedTemplates.filter((template) => {
       if (templateTypeFilter !== "all" && template.template_type !== templateTypeFilter) return false;
+      if (templateFocusFilter !== "all") {
+        const payload = template.payload || {};
+        const focusBlob = [
+          payload.focus,
+          template.focus,
+          template.goal,
+          template.summary,
+          ...(Array.isArray(template.tags) ? template.tags : [])
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!focusBlob.includes(templateFocusFilter)) return false;
+      }
       if (!query) return true;
       const tags = Array.isArray(template.tags) ? template.tags.join(" ") : "";
       const payload = template.payload || {};
@@ -1946,21 +1976,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const bScore = bAvg * 0.6 + Math.log10(bTry + 1) * 0.4;
       return bScore - aScore;
     });
-  }, [sharedTemplates, templateSearch, templateTypeFilter, templateSort, templateRatings, templateTryCounts]);
+  }, [sharedTemplates, templateSearch, templateTypeFilter, templateFocusFilter, templateSort, templateRatings, templateTryCounts]);
 
   const swipeTemplates = useMemo(
-    () => filteredTemplates.filter((template) => template.template_type !== "recipe"),
-    [filteredTemplates]
-  );
-
-  const recipeTemplates = useMemo(
-    () => filteredTemplates.filter((template) => template.template_type === "recipe"),
-    [filteredTemplates]
+    () => filteredTemplates.filter((template) => !templateSkippedMap[template.id]),
+    [filteredTemplates, templateSkippedMap]
   );
 
   useEffect(() => {
     setTemplateDeckIndex(0);
-  }, [templateSearch, templateTypeFilter, templateSort]);
+    setTemplateDeckExpanded(false);
+  }, [templateSearch, templateTypeFilter, templateFocusFilter, templateSort]);
 
   useEffect(() => {
     if (!swipeTemplates.length) {
@@ -1972,11 +1998,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
   }, [swipeTemplates, templateDeckIndex]);
 
-  const getTemplatePreviewRows = (template) => {
+  useEffect(() => {
+    setTemplateDeckExpanded(false);
+  }, [templateDeckIndex]);
+
+  const getTemplatePreviewRows = (template, expanded = false) => {
     const payload = template?.payload || {};
     if (template?.template_type === "workout_program") {
-      return (payload.exercises || [])
-        .slice(0, 3)
+      const list = expanded ? (payload.exercises || []) : (payload.exercises || []).slice(0, 3);
+      return list
         .map((exercise) => {
           const name = String(exercise?.name || "").trim();
           const sets = Number(exercise?.sets) || 0;
@@ -1991,12 +2021,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const outline = Array.isArray(payload.outline) ? payload.outline : [];
       const firstBlock = outline[0] || null;
       const sessions = Array.isArray(firstBlock?.sessions) ? firstBlock.sessions : [];
-      return sessions.slice(0, 3).map((item) => String(item || "").trim()).filter(Boolean);
+      return (expanded ? sessions : sessions.slice(0, 3)).map((item) => String(item || "").trim()).filter(Boolean);
     }
     if (template?.template_type === "recipe") {
       const ingredients = Array.isArray(payload.ingredients) ? payload.ingredients : [];
-      return ingredients
-        .slice(0, 4)
+      return (expanded ? ingredients : ingredients.slice(0, 4))
         .map((item) => {
           const ingredient = String(item?.ingredient || "").trim();
           const measure = String(item?.measure || "").trim();
@@ -2049,19 +2078,32 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   const handleTemplateDeckAction = async (action) => {
     if (!swipeTemplates.length) return;
+    if (templateDeckAnimating) return;
     const current = swipeTemplates[templateDeckIndex];
     if (!current) return;
+    let skippedTemplateId = null;
 
+    setTemplateDeckAnimating(action);
     if (action === "right") {
       await handleAddTemplateToMine(current);
     } else if (action === "try") {
       await handleTryTemplate(current.id);
+    } else if (action === "left") {
+      skippedTemplateId = current.id;
     }
 
-    setTemplateDeckIndex((prev) => {
-      if (swipeTemplates.length <= 1) return 0;
-      return (prev + 1) % swipeTemplates.length;
-    });
+    setTimeout(() => {
+      if (skippedTemplateId) {
+        setTemplateSkippedMap((prev) => ({ ...prev, [skippedTemplateId]: true }));
+      }
+      setTemplateDeckAnimating(null);
+      setTemplateDeckExpanded(false);
+      setTemplateDeckDragX(0);
+      setTemplateDeckIndex((prev) => {
+        if (swipeTemplates.length <= 1) return 0;
+        return (prev + 1) % swipeTemplates.length;
+      });
+    }, 220);
   };
 
   const handleTemplateDeckPointerDown = (event) => {
@@ -2086,14 +2128,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!templateDeckPointerRef.current.active) return;
     const delta = templateDeckDragX;
     templateDeckPointerRef.current = { active: false, startX: 0, moved: false };
-    setTemplateDeckDragX(0);
     if (delta >= 92) {
       await handleTemplateDeckAction("right");
       return;
     }
     if (delta <= -92) {
       await handleTemplateDeckAction("left");
+      return;
     }
+    setTemplateDeckDragX(0);
   };
 
   useEffect(() => {
@@ -2821,6 +2864,18 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   </button>
                 ))}
               </div>
+              <div className="community-tabs community-topic-tabs">
+                {templateFocusOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className={`community-tab ${templateFocusFilter === option.id ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setTemplateFocusFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
               <div className="community-thread-toolbar">
                 <div className="community-thread-toolbar-left">
                   <div className="community-thread-label">Sort</div>
@@ -2844,6 +2899,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     <div className="community-panel-title">Plan & Program Swipe Deck</div>
                     <div className="community-thread-count">{templateDeckIndex + 1} / {swipeTemplates.length}</div>
                   </div>
+                  <div className="community-template-stack-layer layer-back-2" aria-hidden="true" />
+                  <div className="community-template-stack-layer layer-back-1" aria-hidden="true" />
                   {(() => {
                     const template = swipeTemplates[templateDeckIndex];
                     if (!template) return null;
@@ -2852,14 +2909,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     const tryCount = Number(templateTryCounts[template.id] || 0);
                     const comments = templateComments[template.id] || [];
                     const author = profiles[template.created_by] || `User ${template.created_by}`;
-                    const previewRows = getTemplatePreviewRows(template);
+                    const previewRows = getTemplatePreviewRows(template, templateDeckExpanded);
+                    const compactRows = getTemplatePreviewRows(template, false);
                     const metaBadges = getTemplateMetaBadges(template);
                     return (
                       <div
                         key={`deck-${template.id}`}
                         className={`community-feed-card community-template-swipe-card ${
                           templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
-                        }`}
+                        } ${templateDeckAnimating === "left" ? "animate-left" : ""} ${templateDeckAnimating === "right" ? "animate-right" : ""}`}
                         style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
                         onPointerDown={handleTemplateDeckPointerDown}
                         onPointerMove={handleTemplateDeckPointerMove}
@@ -2899,6 +2957,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                                 </div>
                               ))}
                             </div>
+                            {!templateDeckExpanded && previewRows.length >= compactRows.length && (
+                              <div className="community-swap-meta">Tap view details for full template.</div>
+                            )}
                           </div>
                         )}
                         <div className="community-reaction-row">
@@ -2915,15 +2976,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                             Pass
                           </button>
                           <button
-                            className={`studio-back community-action-btn community-template-swipe-btn ${
-                              templateTriedByMe[template.id] ? "" : "community-primary-btn"
-                            }`}
-                            type="button"
-                            onClick={() => handleTemplateDeckAction("try")}
-                          >
-                            {templateTriedByMe[template.id] ? "Tried" : "Tried it"}
-                          </button>
-                          <button
                             className="studio-back community-action-btn community-primary-btn community-template-swipe-btn"
                             type="button"
                             onClick={() => handleTemplateDeckAction("right")}
@@ -2931,13 +2983,57 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                             Add to mine
                           </button>
                         </div>
+                        <div className="community-template-swipe-actions">
+                          <button
+                            className="studio-back community-action-btn community-template-swipe-btn ghost"
+                            type="button"
+                            onClick={() => setTemplateDeckExpanded((prev) => !prev)}
+                          >
+                            {templateDeckExpanded ? "Hide details" : "View details"}
+                          </button>
+                        </div>
+                        {templateDeckExpanded && (
+                          <div className="community-template-commentbar">
+                            <input
+                              className="community-modal-input"
+                              placeholder="Comment on this template"
+                              value={templateCommentDrafts[template.id] || ""}
+                              onChange={(event) =>
+                                setTemplateCommentDrafts((prev) => ({
+                                  ...prev,
+                                  [template.id]: event.target.value
+                                }))
+                              }
+                            />
+                            <button
+                              className="studio-back community-cta-btn"
+                              type="button"
+                              onClick={() => handleCommentTemplate(template.id)}
+                            >
+                              Comment
+                            </button>
+                          </div>
+                        )}
+                        {templateDeckExpanded &&
+                          comments.slice(0, 3).map((comment) => (
+                            <div key={comment.id} className="community-reply-card">
+                              <div className="community-reply-body">{comment.body}</div>
+                              <div className="community-thread-meta">
+                                <span className="community-meta-pill community-meta-author">
+                                  {profiles[comment.user_id] || `User ${comment.user_id}`}
+                                </span>
+                                <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     );
                   })()}
                 </div>
               )}
-              <div className="community-thread-list">
-                {(swipeTemplates.length > 0 ? recipeTemplates : filteredTemplates).map((template) => {
+              {!swipeTemplates.length && (
+                <div className="community-thread-list">
+                {filteredTemplates.map((template) => {
                   const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
                   const avg = rating.count > 0 ? rating.sum / rating.count : 0;
                   const myRating = Number(rating.mine || 0);
@@ -3049,7 +3145,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
               {!filteredTemplates.length &&
                 renderEmptyState({
                   icon: "CHAT",

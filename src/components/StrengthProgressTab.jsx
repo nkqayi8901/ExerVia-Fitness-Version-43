@@ -868,6 +868,7 @@ const StrengthProgressTab = ({ userId }) => {
   const [lastAddedExerciseIndex, setLastAddedExerciseIndex] = useState(null);
   const [creatorFeedback, setCreatorFeedback] = useState('');
   const lastAddedTimeoutRef = useRef(null);
+  const lastRowTapRef = useRef({ index: null, time: 0 });
   const [creatorSearch, setCreatorSearch] = useState('');
   const [creatorResults, setCreatorResults] = useState([]);
   const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
@@ -1504,7 +1505,6 @@ const StrengthProgressTab = ({ userId }) => {
     if (!name) return;
     if (isExerciseInDraft(name)) {
       setCreatorFeedback(`Already added: ${name}`);
-      setBanner({ type: 'warn', message: `${name} is already in your program.` });
       return;
     }
     const newExercise = buildExerciseTemplate(name, 3, 10);
@@ -1522,7 +1522,6 @@ const StrengthProgressTab = ({ userId }) => {
     setCreatorResults([]);
     setCreatorSearch('');
     setCreatorFeedback(`Added: ${name}`);
-    setBanner({ type: 'success', message: `Added ${name}.` });
   };
 
 // addNewExercise manages a focused piece of logic,
@@ -1541,7 +1540,19 @@ const StrengthProgressTab = ({ userId }) => {
       };
     });
     setCreatorFeedback('Added blank row');
-    setBanner({ type: 'success', message: 'Blank exercise row added.' });
+  };
+
+  const handleProgramRowTouchEnd = (index, exerciseName) => {
+    const now = Date.now();
+    const previous = lastRowTapRef.current;
+    const isDoubleTap = previous.index === index && now - previous.time <= 320;
+    if (isDoubleTap) {
+      removeNewExercise(index);
+      setBanner({ type: 'success', message: `${exerciseName || 'Exercise'} removed.` });
+      lastRowTapRef.current = { index: null, time: 0 };
+      return;
+    }
+    lastRowTapRef.current = { index, time: now };
   };
 
 // removeNewExercise manages a focused piece of logic,
@@ -2305,6 +2316,7 @@ the createPRogram helps resolve this problem  */}
                           removeNewExercise(index);
                           setBanner({ type: 'success', message: `${exercise.name || 'Exercise'} removed.` });
                         }}
+                        onTouchEnd={() => handleProgramRowTouchEnd(index, exercise.name)}
                         title="Double tap to remove this exercise"
                       >
                         <input

@@ -6397,6 +6397,7 @@ code {
 }
 
 .community-template-deck-shell {
+  position: relative;
   margin-bottom: 16px;
   display: grid;
   gap: 10px;
@@ -6409,13 +6410,38 @@ code {
   gap: 10px;
 }
 
+.community-template-stack-layer {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.25);
+  pointer-events: none;
+}
+
+.community-template-stack-layer.layer-back-1 {
+  top: 58px;
+  bottom: 8px;
+  opacity: 0.52;
+  transform: scale(0.985);
+}
+
+.community-template-stack-layer.layer-back-2 {
+  top: 66px;
+  bottom: 16px;
+  opacity: 0.32;
+  transform: scale(0.97);
+}
+
 .community-template-swipe-card {
   position: relative;
+  z-index: 2;
   border: 1px solid rgba(56, 189, 248, 0.35);
   background:
     radial-gradient(450px 180px at 4% 0%, rgba(56, 189, 248, 0.14), transparent 65%),
     rgba(2, 6, 23, 0.45);
-  min-height: 520px;
+  min-height: 460px;
   display: flex;
   flex-direction: column;
   touch-action: pan-y;
@@ -6432,6 +6458,28 @@ code {
 .community-template-swipe-card.swipe-right {
   border-color: rgba(16, 185, 129, 0.45);
   box-shadow: 0 10px 26px rgba(16, 185, 129, 0.15);
+}
+
+.community-template-swipe-card.animate-left {
+  animation: templateSwipeLeft 0.22s ease forwards;
+}
+
+.community-template-swipe-card.animate-right {
+  animation: templateSwipeRight 0.22s ease forwards;
+}
+
+@keyframes templateSwipeLeft {
+  to {
+    transform: translateX(-120%) rotate(-9deg);
+    opacity: 0;
+  }
+}
+
+@keyframes templateSwipeRight {
+  to {
+    transform: translateX(120%) rotate(9deg);
+    opacity: 0;
+  }
 }
 
 .community-swipe-indicator {
@@ -6465,13 +6513,13 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 10px;
   margin-top: auto;
   padding-top: 14px;
 }
 
 .community-template-swipe-btn {
-  min-width: 116px;
+  min-width: 130px;
   min-height: 44px;
   border-radius: 999px;
   font-weight: 700;
@@ -7529,6 +7577,10 @@ code {
   background:
     radial-gradient(420px 160px at 6% 0%, rgba(16, 185, 129, 0.1), transparent 62%),
     rgba(255, 255, 255, 0.94);
+}
+.mode-gym .community-template-stack-layer {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(226, 232, 240, 0.55);
 }
 .mode-gym .community-swipe-indicator.right {
   color: #065f46;
@@ -9244,11 +9296,11 @@ code {
   }
 
   .community-template-swipe-card {
-    min-height: 470px;
+    min-height: 420px;
   }
 
   .community-template-swipe-btn {
-    min-width: 96px;
+    min-width: 118px;
   }
 
   .logs-glance-grid {

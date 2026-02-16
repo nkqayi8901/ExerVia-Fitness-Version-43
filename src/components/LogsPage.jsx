@@ -67,6 +67,19 @@ const formatDateTimeLabel = (value) => {
   return date.toLocaleString();
 };
 
+const estimateRepCount = (value) => {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw || raw === "failure") return 0;
+  const rangeMatch = raw.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const low = Number(rangeMatch[1] || 0);
+    const high = Number(rangeMatch[2] || 0);
+    if (low > 0 && high > 0) return Math.round((low + high) / 2);
+  }
+  const single = Number.parseInt(raw, 10);
+  return Number.isNaN(single) ? 0 : single;
+};
+
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -864,6 +877,13 @@ export default function LogsPage({ mode = "gym" }) {
                       <div className="logs-list-sub">
                         {(activeTrainingReport.report?.sets ?? 0)} sets · {(activeTrainingReport.report?.reps ?? 0)} reps
                         {activeTrainingReport.report?.weight ? ` · ${activeTrainingReport.report.weight} kg` : ""}
+                        {(() => {
+                          const sets = Number(activeTrainingReport.report?.sets || 0);
+                          const reps = Number(activeTrainingReport.report?.reps || 0);
+                          const weight = Number(activeTrainingReport.report?.weight || 0);
+                          const volume = sets > 0 && reps > 0 && weight > 0 ? sets * reps * weight : 0;
+                          return volume > 0 ? ` · ${volume.toLocaleString()} kg volume` : "";
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -896,6 +916,9 @@ export default function LogsPage({ mode = "gym" }) {
                           <div className="logs-list-sub">
                             {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises · {(activeTrainingReport.report?.details?.totalSets ?? 0)} total sets
                             {activeTrainingReport.report?.details?.duration ? ` · ${activeTrainingReport.report?.details?.duration}` : ""}
+                            {(activeTrainingReport.report?.details?.totalTonnage ?? 0) > 0
+                              ? ` · ${Number(activeTrainingReport.report?.details?.totalTonnage || 0).toLocaleString()} kg volume`
+                              : ""}
                           </div>
                         </div>
                       </div>
@@ -907,6 +930,15 @@ export default function LogsPage({ mode = "gym" }) {
                               {Number(exercise.sets) || 0} sets · {exercise.reps || "custom"} rep range
                               {Number(exercise.weight) > 0 ? ` · ${exercise.weight}kg` : ""}
                               {exercise.rest ? ` · ${exercise.rest} rest` : ""}
+                              {(() => {
+                                const existing = Number(exercise.tonnage || 0);
+                                if (existing > 0) return ` · ${existing.toLocaleString()} kg volume`;
+                                const sets = Number(exercise.sets || 0);
+                                const reps = estimateRepCount(exercise.reps);
+                                const weight = Number(exercise.weight || 0);
+                                const calc = sets > 0 && reps > 0 && weight > 0 ? sets * reps * weight : 0;
+                                return calc > 0 ? ` · ${calc.toLocaleString()} kg volume` : "";
+                              })()}
                             </div>
                           </div>
                         </div>

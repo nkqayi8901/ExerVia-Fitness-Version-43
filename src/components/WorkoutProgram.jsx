@@ -34,6 +34,20 @@ const programs = [
 const REP_RANGE_OPTIONS = ["1-3", "4-6", "7-9", "10-12", "13-15", "Failure"];
 const MAX_SETS = 10;
 
+const estimateRepCount = (value) => {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return 0;
+  if (raw === "failure") return 0;
+  const rangeMatch = raw.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const low = Number(rangeMatch[1] || 0);
+    const high = Number(rangeMatch[2] || 0);
+    if (low > 0 && high > 0) return Math.round((low + high) / 2);
+  }
+  const single = Number.parseInt(raw, 10);
+  return Number.isNaN(single) ? 0 : single;
+};
+
 const normalizeRepTarget = (value) => {
   if (value === null || value === undefined) return "10-12";
   const raw = String(value).trim();
@@ -604,15 +618,24 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     const minutesMatch = durationText.match(/\d+/);
     const minutes = minutesMatch ? Number(minutesMatch[0]) : "";
     const planName = program?.name || "Program";
-    const reportExercises = (program?.exercises || []).map((exercise, index) => ({
-      id: exercise?.id || `${planName}-${index + 1}`,
-      name: exercise?.name || `Exercise ${index + 1}`,
-      sets: Number(exercise?.sets) || 0,
-      reps: normalizeRepTarget(exercise?.reps),
-      weight: exercise?.weight ?? "",
-      rest: exercise?.rest || "",
-    }));
+    const reportExercises = (program?.exercises || []).map((exercise, index) => {
+      const sets = Number(exercise?.sets) || 0;
+      const reps = normalizeRepTarget(exercise?.reps);
+      const weight = Number(exercise?.weight) || 0;
+      const repCount = estimateRepCount(reps);
+      const tonnage = sets > 0 && repCount > 0 && weight > 0 ? sets * repCount * weight : 0;
+      return {
+        id: exercise?.id || `${planName}-${index + 1}`,
+        name: exercise?.name || `Exercise ${index + 1}`,
+        sets,
+        reps,
+        weight: exercise?.weight ?? "",
+        rest: exercise?.rest || "",
+        tonnage,
+      };
+    });
     const totalSets = reportExercises.reduce((sum, item) => sum + (Number(item.sets) || 0), 0);
+    const totalTonnage = reportExercises.reduce((sum, item) => sum + (Number(item.tonnage) || 0), 0);
     queueLogsTrainingPrefill(resolvedUserId, {
       source: "session_completion",
       type: mode === "athlete" ? "Training Program" : "Workout Program",
@@ -624,6 +647,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         duration: durationText || "",
         totalExercises: reportExercises.length,
         totalSets,
+        totalTonnage,
         exercises: reportExercises,
       },
     });
