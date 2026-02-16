@@ -80,6 +80,12 @@ export default function LogsPage({ mode = "gym" }) {
   const [glanceDetail, setGlanceDetail] = useState("training");
 
   useEffect(() => {
+    if (!banner) return;
+    const timeout = setTimeout(() => setBanner(""), 2600);
+    return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
     const run = async () => {
       if (!id) return;
       const [logsMap, meals, supplements] = await Promise.all([
@@ -324,8 +330,17 @@ export default function LogsPage({ mode = "gym" }) {
   };
 
   const addMealEntry = async () => {
+    if (!id) return;
     const text = mealInput.trim();
     if (!text) return;
+    const alreadyLogged = (selectedLog.meals || []).some(
+      (meal) => String(meal?.text || "").trim().toLowerCase() === text.toLowerCase()
+    );
+    if (alreadyLogged) {
+      setBanner("Meal already logged for this day.");
+      setMealInput("");
+      return;
+    }
     const next = nextDayLog(selectedDay, (log) => ({
       ...log,
       meals: [...(log.meals || []), { id: `meal-${Date.now()}`, text }],

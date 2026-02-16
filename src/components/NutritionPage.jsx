@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { emptyDay, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
+import { supabase } from "../supabaseClient";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -204,6 +205,23 @@ export default function NutritionPage() {
   const [offResults, setOffResults] = useState([]);
   const [offLoading, setOffLoading] = useState(false);
   const [saveBanner, setSaveBanner] = useState("");
+  const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
+  const [customRecipeDraft, setCustomRecipeDraft] = useState({
+    title: "",
+    mealType: "Dinner",
+    prepMinutes: "",
+    cookMinutes: "",
+    servings: "",
+    ingredients: "",
+    steps: "",
+    tags: "",
+  });
+
+  useEffect(() => {
+    if (!saveBanner) return;
+    const timeout = setTimeout(() => setSaveBanner(""), 2800);
+    return () => clearTimeout(timeout);
+  }, [saveBanner]);
 
   // Persist protocol choices
   useEffect(() => {
@@ -447,9 +465,194 @@ export default function NutritionPage() {
       },
     });
 
-    await Promise.all([saveMealToLibrary(storedId, mealName, "recipe"), upsertDailyLog(storedId, dayKey, nextDay)]);
+    const [savedLibrary, savedCloud] = await Promise.all([
+      saveMealToLibrary(storedId, mealName, "recipe"),
+      upsertDailyLog(storedId, dayKey, nextDay),
+    ]);
 
-    setSaveBanner(`${mealName} saved to Logs.`);
+    if (!savedLibrary || !savedCloud) {
+      setSaveBanner(`${mealName} saved locally. Cloud sync pending.`);
+    } else {
+      setSaveBanner(`${mealName} saved to Logs.`);
+    }
+    navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
+  };
+
+  const handleShareRecipeTemplate = async () => {
+    if (!activeMeal?.strMeal || !storedId) return;
+    const ingredients = buildIngredients(activeMeal).map((item) => ({
+      ingredient: item.ingredient,
+      measure: item.measure || ""
+    }));
+    const payload = {
+      name: activeMeal.strMeal,
+      mealType: String(activeMeal.strCategory || "meal"),
+      servings: "",
+      prepMinutes: "",
+      cookMinutes: "",
+      ingredients,
+      steps: String(activeMeal.strInstructions || "")
+        .split(/\r?\n/)
+        .map((step) => step.trim())
+        .filter(Boolean),
+      tags: [activeMeal.strCategory, activeMeal.strArea]
+        .map((item) => String(item || "").trim().toLowerCase())
+        .filter(Boolean)
+    };
+    const { data: existing } = await supabase
+      .from("shared_templates")
+      .select("id")
+      .eq("template_type", "recipe")
+      .eq("created_by", Number(storedId))
+      .ilike("title", String(activeMeal.strMeal || "").trim())
+      .limit(1);
+
+    if (!existing?.length) {
+      const { error } = await supabase.from("shared_templates").insert([{
+        template_type: "recipe",
+        title: activeMeal.strMeal,
+        subtitle: activeMeal.strCategory || "Recipe",
+        goal: activeMeal.strCategory || "",
+        summary: "Community-shared recipe template",
+        tags: payload.tags,
+        payload,
+        created_by: Number(storedId)
+      }]);
+      if (error) {
+        setSaveBanner("Could not share recipe template.");
+        return;
+      }
+    } else {
+      setSaveBanner("Recipe already shared. Keeping your existing template.");
+      return;
+    }
+    setSaveBanner(`${activeMeal.strMeal} shared to Community Templates.`);
+  };
+
+  const handleCreateCustomRecipe = async () => {
+    if (!storedId) return;
+    const title = String(customRecipeDraft.title || "").trim();
+    if (!title) {
+      setSaveBanner("Add a recipe title first.");
+      return;
+    }
+
+    const ingredients = String(customRecipeDraft.ingredients || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [ingredient, ...rest] = line.split(" - ");
+        return {
+          ingredient: String(ingredient || "").trim(),
+          measure: String(rest.join(" - ") || "").trim(),
+        };
+      })
+      .filter((item) => item.ingredient);
+
+    const steps = String(customRecipeDraft.steps || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const tags = String(customRecipeDraft.tags || "")
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 12);
+
+    const payload = {
+      name: title,
+      mealType: customRecipeDraft.mealType || "Dinner",
+      prepMinutes: customRecipeDraft.prepMinutes ? Number(customRecipeDraft.prepMinutes) : null,
+      cookMinutes: customRecipeDraft.cookMinutes ? Number(customRecipeDraft.cookMinutes) : null,
+      servings: customRecipeDraft.servings ? Number(customRecipeDraft.servings) : null,
+      ingredients,
+      steps,
+      tags,
+    };
+
+    const { data: existingTemplate } = await supabase
+      .from("shared_templates")
+      .select("id")
+      .eq("template_type", "recipe")
+      .eq("created_by", Number(storedId))
+      .ilike("title", title)
+      .limit(1);
+
+    let sharedOk = true;
+    if (!existingTemplate?.length) {
+      const { error: shareError } = await supabase.from("shared_templates").insert([
+        {
+          template_type: "recipe",
+          title,
+          subtitle: `${payload.mealType} recipe`,
+          goal: payload.mealType,
+          summary: steps[0] || "Community recipe",
+          tags,
+          payload,
+          created_by: Number(storedId),
+        },
+      ]);
+      if (shareError) {
+        sharedOk = false;
+      }
+    }
+
+    const dayKey = getTodayLogKey();
+    const local = getLogsStore(storedId);
+    const currentDay = local.byDate?.[dayKey] || emptyDay();
+    const alreadyLogged = (currentDay.meals || []).some(
+      (entry) => String(entry?.text || "").trim().toLowerCase() === title.toLowerCase()
+    );
+    const nextDay = alreadyLogged
+      ? currentDay
+      : {
+          ...currentDay,
+          meals: [...(currentDay.meals || []), { id: `meal-${Date.now()}`, text: title }],
+        };
+
+    const existingSavedMeal = (local.savedMeals || []).some(
+      (item) => String(item?.name || "").trim().toLowerCase() === title.toLowerCase()
+    );
+    const nextStore = {
+      ...local,
+      savedMeals: existingSavedMeal
+        ? local.savedMeals || []
+        : [
+            ...(local.savedMeals || []),
+            { id: `meal-lib-${Date.now()}`, name: title, source: "custom_recipe" },
+          ],
+      byDate: {
+        ...(local.byDate || {}),
+        [dayKey]: nextDay,
+      },
+    };
+    saveLogsStore(storedId, nextStore);
+
+    const [savedLibrary, savedCloud] = await Promise.all([
+      saveMealToLibrary(storedId, title, "custom_recipe"),
+      upsertDailyLog(storedId, dayKey, nextDay),
+    ]);
+
+    setCustomRecipeDraft({
+      title: "",
+      mealType: "Dinner",
+      prepMinutes: "",
+      cookMinutes: "",
+      servings: "",
+      ingredients: "",
+      steps: "",
+      tags: "",
+    });
+    setCustomRecipeOpen(false);
+    if (!sharedOk) {
+      setSaveBanner("Could not share recipe template.");
+    } else if (!savedLibrary || !savedCloud) {
+      setSaveBanner(`${title} shared. Logs saved locally; cloud sync pending.`);
+    } else {
+      setSaveBanner(`${title} shared and added to today's Logs.`);
+    }
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
@@ -493,11 +696,18 @@ export default function NutritionPage() {
           </div>
 
           <button
-            className="hud-primary-btn fuel-compact-btn"
+            className="studio-back fuel-compact-btn fuel-generate-btn"
             onClick={fetchProtocolMeals}
             disabled={loading}
           >
             {loading ? "Generating…" : "Generate New Meals"}
+          </button>
+          <button
+            className="studio-back fuel-compact-btn"
+            type="button"
+            onClick={() => setCustomRecipeOpen(true)}
+          >
+            Create Custom Recipe
           </button>
         </div>
 
@@ -648,6 +858,13 @@ export default function NutritionPage() {
                     Save to logs
                   </button>
                   <button
+                    className="studio-back fuel-save-btn"
+                    onClick={handleShareRecipeTemplate}
+                    type="button"
+                  >
+                    Share template
+                  </button>
+                  <button
                     className="hud-secondary-btn"
                     onClick={() => {
                       setActiveMeal(null);
@@ -747,6 +964,84 @@ export default function NutritionPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {customRecipeOpen && (
+          <div
+            className="community-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target.classList.contains("community-modal-backdrop")) {
+                setCustomRecipeOpen(false);
+              }
+            }}
+          >
+            <div className="community-modal" role="dialog" aria-modal="true">
+              <div className="community-modal-title">Create custom recipe</div>
+              <input
+                className="community-modal-input"
+                placeholder="Recipe title"
+                value={customRecipeDraft.title}
+                onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, title: event.target.value }))}
+              />
+              <div className="logs-row">
+                <select
+                  className="community-thread-select"
+                  value={customRecipeDraft.mealType}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, mealType: event.target.value }))}
+                >
+                  {["Breakfast", "Lunch", "Dinner", "Snack"].map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="community-modal-input"
+                  placeholder="Prep min"
+                  value={customRecipeDraft.prepMinutes}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, prepMinutes: event.target.value }))}
+                />
+                <input
+                  className="community-modal-input"
+                  placeholder="Cook min"
+                  value={customRecipeDraft.cookMinutes}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, cookMinutes: event.target.value }))}
+                />
+                <input
+                  className="community-modal-input"
+                  placeholder="Servings"
+                  value={customRecipeDraft.servings}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, servings: event.target.value }))}
+                />
+              </div>
+              <textarea
+                className="community-modal-textarea"
+                placeholder={"Ingredients (one per line)\nExample: Chicken breast - 200g"}
+                value={customRecipeDraft.ingredients}
+                onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, ingredients: event.target.value }))}
+              />
+              <textarea
+                className="community-modal-textarea"
+                placeholder={"Steps (one per line)\nExample: Cook chicken until golden"}
+                value={customRecipeDraft.steps}
+                onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, steps: event.target.value }))}
+              />
+              <input
+                className="community-modal-input"
+                placeholder="Tags (comma separated)"
+                value={customRecipeDraft.tags}
+                onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, tags: event.target.value }))}
+              />
+              <div className="community-modal-actions">
+                <button className="studio-back hud-secondary-btn" type="button" onClick={() => setCustomRecipeOpen(false)}>
+                  Cancel
+                </button>
+                <button className="studio-back community-cta-btn" type="button" onClick={handleCreateCustomRecipe}>
+                  Share + Add to Logs
+                </button>
+              </div>
             </div>
           </div>
         )}

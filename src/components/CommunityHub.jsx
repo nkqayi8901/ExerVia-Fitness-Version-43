@@ -31,6 +31,13 @@ const reactionOptions = [
   { id: "insight", label: "Insight", emoji: "💡" }
 ];
 
+const templateTypeOptions = [
+  { id: "all", label: "All" },
+  { id: "training_plan", label: "Plans" },
+  { id: "workout_program", label: "Programs" },
+  { id: "recipe", label: "Recipes" }
+];
+
 // formatTime manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -95,6 +102,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const communityBasePath = `/${routePrefix}/${userId || ""}/community`;
   const groupRoomPath = (groupId) => `${communityBasePath}/group/${groupId}`;
   const threadPath = (threadId) => `${communityBasePath}/thread/${threadId}`;
+  const openThreadPage = (threadId) => {
+    const id = String(threadId || "").trim();
+    if (!id) return;
+    setActiveThreadId(id);
+    navigate(threadPath(id));
+  };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
   const [activeTab, setActiveTab] = useState("forums");
@@ -120,6 +133,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [routeThread, setRouteThread] = useState(null);
   const [routeThreadReplies, setRouteThreadReplies] = useState([]);
   const [threadSort, setThreadSort] = useState("newest");
+  const [threadReplySort, setThreadReplySort] = useState("liked");
   const [memberships, setMemberships] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -133,6 +147,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [createReplyOpen, setCreateReplyOpen] = useState(false);
   const [addFriendOpen, setAddFriendOpen] = useState(false);
+  const [createRecipeTemplateOpen, setCreateRecipeTemplateOpen] = useState(false);
 
   const [newGroup, setNewGroup] = useState({ name: "", goal: "", privacy: "invite" });
   const [newChallenge, setNewChallenge] = useState({
@@ -142,6 +157,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     durationDays: "7"
   });
   const [newPost, setNewPost] = useState({ title: "", body: "" });
+  const [newRecipeTemplate, setNewRecipeTemplate] = useState({
+    title: "",
+    mealType: "Dinner",
+    ingredients: "",
+    steps: "",
+    prepMinutes: "",
+    cookMinutes: "",
+    servings: "",
+    tags: ""
+  });
   const [newPostForum, setNewPostForum] = useState(activeForum);
   const [newReply, setNewReply] = useState({ body: "", parentId: null });
   const [groupRoomId, setGroupRoomId] = useState(null);
@@ -149,10 +174,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [groupRoomMembers, setGroupRoomMembers] = useState([]);
   const [groupRoomDraft, setGroupRoomDraft] = useState("");
   const [groupRoomLoading, setGroupRoomLoading] = useState(false);
+  const [threadInlineReplyOpen, setThreadInlineReplyOpen] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
   const [newFriendId, setNewFriendId] = useState("");
   const friendChatListRef = useRef(null);
+  const groupRoomListRef = useRef(null);
   const [expandedPostIds, setExpandedPostIds] = useState({});
   const [forumThreadCounts, setForumThreadCounts] = useState({});
   const [pinnedThreadIds, setPinnedThreadIds] = useState({});
@@ -162,6 +189,21 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [groupLastActive, setGroupLastActive] = useState({});
   const [challengeParticipantCounts, setChallengeParticipantCounts] = useState({});
   const [challengeMyProgress, setChallengeMyProgress] = useState({});
+  const [sharedTemplates, setSharedTemplates] = useState([]);
+  const [templateRatings, setTemplateRatings] = useState({});
+  const [templateTryCounts, setTemplateTryCounts] = useState({});
+  const [templateTriedByMe, setTemplateTriedByMe] = useState({});
+  const [templateComments, setTemplateComments] = useState({});
+  const [templateCommentDrafts, setTemplateCommentDrafts] = useState({});
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateTypeFilter, setTemplateTypeFilter] = useState("all");
+  const [templateSort, setTemplateSort] = useState("top");
+
+  useEffect(() => {
+    if (!banner) return;
+    const timeout = setTimeout(() => setBanner(""), 2600);
+    return () => clearTimeout(timeout);
+  }, [banner]);
 
   const recordEngagementAction = async (actionType) => {
     if (!userId) return;
@@ -293,6 +335,63 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setChallengeParticipantCounts(counts);
     setChallengeMyProgress(mine);
   };
+
+  const loadSharedTemplateData = async () => {
+    const [{ data: templateData }, { data: ratingData }, { data: tryData }, { data: commentData }] = await Promise.all([
+      supabase.from("shared_templates").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("shared_template_ratings").select("template_id,user_id,rating"),
+      supabase.from("shared_template_tries").select("template_id,user_id"),
+      supabase
+        .from("shared_template_comments")
+        .select("id,template_id,user_id,body,created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000)
+    ]);
+
+    const ratingBuckets = {};
+    const myRatings = {};
+    (ratingData || []).forEach((row) => {
+      const key = String(row.template_id);
+      if (!ratingBuckets[key]) {
+        ratingBuckets[key] = { sum: 0, count: 0, mine: null };
+      }
+      ratingBuckets[key].sum += Number(row.rating || 0);
+      ratingBuckets[key].count += 1;
+      if (Number(row.user_id) === Number(userId)) {
+        ratingBuckets[key].mine = Number(row.rating || 0);
+        myRatings[key] = Number(row.rating || 0);
+      }
+    });
+
+    const tryCounts = {};
+    const triedByMe = {};
+    (tryData || []).forEach((row) => {
+      const key = String(row.template_id);
+      tryCounts[key] = (tryCounts[key] || 0) + 1;
+      if (Number(row.user_id) === Number(userId)) {
+        triedByMe[key] = true;
+      }
+    });
+
+    const commentsByTemplate = {};
+    (commentData || []).forEach((row) => {
+      const key = String(row.template_id);
+      if (!commentsByTemplate[key]) commentsByTemplate[key] = [];
+      commentsByTemplate[key].push(row);
+    });
+
+    setSharedTemplates(templateData || []);
+    setTemplateRatings(ratingBuckets);
+    setTemplateTryCounts(tryCounts);
+    setTemplateTriedByMe(triedByMe);
+    setTemplateComments(commentsByTemplate);
+
+    const profileIds = [
+      ...(templateData || []).map((row) => row.created_by),
+      ...(commentData || []).map((row) => row.user_id)
+    ];
+    loadProfiles(profileIds);
+  };
 // loadForumPosts takes a forum slug and loads the posts for that forum from the backend,
 // it also loads the profiles of the post creators and the replies to those posts,
 // this function is called when the active forum changes and also when a new post is created
@@ -398,6 +497,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const defaultForum = activeForum || forumTracks[0].id;
       setActiveForum(defaultForum);
       await loadForumPosts(defaultForum, forumRes.data || []);
+      await loadSharedTemplateData();
       setLoading(false);
     };
     fetchCommunity();
@@ -524,6 +624,21 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     };
   }, [userId, activeForum, forums, forumPosts]);
 
+  useEffect(() => {
+    if (!userId) return () => {};
+    const channel = supabase
+      .channel(`community-templates-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shared_templates" }, () => loadSharedTemplateData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "shared_template_ratings" }, () => loadSharedTemplateData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "shared_template_tries" }, () => loadSharedTemplateData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "shared_template_comments" }, () => loadSharedTemplateData())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
 // derived forum lists and select options are memoised to avoid
 // re-filtering and re-mapping on every render,
 // these values update only when their dependencies change,
@@ -554,7 +669,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return forums.length ? forums : forumTracks;
   }, [forums]);
 
-  const tabOrder = ["forums", "groups", "challenges", "circle"];
+  const tabOrder = ["forums", "templates", "groups", "challenges", "circle"];
   const activeTabIndex = Math.max(tabOrder.indexOf(activeTab), 0);
 
 // sync the new post modal forum selector with the active forum,
@@ -789,6 +904,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       return;
     }
     setCreateReplyOpen(false);
+    setThreadInlineReplyOpen(false);
     setNewReply({ body: "", parentId: null });
     await recordEngagementAction("community_reply");
     if (forceThreadPage && selectedThread?.id) {
@@ -1208,6 +1324,191 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     await loadChallengeStats();
   };
 
+  const handleRateTemplate = async (templateId, rating) => {
+    if (!userId || !templateId) return;
+    const normalized = Number(rating || 0);
+    if (!Number.isFinite(normalized) || normalized < 1 || normalized > 5) return;
+    const { error } = await supabase
+      .from("shared_template_ratings")
+      .upsert(
+        [{ template_id: templateId, user_id: Number(userId), rating: normalized }],
+        { onConflict: "template_id,user_id" }
+      );
+    if (error) {
+      setBanner("Could not save rating.");
+      return;
+    }
+    await recordEngagementAction("community_template_rate");
+    await loadSharedTemplateData();
+  };
+
+  const handleTryTemplate = async (templateId) => {
+    if (!userId || !templateId) return;
+    const { error } = await supabase
+      .from("shared_template_tries")
+      .insert([{ template_id: templateId, user_id: Number(userId) }]);
+    if (error && error.code !== "23505") {
+      setBanner("Could not save try.");
+      return;
+    }
+    await recordEngagementAction("community_template_try");
+    await loadSharedTemplateData();
+  };
+
+  const handleAddTemplateToMine = async (template) => {
+    if (!userId || !template) return;
+    const payload = template.payload || {};
+    try {
+      if (template.template_type === "training_plan") {
+        const insertPayload = {
+          user_id: Number(userId),
+          name: payload.name || template.title,
+          sport: payload.sport || template.sport || "running",
+          goal: payload.goal || template.goal || "",
+          summary: payload.summary || template.summary || "",
+          default_focus: payload.defaultFocus || "Base",
+          duration_target: payload.durationTarget ?? template.duration_target ?? null,
+          distance_target: payload.distanceTarget ?? template.distance_target ?? null,
+          outline: Array.isArray(payload.outline) ? payload.outline : []
+        };
+        const { error } = await supabase.from("user_training_plans").insert([insertPayload]);
+        if (error) throw error;
+      } else if (template.template_type === "workout_program") {
+        const insertPayload = {
+          user_id: Number(userId),
+          name: payload.name || template.title,
+          level: payload.level || template.level || "All levels",
+          focus: payload.focus || template.focus || "Mixed",
+          description: payload.description || template.summary || "",
+          exercises: Array.isArray(payload.exercises) ? payload.exercises : []
+        };
+        const { error } = await supabase.from("user_programs").insert([insertPayload]);
+        if (error) throw error;
+      } else if (template.template_type === "recipe") {
+        const mealName = String(payload.name || template.title || "").trim();
+        if (!mealName) {
+          setBanner("Recipe is missing a title.");
+          return;
+        }
+        const { data: existing } = await supabase
+          .from("saved_meals")
+          .select("id,name")
+          .eq("user_id", Number(userId))
+          .limit(500);
+        const exists = (existing || []).some(
+          (row) => String(row.name || "").trim().toLowerCase() === mealName.toLowerCase()
+        );
+        if (!exists) {
+          const { error } = await supabase.from("saved_meals").insert([
+            {
+              user_id: Number(userId),
+              name: mealName,
+              source: "community_template"
+            }
+          ]);
+          if (error) throw error;
+        }
+      }
+
+      await recordEngagementAction("community_template_add");
+      setBanner("Added to your library.");
+    } catch (error) {
+      setBanner("Could not add template.");
+    }
+  };
+
+  const handleCommentTemplate = async (templateId) => {
+    if (!userId || !templateId) return;
+    const body = String(templateCommentDrafts[templateId] || "").trim();
+    if (!body) return;
+    const { error } = await supabase
+      .from("shared_template_comments")
+      .insert([{ template_id: templateId, user_id: Number(userId), body }]);
+    if (error) {
+      setBanner("Could not post comment.");
+      return;
+    }
+    setTemplateCommentDrafts((prev) => ({ ...prev, [templateId]: "" }));
+    await recordEngagementAction("community_template_comment");
+    await loadSharedTemplateData();
+  };
+
+  const handleCreateRecipeTemplate = async () => {
+    if (!userId) return;
+    const title = String(newRecipeTemplate.title || "").trim();
+    if (!title) {
+      setBanner("Add a recipe title.");
+      return;
+    }
+
+    const ingredients = String(newRecipeTemplate.ingredients || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [ingredient, ...rest] = line.split(" - ");
+        return {
+          ingredient: String(ingredient || "").trim(),
+          measure: String(rest.join(" - ") || "").trim()
+        };
+      })
+      .filter((item) => item.ingredient);
+
+    const steps = String(newRecipeTemplate.steps || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const tags = String(newRecipeTemplate.tags || "")
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 12);
+
+    const payload = {
+      name: title,
+      mealType: newRecipeTemplate.mealType || "Dinner",
+      prepMinutes: newRecipeTemplate.prepMinutes ? Number(newRecipeTemplate.prepMinutes) : null,
+      cookMinutes: newRecipeTemplate.cookMinutes ? Number(newRecipeTemplate.cookMinutes) : null,
+      servings: newRecipeTemplate.servings ? Number(newRecipeTemplate.servings) : null,
+      ingredients,
+      steps,
+      tags
+    };
+
+    const { error } = await supabase.from("shared_templates").insert([
+      {
+        template_type: "recipe",
+        title,
+        subtitle: `${payload.mealType} recipe`,
+        goal: payload.mealType,
+        summary: steps[0] || "Community recipe",
+        tags,
+        payload,
+        created_by: Number(userId)
+      }
+    ]);
+    if (error) {
+      setBanner("Could not create recipe template.");
+      return;
+    }
+
+    await recordEngagementAction("community_template_share");
+    setCreateRecipeTemplateOpen(false);
+    setNewRecipeTemplate({
+      title: "",
+      mealType: "Dinner",
+      ingredients: "",
+      steps: "",
+      prepMinutes: "",
+      cookMinutes: "",
+      servings: "",
+      tags: ""
+    });
+    setBanner("Recipe template shared.");
+    await loadSharedTemplateData();
+  };
+
   const togglePinnedThread = (postId) => {
     setPinnedThreadIds((prev) => {
       const next = { ...prev };
@@ -1389,10 +1690,30 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return sourceReplies[selectedThread.id] || [];
   }, [forceThreadPage, routeThreadReplies, postReplies, globalPostReplies, selectedThread, search]);
 
-  const selectedThreadReplyTree = useMemo(() => {
+  const selectedThreadRepliesSorted = useMemo(() => {
     if (!selectedThreadReplies.length) return [];
-    return buildReplyTree(selectedThreadReplies);
-  }, [selectedThreadReplies]);
+    const scoreReply = (replyId) =>
+      reactionOptions.reduce(
+        (sum, option) => sum + Number(reactionCounts[`reply:${replyId}-${option.id}`] || 0),
+        0
+      );
+    const next = [...selectedThreadReplies];
+    if (threadReplySort === "newest") {
+      next.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return next;
+    }
+    next.sort((a, b) => {
+      const scoreDiff = scoreReply(b.id) - scoreReply(a.id);
+      if (scoreDiff !== 0) return scoreDiff;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+    return next;
+  }, [selectedThreadReplies, reactionCounts, threadReplySort]);
+
+  const selectedThreadReplyTree = useMemo(() => {
+    if (!selectedThreadRepliesSorted.length) return [];
+    return buildReplyTree(selectedThreadRepliesSorted);
+  }, [selectedThreadRepliesSorted]);
 
 // handle a reaction toggle for posts or replies,
 // adds or removes a reaction for the current user,
@@ -1456,14 +1777,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!replyNodes?.length) return null;
     return replyNodes.map((reply) => {
       const author = profiles[reply.created_by] || reply.created_by || "Anonymous";
+      const avatarInitial = String(author).charAt(0).toUpperCase();
       const replyKeyPrefix = `reply:${reply.id}`;
       return (
         <div key={reply.id} className={`community-reply-card ${level > 0 ? "nested" : ""}`}>
-          <div className="community-reply-body">{reply.body}</div>
-          <div className="community-thread-meta">
-            <span className="community-meta-pill community-meta-author">{author}</span>
-            <span className="community-meta-pill">{formatTime(reply.created_at)}</span>
+          <div className="community-reply-topline">
+            <span className="community-reply-avatar" aria-hidden="true">{avatarInitial}</span>
+            <span className="community-reply-author">{author}</span>
+            <span className="community-reply-time">{formatTime(reply.created_at)}</span>
           </div>
+          <div className="community-reply-body">{reply.body}</div>
           <div className="community-reaction-row">
             {reactionOptions.map((option) => {
               const key = `${replyKeyPrefix}-${option.id}`;
@@ -1489,7 +1812,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               onClick={() => {
                 setActiveThreadId(reply.post_id);
                 setNewReply({ body: "", parentId: reply.id });
-                setCreateReplyOpen(true);
+                if (forceThreadPage) {
+                  setThreadInlineReplyOpen(true);
+                  setCreateReplyOpen(false);
+                } else {
+                  setCreateReplyOpen(true);
+                }
               }}
               type="button"
             >
@@ -1562,6 +1890,61 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     ? Boolean(collapsedThreadIds[selectedThread.id])
     : false;
 
+  const filteredTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLowerCase();
+    const list = sharedTemplates.filter((template) => {
+      if (templateTypeFilter !== "all" && template.template_type !== templateTypeFilter) return false;
+      if (!query) return true;
+      const tags = Array.isArray(template.tags) ? template.tags.join(" ") : "";
+      const payload = template.payload || {};
+      const ingredientBlob = Array.isArray(payload.ingredients)
+        ? payload.ingredients
+            .map((item) => `${item?.ingredient || ""} ${item?.measure || ""}`.trim())
+            .join(" ")
+        : "";
+      const stepsBlob = Array.isArray(payload.steps) ? payload.steps.join(" ") : "";
+      const searchBlob = [
+        template.title,
+        template.subtitle,
+        template.goal,
+        template.summary,
+        template.sport,
+        template.level,
+        template.focus,
+        tags,
+        ingredientBlob,
+        stepsBlob
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (searchBlob.includes(query)) return true;
+      if (query.includes("20k")) {
+        const distance = Number(template.distance_target || 0);
+        if (distance >= 20) return true;
+      }
+      return false;
+    });
+
+    return list.sort((a, b) => {
+      const aRating = templateRatings[a.id] || { sum: 0, count: 0 };
+      const bRating = templateRatings[b.id] || { sum: 0, count: 0 };
+      const aAvg = aRating.count > 0 ? aRating.sum / aRating.count : 0;
+      const bAvg = bRating.count > 0 ? bRating.sum / bRating.count : 0;
+      const aTry = Number(templateTryCounts[a.id] || 0);
+      const bTry = Number(templateTryCounts[b.id] || 0);
+      if (templateSort === "newest") {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (templateSort === "tried") {
+        return bTry - aTry || bAvg - aAvg;
+      }
+      const aScore = aAvg * 0.6 + Math.log10(aTry + 1) * 0.4;
+      const bScore = bAvg * 0.6 + Math.log10(bTry + 1) * 0.4;
+      return bScore - aScore;
+    });
+  }, [sharedTemplates, templateSearch, templateTypeFilter, templateSort, templateRatings, templateTryCounts]);
+
   const renderEmptyState = ({ icon = "i", title, sub, ctaLabel, onCta }) => (
     <div className="community-empty community-empty-state">
       <div className="community-empty-icon" aria-hidden="true">{icon}</div>
@@ -1581,6 +1964,71 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!list) return;
     list.scrollTop = list.scrollHeight;
   }, [friendMessages, selectedFriendId]);
+
+  useEffect(() => {
+    if (!groupRoomId) return;
+    const list = groupRoomListRef.current;
+    if (!list) return;
+    list.scrollTop = list.scrollHeight;
+  }, [groupRoomPosts, groupRoomId]);
+
+  useEffect(() => {
+    if (!userId || !groupRoomId) return () => {};
+    const channel = supabase
+      .channel(`community-group-room-${groupRoomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "community_group_posts",
+          filter: `group_id=eq.${groupRoomId}`
+        },
+        (payload) => {
+          const post = payload.new;
+          if (!post) return;
+          setGroupRoomPosts((prev) => {
+            if (prev.some((row) => Number(row.id) === Number(post.id))) return prev;
+            return [...prev, post];
+          });
+          setGroupLastActive((prev) => ({ ...prev, [groupRoomId]: post.created_at }));
+          if (post.created_by) loadProfiles([post.created_by]);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, groupRoomId]);
+
+  useEffect(() => {
+    if (!userId || !forceThreadPage || !selectedThread?.id) return () => {};
+    const threadId = selectedThread.id;
+    const channel = supabase
+      .channel(`community-thread-${threadId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "community_post_replies",
+          filter: `post_id=eq.${threadId}`
+        },
+        (payload) => {
+          const reply = payload.new;
+          if (!reply) return;
+          setRouteThreadReplies((prev) => {
+            if (prev.some((row) => Number(row.id) === Number(reply.id))) return prev;
+            return [...prev, reply];
+          });
+          if (reply.created_by) loadProfiles([reply.created_by]);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, forceThreadPage, selectedThread?.id]);
 
   useEffect(() => {
     if (!forceGroupRoom || !routeGroupId || !userId) return;
@@ -1631,8 +2079,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
     const loadThreadRoute = async () => {
       setActiveTab("forums");
-      const numericThreadId = Number(routeThreadId);
-      if (!Number.isFinite(numericThreadId)) {
+      const normalizedThreadId = String(routeThreadId || "").trim();
+      if (!normalizedThreadId) {
         navigate(communityBasePath);
         return;
       }
@@ -1640,7 +2088,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const { data: threadData } = await supabase
         .from("community_posts")
         .select("*")
-        .eq("id", numericThreadId)
+        .eq("id", normalizedThreadId)
         .single();
 
       if (cancelled) return;
@@ -1653,11 +2101,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const { data: replyData } = await supabase
         .from("community_post_replies")
         .select("*")
-        .eq("post_id", numericThreadId)
+        .eq("post_id", normalizedThreadId)
         .order("created_at", { ascending: true });
 
       if (cancelled) return;
-      setActiveThreadId(numericThreadId);
+      setActiveThreadId(normalizedThreadId);
       setRouteThread(threadData);
       setRouteThreadReplies(replyData || []);
       loadProfiles([threadData.created_by, ...(replyData || []).map((reply) => reply.created_by)]);
@@ -1700,12 +2148,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       <div className="community-group-room-layout">
         <aside className="community-group-room-left">
           <div className="community-panel-title">Channels</div>
-          <button type="button" className="community-room-channel active"># general</button>
-          <button type="button" className="community-room-channel"># check-ins</button>
-          <button type="button" className="community-room-channel"># plans</button>
+          <div className="community-room-channel active"># general</div>
+          <div className="community-room-note">More channels unlock as your group grows.</div>
         </aside>
         <section className="community-group-room-center">
-          <div className="community-group-room-messages">
+          <div className="community-group-room-messages" ref={groupRoomListRef}>
             {groupRoomLoading && renderEmptyState({ icon: "...", title: "Loading room", sub: "Syncing latest messages." })}
             {!groupRoomLoading && !groupRoomPosts.length && (
               renderEmptyState({ icon: "💬", title: "No messages yet", sub: "Start the room with your first message." })
@@ -1736,7 +2183,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               value={groupRoomDraft}
               onChange={(event) => setGroupRoomDraft(event.target.value)}
             />
-            <button className="studio-back community-cta-btn community-primary-btn" onClick={handleSendGroupRoomPost}>
+            <button className="studio-back community-cta-btn community-primary-btn community-chat-send-btn" onClick={handleSendGroupRoomPost}>
               Send
             </button>
           </div>
@@ -1801,6 +2248,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               Forums
             </button>
             <button
+              className={`community-tab ${activeTab === "templates" ? "active" : ""}`}
+              onClick={() => setActiveTab("templates")}
+              type="button"
+            >
+              Templates
+            </button>
+            <button
               className={`community-tab ${activeTab === "groups" ? "active" : ""}`}
               onClick={() => setActiveTab("groups")}
               type="button"
@@ -1840,6 +2294,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {!selectedThread && renderEmptyState({ icon: "...", title: "Loading thread", sub: "Fetching thread details." })}
           {selectedThread && (
             <div className="community-thread-modal">
+              <div className="community-thread-main-column">
               <div className="community-thread-modal-head-card">
                 <div className="community-thread-modal-head">
                   <div className="community-thread-head-main">
@@ -1886,7 +2341,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     onClick={() => {
                       setActiveThreadId(selectedThread.id);
                       setNewReply({ body: "", parentId: null });
-                      setCreateReplyOpen(true);
+                      setThreadInlineReplyOpen(true);
+                      setCreateReplyOpen(false);
                     }}
                   >
                     Reply
@@ -1910,18 +2366,36 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   <div className="community-section-label">
                     Replies {selectedThreadReplies.length > 0 ? `(${selectedThreadReplies.length})` : ""}
                   </div>
-                  <button
-                    type="button"
-                    className="community-thread-collapse-btn"
-                    onClick={() =>
-                      setCollapsedThreadIds((prev) => ({
-                        ...prev,
-                        [selectedThread.id]: !prev[selectedThread.id]
-                      }))
-                    }
-                  >
-                    {selectedThreadRepliesCollapsed ? "Expand replies" : "Collapse replies"}
-                  </button>
+                  <div className="community-thread-head-controls">
+                    <div className="community-thread-sort-row">
+                      <button
+                        type="button"
+                        className={`community-thread-sort-btn ${threadReplySort === "liked" ? "active" : ""}`}
+                        onClick={() => setThreadReplySort("liked")}
+                      >
+                        Most liked
+                      </button>
+                      <button
+                        type="button"
+                        className={`community-thread-sort-btn ${threadReplySort === "newest" ? "active" : ""}`}
+                        onClick={() => setThreadReplySort("newest")}
+                      >
+                        Newest
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className="community-thread-collapse-btn"
+                      onClick={() =>
+                        setCollapsedThreadIds((prev) => ({
+                          ...prev,
+                          [selectedThread.id]: !prev[selectedThread.id]
+                        }))
+                      }
+                    >
+                      {selectedThreadRepliesCollapsed ? "Expand replies" : "Collapse replies"}
+                    </button>
+                  </div>
                 </div>
                 <div className={`community-thread-replies-wrap ${selectedThreadRepliesCollapsed ? "collapsed" : ""}`}>
                   {selectedThreadRepliesCollapsed ? (
@@ -1933,6 +2407,57 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   )}
                 </div>
               </div>
+              {threadInlineReplyOpen && (
+                <div className="community-thread-sticky-compose">
+                  <div className="community-inline-reply">
+                    <div className="community-inline-reply-head">
+                      <span className="community-section-label">Reply</span>
+                      <span className="community-inline-reply-parent">
+                        {newReply.parentId ? "Replying to comment" : "Replying to thread"}
+                      </span>
+                    </div>
+                    <textarea
+                      className="community-modal-textarea community-inline-reply-input"
+                      placeholder="Write your reply"
+                      value={newReply.body}
+                      onChange={(event) => setNewReply((prev) => ({ ...prev, body: event.target.value }))}
+                    />
+                    <div className="community-modal-actions">
+                      <button
+                        className="studio-back community-cta-btn"
+                        type="button"
+                        onClick={() => {
+                          setThreadInlineReplyOpen(false);
+                          setNewReply({ body: "", parentId: null });
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="studio-back community-cta-btn community-primary-btn"
+                        type="button"
+                        onClick={handleCreateReply}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              </div>
+              <aside className="community-thread-side-column">
+                <button className="studio-back community-cta-btn community-thread-back-btn" onClick={() => navigate(communityBasePath)} type="button">
+                  {'<- Back to forums'}
+                </button>
+                <div className="community-thread-side-card">
+                  <div className="community-section-label">Thread Summary</div>
+                  <div className="community-thread-side-title">{selectedThread.title}</div>
+                  <div className="community-thread-side-meta">
+                    <span className="community-meta-pill">{selectedThreadReplies.length} replies</span>
+                    <span className="community-meta-pill">{formatTime(selectedThread.created_at)}</span>
+                  </div>
+                </div>
+              </aside>
             </div>
           )}
         </div>
@@ -2041,10 +2566,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       <button
                         className="community-thread-open-link"
                         type="button"
-                        onClick={() => {
-                          setActiveThreadId(post.id);
-                          navigate(threadPath(post.id));
-                        }}
+                        onClick={() => openThreadPage(post.id)}
                       >
                         {post.title}
                       </button>
@@ -2078,10 +2600,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       <button
                         className="studio-back community-action-btn"
                         type="button"
-                        onClick={() => {
-                          setActiveThreadId(post.id);
-                          navigate(threadPath(post.id));
-                        }}
+                        onClick={() => openThreadPage(post.id)}
                       >
                         Open thread
                       </button>
@@ -2130,6 +2649,153 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         setNewPostForum(defaultForum);
                         setCreatePostOpen(true);
                       }
+                })}
+            </div>
+          )}
+
+          {activeTab === "templates" && (
+            <div className="community-panel">
+              <div className="community-panel-title">Shared Templates</div>
+              <div className="community-forum-topbar">
+                <input
+                  className="community-search"
+                  placeholder="Search templates (e.g. protein balls, 20k training plan)"
+                  value={templateSearch}
+                  onChange={(event) => setTemplateSearch(event.target.value)}
+                />
+                <button
+                  className="studio-back community-cta-btn community-primary-btn"
+                  type="button"
+                  onClick={() => setCreateRecipeTemplateOpen(true)}
+                >
+                  Create recipe
+                </button>
+              </div>
+              <div className="community-tabs community-topic-tabs">
+                {templateTypeOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className={`community-tab ${templateTypeFilter === option.id ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setTemplateTypeFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div className="community-thread-toolbar">
+                <div className="community-thread-toolbar-left">
+                  <div className="community-thread-label">Sort</div>
+                  <select
+                    className="community-thread-select"
+                    value={templateSort}
+                    onChange={(event) => setTemplateSort(event.target.value)}
+                  >
+                    <option value="top">Top rated</option>
+                    <option value="tried">Most tried</option>
+                    <option value="newest">Newest</option>
+                  </select>
+                </div>
+                <div className="community-thread-count">
+                  {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
+                </div>
+              </div>
+              <div className="community-thread-list">
+                {filteredTemplates.map((template) => {
+                  const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
+                  const avg = rating.count > 0 ? rating.sum / rating.count : 0;
+                  const myRating = Number(rating.mine || 0);
+                  const tryCount = Number(templateTryCounts[template.id] || 0);
+                  const comments = templateComments[template.id] || [];
+                  const author = profiles[template.created_by] || `User ${template.created_by}`;
+                  return (
+                    <div key={template.id} className="community-feed-card">
+                      <div className="community-feed-title">{template.title}</div>
+                      <div className="community-thread-meta">
+                        <span className="community-meta-pill community-meta-author">{author}</span>
+                        <span className="community-meta-pill">{formatTime(template.created_at)}</span>
+                        <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
+                        {template.goal && <span className="community-meta-pill">{template.goal}</span>}
+                      </div>
+                      <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
+                      <div className="community-tags">
+                        {(template.tags || []).slice(0, 6).map((tag, index) => (
+                          <span key={`${template.id}-tag-${index}`}>{tag}</span>
+                        ))}
+                      </div>
+                      <div className="community-reaction-row">
+                        <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
+                        <span className="community-meta-pill">Tried {tryCount}</span>
+                        <span className="community-meta-pill">Comments {comments.length}</span>
+                      </div>
+                      <div className="community-reaction-row">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <button
+                            key={`${template.id}-rate-${value}`}
+                            className={`community-reaction-btn ${myRating === value ? "active" : ""}`}
+                            type="button"
+                            onClick={() => handleRateTemplate(template.id, value)}
+                          >
+                            {value}★
+                          </button>
+                        ))}
+                        <button
+                          className={`community-reaction-btn ${templateTriedByMe[template.id] ? "active" : ""}`}
+                          type="button"
+                          onClick={() => handleTryTemplate(template.id)}
+                        >
+                          Tried it
+                        </button>
+                      </div>
+                      <div className="community-thread-actions">
+                        <button
+                          className="studio-back community-action-btn community-primary-btn"
+                          type="button"
+                          onClick={() => handleAddTemplateToMine(template)}
+                        >
+                          Add to mine
+                        </button>
+                      </div>
+                      <div className="community-template-commentbar">
+                        <input
+                          className="community-modal-input"
+                          placeholder="Comment on this template"
+                          value={templateCommentDrafts[template.id] || ""}
+                          onChange={(event) =>
+                            setTemplateCommentDrafts((prev) => ({
+                              ...prev,
+                              [template.id]: event.target.value
+                            }))
+                          }
+                        />
+                        <button
+                          className="studio-back community-cta-btn"
+                          type="button"
+                          onClick={() => handleCommentTemplate(template.id)}
+                        >
+                          Comment
+                        </button>
+                      </div>
+                      {comments.slice(0, 3).map((comment) => (
+                        <div key={comment.id} className="community-reply-card">
+                          <div className="community-reply-body">{comment.body}</div>
+                          <div className="community-thread-meta">
+                            <span className="community-meta-pill community-meta-author">
+                              {profiles[comment.user_id] || `User ${comment.user_id}`}
+                            </span>
+                            <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+              {!filteredTemplates.length &&
+                renderEmptyState({
+                  icon: "CHAT",
+                  title: "No shared templates yet",
+                  sub: "Share your best plan, program, or recipe and let others add it to their library."
                 })}
             </div>
           )}
@@ -2374,7 +3040,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                               Message
                               {hasUnread && <span className="community-notification-dot mini" />}
                             </button>
-                            <button className="hud-secondary-btn danger" onClick={() => handleRemoveFriend(friend)}>
+                            <button className="studio-back community-cta-btn" onClick={() => handleRemoveFriend(friend)}>
                               Remove
                             </button>
                           </>
@@ -2412,17 +3078,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     </button>
                   </div>
                   <div className="community-friend-chat-list" ref={friendChatListRef}>
-                    {friendMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`community-friend-chat-bubble ${
-                          Number(msg.user_id) === Number(userId) ? "me" : "them"
-                        }`}
-                      >
-                        <div>{msg.body}</div>
-                        <div className="community-chat-meta">{formatTime(msg.created_at)}</div>
-                      </div>
-                    ))}
+                    {friendMessages.map((msg) => {
+                      const isSelf = Number(msg.user_id) === Number(userId);
+                      const authorName = profiles[msg.user_id] || `User ${msg.user_id}`;
+                      const initial = String(authorName).charAt(0).toUpperCase();
+                      return (
+                        <div key={msg.id} className={`community-friend-msg-row ${isSelf ? "self" : ""}`}>
+                          <div className={`community-friend-chat-bubble ${isSelf ? "me" : "them"}`}>
+                            <div className="community-friend-msg-head">
+                              <span className="community-friend-msg-avatar" aria-hidden="true">{initial}</span>
+                              <span className="community-friend-msg-author">{authorName}</span>
+                              <span className="community-friend-msg-time">{formatTime(msg.created_at)}</span>
+                            </div>
+                            <div className="community-friend-msg-body">{msg.body}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                     {!friendMessages.length &&
                       renderEmptyState({
                         icon: "💬",
@@ -2437,7 +3109,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       value={friendMessageDraft}
                       onChange={(event) => setFriendMessageDraft(event.target.value)}
                     />
-                    <button className="studio-back community-cta-btn" onClick={handleSendFriendMessage}>
+                    <button className="studio-back community-cta-btn community-primary-btn community-chat-send-btn" onClick={handleSendFriendMessage}>
                       Send
                     </button>
                   </div>
@@ -2451,6 +3123,76 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         </main>
       </div>
         </>
+      )}
+
+      {createRecipeTemplateOpen && (
+        <div className="community-modal-backdrop">
+          <div className="community-modal">
+            <div className="community-modal-title">Create recipe template</div>
+            <input
+              className="community-modal-input"
+              placeholder="Recipe title"
+              value={newRecipeTemplate.title}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, title: event.target.value }))}
+            />
+            <select
+              className="community-modal-input"
+              value={newRecipeTemplate.mealType}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, mealType: event.target.value }))}
+            >
+              <option>Breakfast</option>
+              <option>Lunch</option>
+              <option>Dinner</option>
+              <option>Snack</option>
+            </select>
+            <div className="community-template-commentbar">
+              <input
+                className="community-modal-input"
+                placeholder="Prep minutes"
+                value={newRecipeTemplate.prepMinutes}
+                onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, prepMinutes: event.target.value }))}
+              />
+              <input
+                className="community-modal-input"
+                placeholder="Cook minutes"
+                value={newRecipeTemplate.cookMinutes}
+                onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, cookMinutes: event.target.value }))}
+              />
+            </div>
+            <input
+              className="community-modal-input"
+              placeholder="Servings"
+              value={newRecipeTemplate.servings}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, servings: event.target.value }))}
+            />
+            <textarea
+              className="community-modal-textarea"
+              placeholder={"Ingredients (one per line, use: ingredient - measure)\nExample: oats - 80g"}
+              value={newRecipeTemplate.ingredients}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, ingredients: event.target.value }))}
+            />
+            <textarea
+              className="community-modal-textarea"
+              placeholder={"Steps (one per line)\nExample: Mix dry ingredients"}
+              value={newRecipeTemplate.steps}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, steps: event.target.value }))}
+            />
+            <input
+              className="community-modal-input"
+              placeholder="Tags (comma separated): high-protein, quick, budget"
+              value={newRecipeTemplate.tags}
+              onChange={(event) => setNewRecipeTemplate((prev) => ({ ...prev, tags: event.target.value }))}
+            />
+            <div className="community-modal-actions">
+              <button className="studio-back community-cta-btn" onClick={() => setCreateRecipeTemplateOpen(false)}>
+                Cancel
+              </button>
+              <button className="studio-back community-cta-btn" onClick={handleCreateRecipeTemplate}>
+                Share recipe
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* create group modal with name/goal/privacy fields, */}
@@ -2591,7 +3333,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {/* supports replying to a post or nested reply, */}
       {/* posts the reply then refreshes the thread list, */}
       {/* closes on cancel or submit */}
-      {createReplyOpen && (
+      {createReplyOpen && !forceThreadPage && (
         <div className="community-modal-backdrop community-modal-backdrop-top">
           <div className="community-modal">
             <div className="community-modal-title">Reply</div>

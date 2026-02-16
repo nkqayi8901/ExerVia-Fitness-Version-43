@@ -1188,6 +1188,48 @@ const StrengthProgressTab = ({ userId }) => {
     setShowCreateProgram(true);
   };
 
+  const shareProgramToCommunity = async (program = selectedProgram) => {
+    if (!userId || !program) return;
+    const sourceId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      String(program.id || '')
+    )
+      ? String(program.id)
+      : null;
+    const tags = [
+      program.focus || '',
+      program.level || '',
+      (program.exercises || []).length ? `${(program.exercises || []).length}-exercises` : ''
+    ]
+      .map((item) => String(item || '').trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 6);
+    const payload = {
+      name: program.name,
+      level: program.level || 'All levels',
+      focus: program.focus || 'Mixed',
+      description: program.description || '',
+      exercises: Array.isArray(program.exercises) ? program.exercises : []
+    };
+    const { error } = await supabase.from('shared_templates').insert([{
+      template_type: 'workout_program',
+      source_id: sourceId,
+      title: program.name,
+      subtitle: program.focus || 'Workout program',
+      goal: program.focus || '',
+      summary: program.description || '',
+      level: program.level || null,
+      focus: program.focus || null,
+      tags,
+      payload,
+      created_by: Number(userId)
+    }]);
+    if (error) {
+      setBanner({ type: 'error', message: 'Could not share program.' });
+      return;
+    }
+    setBanner({ type: 'success', message: 'Program shared to Community Templates.' });
+  };
+
 // closeSwap manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -1971,6 +2013,13 @@ const StrengthProgressTab = ({ userId }) => {
                       type="button"
                     >
                       Remix plan
+                    </button>
+                    <button
+                      className="studio-queue-btn ghost"
+                      onClick={() => shareProgramToCommunity(selectedProgram)}
+                      type="button"
+                    >
+                      Share to community
                     </button>
                   </div>
                 </>
