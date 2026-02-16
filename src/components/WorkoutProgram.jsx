@@ -543,7 +543,7 @@ function ProgramFinish({ backPath, backLabel }) {
       }
     }, 50);
     return () => clearInterval(id);
-  }, [holding, navigate, programId]);
+  }, [holding, navigate, programId, location.state]);
 
 // stopHold manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -604,18 +604,34 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     const minutesMatch = durationText.match(/\d+/);
     const minutes = minutesMatch ? Number(minutesMatch[0]) : "";
     const planName = program?.name || "Program";
+    const reportExercises = (program?.exercises || []).map((exercise, index) => ({
+      id: exercise?.id || `${planName}-${index + 1}`,
+      name: exercise?.name || `Exercise ${index + 1}`,
+      sets: Number(exercise?.sets) || 0,
+      reps: normalizeRepTarget(exercise?.reps),
+      weight: exercise?.weight ?? "",
+      rest: exercise?.rest || "",
+    }));
+    const totalSets = reportExercises.reduce((sum, item) => sum + (Number(item.sets) || 0), 0);
     queueLogsTrainingPrefill(resolvedUserId, {
       source: "session_completion",
       type: mode === "athlete" ? "Training Program" : "Workout Program",
       title: planName,
       minutes,
       notes: `${planName} completed`,
+      report: {
+        category: "workout_program",
+        duration: durationText || "",
+        totalExercises: reportExercises.length,
+        totalSets,
+        exercises: reportExercises,
+      },
     });
     const redirectTimer = setTimeout(() => {
       navigate(logsPath, { state: location.state });
     }, 1800);
     return () => clearTimeout(redirectTimer);
-  }, [location.state, logsPath, mode, navigate, program?.name, resolvedUserId]);
+  }, [location.state, logsPath, mode, navigate, program?.name, program?.duration, program?.exercises, resolvedUserId]);
 
   return (
     <div className="page-shell program-shell">

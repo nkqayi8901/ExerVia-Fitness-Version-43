@@ -198,6 +198,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateTypeFilter, setTemplateTypeFilter] = useState("all");
   const [templateSort, setTemplateSort] = useState("top");
+  const [templateDeckIndex, setTemplateDeckIndex] = useState(0);
+  const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
+  const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
 
   useEffect(() => {
     if (!banner) return;
@@ -1945,6 +1948,92 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     });
   }, [sharedTemplates, templateSearch, templateTypeFilter, templateSort, templateRatings, templateTryCounts]);
 
+  const swipeTemplates = useMemo(
+    () => filteredTemplates.filter((template) => template.template_type !== "recipe"),
+    [filteredTemplates]
+  );
+
+  const recipeTemplates = useMemo(
+    () => filteredTemplates.filter((template) => template.template_type === "recipe"),
+    [filteredTemplates]
+  );
+
+  useEffect(() => {
+    setTemplateDeckIndex(0);
+  }, [templateSearch, templateTypeFilter, templateSort]);
+
+  useEffect(() => {
+    if (!swipeTemplates.length) {
+      setTemplateDeckIndex(0);
+      return;
+    }
+    if (templateDeckIndex >= swipeTemplates.length) {
+      setTemplateDeckIndex(0);
+    }
+  }, [swipeTemplates, templateDeckIndex]);
+
+  const getTemplatePreviewRows = (template) => {
+    const payload = template?.payload || {};
+    if (template?.template_type === "workout_program") {
+      return (payload.exercises || [])
+        .slice(0, 3)
+        .map((exercise) => {
+          const name = String(exercise?.name || "").trim();
+          const sets = Number(exercise?.sets) || 0;
+          const reps = Number(exercise?.reps) || 0;
+          if (!name) return null;
+          const detail = sets > 0 && reps > 0 ? `${sets} x ${reps}` : "custom";
+          return `${name} - ${detail}`;
+        })
+        .filter(Boolean);
+    }
+    if (template?.template_type === "training_plan") {
+      const outline = Array.isArray(payload.outline) ? payload.outline : [];
+      const firstBlock = outline[0] || null;
+      const sessions = Array.isArray(firstBlock?.sessions) ? firstBlock.sessions : [];
+      return sessions.slice(0, 3).map((item) => String(item || "").trim()).filter(Boolean);
+    }
+    if (template?.template_type === "recipe") {
+      const ingredients = Array.isArray(payload.ingredients) ? payload.ingredients : [];
+      return ingredients
+        .slice(0, 4)
+        .map((item) => {
+          const ingredient = String(item?.ingredient || "").trim();
+          const measure = String(item?.measure || "").trim();
+          if (!ingredient && !measure) return null;
+          return `${ingredient}${measure ? ` (${measure})` : ""}`;
+        })
+        .filter(Boolean);
+    }
+    return [];
+  };
+
+  const getTemplateMetaBadges = (template) => {
+    const payload = template?.payload || {};
+    if (template?.template_type === "workout_program") {
+      const exerciseCount = Array.isArray(payload.exercises) ? payload.exercises.length : 0;
+      return [`${exerciseCount} exercises`, template?.level || "All levels", template?.focus || "Mixed"];
+    }
+    if (template?.template_type === "training_plan") {
+      const weeks = Array.isArray(payload.outline) ? payload.outline.length : 0;
+      const sport = payload.sport || template?.sport || "training";
+      const duration = payload.durationTarget || template?.duration_target;
+      const distance = payload.distanceTarget || template?.distance_target;
+      return [
+        `${weeks} weeks`,
+        String(sport).toUpperCase(),
+        duration ? `${duration} min` : distance ? `${distance} km` : "custom target"
+      ];
+    }
+    if (template?.template_type === "recipe") {
+      const mealType = payload.mealType || "Meal";
+      const prep = payload.prepMinutes ? `${payload.prepMinutes} min prep` : null;
+      const servings = payload.servings ? `${payload.servings} servings` : null;
+      return [mealType, prep, servings].filter(Boolean);
+    }
+    return [];
+  };
+
   const renderEmptyState = ({ icon = "i", title, sub, ctaLabel, onCta }) => (
     <div className="community-empty community-empty-state">
       <div className="community-empty-icon" aria-hidden="true">{icon}</div>
@@ -1957,6 +2046,55 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       )}
     </div>
   );
+
+  const handleTemplateDeckAction = async (action) => {
+    if (!swipeTemplates.length) return;
+    const current = swipeTemplates[templateDeckIndex];
+    if (!current) return;
+
+    if (action === "right") {
+      await handleAddTemplateToMine(current);
+    } else if (action === "try") {
+      await handleTryTemplate(current.id);
+    }
+
+    setTemplateDeckIndex((prev) => {
+      if (swipeTemplates.length <= 1) return 0;
+      return (prev + 1) % swipeTemplates.length;
+    });
+  };
+
+  const handleTemplateDeckPointerDown = (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const interactiveTarget = event.target?.closest?.("button,input,textarea,select,a");
+    if (interactiveTarget) return;
+    templateDeckPointerRef.current = { active: true, startX: event.clientX, moved: false };
+    setTemplateDeckDragX(0);
+  };
+
+  const handleTemplateDeckPointerMove = (event) => {
+    if (!templateDeckPointerRef.current.active) return;
+    const delta = event.clientX - templateDeckPointerRef.current.startX;
+    if (Math.abs(delta) > 6) {
+      templateDeckPointerRef.current.moved = true;
+    }
+    const clamped = Math.max(-160, Math.min(160, delta));
+    setTemplateDeckDragX(clamped);
+  };
+
+  const handleTemplateDeckPointerEnd = async () => {
+    if (!templateDeckPointerRef.current.active) return;
+    const delta = templateDeckDragX;
+    templateDeckPointerRef.current = { active: false, startX: 0, moved: false };
+    setTemplateDeckDragX(0);
+    if (delta >= 92) {
+      await handleTemplateDeckAction("right");
+      return;
+    }
+    if (delta <= -92) {
+      await handleTemplateDeckAction("left");
+    }
+  };
 
   useEffect(() => {
     if (!selectedFriendId) return;
@@ -2700,14 +2838,114 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
                 </div>
               </div>
+              {swipeTemplates.length > 0 && (
+                <div className="community-template-deck-shell">
+                  <div className="community-template-deck-head">
+                    <div className="community-panel-title">Plan & Program Swipe Deck</div>
+                    <div className="community-thread-count">{templateDeckIndex + 1} / {swipeTemplates.length}</div>
+                  </div>
+                  {(() => {
+                    const template = swipeTemplates[templateDeckIndex];
+                    if (!template) return null;
+                    const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
+                    const avg = rating.count > 0 ? rating.sum / rating.count : 0;
+                    const tryCount = Number(templateTryCounts[template.id] || 0);
+                    const comments = templateComments[template.id] || [];
+                    const author = profiles[template.created_by] || `User ${template.created_by}`;
+                    const previewRows = getTemplatePreviewRows(template);
+                    const metaBadges = getTemplateMetaBadges(template);
+                    return (
+                      <div
+                        key={`deck-${template.id}`}
+                        className={`community-feed-card community-template-swipe-card ${
+                          templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
+                        }`}
+                        style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
+                        onPointerDown={handleTemplateDeckPointerDown}
+                        onPointerMove={handleTemplateDeckPointerMove}
+                        onPointerUp={handleTemplateDeckPointerEnd}
+                        onPointerCancel={handleTemplateDeckPointerEnd}
+                        onPointerLeave={handleTemplateDeckPointerEnd}
+                      >
+                        {templateDeckDragX > 24 && (
+                          <div className="community-swipe-indicator right">ADD</div>
+                        )}
+                        {templateDeckDragX < -24 && (
+                          <div className="community-swipe-indicator left">PASS</div>
+                        )}
+                        <div className="community-feed-title">{template.title}</div>
+                        <div className="community-thread-meta">
+                          <span className="community-meta-pill community-meta-author">{author}</span>
+                          <span className="community-meta-pill">{formatTime(template.created_at)}</span>
+                          <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
+                        </div>
+                        <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
+                        {metaBadges.length > 0 && (
+                          <div className="community-template-meta-row">
+                            {metaBadges.map((badge, index) => (
+                              <span key={`deck-${template.id}-meta-${index}`} className="community-template-meta-pill">
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {previewRows.length > 0 && (
+                          <div className="community-template-preview">
+                            <div className="community-template-preview-title">Template preview</div>
+                            <div className="community-template-preview-list">
+                              {previewRows.map((row, index) => (
+                                <div key={`deck-${template.id}-preview-${index}`} className="community-template-preview-item">
+                                  {row}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="community-reaction-row">
+                          <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
+                          <span className="community-meta-pill">Tried {tryCount}</span>
+                          <span className="community-meta-pill">Comments {comments.length}</span>
+                        </div>
+                        <div className="community-template-swipe-actions">
+                          <button
+                            className="studio-back community-action-btn community-template-swipe-btn ghost"
+                            type="button"
+                            onClick={() => handleTemplateDeckAction("left")}
+                          >
+                            Pass
+                          </button>
+                          <button
+                            className={`studio-back community-action-btn community-template-swipe-btn ${
+                              templateTriedByMe[template.id] ? "" : "community-primary-btn"
+                            }`}
+                            type="button"
+                            onClick={() => handleTemplateDeckAction("try")}
+                          >
+                            {templateTriedByMe[template.id] ? "Tried" : "Tried it"}
+                          </button>
+                          <button
+                            className="studio-back community-action-btn community-primary-btn community-template-swipe-btn"
+                            type="button"
+                            onClick={() => handleTemplateDeckAction("right")}
+                          >
+                            Add to mine
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
               <div className="community-thread-list">
-                {filteredTemplates.map((template) => {
+                {(swipeTemplates.length > 0 ? recipeTemplates : filteredTemplates).map((template) => {
                   const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
                   const avg = rating.count > 0 ? rating.sum / rating.count : 0;
                   const myRating = Number(rating.mine || 0);
                   const tryCount = Number(templateTryCounts[template.id] || 0);
                   const comments = templateComments[template.id] || [];
                   const author = profiles[template.created_by] || `User ${template.created_by}`;
+                  const previewRows = getTemplatePreviewRows(template);
+                  const metaBadges = getTemplateMetaBadges(template);
                   return (
                     <div key={template.id} className="community-feed-card">
                       <div className="community-feed-title">{template.title}</div>
@@ -2718,6 +2956,27 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         {template.goal && <span className="community-meta-pill">{template.goal}</span>}
                       </div>
                       <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
+                      {metaBadges.length > 0 && (
+                        <div className="community-template-meta-row">
+                          {metaBadges.map((badge, index) => (
+                            <span key={`${template.id}-meta-${index}`} className="community-template-meta-pill">
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {previewRows.length > 0 && (
+                        <div className="community-template-preview">
+                          <div className="community-template-preview-title">Preview</div>
+                          <div className="community-template-preview-list">
+                            {previewRows.map((row, index) => (
+                              <div key={`${template.id}-preview-${index}`} className="community-template-preview-item">
+                                {row}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="community-tags">
                         {(template.tags || []).slice(0, 6).map((tag, index) => (
                           <span key={`${template.id}-tag-${index}`}>{tag}</span>

@@ -60,6 +60,13 @@ const inferCompletionTitle = (item) => {
   return "Completed Session";
 };
 
+const formatDateTimeLabel = (value) => {
+  if (!value) return "Unknown time";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return date.toLocaleString();
+};
+
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,6 +83,7 @@ export default function LogsPage({ mode = "gym" }) {
   const [extraMinutes, setExtraMinutes] = useState("");
   const [extraNotes, setExtraNotes] = useState("");
   const [trainingRows, setTrainingRows] = useState([]);
+  const [activeTrainingReport, setActiveTrainingReport] = useState(null);
   const [banner, setBanner] = useState("");
   const [glanceDetail, setGlanceDetail] = useState("training");
 
@@ -118,13 +126,13 @@ export default function LogsPage({ mode = "gym" }) {
       const [trainingRes, strengthRes] = await Promise.all([
         supabase
           .from("training_sessions")
-          .select("id, sport, duration_minutes, metrics, created_at")
+          .select("*")
           .eq("user_id", id)
           .order("created_at", { ascending: false })
           .limit(120),
         supabase
           .from("strength_logs")
-          .select("id, exercise_name, sets_completed, reps_completed, created_at")
+          .select("*")
           .eq("user_id", id)
           .order("created_at", { ascending: false })
           .limit(120),
@@ -133,17 +141,36 @@ export default function LogsPage({ mode = "gym" }) {
       const combined = [
         ...(trainingRes.data || []).map((row) => ({
           id: `train-${row.id}`,
+          sourceType: "training_session",
           created_at: row.created_at,
           title:
             String(row?.metrics?.plan_name || row?.metrics?.program_name || "").trim() ||
             `${String(row.sport || "Training").toUpperCase()} session`,
           detail: `${row.duration_minutes || 0} min`,
+          report: {
+            sport: row.sport || "training",
+            durationMinutes: row.duration_minutes || 0,
+            distanceKm: row?.distance_km || row?.metrics?.distance || "",
+            heartRate: row?.heart_rate || row?.metrics?.heartRate || "",
+            mood: row?.mood || row?.metrics?.mood || "",
+            planName: row?.metrics?.plan_name || row?.metrics?.program_name || "",
+            notes: row?.notes || row?.metrics?.notes || "",
+          },
         })),
         ...(strengthRes.data || []).map((row) => ({
           id: `lift-${row.id}`,
+          sourceType: "strength_log",
           created_at: row.created_at,
           title: row.exercise_name || "Strength session",
-          detail: `${row.sets_completed || 0} sets · ${row.reps_completed || 0} reps`,
+          detail: `${row.sets_completed || row.sets || 0} sets · ${row.reps_completed || row.reps || 0} reps`,
+          report: {
+            exerciseName: row.exercise_name || "Strength lift",
+            sets: row.sets_completed || row.sets || 0,
+            reps: row.reps_completed || row.reps || 0,
+            weight: row.weight || "",
+            effort: row.effort || row.mood || "",
+            notes: row.notes || "",
+          },
         })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -198,18 +225,29 @@ export default function LogsPage({ mode = "gym" }) {
           }
           return {
             id: item.id,
+            sourceType: "session_completion",
+            created_at: item.created_at || null,
             title: inferred,
             detail: `${item.minutes ? `${item.minutes} min` : "No duration"}${item.notes ? ` · ${item.notes}` : ""}`,
+            report: {
+              source: item.source || "session_completion",
+              minutes: item.minutes || "",
+              notes: item.notes || "",
+              details: item.report || null,
+            },
           };
         })
         .filter(Boolean);
 
       return [
         ...dayTraining.map((row) => ({
-        id: row.id,
-        title: row.title,
-        detail: row.detail,
-      })),
+          id: row.id,
+          sourceType: row.sourceType,
+          created_at: row.created_at,
+          title: row.title,
+          detail: row.detail,
+          report: row.report || {},
+        })),
         ...completionRows,
       ];
     },
@@ -295,6 +333,7 @@ export default function LogsPage({ mode = "gym" }) {
             title: pending.title || pending.type || "Session",
             minutes: pending.minutes || "",
             notes: pending.notes || pending.title || "",
+            report: pending.report || null,
           },
         ],
       }));
@@ -452,6 +491,11 @@ export default function LogsPage({ mode = "gym" }) {
     setBanner("Activity removed from this day.");
   };
 
+  const openTrainingReport = (row) => {
+    if (!row) return;
+    setActiveTrainingReport(row);
+  };
+
   const backPath = mode === "athlete" ? `/athlete/${id}` : `/gym/${id}`;
 
   return (
@@ -511,7 +555,9 @@ export default function LogsPage({ mode = "gym" }) {
               combinedTrainingItems.map((row) => (
                 <div key={row.id} className="logs-list-row">
                   <div className="logs-list-main">
-                    <div className="logs-list-title">{row.title}</div>
+                    <button type="button" className="logs-link-btn" onClick={() => openTrainingReport(row)}>
+                      {row.title}
+                    </button>
                     <div className="logs-list-sub">{row.detail}</div>
                   </div>
                   {String(row.id || "").startsWith("extra-") ? (
@@ -695,7 +741,9 @@ export default function LogsPage({ mode = "gym" }) {
               {combinedTrainingItems.map((row) => (
                 <div key={row.id} className="logs-list-row">
                   <div className="logs-list-main">
-                    <div className="logs-list-title">{row.title}</div>
+                    <button type="button" className="logs-link-btn" onClick={() => openTrainingReport(row)}>
+                      {row.title}
+                    </button>
                     <div className="logs-list-sub">{row.detail}</div>
                   </div>
                   {String(row.id || "").startsWith("extra-") ? (
@@ -756,6 +804,126 @@ export default function LogsPage({ mode = "gym" }) {
           </div>
         </div>
       </div>
+
+      {activeTrainingReport && (
+        <div className="community-modal-backdrop" onClick={() => setActiveTrainingReport(null)}>
+          <div className="community-modal logs-report-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="community-modal-title">Training Report</div>
+            <div className="logs-report-head">
+              <div className="logs-report-title">{activeTrainingReport.title}</div>
+              <div className="logs-report-meta">{formatDateTimeLabel(activeTrainingReport.created_at)}</div>
+            </div>
+            <div className="logs-list">
+              <div className="logs-list-row">
+                <div className="logs-list-main">
+                  <div className="logs-list-title">Summary</div>
+                  <div className="logs-list-sub">{activeTrainingReport.detail}</div>
+                </div>
+              </div>
+              {activeTrainingReport.sourceType === "training_session" && (
+                <>
+                  <div className="logs-list-row">
+                    <div className="logs-list-main">
+                      <div className="logs-list-title">Sport</div>
+                      <div className="logs-list-sub">{String(activeTrainingReport.report?.sport || "Training").toUpperCase()}</div>
+                    </div>
+                  </div>
+                  {activeTrainingReport.report?.planName ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Plan / Program</div>
+                        <div className="logs-list-sub">{activeTrainingReport.report.planName}</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {(activeTrainingReport.report?.distanceKm || activeTrainingReport.report?.heartRate || activeTrainingReport.report?.mood) ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Session Metrics</div>
+                        <div className="logs-list-sub">
+                          {activeTrainingReport.report?.distanceKm ? `${activeTrainingReport.report.distanceKm} km` : "No distance"}
+                          {activeTrainingReport.report?.heartRate ? ` · ${activeTrainingReport.report.heartRate} bpm` : ""}
+                          {activeTrainingReport.report?.mood ? ` · ${activeTrainingReport.report.mood}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+              {activeTrainingReport.sourceType === "strength_log" && (
+                <>
+                  <div className="logs-list-row">
+                    <div className="logs-list-main">
+                      <div className="logs-list-title">Exercise</div>
+                      <div className="logs-list-sub">{activeTrainingReport.report?.exerciseName || activeTrainingReport.title}</div>
+                    </div>
+                  </div>
+                  <div className="logs-list-row">
+                    <div className="logs-list-main">
+                      <div className="logs-list-title">Sets / Reps / Weight</div>
+                      <div className="logs-list-sub">
+                        {(activeTrainingReport.report?.sets ?? 0)} sets · {(activeTrainingReport.report?.reps ?? 0)} reps
+                        {activeTrainingReport.report?.weight ? ` · ${activeTrainingReport.report.weight} kg` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  {(activeTrainingReport.report?.effort || activeTrainingReport.report?.notes) ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Session Notes</div>
+                        <div className="logs-list-sub">
+                          {activeTrainingReport.report?.effort ? `${activeTrainingReport.report.effort}` : "No effort note"}
+                          {activeTrainingReport.report?.notes ? ` · ${activeTrainingReport.report.notes}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              )}
+              {activeTrainingReport.sourceType === "session_completion" && (
+                <>
+                  <div className="logs-list-row">
+                    <div className="logs-list-main">
+                      <div className="logs-list-title">Completion Notes</div>
+                      <div className="logs-list-sub">{activeTrainingReport.report?.notes || "Session completion synced from training flow."}</div>
+                    </div>
+                  </div>
+                  {activeTrainingReport.report?.details?.category === "workout_program" && (
+                    <>
+                      <div className="logs-list-row">
+                        <div className="logs-list-main">
+                          <div className="logs-list-title">Program Snapshot</div>
+                          <div className="logs-list-sub">
+                            {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises · {(activeTrainingReport.report?.details?.totalSets ?? 0)} total sets
+                            {activeTrainingReport.report?.details?.duration ? ` · ${activeTrainingReport.report?.details?.duration}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      {(activeTrainingReport.report?.details?.exercises || []).map((exercise, index) => (
+                        <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-list-row">
+                          <div className="logs-list-main">
+                            <div className="logs-list-title">{exercise.name || `Exercise ${index + 1}`}</div>
+                            <div className="logs-list-sub">
+                              {Number(exercise.sets) || 0} sets · {exercise.reps || "custom"} rep range
+                              {Number(exercise.weight) > 0 ? ` · ${exercise.weight}kg` : ""}
+                              {exercise.rest ? ` · ${exercise.rest} rest` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="community-modal-actions">
+              <button className="studio-back logs-action-btn" type="button" onClick={() => setActiveTrainingReport(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

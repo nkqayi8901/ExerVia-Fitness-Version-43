@@ -212,6 +212,7 @@ const exerciseLibrary = [
   'Box Squat',
   'Cyclist Squat',
   'Leg Press',
+  'Leg Extension',
   'Walking Lunge',
   'Bulgarian Split Squat',
   'Lying Leg Curl',
@@ -781,6 +782,7 @@ const exerciseGroups = {
     'Box Squat',
     'Cyclist Squat',
     'Leg Press',
+    'Leg Extension',
     'Walking Lunge',
     'Reverse Lunge',
     'Curtsy Lunge',
@@ -864,11 +866,8 @@ const StrengthProgressTab = ({ userId }) => {
     exercises: []
   });
   const [lastAddedExerciseIndex, setLastAddedExerciseIndex] = useState(null);
+  const [creatorFeedback, setCreatorFeedback] = useState('');
   const lastAddedTimeoutRef = useRef(null);
-  const exerciseListRef = useRef(null);
-  const createProgramBodyRef = useRef(null);
-  const previousExerciseCountRef = useRef(0);
-  const shouldAutoScrollOnAddRef = useRef(false);
   const [creatorSearch, setCreatorSearch] = useState('');
   const [creatorResults, setCreatorResults] = useState([]);
   const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
@@ -1063,24 +1062,10 @@ const StrengthProgressTab = ({ userId }) => {
   }, []);
 
   useEffect(() => {
-    const currentCount = newProgram.exercises.length;
-    const previousCount = previousExerciseCountRef.current;
-
-    if (
-      showCreateProgram &&
-      shouldAutoScrollOnAddRef.current &&
-      currentCount > previousCount &&
-      createProgramBodyRef.current
-    ) {
-      createProgramBodyRef.current.scrollTo({
-        top: createProgramBodyRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
-      shouldAutoScrollOnAddRef.current = false;
-    }
-
-    previousExerciseCountRef.current = currentCount;
-  }, [newProgram.exercises.length, showCreateProgram]);
+    if (!creatorFeedback) return undefined;
+    const timeout = setTimeout(() => setCreatorFeedback(''), 1500);
+    return () => clearTimeout(timeout);
+  }, [creatorFeedback]);
 
 // mapSupabaseProgram manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1501,6 +1486,10 @@ const StrengthProgressTab = ({ userId }) => {
     .sort((a, b) => scoreProgram(b) - scoreProgram(a))
     .slice(0, 3);
 
+  const normalizeExerciseName = (value) => String(value || '').trim().toLowerCase();
+  const isExerciseInDraft = (name) =>
+    newProgram.exercises.some((exercise) => normalizeExerciseName(exercise.name) === normalizeExerciseName(name));
+
 // updateNewExercise manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -1513,7 +1502,11 @@ const StrengthProgressTab = ({ userId }) => {
 
   const addExerciseFromPick = (name, typeOverride) => {
     if (!name) return;
-    shouldAutoScrollOnAddRef.current = true;
+    if (isExerciseInDraft(name)) {
+      setCreatorFeedback(`Already added: ${name}`);
+      setBanner({ type: 'warn', message: `${name} is already in your program.` });
+      return;
+    }
     const newExercise = buildExerciseTemplate(name, 3, 10);
     if (typeOverride) newExercise.type = typeOverride;
     setNewProgram(prev => {
@@ -1528,7 +1521,8 @@ const StrengthProgressTab = ({ userId }) => {
     });
     setCreatorResults([]);
     setCreatorSearch('');
-    setBanner({ type: 'success', message: `Added ${name}` });
+    setCreatorFeedback(`Added: ${name}`);
+    setBanner({ type: 'success', message: `Added ${name}.` });
   };
 
 // addNewExercise manages a focused piece of logic,
@@ -1536,7 +1530,6 @@ const StrengthProgressTab = ({ userId }) => {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const addNewExercise = () => {
-    shouldAutoScrollOnAddRef.current = true;
     setNewProgram(prev => {
       const nextIndex = prev.exercises.length;
       setLastAddedExerciseIndex(nextIndex);
@@ -1547,6 +1540,8 @@ const StrengthProgressTab = ({ userId }) => {
         exercises: [...prev.exercises, { name: '', sets: 3, reps: 10, type: 'weights' }]
       };
     });
+    setCreatorFeedback('Added blank row');
+    setBanner({ type: 'success', message: 'Blank exercise row added.' });
   };
 
 // removeNewExercise manages a focused piece of logic,
@@ -2137,7 +2132,7 @@ the createPRogram helps resolve this problem  */}
                 Close
               </button>
             </div>
-            <div className="studio-swap-body" ref={createProgramBodyRef}>
+            <div className="studio-swap-body">
               <div className="studio-form-grid">
                 <label className="studio-form-field">
                   <span className="studio-input-label">Program name</span>
@@ -2228,18 +2223,22 @@ the createPRogram helps resolve this problem  */}
                       <div key={group} className="studio-exercise-group">
                         <div className="studio-exercise-group-title">{group}</div>
                         <div className="studio-exercise-group-list">
-                          {items.map((item) => (
-                            <button
-                              key={`group-${group}-${item}`}
-                              className="studio-exercise-chip"
-                              onClick={() => {
-                                addExerciseFromPick(item, getExerciseTypeForName(item));
-                              }}
-                              type="button"
-                            >
-                              {item}
-                            </button>
-                          ))}
+                          {items.map((item) => {
+                            const alreadyAdded = isExerciseInDraft(item);
+                            return (
+                              <button
+                                key={`group-${group}-${item}`}
+                                className={`studio-exercise-chip ${alreadyAdded ? 'selected' : ''}`}
+                                onClick={() => {
+                                  addExerciseFromPick(item, getExerciseTypeForName(item));
+                                }}
+                                type="button"
+                              >
+                                {item}
+                                {alreadyAdded && <span className="studio-exercise-chip-state">Added</span>}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -2250,7 +2249,7 @@ the createPRogram helps resolve this problem  */}
                     {creatorResults.map(result => (
                       <div
                         key={`creator-${result.name}`}
-                        className="studio-swap-result"
+                        className={`studio-swap-result ${isExerciseInDraft(result.name) ? 'selected' : ''}`}
                         role="button"
                         tabIndex={0}
                         onClick={() => {
@@ -2266,7 +2265,10 @@ the createPRogram helps resolve this problem  */}
                           }
                         }}
                       >
-                        <div className="studio-swap-name">{result.name}</div>
+                        <div className="studio-swap-name">
+                          {result.name}
+                          {isExerciseInDraft(result.name) && <span className="studio-swap-selected-pill">Added</span>}
+                        </div>
                         <div className="studio-swap-meta">{result.sets} sets · {result.reps} reps</div>
                         <div className="studio-swap-actions">
                           <button
@@ -2284,8 +2286,9 @@ the createPRogram helps resolve this problem  */}
                     ))}
                   </div>
                 )}
+                {creatorFeedback && <div className="studio-inline-feedback">{creatorFeedback}</div>}
               </div>
-              <div className="studio-create-list" ref={exerciseListRef}>
+              <div className="studio-create-list">
                 {newProgram.exercises.length > 0 ? (
                   <>
                     <div className="studio-create-head">
@@ -2298,6 +2301,11 @@ the createPRogram helps resolve this problem  */}
                       <div
                         key={`new-ex-${index}`}
                         className={`studio-create-row ${lastAddedExerciseIndex === index ? 'studio-pulse' : ''}`}
+                        onDoubleClick={() => {
+                          removeNewExercise(index);
+                          setBanner({ type: 'success', message: `${exercise.name || 'Exercise'} removed.` });
+                        }}
+                        title="Double tap to remove this exercise"
                       >
                         <input
                           className="studio-create-name"
