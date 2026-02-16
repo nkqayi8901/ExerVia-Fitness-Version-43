@@ -7691,6 +7691,903 @@ code {
   .community-thread-back-btn {
     width: fit-content;
   }
+
+  .community-forum-topbar .community-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .community-group-room-shell {
+    max-height: calc(100dvh - 64px);
+  }
+}
+
+/* Core mobile pass */
+@media (max-width: 768px) {
+  .hud-topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .hud-brand {
+    gap: 10px;
+  }
+
+  .hud-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  .hud-title {
+    font-size: 20px;
+  }
+
+  .hud-subtitle {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .mode-nav {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .mode-nav-btn {
+    width: auto;
+    min-width: 76px;
+    padding: 8px 8px;
+    flex-shrink: 0;
+  }
+
+  .mode-nav-label {
+    font-size: 10px;
+  }
+
+  .mode-nav-icon,
+  .mode-nav-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .hud-stats {
+    width: 100%;
+    justify-items: start;
+    gap: 6px;
+  }
+
+  .hud-stats-row {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+
+  .hud-pill {
+    flex-shrink: 0;
+    padding: 7px 10px;
+  }
+
+  .hud-progress-inline {
+    max-width: 100%;
+  }
+
+  .page-shell {
+    padding: 16px 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+  }
+
+  .hud-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .quick-add-row {
+    width: 100%;
+  }
+
+  .hud-card.clickable {
+    min-height: 120px;
+  }
+
+  .dashboard-switch-btn,
+  .home-quick-btn,
+  .studio-back,
+  .studio-primary-btn,
+  .studio-queue-btn,
+  .program-back-step,
+  .program-done,
+  .community-cta-btn,
+  .hud-secondary-btn {
+    min-height: 44px;
+  }
+
+  .home-quick-btn {
+    flex: 1 1 100%;
+  }
+
+  .community-shell {
+    padding: 12px 10px 14px;
+  }
+
+  .community-header {
+    margin-bottom: 14px;
+  }
+
+  .community-title {
+    font-size: 24px;
+  }
+
+  .community-tabs,
+  .community-topic-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+
+  .community-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .community-thread-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .community-thread-toolbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .community-thread-count {
+    align-self: flex-start;
+  }
+
+  .community-thread-route-panel {
+    padding: 8px 8px 14px;
+  }
+
+  .community-thread-modal-title {
+    font-size: 22px;
+  }
+
+  .community-thread-head-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .community-reply-card.nested {
+    margin-left: 8px;
+  }
+
+  .community-group-square-grid {
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    justify-content: stretch;
+  }
+
+  .community-group-square {
+    width: 100%;
+    min-height: 148px;
+  }
+
+  .community-group-room-shell {
+    border-radius: 14px;
+    max-height: calc(100dvh - 58px);
+  }
+
+  .community-group-room-shell.route-mode {
+    min-height: calc(100dvh - 58px);
+  }
+
+  .community-group-room-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .community-group-room-head-meta {
+    width: 100%;
+  }
+
+  .community-group-room-messages {
+    padding: 12px;
+  }
+
+  .community-group-room-inputbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .community-group-room-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .community-group-room-inputbar .community-chat-send-btn {
+    width: 100%;
+  }
+
+  .logs-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .logs-top-row {
+    align-items: stretch;
+  }
+
+  .logs-date-input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .logs-action-btn {
+    width: 100%;
+  }
+
+  .logs-list-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logs-row-delete {
+    align-self: flex-end;
+  }
+
+  .fuel-header-actions {
+    width: 100%;
+    display: grid;
+    gap: 8px;
+  }
+
+  .fuel-compact-btn {
+    width: 100%;
+  }
+
+  .fuel-modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .fuel-modal-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .fuel-modal-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .fuel-off-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fuel-off-search {
+    width: 100%;
+  }
+
+  .journal-slot-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .journal-switch {
+    width: 100%;
+  }
+
+  .journal-switch-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .journal-editing-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .journal-entry-actions {
+    width: 100%;
+  }
+
+  .journal-entry-actions .journal-action-btn,
+  .journal-entry-actions .studio-back {
+    width: 100%;
+  }
+
+  /* Training Ritual mobile tuning */
+  .studio-wrap {
+    padding: 18px 12px 44px;
+  }
+
+  .studio-header {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .studio-title {
+    font-size: 28px;
+  }
+
+  .studio-panel-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-panel-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .studio-panel-actions .studio-mini-btn {
+    width: 100%;
+  }
+
+  .studio-program-card {
+    padding-right: 14px;
+  }
+
+  .studio-plan-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .studio-queue-actions {
+    width: 100%;
+  }
+
+  .studio-swap-backdrop {
+    padding: 10px;
+  }
+
+  .studio-swap-panel {
+    width: min(720px, 96vw);
+    max-height: 96vh;
+    border-radius: 16px;
+  }
+
+  .studio-swap-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .studio-swap-header .studio-swap-close {
+    align-self: flex-end;
+  }
+
+  .studio-swap-body {
+    padding: 12px;
+  }
+
+  .studio-floor-overlay {
+    padding: 16px 12px 18px;
+    overflow-y: auto;
+  }
+
+  .studio-floor-title {
+    font-size: 24px;
+  }
+
+  .studio-floor-clock {
+    font-size: clamp(56px, 18vw, 88px);
+    letter-spacing: 2px;
+  }
+
+  .studio-floor-quick {
+    position: static;
+    margin-top: 12px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .studio-congrats-panel {
+    width: min(560px, 96vw);
+    padding: 18px;
+  }
+
+  /* Workout Program mobile tuning */
+  .program-list {
+    grid-template-columns: 1fr;
+  }
+
+  .program-preview-head,
+  .program-preview-row {
+    grid-template-columns: 1fr repeat(3, 80px);
+    gap: 6px;
+  }
+
+  .program-preview-input {
+    width: 80px;
+  }
+
+  .program-card-title {
+    font-size: 20px;
+  }
+
+  .program-card-meta,
+  .program-card-focus {
+    font-size: 13px;
+  }
+
+  .program-timer-actions .hud-secondary-btn {
+    flex: 1;
+  }
+
+  .program-session-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .program-session-actions .hud-secondary-btn {
+    width: 100%;
+  }
+
+  .program-hold {
+    width: 140px;
+    height: 140px;
+  }
+
+  .program-hold-bar {
+    width: min(220px, 90%);
+  }
+}
+
+@media (max-width: 480px) {
+  .hud-topbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hud-title {
+    font-size: 18px;
+  }
+
+  .hud-subtitle {
+    font-size: 10px;
+  }
+
+  .mode-nav {
+    padding: 5px;
+    gap: 4px;
+  }
+
+  .mode-nav-btn {
+    min-width: 68px;
+    padding: 7px 6px;
+    gap: 4px;
+  }
+
+  .hud-pill {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .hud-dim {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .page-shell {
+    padding: 12px 8px;
+  }
+
+  .page-title {
+    font-size: 21px;
+  }
+
+  .community-title {
+    font-size: 21px;
+  }
+
+  .community-thread-modal-title {
+    font-size: 20px;
+  }
+
+  .community-thread-sort-btn {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .community-thread-collapse-btn {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .community-thread-actions {
+    gap: 8px;
+  }
+
+  .community-thread-actions .community-action-btn,
+  .community-thread-actions .community-reply-btn {
+    width: 100%;
+  }
+
+  .community-group-square-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .community-group-square {
+    min-height: 132px;
+    padding: 10px;
+  }
+
+  .community-group-room-shell {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    max-height: calc(100dvh - 54px);
+  }
+
+  .community-group-room-shell.route-mode {
+    min-height: calc(100dvh - 54px);
+  }
+
+  .community-group-room-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .community-group-room-left,
+  .community-group-room-right {
+    padding: 10px;
+  }
+
+  .community-group-room-messages {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .community-group-room-msg,
+  .community-friend-chat-bubble {
+    width: 100%;
+    border-radius: 14px;
+    padding: 10px 11px;
+  }
+
+  .community-group-room-msg-head,
+  .community-friend-msg-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .community-thread-route-panel {
+    padding: 6px 4px 12px;
+  }
+
+  .community-thread-modal-head-card,
+  .community-thread-comments-section {
+    padding: 12px;
+  }
+
+  .community-thread-meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .community-thread-close-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .logs-date-input {
+    min-height: 42px;
+  }
+
+  .logs-glance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .logs-glance-card {
+    min-height: 82px;
+  }
+
+  .profile-progress-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fuel-modal {
+    width: calc(100vw - 10px);
+    max-height: calc(100vh - 10px);
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .studio-panel-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .studio-floor-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .studio-floor-clock {
+    font-size: clamp(46px, 20vw, 70px);
+  }
+
+  .studio-floor-quick {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-floor-quick .studio-primary-btn,
+  .studio-floor-quick .studio-queue-btn {
+    width: 100%;
+  }
+
+  .studio-congrats-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .program-preview-head {
+    display: none;
+  }
+
+  .program-preview-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "name name name"
+      "sets reps weight";
+    gap: 8px;
+    padding: 10px 10px 10px 11px;
+  }
+
+  .program-preview-row > :nth-child(1) { grid-area: name; }
+  .program-preview-row > :nth-child(2) { grid-area: sets; }
+  .program-preview-row > :nth-child(3) { grid-area: reps; }
+  .program-preview-row > :nth-child(4) { grid-area: weight; }
+
+  .program-preview-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .program-card {
+    padding: 14px;
+  }
+
+  .program-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .program-card-title {
+    font-size: 18px;
+  }
+
+  .program-card-badge {
+    align-self: flex-start;
+  }
+
+  .program-session-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .program-back-step,
+  .program-done {
+    width: 100%;
+  }
+}
+
+/* Tablet portrait sweep */
+@media (min-width: 600px) and (max-width: 768px) {
+  .page-shell {
+    padding: 18px 14px;
+  }
+
+  .community-group-room-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .community-group-room-left,
+  .community-group-room-right {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+
+  .community-group-room-right .community-panel-title,
+  .community-group-room-left .community-panel-title,
+  .community-room-note {
+    grid-column: 1 / -1;
+  }
+
+  .community-group-room-member,
+  .community-room-channel {
+    margin: 0;
+  }
+
+  .community-thread-modal {
+    gap: 14px;
+  }
+
+  .logs-glance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .program-preview-head,
+  .program-preview-row {
+    grid-template-columns: 1fr repeat(3, 88px);
+  }
+
+  .program-preview-input {
+    width: 88px;
+  }
+}
+
+/* Large phone sweep */
+@media (max-width: 430px) {
+  .hud-topbar {
+    padding: 7px 8px;
+  }
+
+  .mode-nav-btn {
+    min-width: 64px;
+    padding: 6px 5px;
+  }
+
+  .mode-nav-label {
+    font-size: 9px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .community-title {
+    font-size: 20px;
+  }
+
+  .community-tab {
+    font-size: 11px;
+    padding: 7px 11px;
+  }
+
+  .community-group-square-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .community-group-square {
+    min-height: 124px;
+  }
+
+  .community-group-room-title {
+    font-size: 18px;
+  }
+
+  .community-group-room-sub {
+    font-size: 12px;
+  }
+
+  .community-room-chip {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .logs-list-title {
+    font-size: 13px;
+  }
+
+  .logs-list-sub {
+    font-size: 11px;
+  }
+
+  .program-card-title {
+    font-size: 17px;
+  }
+
+  .program-card-meta,
+  .program-card-focus {
+    font-size: 12px;
+  }
+}
+
+/* Small phone sweep */
+@media (max-width: 390px) {
+  .page-shell {
+    padding: 10px 6px;
+  }
+
+  .hud-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .mode-nav {
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .mode-nav-btn {
+    min-width: 60px;
+    padding: 6px 4px;
+  }
+
+  .hud-pill {
+    padding: 5px 8px;
+  }
+
+  .community-thread-modal-title {
+    font-size: 18px;
+  }
+
+  .community-thread-sort-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .community-thread-sort-btn {
+    flex: 1;
+    text-align: center;
+    padding: 5px 6px;
+  }
+
+  .community-group-room-head {
+    padding: 10px;
+  }
+
+  .community-group-room-messages {
+    padding: 8px;
+  }
+
+  .community-group-room-inputbar {
+    padding: 8px;
+  }
+
+  .community-group-room-msg,
+  .community-friend-chat-bubble {
+    padding: 9px 10px;
+  }
+
+  .logs-glance-value {
+    font-size: 20px;
+  }
+
+  .studio-title {
+    font-size: 24px;
+  }
+
+  .studio-floor-title {
+    font-size: 20px;
+  }
 }
 
 @keyframes communityCardIn {

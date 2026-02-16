@@ -695,20 +695,22 @@ export default function NutritionPage() {
             </p>
           </div>
 
-          <button
-            className="studio-back fuel-compact-btn fuel-generate-btn"
-            onClick={fetchProtocolMeals}
-            disabled={loading}
-          >
-            {loading ? "Generating…" : "Generate New Meals"}
-          </button>
-          <button
-            className="studio-back fuel-compact-btn"
-            type="button"
-            onClick={() => setCustomRecipeOpen(true)}
-          >
-            Create Custom Recipe
-          </button>
+          <div className="fuel-header-actions">
+            <button
+              className="studio-back fuel-compact-btn fuel-generate-btn"
+              onClick={fetchProtocolMeals}
+              disabled={loading}
+            >
+              {loading ? "Generating…" : "Generate New Meals"}
+            </button>
+            <button
+              className="studio-back fuel-compact-btn"
+              type="button"
+              onClick={() => setCustomRecipeOpen(true)}
+            >
+              Create Custom Recipe
+            </button>
+          </div>
         </div>
 
         <div className="grid-2">
