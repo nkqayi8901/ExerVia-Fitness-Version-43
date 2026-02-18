@@ -1987,6 +1987,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       }),
     [filteredTemplates, templateRatings]
   );
+  const visibleSwipeQueue = useMemo(() => {
+    if (!swipeTemplates.length) return [];
+    if (templateQueueExpanded || swipeTemplates.length <= 12) {
+      return swipeTemplates.map((template, queueIndex) => ({ template, queueIndex }));
+    }
+    const start = Math.max(0, Math.min(templateDeckIndex - 5, Math.max(0, swipeTemplates.length - 12)));
+    return swipeTemplates.slice(start, start + 12).map((template, offset) => ({
+      template,
+      queueIndex: start + offset,
+    }));
+  }, [swipeTemplates, templateQueueExpanded, templateDeckIndex]);
 
   useEffect(() => {
     setTemplateDeckIndex(0);
@@ -2085,11 +2096,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       await handleRateTemplate(current.id, 1);
     }
 
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animationDelay = reducedMotion ? 60 : 320;
+
     setTimeout(() => {
       setTemplateDeckAnimating(null);
       setTemplateDeckDragX(0);
       setTemplateDeckIndex((prev) => Math.min(prev + 1, swipeTemplates.length));
-    }, 320);
+    }, animationDelay);
   };
 
   const handleTemplateDeckKeyDown = async (event) => {
@@ -2917,14 +2934,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     </div>
                   </div>
                   <div className="community-template-queue" role="list" aria-label="Template queue">
-                    {(templateQueueExpanded
-                      ? swipeTemplates
-                      : swipeTemplates.slice(
-                          Math.max(0, Math.min(templateDeckIndex - 5, Math.max(0, swipeTemplates.length - 12))),
-                          Math.max(0, Math.min(templateDeckIndex - 5, Math.max(0, swipeTemplates.length - 12))) + 12
-                        )
-                    ).map((template) => {
-                      const queueIndex = swipeTemplates.findIndex((row) => row.id === template.id);
+                    {visibleSwipeQueue.map(({ template, queueIndex }) => {
                       return (
                       <button
                         key={`queue-${template.id}`}

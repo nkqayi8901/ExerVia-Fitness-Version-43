@@ -860,8 +860,9 @@ code {
 /* Gym mode light theme */
 .mode-gym.hud-bg {
   background:
-    radial-gradient(1100px 500px at 10% 10%, rgba(16, 185, 129, 0.12), transparent 60%),
-    radial-gradient(900px 500px at 90% 20%, rgba(59, 130, 246, 0.10), transparent 55%),
+    radial-gradient(1100px 520px at 8% 8%, rgba(16, 185, 129, 0.15), transparent 62%),
+    radial-gradient(980px 520px at 90% 20%, rgba(59, 130, 246, 0.13), transparent 58%),
+    radial-gradient(900px 480px at 55% 100%, rgba(14, 116, 144, 0.08), transparent 62%),
     linear-gradient(135deg, #f8fafc 0%, #eef2ff 60%, #f8fafc 100%);
   color: #1f2937;
   opacity: 1;
@@ -881,9 +882,10 @@ code {
   box-shadow: 0 4px 14px rgba(16, 185, 129, 0.08);
 }
 .mode-gym .hud-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.9));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 244, 0.86));
   border-color: rgba(15,23,42,0.12);
   box-shadow: 0 14px 32px rgba(16, 185, 129, 0.12), 0 10px 24px rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(8px);
 }
 .mode-gym .hud-card.clickable:hover {
   border-color: rgba(16,185,129,0.5);
@@ -7112,7 +7114,7 @@ code {
   opacity: 1;
 }
 .mode-gym .community-panel {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 253, 244, 0.84));
   border-color: rgba(15, 23, 42, 0.14);
   box-shadow: 0 14px 34px rgba(16, 185, 129, 0.11), 0 10px 24px rgba(59, 130, 246, 0.08);
   backdrop-filter: blur(8px);
@@ -7127,7 +7129,7 @@ code {
 .mode-gym .community-quick-card,
 .mode-gym .community-circle-card {
   position: relative;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.88));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 244, 0.84));
   border-color: rgba(15, 23, 42, 0.14);
   color: #0f172a;
   box-shadow: 0 10px 24px rgba(16, 185, 129, 0.1), 0 8px 18px rgba(59, 130, 246, 0.07);
@@ -7226,8 +7228,8 @@ code {
 }
 .mode-gym .community-template-stack-layer {
   border-color: rgba(16, 185, 129, 0.34);
-  background: linear-gradient(145deg, rgba(148, 163, 184, 0.34), rgba(203, 213, 225, 0.28));
-  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.11), 0 8px 18px rgba(15, 23, 42, 0.1);
+  background: linear-gradient(145deg, rgba(148, 163, 184, 0.42), rgba(203, 213, 225, 0.34));
+  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.12), 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 .mode-gym .community-swipe-indicator.right {
   color: #065f46;
@@ -7361,8 +7363,8 @@ code {
   content: "";
   position: absolute;
   left: -1px;
-  top: 10px;
-  bottom: 10px;
+  top: 14px;
+  bottom: 14px;
   width: 3px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(16, 185, 129, 0.9), rgba(59, 130, 246, 0.8));
@@ -7491,6 +7493,8 @@ code {
   border-color: rgba(15, 23, 42, 0.14);
   color: #1f2937;
   opacity: 1;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .mode-gym .community-thread-select {
   background:
@@ -7506,6 +7510,25 @@ code {
   border-color: rgba(15, 23, 42, 0.14);
   color: #1f2937;
   opacity: 1;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.mode-gym .community-modal-input:focus,
+.mode-gym .community-modal-input:focus-visible,
+.mode-gym .community-modal-textarea:focus,
+.mode-gym .community-modal-textarea:focus-visible,
+.mode-gym .community-search:focus,
+.mode-gym .community-search:focus-visible,
+.mode-gym .community-thread-select:focus,
+.mode-gym .community-thread-select:focus-visible,
+.mode-gym .community-friend-chat-input .community-modal-input:focus,
+.mode-gym .community-friend-chat-input .community-modal-input:focus-visible {
+  outline: none;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.18),
+    inset 0 2px 4px rgba(15, 23, 42, 0.04);
+  background: rgba(255, 255, 255, 0.9);
 }
 .mode-gym .community-search::placeholder {
   color: rgba(15, 23, 42, 0.45);
@@ -8957,6 +8980,19 @@ code {
   background: rgba(15, 23, 42, 0.04);
   border-color: rgba(15, 23, 42, 0.16);
   color: #0f172a;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.mode-gym .logs-shell .studio-form-input:focus,
+.mode-gym .logs-shell .studio-form-input:focus-visible,
+.mode-gym .logs-shell .studio-select:focus,
+.mode-gym .logs-shell .studio-select:focus-visible {
+  outline: none;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.18),
+    inset 0 2px 4px rgba(15, 23, 42, 0.04);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .mode-gym .logs-dot {
@@ -9926,6 +9962,8 @@ code {
   background: rgba(226, 232, 240, 0.9);
   border-color: rgba(148, 163, 184, 0.35);
   color: #0f172a;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .mode-gym .studio-create-program-panel .studio-search::placeholder,
 .mode-gym .studio-create-program-panel .studio-form-input::placeholder,
@@ -9935,6 +9973,33 @@ code {
 }
 .mode-gym .studio-create-program-panel .studio-select {
   font-weight: 600;
+}
+.mode-gym .studio-create-program-panel .studio-search:focus,
+.mode-gym .studio-create-program-panel .studio-search:focus-visible,
+.mode-gym .studio-create-program-panel .studio-form-input:focus,
+.mode-gym .studio-create-program-panel .studio-form-input:focus-visible,
+.mode-gym .studio-create-program-panel .studio-select:focus,
+.mode-gym .studio-create-program-panel .studio-select:focus-visible,
+.mode-gym .studio-create-program-panel .studio-textarea:focus,
+.mode-gym .studio-create-program-panel .studio-textarea:focus-visible,
+.mode-gym .studio-create-program-panel .studio-create-name:focus,
+.mode-gym .studio-create-program-panel .studio-create-name:focus-visible,
+.mode-gym .studio-create-program-panel .studio-create-mini:focus,
+.mode-gym .studio-create-program-panel .studio-create-mini:focus-visible,
+.mode-gym .studio-select:focus,
+.mode-gym .studio-select:focus-visible,
+.mode-gym .studio-textarea:focus,
+.mode-gym .studio-textarea:focus-visible,
+.mode-gym .studio-create-name:focus,
+.mode-gym .studio-create-name:focus-visible,
+.mode-gym .studio-create-mini:focus,
+.mode-gym .studio-create-mini:focus-visible {
+  outline: none;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.18),
+    inset 0 2px 4px rgba(15, 23, 42, 0.04);
+  background: rgba(255, 255, 255, 0.9);
 }
 .studio-create-program-panel .studio-search,
 .studio-create-program-panel .studio-select,
