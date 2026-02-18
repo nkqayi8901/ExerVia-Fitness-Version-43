@@ -1542,13 +1542,17 @@ const StrengthProgressTab = ({ userId }) => {
     setCreatorFeedback('Added blank row');
   };
 
+  const removeExerciseFromDraft = (index, exerciseName) => {
+    removeNewExercise(index);
+    setBanner({ type: 'success', message: `${exerciseName || 'Exercise'} removed.` });
+  };
+
   const handleProgramRowTouchEnd = (index, exerciseName) => {
     const now = Date.now();
     const previous = lastRowTapRef.current;
     const isDoubleTap = previous.index === index && now - previous.time <= 320;
     if (isDoubleTap) {
-      removeNewExercise(index);
-      setBanner({ type: 'success', message: `${exerciseName || 'Exercise'} removed.` });
+      removeExerciseFromDraft(index, exerciseName);
       lastRowTapRef.current = { index: null, time: 0 };
       return;
     }
@@ -2312,10 +2316,8 @@ the createPRogram helps resolve this problem  */}
                       <div
                         key={`new-ex-${index}`}
                         className={`studio-create-row ${lastAddedExerciseIndex === index ? 'studio-pulse' : ''}`}
-                        onDoubleClick={() => {
-                          removeNewExercise(index);
-                          setBanner({ type: 'success', message: `${exercise.name || 'Exercise'} removed.` });
-                        }}
+                        onDoubleClick={() => removeExerciseFromDraft(index, exercise.name)}
+                        onDoubleClickCapture={() => removeExerciseFromDraft(index, exercise.name)}
                         onTouchEnd={() => handleProgramRowTouchEnd(index, exercise.name)}
                         title="Double tap to remove this exercise"
                       >
@@ -2323,6 +2325,11 @@ the createPRogram helps resolve this problem  */}
                           className="studio-create-name"
                           placeholder="Exercise name"
                           value={exercise.name}
+                          onDoubleClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            removeExerciseFromDraft(index, exercise.name);
+                          }}
                           onFocus={() => setCreatorFocusedIndex(index)}
                           onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
                         />

@@ -67,19 +67,6 @@ const formatDateTimeLabel = (value) => {
   return date.toLocaleString();
 };
 
-const estimateRepCount = (value) => {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw || raw === "failure") return 0;
-  const rangeMatch = raw.match(/(\d+)\s*-\s*(\d+)/);
-  if (rangeMatch) {
-    const low = Number(rangeMatch[1] || 0);
-    const high = Number(rangeMatch[2] || 0);
-    if (low > 0 && high > 0) return Math.round((low + high) / 2);
-  }
-  const single = Number.parseInt(raw, 10);
-  return Number.isNaN(single) ? 0 : single;
-};
-
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -912,9 +899,9 @@ export default function LogsPage({ mode = "gym" }) {
                     <>
                       <div className="logs-list-row">
                         <div className="logs-list-main">
-                          <div className="logs-list-title">Program Snapshot</div>
+                          <div className="logs-list-title">Program Overview</div>
                           <div className="logs-list-sub">
-                            {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises · {(activeTrainingReport.report?.details?.totalSets ?? 0)} total sets
+                            {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises
                             {activeTrainingReport.report?.details?.duration ? ` · ${activeTrainingReport.report?.details?.duration}` : ""}
                             {(activeTrainingReport.report?.details?.totalTonnage ?? 0) > 0
                               ? ` · ${Number(activeTrainingReport.report?.details?.totalTonnage || 0).toLocaleString()} kg volume`
@@ -922,27 +909,26 @@ export default function LogsPage({ mode = "gym" }) {
                           </div>
                         </div>
                       </div>
-                      {(activeTrainingReport.report?.details?.exercises || []).map((exercise, index) => (
-                        <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-list-row">
-                          <div className="logs-list-main">
-                            <div className="logs-list-title">{exercise.name || `Exercise ${index + 1}`}</div>
-                            <div className="logs-list-sub">
-                              {Number(exercise.sets) || 0} sets · {exercise.reps || "custom"} rep range
-                              {Number(exercise.weight) > 0 ? ` · ${exercise.weight}kg` : ""}
-                              {exercise.rest ? ` · ${exercise.rest} rest` : ""}
-                              {(() => {
-                                const existing = Number(exercise.tonnage || 0);
-                                if (existing > 0) return ` · ${existing.toLocaleString()} kg volume`;
-                                const sets = Number(exercise.sets || 0);
-                                const reps = estimateRepCount(exercise.reps);
-                                const weight = Number(exercise.weight || 0);
-                                const calc = sets > 0 && reps > 0 && weight > 0 ? sets * reps * weight : 0;
-                                return calc > 0 ? ` · ${calc.toLocaleString()} kg volume` : "";
-                              })()}
-                            </div>
-                          </div>
+                      <div className="logs-program-report">
+                        <div className="logs-program-report-head">
+                          <span className="logs-program-report-col exercise">Exercise</span>
+                          <span className="logs-program-report-col">Sets</span>
+                          <span className="logs-program-report-col">Rep Range</span>
+                          <span className="logs-program-report-col">Weight (kg)</span>
                         </div>
-                      ))}
+                        <div className="logs-program-report-body">
+                          {(activeTrainingReport.report?.details?.exercises || []).map((exercise, index) => (
+                            <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-program-report-row">
+                              <span className="logs-program-report-col exercise">{exercise.name || `Exercise ${index + 1}`}</span>
+                              <span className="logs-program-report-col">{Number(exercise.sets) || 0}</span>
+                              <span className="logs-program-report-col">{exercise.reps || "custom"}</span>
+                              <span className="logs-program-report-col">
+                                {Number(exercise.weight) > 0 ? exercise.weight : "-"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </>
                   )}
                 </>

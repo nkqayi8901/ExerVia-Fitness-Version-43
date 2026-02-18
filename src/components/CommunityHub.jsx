@@ -214,8 +214,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckIndex, setTemplateDeckIndex] = useState(0);
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
-  const [templateDeckExpanded, setTemplateDeckExpanded] = useState(false);
-  const [templateSkippedMap, setTemplateSkippedMap] = useState({});
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
 
   useEffect(() => {
@@ -1978,29 +1976,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     });
   }, [sharedTemplates, templateSearch, templateTypeFilter, templateFocusFilter, templateSort, templateRatings, templateTryCounts]);
 
-  const swipeTemplates = useMemo(
-    () => filteredTemplates.filter((template) => !templateSkippedMap[template.id]),
-    [filteredTemplates, templateSkippedMap]
+  const swipeTemplates = filteredTemplates;
+  const likedTemplates = useMemo(
+    () =>
+      filteredTemplates.filter((template) => {
+        const myRating = Number(templateRatings[template.id]?.mine || 0);
+        return myRating >= 4;
+      }),
+    [filteredTemplates, templateRatings]
   );
 
   useEffect(() => {
     setTemplateDeckIndex(0);
-    setTemplateDeckExpanded(false);
   }, [templateSearch, templateTypeFilter, templateFocusFilter, templateSort]);
 
   useEffect(() => {
-    if (!swipeTemplates.length) {
-      setTemplateDeckIndex(0);
-      return;
-    }
-    if (templateDeckIndex >= swipeTemplates.length) {
-      setTemplateDeckIndex(0);
-    }
+    if (!swipeTemplates.length) setTemplateDeckIndex(0);
   }, [swipeTemplates, templateDeckIndex]);
-
-  useEffect(() => {
-    setTemplateDeckExpanded(false);
-  }, [templateDeckIndex]);
 
   const getTemplatePreviewRows = (template, expanded = false) => {
     const payload = template?.payload || {};
@@ -2081,28 +2073,19 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (templateDeckAnimating) return;
     const current = swipeTemplates[templateDeckIndex];
     if (!current) return;
-    let skippedTemplateId = null;
-
     setTemplateDeckAnimating(action);
-    if (action === "right") {
+    if (action === "right" || action === "like") {
+      await handleRateTemplate(current.id, 5);
+    } else if (action === "add") {
       await handleAddTemplateToMine(current);
-    } else if (action === "try") {
-      await handleTryTemplate(current.id);
     } else if (action === "left") {
-      skippedTemplateId = current.id;
+      await handleRateTemplate(current.id, 1);
     }
 
     setTimeout(() => {
-      if (skippedTemplateId) {
-        setTemplateSkippedMap((prev) => ({ ...prev, [skippedTemplateId]: true }));
-      }
       setTemplateDeckAnimating(null);
-      setTemplateDeckExpanded(false);
       setTemplateDeckDragX(0);
-      setTemplateDeckIndex((prev) => {
-        if (swipeTemplates.length <= 1) return 0;
-        return (prev + 1) % swipeTemplates.length;
-      });
+      setTemplateDeckIndex((prev) => Math.min(prev + 1, swipeTemplates.length));
     }, 220);
   };
 
@@ -2896,142 +2879,233 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               {swipeTemplates.length > 0 && (
                 <div className="community-template-deck-shell">
                   <div className="community-template-deck-head">
-                    <div className="community-panel-title">Plan & Program Swipe Deck</div>
-                    <div className="community-thread-count">{templateDeckIndex + 1} / {swipeTemplates.length}</div>
+                    <div className="community-panel-title">Template Swipe Deck</div>
+                    <div className="community-thread-count">
+                      {Math.min(templateDeckIndex + 1, swipeTemplates.length)} / {swipeTemplates.length}
+                    </div>
+                  </div>
+                  <div className="community-template-queue" role="list" aria-label="Template queue">
+                    {swipeTemplates.map((template, queueIndex) => (
+                      <button
+                        key={`queue-${template.id}`}
+                        type="button"
+                        className={`community-template-queue-item ${queueIndex === templateDeckIndex ? "active" : ""}`}
+                        onClick={() => {
+                          setTemplateDeckIndex(queueIndex);
+                          setTemplateDeckDragX(0);
+                          setTemplateDeckAnimating(null);
+                        }}
+                      >
+                        <span className="community-template-queue-title">{template.title}</span>
+                        <span className="community-template-queue-type">{template.template_type.replace("_", " ")}</span>
+                      </button>
+                    ))}
                   </div>
                   <div className="community-template-stack-layer layer-back-2" aria-hidden="true" />
                   <div className="community-template-stack-layer layer-back-1" aria-hidden="true" />
-                  {(() => {
-                    const template = swipeTemplates[templateDeckIndex];
-                    if (!template) return null;
-                    const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
-                    const avg = rating.count > 0 ? rating.sum / rating.count : 0;
-                    const tryCount = Number(templateTryCounts[template.id] || 0);
-                    const comments = templateComments[template.id] || [];
-                    const author = profiles[template.created_by] || `User ${template.created_by}`;
-                    const previewRows = getTemplatePreviewRows(template, templateDeckExpanded);
-                    const compactRows = getTemplatePreviewRows(template, false);
-                    const metaBadges = getTemplateMetaBadges(template);
-                    return (
-                      <div
-                        key={`deck-${template.id}`}
-                        className={`community-feed-card community-template-swipe-card ${
-                          templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
-                        } ${templateDeckAnimating === "left" ? "animate-left" : ""} ${templateDeckAnimating === "right" ? "animate-right" : ""}`}
-                        style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
-                        onPointerDown={handleTemplateDeckPointerDown}
-                        onPointerMove={handleTemplateDeckPointerMove}
-                        onPointerUp={handleTemplateDeckPointerEnd}
-                        onPointerCancel={handleTemplateDeckPointerEnd}
-                        onPointerLeave={handleTemplateDeckPointerEnd}
-                      >
-                        {templateDeckDragX > 24 && (
-                          <div className="community-swipe-indicator right">ADD</div>
-                        )}
-                        {templateDeckDragX < -24 && (
-                          <div className="community-swipe-indicator left">PASS</div>
-                        )}
-                        <div className="community-feed-title">{template.title}</div>
-                        <div className="community-thread-meta">
-                          <span className="community-meta-pill community-meta-author">{author}</span>
-                          <span className="community-meta-pill">{formatTime(template.created_at)}</span>
-                          <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
-                        </div>
-                        <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
-                        {metaBadges.length > 0 && (
-                          <div className="community-template-meta-row">
-                            {metaBadges.map((badge, index) => (
-                              <span key={`deck-${template.id}-meta-${index}`} className="community-template-meta-pill">
-                                {badge}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {previewRows.length > 0 && (
-                          <div className="community-template-preview">
-                            <div className="community-template-preview-title">Template preview</div>
-                            <div className="community-template-preview-list">
-                              {previewRows.map((row, index) => (
-                                <div key={`deck-${template.id}-preview-${index}`} className="community-template-preview-item">
-                                  {row}
-                                </div>
-                              ))}
+                  {templateDeckIndex < swipeTemplates.length ? (
+                    (() => {
+                      const template = swipeTemplates[templateDeckIndex];
+                      if (!template) return null;
+                      const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
+                      const avg = rating.count > 0 ? rating.sum / rating.count : 0;
+                      const tryCount = Number(templateTryCounts[template.id] || 0);
+                      const comments = templateComments[template.id] || [];
+                      const author = profiles[template.created_by] || `User ${template.created_by}`;
+                      const previewRows = getTemplatePreviewRows(template, true);
+                      const metaBadges = getTemplateMetaBadges(template);
+                      const payload = template.payload || {};
+                      const workoutRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+                      const outlineRows = Array.isArray(payload.outline) ? payload.outline : [];
+                      return (
+                        <div
+                          key={`deck-${template.id}`}
+                          className={`community-feed-card community-template-swipe-card ${
+                            templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
+                          } ${templateDeckAnimating === "left" ? "animate-left" : ""} ${
+                            templateDeckAnimating && templateDeckAnimating !== "left" ? "animate-right" : ""
+                          }`}
+                          style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
+                          onPointerDown={handleTemplateDeckPointerDown}
+                          onPointerMove={handleTemplateDeckPointerMove}
+                          onPointerUp={handleTemplateDeckPointerEnd}
+                          onPointerCancel={handleTemplateDeckPointerEnd}
+                          onPointerLeave={handleTemplateDeckPointerEnd}
+                        >
+                          {templateDeckDragX > 24 && (
+                            <div className="community-swipe-indicator right">LIKE</div>
+                          )}
+                          {templateDeckDragX < -24 && (
+                            <div className="community-swipe-indicator left">PASS</div>
+                          )}
+                          <div className="community-template-swipe-main">
+                            <div className="community-feed-title">{template.title}</div>
+                            <div className="community-thread-meta">
+                              <span className="community-meta-pill community-meta-author">{author}</span>
+                              <span className="community-meta-pill">{formatTime(template.created_at)}</span>
+                              <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
                             </div>
-                            {!templateDeckExpanded && previewRows.length >= compactRows.length && (
-                              <div className="community-swap-meta">Tap view details for full template.</div>
+                            <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
+                            {metaBadges.length > 0 && (
+                              <div className="community-template-meta-row">
+                                {metaBadges.map((badge, index) => (
+                                  <span key={`deck-${template.id}-meta-${index}`} className="community-template-meta-pill">
+                                    {badge}
+                                  </span>
+                                ))}
+                              </div>
                             )}
+                            {template.template_type === "workout_program" && workoutRows.length > 0 && (
+                              <div className="community-template-program-report">
+                                <div className="community-template-program-head">
+                                  <span className="exercise">Exercise</span>
+                                  <span>Sets</span>
+                                  <span>Rep Range</span>
+                                  <span>Weight (kg)</span>
+                                </div>
+                                <div className="community-template-program-body">
+                                  {workoutRows.map((exercise, index) => (
+                                    <div className="community-template-program-row" key={`deck-program-${template.id}-${index}`}>
+                                      <span className="exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
+                                      <span>{Number(exercise?.sets) || 0}</span>
+                                      <span>{exercise?.reps || "custom"}</span>
+                                      <span>{Number(exercise?.weight) > 0 ? exercise.weight : "-"}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {template.template_type === "training_plan" && outlineRows.length > 0 && (
+                              <div className="community-template-outline">
+                                <div className="community-template-preview-title">Full plan outline</div>
+                                <div className="community-template-outline-list">
+                                  {outlineRows.map((block, blockIndex) => {
+                                    const sessions = Array.isArray(block?.sessions) ? block.sessions : [];
+                                    return (
+                                      <div key={`deck-outline-${template.id}-${blockIndex}`} className="community-template-outline-block">
+                                        <div className="community-template-outline-week">{block?.week || `Week ${blockIndex + 1}`}</div>
+                                        <div className="community-template-outline-sessions">
+                                          {sessions.length
+                                            ? sessions.map((item, itemIndex) => (
+                                                <div key={`deck-outline-session-${template.id}-${blockIndex}-${itemIndex}`}>
+                                                  {item}
+                                                </div>
+                                              ))
+                                            : "No sessions"}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {template.template_type === "recipe" && previewRows.length > 0 && (
+                              <div className="community-template-preview">
+                                <div className="community-template-preview-title">Recipe preview</div>
+                                <div className="community-template-preview-list">
+                                  {previewRows.map((row, index) => (
+                                    <div key={`deck-${template.id}-preview-${index}`} className="community-template-preview-item">
+                                      {row}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <div className="community-reaction-row">
+                              <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
+                              <span className="community-meta-pill">Tried {tryCount}</span>
+                              <span className="community-meta-pill">Comments {comments.length}</span>
+                            </div>
                           </div>
-                        )}
-                        <div className="community-reaction-row">
-                          <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
-                          <span className="community-meta-pill">Tried {tryCount}</span>
-                          <span className="community-meta-pill">Comments {comments.length}</span>
+                          <div className="community-template-swipe-actions community-template-hinge-actions">
+                            <button
+                              className="studio-back community-action-btn community-template-swipe-btn ghost hinge pass"
+                              type="button"
+                              onClick={() => handleTemplateDeckAction("left")}
+                            >
+                              Pass
+                            </button>
+                            <button
+                              className="studio-back community-action-btn community-primary-btn community-template-swipe-btn hinge like"
+                              type="button"
+                              onClick={() => handleTemplateDeckAction("like")}
+                            >
+                              Like
+                            </button>
+                            <button
+                              className="studio-back community-action-btn community-template-swipe-btn hinge add"
+                              type="button"
+                              onClick={() => handleTemplateDeckAction("add")}
+                            >
+                              Add to mine
+                            </button>
+                          </div>
                         </div>
-                        <div className="community-template-swipe-actions">
+                      );
+                    })()
+                  ) : (
+                    <div className="community-empty community-empty-state">
+                      <div className="community-empty-icon" aria-hidden="true">DONE</div>
+                      <div className="community-empty-title">You reached the end of this deck</div>
+                      <div className="community-empty-sub">Reset to swipe these templates again.</div>
+                      <button
+                        className="studio-back community-cta-btn community-primary-btn"
+                        type="button"
+                        onClick={() => setTemplateDeckIndex(0)}
+                      >
+                        Restart deck
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="community-liked-strip">
+                <div className="community-panel-title">Liked Templates</div>
+                {likedTemplates.length > 0 ? (
+                  <div className="community-liked-list">
+                    {likedTemplates.map((template) => (
+                      <div key={`liked-${template.id}`} className="community-liked-item">
+                        <div className="community-liked-main">
+                          <div className="community-liked-title">{template.title}</div>
+                          <div className="community-liked-sub">{template.template_type.replace("_", " ")}</div>
+                        </div>
+                        <div className="community-liked-actions">
                           <button
-                            className="studio-back community-action-btn community-template-swipe-btn ghost"
+                            className="studio-back community-action-btn"
                             type="button"
-                            onClick={() => handleTemplateDeckAction("left")}
+                            onClick={() => {
+                              const targetIndex = swipeTemplates.findIndex((item) => item.id === template.id);
+                              if (targetIndex >= 0) {
+                                setTemplateDeckIndex(targetIndex);
+                                setTemplateDeckDragX(0);
+                                setTemplateDeckAnimating(null);
+                              }
+                            }}
                           >
-                            Pass
+                            View
                           </button>
                           <button
-                            className="studio-back community-action-btn community-primary-btn community-template-swipe-btn"
+                            className="studio-back community-action-btn community-primary-btn"
                             type="button"
-                            onClick={() => handleTemplateDeckAction("right")}
+                            onClick={() => handleAddTemplateToMine(template)}
                           >
                             Add to mine
                           </button>
                         </div>
-                        <div className="community-template-swipe-actions">
-                          <button
-                            className="studio-back community-action-btn community-template-swipe-btn ghost"
-                            type="button"
-                            onClick={() => setTemplateDeckExpanded((prev) => !prev)}
-                          >
-                            {templateDeckExpanded ? "Hide details" : "View details"}
-                          </button>
-                        </div>
-                        {templateDeckExpanded && (
-                          <div className="community-template-commentbar">
-                            <input
-                              className="community-modal-input"
-                              placeholder="Comment on this template"
-                              value={templateCommentDrafts[template.id] || ""}
-                              onChange={(event) =>
-                                setTemplateCommentDrafts((prev) => ({
-                                  ...prev,
-                                  [template.id]: event.target.value
-                                }))
-                              }
-                            />
-                            <button
-                              className="studio-back community-cta-btn"
-                              type="button"
-                              onClick={() => handleCommentTemplate(template.id)}
-                            >
-                              Comment
-                            </button>
-                          </div>
-                        )}
-                        {templateDeckExpanded &&
-                          comments.slice(0, 3).map((comment) => (
-                            <div key={comment.id} className="community-reply-card">
-                              <div className="community-reply-body">{comment.body}</div>
-                              <div className="community-thread-meta">
-                                <span className="community-meta-pill community-meta-author">
-                                  {profiles[comment.user_id] || `User ${comment.user_id}`}
-                                </span>
-                                <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
-                              </div>
-                            </div>
-                          ))}
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
-              {!swipeTemplates.length && (
+                    ))}
+                  </div>
+                ) : (
+                  <div className="community-liked-empty">No liked templates yet. Swipe right or tap Like to save them here.</div>
+                )}
+              </div>
+              {!filteredTemplates.length &&
+                renderEmptyState({
+                  icon: "CHAT",
+                  title: "No shared templates yet",
+                  sub: "Share your best plan, program, or recipe and let others add it to their library."
+                })}
+              {!swipeTemplates.length && filteredTemplates.length > 0 && (
                 <div className="community-thread-list">
                 {filteredTemplates.map((template) => {
                   const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
@@ -3147,12 +3221,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 })}
                 </div>
               )}
-              {!filteredTemplates.length &&
-                renderEmptyState({
-                  icon: "CHAT",
-                  title: "No shared templates yet",
-                  sub: "Share your best plan, program, or recipe and let others add it to their library."
-                })}
             </div>
           )}
 
