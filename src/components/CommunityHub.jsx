@@ -215,6 +215,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckIndex, setTemplateDeckIndex] = useState(0);
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
+  const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
 
   useEffect(() => {
@@ -1989,6 +1990,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   useEffect(() => {
     setTemplateDeckIndex(0);
+    setTemplateQueueExpanded(false);
   }, [templateSearch, templateTypeFilter, templateFocusFilter, templateSort]);
 
   useEffect(() => {
@@ -2087,7 +2089,20 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setTemplateDeckAnimating(null);
       setTemplateDeckDragX(0);
       setTemplateDeckIndex((prev) => Math.min(prev + 1, swipeTemplates.length));
-    }, 300);
+    }, 320);
+  };
+
+  const handleTemplateDeckKeyDown = async (event) => {
+    if (!swipeTemplates.length || templateDeckAnimating) return;
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      await handleTemplateDeckAction("right");
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      await handleTemplateDeckAction("left");
+    }
   };
 
   const handleTemplateDeckPointerDown = (event) => {
@@ -2902,11 +2917,21 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     </div>
                   </div>
                   <div className="community-template-queue" role="list" aria-label="Template queue">
-                    {swipeTemplates.map((template, queueIndex) => (
+                    {(templateQueueExpanded
+                      ? swipeTemplates
+                      : swipeTemplates.slice(
+                          Math.max(0, Math.min(templateDeckIndex - 5, Math.max(0, swipeTemplates.length - 12))),
+                          Math.max(0, Math.min(templateDeckIndex - 5, Math.max(0, swipeTemplates.length - 12))) + 12
+                        )
+                    ).map((template) => {
+                      const queueIndex = swipeTemplates.findIndex((row) => row.id === template.id);
+                      return (
                       <button
                         key={`queue-${template.id}`}
                         type="button"
-                        className={`community-template-queue-item ${queueIndex === templateDeckIndex ? "active" : ""}`}
+                        className={`community-template-queue-item ${
+                          queueIndex === templateDeckIndex ? "active" : ""
+                        }`}
                         onClick={() => {
                           setTemplateDeckIndex(queueIndex);
                           setTemplateDeckDragX(0);
@@ -2916,8 +2941,18 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         <span className="community-template-queue-title">{template.title}</span>
                         <span className="community-template-queue-type">{template.template_type.replace("_", " ")}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
+                  {swipeTemplates.length > 12 && (
+                    <button
+                      type="button"
+                      className="studio-back community-action-btn"
+                      onClick={() => setTemplateQueueExpanded((prev) => !prev)}
+                    >
+                      {templateQueueExpanded ? "Show less queue" : `Show full queue (${swipeTemplates.length})`}
+                    </button>
+                  )}
                   <div className="community-template-stack-layer layer-back-2" aria-hidden="true" />
                   <div className="community-template-stack-layer layer-back-1" aria-hidden="true" />
                   {templateDeckIndex < swipeTemplates.length ? (
@@ -2948,6 +2983,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                           onPointerUp={handleTemplateDeckPointerEnd}
                           onPointerCancel={handleTemplateDeckPointerEnd}
                           onPointerLeave={handleTemplateDeckPointerEnd}
+                          onKeyDown={handleTemplateDeckKeyDown}
+                          tabIndex={0}
+                          role="group"
+                          aria-label="Template swipe card. Use left and right arrow keys to pass or like."
                         >
                           {templateDeckDragX > 24 && (
                             <div className="community-swipe-indicator right">LIKE</div>

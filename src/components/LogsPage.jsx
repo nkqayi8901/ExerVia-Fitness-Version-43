@@ -358,6 +358,14 @@ export default function LogsPage({ mode = "gym" }) {
               volume: currentVolume - prevVolume,
             }
           : null,
+        deltaComparable: previous
+          ? {
+              weight: prevWeight > 0,
+              reps: prevReps > 0,
+              sets: prevSets > 0,
+              volume: prevVolume > 0,
+            }
+          : null,
         prs: {
           weight: currentWeight > 0 && currentWeight > bestWeightBefore,
           volume: currentVolume > 0 && currentVolume > bestVolumeBefore,
@@ -1070,10 +1078,20 @@ export default function LogsPage({ mode = "gym" }) {
                       <div className="logs-list-main">
                         <div className="logs-list-title">Change</div>
                         <div className="logs-list-sub">
-                          {`Weight ${reportInsights.deltas.weight >= 0 ? "+" : ""}${reportInsights.deltas.weight} kg`}
-                          {` · Reps ${reportInsights.deltas.reps >= 0 ? "+" : ""}${reportInsights.deltas.reps}`}
-                          {` · Sets ${reportInsights.deltas.sets >= 0 ? "+" : ""}${reportInsights.deltas.sets}`}
-                          {` · Volume ${reportInsights.deltas.volume >= 0 ? "+" : ""}${reportInsights.deltas.volume.toLocaleString()} kg`}
+                          {[
+                            reportInsights?.deltaComparable?.weight
+                              ? `Weight ${reportInsights.deltas.weight >= 0 ? "+" : ""}${reportInsights.deltas.weight} kg`
+                              : null,
+                            reportInsights?.deltaComparable?.reps
+                              ? `Reps ${reportInsights.deltas.reps >= 0 ? "+" : ""}${reportInsights.deltas.reps}`
+                              : null,
+                            reportInsights?.deltaComparable?.sets
+                              ? `Sets ${reportInsights.deltas.sets >= 0 ? "+" : ""}${reportInsights.deltas.sets}`
+                              : null,
+                            reportInsights?.deltaComparable?.volume
+                              ? `Volume ${reportInsights.deltas.volume >= 0 ? "+" : ""}${reportInsights.deltas.volume.toLocaleString()} kg`
+                              : null,
+                          ].filter(Boolean).join(" · ") || "Not enough previous data for comparison."}
                         </div>
                       </div>
                     </div>

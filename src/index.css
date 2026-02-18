@@ -867,22 +867,28 @@ code {
   opacity: 1;
 }
 .mode-gym .hud-topbar {
-  background: rgba(255,255,255,0.78);
-  border-bottom: 1px solid rgba(15,23,42,0.08);
+  background: linear-gradient(180deg, rgba(240, 253, 244, 0.92) 0%, rgba(255, 255, 255, 0.86) 100%);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.18);
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.12), 0 6px 18px rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(10px);
 }
 .mode-gym .hud-logo {
   box-shadow: 0 0 18px rgba(16,185,129,0.18);
 }
 .mode-gym .hud-pill {
-  background: rgba(15,23,42,0.05);
-  border-color: rgba(15,23,42,0.12);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 244, 0.82));
+  border-color: rgba(15,23,42,0.14);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.08);
 }
 .mode-gym .hud-card {
-  background: rgba(255,255,255,0.92);
-  border-color: rgba(15,23,42,0.10);
-  box-shadow: 0 18px 32px rgba(15,23,42,0.08);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.9));
+  border-color: rgba(15,23,42,0.12);
+  box-shadow: 0 14px 32px rgba(16, 185, 129, 0.12), 0 10px 24px rgba(59, 130, 246, 0.08);
 }
-.mode-gym .hud-card.clickable:hover { border-color: rgba(16,185,129,0.45); }
+.mode-gym .hud-card.clickable:hover {
+  border-color: rgba(16,185,129,0.5);
+  box-shadow: 0 18px 34px rgba(16, 185, 129, 0.16), 0 12px 26px rgba(59, 130, 246, 0.11);
+}
 .mode-gym .hud-secondary-btn {
   background: rgba(15,23,42,0.04);
   border-color: rgba(15,23,42,0.12);
@@ -5899,7 +5905,7 @@ code {
   background:
     radial-gradient(450px 180px at 4% 0%, rgba(56, 189, 248, 0.14), transparent 65%),
     rgba(2, 6, 23, 0.45);
-  min-height: 640px;
+  min-height: min(640px, 70vh);
   max-height: min(80vh, 820px);
   display: flex;
   flex-direction: column;
@@ -5922,11 +5928,11 @@ code {
 }
 
 .community-template-swipe-card.animate-left {
-  animation: templateSwipeLeft 0.22s ease forwards;
+  animation: templateSwipeLeft 0.28s ease forwards;
 }
 
 .community-template-swipe-card.animate-right {
-  animation: templateSwipeRight 0.22s ease forwards;
+  animation: templateSwipeRight 0.28s ease forwards;
 }
 
 @keyframes templateSwipeLeft {
@@ -7106,9 +7112,10 @@ code {
   opacity: 1;
 }
 .mode-gym .community-panel {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.9));
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.1), 0 8px 20px rgba(59, 130, 246, 0.07);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 14px 34px rgba(16, 185, 129, 0.11), 0 10px 24px rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(8px);
 }
 .mode-gym .community-forum-item,
 .mode-gym .community-thread-row,
@@ -7119,10 +7126,11 @@ code {
 .mode-gym .community-chat-message,
 .mode-gym .community-quick-card,
 .mode-gym .community-circle-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 244, 0.9));
-  border-color: rgba(15, 23, 42, 0.12);
+  position: relative;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.88));
+  border-color: rgba(15, 23, 42, 0.14);
   color: #0f172a;
-  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.08), 0 6px 14px rgba(59, 130, 246, 0.06);
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.1), 0 8px 18px rgba(59, 130, 246, 0.07);
 }
 .mode-gym .community-thread-badge {
   background: rgba(16, 185, 129, 0.14);
@@ -7156,8 +7164,8 @@ code {
 }
 .mode-gym .community-tab.active {
   border-color: rgba(16, 185, 129, 0.6);
-  background: rgba(16, 185, 129, 0.18);
-  box-shadow: none;
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.24), rgba(59, 130, 246, 0.14));
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.16);
 }
 .mode-gym .community-topic-tabs .community-tab.active {
   border-color: rgba(16, 185, 129, 0.6);
@@ -7201,8 +7209,9 @@ code {
 .mode-gym .community-template-swipe-card {
   border-color: rgba(16, 185, 129, 0.3);
   background:
-    radial-gradient(420px 160px at 6% 0%, rgba(16, 185, 129, 0.1), transparent 62%),
-    rgba(255, 255, 255, 0.94);
+    radial-gradient(420px 160px at 6% 0%, rgba(16, 185, 129, 0.16), transparent 62%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.98), rgba(236, 253, 245, 0.94));
+  box-shadow: 0 16px 34px rgba(16, 185, 129, 0.14), 0 10px 24px rgba(59, 130, 246, 0.1);
 }
 .mode-gym .community-template-swipe-card .community-feed-title,
 .mode-gym .community-template-swipe-card .community-feed-sub,
@@ -7216,9 +7225,9 @@ code {
   color: #0f172a;
 }
 .mode-gym .community-template-stack-layer {
-  border-color: rgba(100, 116, 139, 0.32);
-  background: rgba(148, 163, 184, 0.25);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  border-color: rgba(16, 185, 129, 0.34);
+  background: linear-gradient(145deg, rgba(148, 163, 184, 0.34), rgba(203, 213, 225, 0.28));
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.11), 0 8px 18px rgba(15, 23, 42, 0.1);
 }
 .mode-gym .community-swipe-indicator.right {
   color: #065f46;
@@ -7295,7 +7304,8 @@ code {
 }
 .mode-gym .community-template-queue-item.active {
   border-color: rgba(16, 185, 129, 0.5);
-  background: rgba(16, 185, 129, 0.14);
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.14));
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.14);
 }
 .mode-gym .community-liked-strip {
   background: rgba(255, 255, 255, 0.94);
@@ -7335,14 +7345,28 @@ code {
 .mode-gym .community-forum-item:hover,
 .mode-gym .community-thread-row:hover {
   border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.08);
-  box-shadow: none;
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08));
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.1);
 }
 .mode-gym .community-forum-item.active,
 .mode-gym .community-thread-row.active {
   border-color: rgba(16, 185, 129, 0.58);
-  background: rgba(16, 185, 129, 0.16);
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.22);
+  background: linear-gradient(120deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.12));
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.26), 0 12px 22px rgba(16, 185, 129, 0.12);
+}
+
+.mode-gym .community-forum-item.active::before,
+.mode-gym .community-thread-row.active::before,
+.mode-gym .community-feed-card.active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.9), rgba(59, 130, 246, 0.8));
+  pointer-events: none;
 }
 .mode-gym .community-reaction-btn {
   background: rgba(15, 23, 42, 0.04);
