@@ -121,7 +121,7 @@ function ProgramList({ backPath, backLabel }) {
           >
             <div className="program-list-title">{program.name}</div>
             <div className="program-list-sub">{program.focus}</div>
-            <div className="program-list-meta">{program.exercises.length} exercises · {program.duration}</div>
+            <div className="program-list-meta">{program.exercises.length} exercises</div>
           </button>
         ))}
       </div>
@@ -219,7 +219,7 @@ function ProgramPreview({ backPath, backLabel }) {
 
       <div className="hud-card program-preview">
         <div className="hud-card-title">Program Overview</div>
-        <div className="program-preview-meta">{program.exercises.length} exercises · {program.duration}</div>
+        <div className="program-preview-meta">{program.exercises.length} exercises</div>
         <div className="program-preview-head">
           <span />
           <span className="program-preview-head-label">Sets</span>
@@ -704,4 +704,5 @@ export default function WorkoutProgram({ mode }) {
     </Routes>
   );
 }
+
 

@@ -211,6 +211,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateTypeFilter, setTemplateTypeFilter] = useState("all");
   const [templateFocusFilter, setTemplateFocusFilter] = useState("all");
   const [templateSort, setTemplateSort] = useState("top");
+  const [templateViewMode, setTemplateViewMode] = useState("swipe");
   const [templateDeckIndex, setTemplateDeckIndex] = useState(0);
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
@@ -2086,7 +2087,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setTemplateDeckAnimating(null);
       setTemplateDeckDragX(0);
       setTemplateDeckIndex((prev) => Math.min(prev + 1, swipeTemplates.length));
-    }, 220);
+    }, 300);
   };
 
   const handleTemplateDeckPointerDown = (event) => {
@@ -2876,7 +2877,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
                 </div>
               </div>
-              {swipeTemplates.length > 0 && (
+              <div className="community-tabs community-topic-tabs community-template-view-tabs">
+                <button
+                  className={`community-tab ${templateViewMode === "swipe" ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setTemplateViewMode("swipe")}
+                >
+                  Swipe mode
+                </button>
+                <button
+                  className={`community-tab ${templateViewMode === "forum" ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setTemplateViewMode("forum")}
+                >
+                  Forum mode
+                </button>
+              </div>
+              {templateViewMode === "swipe" && swipeTemplates.length > 0 && (
                 <div className="community-template-deck-shell">
                   <div className="community-template-deck-head">
                     <div className="community-panel-title">Template Swipe Deck</div>
@@ -3105,7 +3122,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   title: "No shared templates yet",
                   sub: "Share your best plan, program, or recipe and let others add it to their library."
                 })}
-              {!swipeTemplates.length && filteredTemplates.length > 0 && (
+              {(templateViewMode === "forum" || (templateViewMode === "swipe" && !swipeTemplates.length)) &&
+                filteredTemplates.length > 0 && (
                 <div className="community-thread-list">
                 {filteredTemplates.map((template) => {
                   const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };

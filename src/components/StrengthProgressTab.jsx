@@ -1420,6 +1420,10 @@ const StrengthProgressTab = ({ userId }) => {
     }
     return best;
   }, null);
+  const totalSessionsLogged = recentLifts.length;
+  const totalPrs = prList.length;
+  const uniqueExercisesTracked = new Set(recentLifts.map((lift) => lift.exercise_name)).size;
+  const topEstimatedOneRm = prList[0]?.one_rm_est ? `${prList[0].one_rm_est.toFixed(1)}kg` : 'No 1RM yet';
 
   const filteredPrograms = programs.filter(program => {
     const query = programSearch.toLowerCase();
@@ -1745,10 +1749,10 @@ const StrengthProgressTab = ({ userId }) => {
               Log
             </button>
             <button
-              onClick={() => setView('story')}
-              className={`studio-toggle-btn ${view === 'story' ? 'active' : ''}`}
+              onClick={() => setView('stats')}
+              className={`studio-toggle-btn ${view === 'stats' ? 'active' : ''}`}
             >
-              Story
+              Stats
             </button>
           </div>
         </header>
@@ -2007,7 +2011,7 @@ const StrengthProgressTab = ({ userId }) => {
                               id: selectedProgram.id,
                               name: selectedProgram.name,
                               focus: selectedProgram.goal || selectedProgram.description || 'Strength session',
-                              duration: selectedProgram.duration || '45 min',
+                              duration: selectedProgram.duration || '',
                               exercises: selectedProgram.exercises || []
                             }
                           }
@@ -2040,6 +2044,31 @@ const StrengthProgressTab = ({ userId }) => {
           </div>
         ) : (
           <div className="studio-story">
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Stats Snapshot</div>
+              <div className="studio-pr-grid">
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Sessions Logged</div>
+                  <div className="studio-pr-value">{totalSessionsLogged}</div>
+                  <div className="studio-pr-sub">Recent logged lifts</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Personal Records</div>
+                  <div className="studio-pr-value">{totalPrs}</div>
+                  <div className="studio-pr-sub">Tracked PR entries</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Exercises Tracked</div>
+                  <div className="studio-pr-value">{uniqueExercisesTracked}</div>
+                  <div className="studio-pr-sub">Unique exercise names</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Top Est. 1RM</div>
+                  <div className="studio-pr-value">{topEstimatedOneRm}</div>
+                  <div className="studio-pr-sub">Best current estimate</div>
+                </div>
+              </div>
+            </section>
             {/* Section block */}
             {/* Layout grouping for readability. */}
             {/* Interactive elements live inside this block. */}
@@ -2070,7 +2099,7 @@ const StrengthProgressTab = ({ userId }) => {
                 </div>
               ) : (
                 <div className="studio-empty">
-                  No records yet. Your first lift starts the story.
+                  No records yet. Your first lift starts your stats.
                 </div>
               )}
             </section>

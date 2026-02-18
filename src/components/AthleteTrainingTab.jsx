@@ -505,7 +505,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setSession(prev => ({
       ...prev,
       sport: plan.sport,
-      duration: plan.durationTarget ? String(plan.durationTarget) : '',
+      // Keep duration user-driven to avoid logging auto-filled defaults.
+      duration: prev.duration || '',
       distance: plan.distanceTarget ? String(plan.distanceTarget) : '',
       notes: `Plan: ${plan.name} - ${plan.summary}`
     }));
@@ -972,7 +973,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // targetSeconds drives the progress ring,
   // progress is clamped to 0-1 for UI safety,
   // used by the lock-in session screen
-  const targetMinutes = session.duration || timelinePlan?.durationTarget || 45;
+  const targetMinutes = session.duration || timelinePlan?.durationTarget || '';
   const targetSeconds = parseInt(targetMinutes, 10) * 60;
   const safeTargetSeconds = Number.isFinite(targetSeconds) ? targetSeconds : 0;
   const timerProgress = safeTargetSeconds ? Math.min(timerSeconds / safeTargetSeconds, 1) : 0;

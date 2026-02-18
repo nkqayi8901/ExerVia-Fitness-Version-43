@@ -18,243 +18,6 @@ code {
 @tailwind components;
 @tailwind utilities;
 
-/* Athlete Mode Theme */
-.athlete-body {
-  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
-  min-height: 100vh;
-}
-
-.athlete-header {
-  border-bottom: 1px solid #374151;
-}
-
-.athlete-card {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
-}
-
-.athlete-tab-container {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
-  padding: 8px;
-}
-
-.athlete-tab {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-weight: 500;
-  transition: all 0.3s;
-}
-
-.athlete-tab-active {
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-  color: white;
-}
-
-.athlete-tab-inactive {
-  color: #9ca3af;
-}
-
-.athlete-tab-inactive:hover {
-  color: white;
-  background: #374151;
-}
-
-.athlete-feature-card {
-  background: rgba(55, 65, 81, 0.5);
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.athlete-feature-card:hover {
-  border-color: #f97316;
-}
-
-.athlete-button-primary {
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: opacity 0.3s;
-}
-
-.athlete-button-primary:hover {
-  opacity: 0.9;
-}
-
-.athlete-button-secondary {
-  background: #374151;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: background-color 0.3s;
-}
-
-.athlete-button-secondary:hover {
-  background: #4b5563;
-}
-
-.athlete-badge {
-  background: rgba(249, 115, 22, 0.2);
-  color: #fdba74;
-  padding: 4px 12px;
-  border-radius: 9999px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.athlete-badge-red {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
-.athlete-logo {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-}
-/* Gym Mode Theme - Reusing some athlete classes with different colors */
-.gym-body {
-  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
-  min-height: 100vh;
-}
-
-.gym-header {
-  border-bottom: 1px solid #374151;
-}
-
-.gym-card {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
-}
-
-.gym-tab-container {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
-  padding: 8px;
-}
-
-.gym-tab {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-weight: 500;
-  transition: all 0.3s;
-}
-
-.gym-tab-active {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
-}
-
-.gym-tab-inactive {
-  color: #9ca3af;
-}
-
-.gym-tab-inactive:hover {
-  color: white;
-  background: #374151;
-}
-
-.gym-feature-card {
-  background: rgba(55, 65, 81, 0.5);
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.gym-feature-card:hover {
-  border-color: #10b981;
-}
-
-.gym-button-primary {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: opacity 0.3s;
-}
-
-.gym-button-primary:hover {
-  opacity: 0.9;
-}
-
-.gym-button-secondary {
-  background: #374151;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: background-color 0.3s;
-}
-
-.gym-button-secondary:hover {
-  background: #4b5563;
-}
-
-.gym-badge {
-  background: rgba(16, 185, 129, 0.2);
-  color: #6ee7b7;
-  padding: 4px 12px;
-  border-radius: 9999px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.gym-badge-blue {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-}
-
-.gym-logo {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-}
-
-/* Reusable text colors for both modes */
-.text-gym-green {
-  color: #10b981;
-}
-
-.text-gym-blue {
-  color: #3b82f6;
-}
-
-.text-athlete-orange {
-  color: #f97316;
-}
-
-.text-athlete-red {
-  color: #ef4444;
-}
 /* Landing Page Theme */
 .landing-body {
   background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
@@ -607,182 +370,6 @@ code {
   height: 1px;
   background: linear-gradient(90deg, rgba(56, 189, 248, 0.45), transparent);
   margin-top: 6px;
-}
-/* Companion Chat Theme */
-.companion-body {
-  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
-  min-height: 100vh;
-}
-
-.companion-header {
-  border-bottom: 1px solid #374151;
-}
-
-.companion-chat-container {
-  max-width: 56rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 32px 24px;
-}
-
-.companion-chat-window {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
-}
-
-.companion-messages-area {
-  height: 24rem;
-  overflow-y: auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.companion-message-user {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.companion-message-bot {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.companion-message-bubble-user {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  max-width: 28rem;
-}
-
-.companion-message-bubble-bot {
-  background: #374151;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-  max-width: 28rem;
-}
-
-.companion-message-text {
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.companion-input-area {
-  border-top: 1px solid #374151;
-  padding: 24px;
-}
-
-.companion-input {
-  flex: 1;
-  background: #374151;
-  border: 1px solid #4b5563;
-  border-radius: 12px;
-  padding: 16px;
-  color: white;
-  transition: all 0.3s;
-}
-
-.companion-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.companion-send-button {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-weight: 500;
-  transition: opacity 0.3s;
-}
-
-.companion-send-button:hover {
-  opacity: 0.9;
-}
-
-.companion-loading {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.companion-loading-dots {
-  background: #374151;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-}
-
-.companion-dot {
-  width: 8px;
-  height: 8px;
-  background: #9ca3af;
-  border-radius: 9999px;
-  animation: bounce 1.4s infinite ease-in-out;
-}
-
-.companion-dot:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.companion-dot:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-@keyframes bounce {
-  0%, 80%, 100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
-.companion-container {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  width: 280px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 180, 255, 0.6);
-  box-shadow: 0 0 15px rgba(0, 180, 255, 0.5);
-  border-radius: 12px;
-  z-index: 1000;
-}
-
-.companion-float-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 50;
-}
-
-.companion-bubble {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: #22c55e; /* green */
-  color: white;
-  font-size: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  cursor: pointer;
-}
-
-.companion-body {
-  width: 360px;
-  height: 480px;
-  background-color: #1f2937; /* dark gray */
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
 
 /* ====== HUD THEME (GLOBAL) ====== */
@@ -1810,245 +1397,6 @@ code {
   }
 }
 
-/* ====== COMPANION (FLOATING TWO-TONE) ====== */
-.companion-float {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 60;
-}
-
-.companion-mini {
-  width: 300px;
-  border-radius: 16px;
-  border: 1px solid rgba(99,102,241,0.35);
-  background: rgba(12, 16, 30, 0.66);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-  cursor: pointer;
-  overflow: hidden;
-}
-.companion-mini-top {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(168,85,247,0.25));
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.companion-mini-title { font-weight: 900; letter-spacing: 1px; font-size: 12px; }
-.companion-mini-mode { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 800; }
-
-.companion-mini-body { padding: 10px 12px; display: grid; gap: 8px; }
-.companion-mini-hintline {
-  font-size: 11px;
-  color: rgba(226, 232, 240, 0.7);
-  line-height: 1.4;
-}
-.mini-bot { color: rgba(255,255,255,0.88); font-size: 12px; line-height: 1.3; }
-.mini-user { color: rgba(34,211,238,0.95); font-size: 12px; line-height: 1.3; }
-.companion-mini-hint { padding: 8px 12px; font-size: 11px; color: rgba(255,255,255,0.55); border-top: 1px solid rgba(255,255,255,0.08); }
-
-.companion-panel {
-  width: 360px;
-  height: 520px;
-  border-radius: 18px;
-  border: 1px solid rgba(99,102,241,0.38);
-  background: rgba(10, 12, 22, 0.72);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 22px 60px rgba(0,0,0,0.55);
-  overflow: hidden;
-}
-
-.companion-panel-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(168,85,247,0.28));
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.companion-panel-title { font-weight: 900; letter-spacing: 0.8px; }
-.companion-panel-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
-.companion-close {
-  border-radius: 12px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: white;
-}
-
-.companion-thread {
-  height: 400px;
-  overflow-y: auto;
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-}
-.msg-row { display: flex; }
-.msg-row.right { justify-content: flex-end; }
-.msg-row.left { justify-content: flex-start; }
-.msg {
-  max-width: 82%;
-  padding: 10px 12px;
-  border-radius: 14px;
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
-.msg.user {
-  background: linear-gradient(135deg, rgba(34,211,238,0.40), rgba(99,102,241,0.35));
-  border: 1px solid rgba(34,211,238,0.35);
-}
-.msg.bot {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-}
-
-.companion-inputbar {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-}
-.companion-input {
-  flex: 1;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.25);
-  padding: 10px 12px;
-  color: white;
-}
-.companion-send {
-  border-radius: 14px;
-  padding: 10px 12px;
-  border: 1px solid rgba(99,102,241,0.35);
-  background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(168,85,247,0.95));
-  font-weight: 900;
-  color: white;
-}
-
-/* Companion Orb */
-.companion-orb-shell {
-  position: fixed;
-  right: 24px;
-  top: 45%;
-  transform: translateY(-50%);
-  z-index: 60;
-}
-
-.companion-orb {
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  background: radial-gradient(circle at 30% 30%, rgba(56, 189, 248, 0.6), rgba(15, 23, 42, 0.8));
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.35), 0 12px 26px rgba(2, 6, 23, 0.5);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  animation: orb-float 4s ease-in-out infinite;
-}
-
-.companion-orb-core {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(226, 232, 240, 0.85);
-  box-shadow: 0 0 10px rgba(226, 232, 240, 0.6);
-}
-
-@keyframes orb-float {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-  100% { transform: translateY(0); }
-}
-
-.companion-tooltip {
-  position: absolute;
-  right: 72px;
-  top: 50%;
-  transform: translateY(-50%);
-  max-width: 200px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.55);
-  font-size: 12px;
-  color: rgba(226, 232, 240, 0.9);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.companion-orb-shell:hover .companion-tooltip {
-  opacity: 1;
-}
-
-.companion-popout {
-  position: absolute;
-  right: 72px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 260px;
-  padding: 14px;
-  border-radius: 14px;
-  background: rgba(9, 12, 20, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.6);
-}
-
-.companion-popout-title {
-  font-weight: 700;
-  font-size: 13px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.companion-popout-body {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(226, 232, 240, 0.85);
-}
-
-.companion-popout-list {
-  margin: 10px 0 0;
-  padding-left: 16px;
-  font-size: 12px;
-  color: rgba(226, 232, 240, 0.75);
-  display: grid;
-  gap: 6px;
-}
-.companion-popout-chat {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
-}
-.companion-popout-input {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  padding: 6px 10px;
-  font-size: 12px;
-  color: rgba(226, 232, 240, 0.9);
-  background: rgba(15, 23, 42, 0.6);
-}
-.companion-popout-btn {
-  border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(226, 232, 240, 0.9);
-  background: rgba(15, 23, 42, 0.6);
-  cursor: pointer;
-}
-.companion-popout-btn:hover {
-  border-color: rgba(56, 189, 248, 0.7);
-  color: #f8fafc;
-}
 
 /* Workout Program */
 .program-shell .page-subtitle {
@@ -2472,15 +1820,6 @@ code {
   }
 }
 
-@media (max-width: 900px) {
-  .companion-orb-shell {
-    right: 16px;
-  }
-  .companion-popout,
-  .companion-tooltip {
-    right: 68px;
-  }
-}
 
 /* ====== FUEL PROTOCOL (NUTRITION) ====== */
 
@@ -6414,6 +5753,10 @@ code {
   gap: 10px;
 }
 
+.community-template-view-tabs {
+  margin-bottom: 10px;
+}
+
 .community-template-queue {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 14px;
@@ -7763,9 +7106,9 @@ code {
   opacity: 1;
 }
 .mode-gym .community-panel {
-  background: rgba(255, 255, 255, 0.95);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.9));
   border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: none;
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.1), 0 8px 20px rgba(59, 130, 246, 0.07);
 }
 .mode-gym .community-forum-item,
 .mode-gym .community-thread-row,
@@ -7776,10 +7119,10 @@ code {
 .mode-gym .community-chat-message,
 .mode-gym .community-quick-card,
 .mode-gym .community-circle-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 244, 0.9));
   border-color: rgba(15, 23, 42, 0.12);
   color: #0f172a;
-  box-shadow: none;
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.08), 0 6px 14px rgba(59, 130, 246, 0.06);
 }
 .mode-gym .community-thread-badge {
   background: rgba(16, 185, 129, 0.14);
@@ -7873,8 +7216,9 @@ code {
   color: #0f172a;
 }
 .mode-gym .community-template-stack-layer {
-  border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(226, 232, 240, 0.55);
+  border-color: rgba(100, 116, 139, 0.32);
+  background: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
 .mode-gym .community-swipe-indicator.right {
   color: #065f46;
@@ -9234,7 +8578,10 @@ code {
   .community-feed-card,
   .community-group-room-msg,
   .community-friend-chat-bubble,
-  .community-thread-card.new-thread {
+  .community-thread-card.new-thread,
+  .community-template-swipe-card,
+  .community-template-stack-layer,
+  .community-swipe-indicator {
     animation: none !important;
     transition: none !important;
     transform: none !important;
@@ -9731,8 +9078,8 @@ code {
   }
 
   .community-template-swipe-card {
-    min-height: 560px;
-    max-height: min(80vh, 760px);
+    min-height: auto;
+    max-height: min(78vh, 720px);
     border-radius: 20px;
   }
 

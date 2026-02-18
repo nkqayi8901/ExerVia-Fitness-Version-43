@@ -67,6 +67,19 @@ const formatDateTimeLabel = (value) => {
   return date.toLocaleString();
 };
 
+const toNumberSafe = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const parseDurationMinutes = (value) => {
+  if (value === null || value === undefined) return 0;
+  const raw = String(value).trim();
+  if (!raw) return 0;
+  const match = raw.match(/(\d+)/);
+  return match ? Number(match[1] || 0) : 0;
+};
+
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -276,6 +289,161 @@ export default function LogsPage({ mode = "gym" }) {
     }),
     [combinedTrainingItems.length, loggedExtraActivities.length, selectedLog]
   );
+
+  const allSessionCompletions = useMemo(() => {
+    const rows = [];
+    Object.entries(dailyLogsByDate || {}).forEach(([dayKey, log]) => {
+      (log?.extraActivities || []).forEach((item, index) => {
+        if (!(item?.source === "session_completion" || isLegacyCompletion(item))) return;
+        const inferred = inferCompletionTitle(item);
+        rows.push({
+          id: item.id || `completion-${dayKey}-${index}`,
+          title: inferred,
+          created_at: item.created_at || `${dayKey}T23:59:59`,
+          report: item.report || null,
+        });
+      });
+    });
+    return rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [dailyLogsByDate]);
+
+  const reportInsights = useMemo(() => {
+    if (!activeTrainingReport) return null;
+
+    if (activeTrainingReport.sourceType === "strength_log") {
+      const currentCreatedAt = new Date(activeTrainingReport.created_at || 0).getTime();
+      const currentName = String(
+        activeTrainingReport.report?.exerciseName || activeTrainingReport.title || ""
+      ).trim().toLowerCase();
+      const sameExercise = trainingRows.filter((row) => {
+        if (row.sourceType !== "strength_log") return false;
+        if (row.id === activeTrainingReport.id) return false;
+        const rowName = String(row.report?.exerciseName || row.title || "").trim().toLowerCase();
+        return rowName && rowName === currentName;
+      });
+      const previous = sameExercise
+        .filter((row) => new Date(row.created_at || 0).getTime() < currentCreatedAt)
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+
+      const currentSets = toNumberSafe(activeTrainingReport.report?.sets);
+      const currentReps = toNumberSafe(activeTrainingReport.report?.reps);
+      const currentWeight = toNumberSafe(activeTrainingReport.report?.weight);
+      const currentVolume = currentSets * currentReps * currentWeight;
+
+      const prevSets = toNumberSafe(previous?.report?.sets);
+      const prevReps = toNumberSafe(previous?.report?.reps);
+      const prevWeight = toNumberSafe(previous?.report?.weight);
+      const prevVolume = prevSets * prevReps * prevWeight;
+
+      const bestWeightBefore = sameExercise.reduce(
+        (best, row) => Math.max(best, toNumberSafe(row.report?.weight)),
+        0
+      );
+      const bestVolumeBefore = sameExercise.reduce((best, row) => {
+        const sets = toNumberSafe(row.report?.sets);
+        const reps = toNumberSafe(row.report?.reps);
+        const weight = toNumberSafe(row.report?.weight);
+        return Math.max(best, sets * reps * weight);
+      }, 0);
+
+      return {
+        previousLabel: previous
+          ? `${previous.detail || "Previous session"} (${formatDateTimeLabel(previous.created_at)})`
+          : "No previous session for this exercise yet.",
+        deltas: previous
+          ? {
+              weight: currentWeight - prevWeight,
+              reps: currentReps - prevReps,
+              sets: currentSets - prevSets,
+              volume: currentVolume - prevVolume,
+            }
+          : null,
+        prs: {
+          weight: currentWeight > 0 && currentWeight > bestWeightBefore,
+          volume: currentVolume > 0 && currentVolume > bestVolumeBefore,
+        },
+      };
+    }
+
+    if (activeTrainingReport.sourceType === "session_completion") {
+      const details = activeTrainingReport.report?.details || null;
+      if (details?.category !== "workout_program") return null;
+      const currentTitle = String(activeTrainingReport.title || "").trim().toLowerCase();
+      const currentCreatedAt = new Date(activeTrainingReport.created_at || 0).getTime();
+      const previous = allSessionCompletions
+        .filter((row) => {
+          if (String(row.id) === String(activeTrainingReport.id)) return false;
+          if (String(row.title || "").trim().toLowerCase() !== currentTitle) return false;
+          return new Date(row.created_at || 0).getTime() < currentCreatedAt;
+        })
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+
+      const prevDetails = previous?.report || null;
+      const currentExercises = Array.isArray(details.exercises) ? details.exercises : [];
+      const previousExercises = Array.isArray(prevDetails?.exercises) ? prevDetails.exercises : [];
+
+      const previousByExercise = {};
+      previousExercises.forEach((exercise) => {
+        const key = String(exercise?.name || "").trim().toLowerCase();
+        if (!key) return;
+        const currentMax = toNumberSafe(previousByExercise[key]?.weight);
+        const nextWeight = toNumberSafe(exercise?.weight);
+        if (nextWeight >= currentMax) previousByExercise[key] = exercise;
+      });
+
+      const bestByExerciseBefore = {};
+      allSessionCompletions.forEach((row) => {
+        if (String(row.title || "").trim().toLowerCase() !== currentTitle) return;
+        if (String(row.id) === String(activeTrainingReport.id)) return;
+        const rowTime = new Date(row.created_at || 0).getTime();
+        if (rowTime >= currentCreatedAt) return;
+        const exercises = Array.isArray(row.report?.exercises) ? row.report.exercises : [];
+        exercises.forEach((exercise) => {
+          const key = String(exercise?.name || "").trim().toLowerCase();
+          if (!key) return;
+          const bestWeight = toNumberSafe(bestByExerciseBefore[key]?.weight);
+          const nextWeight = toNumberSafe(exercise?.weight);
+          if (nextWeight >= bestWeight) bestByExerciseBefore[key] = exercise;
+        });
+      });
+
+      const exercisePRs = {};
+      currentExercises.forEach((exercise) => {
+        const key = String(exercise?.name || "").trim().toLowerCase();
+        if (!key) return;
+        const currentWeight = toNumberSafe(exercise?.weight);
+        const previousBest = toNumberSafe(bestByExerciseBefore[key]?.weight);
+        exercisePRs[key] = currentWeight > 0 && currentWeight > previousBest;
+      });
+
+      const currentTonnage = toNumberSafe(details.totalTonnage);
+      const previousTonnage = toNumberSafe(prevDetails?.totalTonnage);
+
+      return {
+        previousLabel: previous
+          ? `${previous.title} (${formatDateTimeLabel(previous.created_at)})`
+          : "No previous completion found for this program yet.",
+        deltas: previous
+          ? {
+              tonnage: currentTonnage - previousTonnage,
+              exercises:
+                toNumberSafe(details.totalExercises) - toNumberSafe(prevDetails?.totalExercises),
+              sets: toNumberSafe(details.totalSets) - toNumberSafe(prevDetails?.totalSets),
+              duration:
+                parseDurationMinutes(details.duration) -
+                parseDurationMinutes(prevDetails?.duration),
+            }
+          : null,
+        prs: {
+          tonnage: currentTonnage > 0 && currentTonnage > previousTonnage,
+          exerciseWeight: exercisePRs,
+        },
+        previousByExercise,
+      };
+    }
+
+    return null;
+  }, [activeTrainingReport, trainingRows, allSessionCompletions]);
 
   const markActivity = async () => {
     if (!id) return;
@@ -632,6 +800,7 @@ export default function LogsPage({ mode = "gym" }) {
       <div className="grid-2 logs-grid">
         <div className="hud-card">
           <div className="hud-card-title">Weight</div>
+          <div className="hud-dim">How is the weight looking today? Keep it honest and consistent.</div>
           <div className="logs-row">
             <input
               className="studio-form-input"
@@ -654,6 +823,7 @@ export default function LogsPage({ mode = "gym" }) {
 
         <div className="hud-card">
           <div className="hud-card-title">Water</div>
+          <div className="hud-dim">Were you able to hit at least 2000ml today?</div>
           <div className="logs-row">
             <input
               className="studio-form-input"
@@ -866,6 +1036,8 @@ export default function LogsPage({ mode = "gym" }) {
                         {activeTrainingReport.report?.weight ? ` · ${activeTrainingReport.report.weight} kg` : ""}
                         {(() => {
                           const sets = Number(activeTrainingReport.report?.sets || 0);
+                          const repsRaw = String(activeTrainingReport.report?.reps ?? "").trim().toLowerCase();
+                          if (repsRaw.includes("failure")) return " · Volume N/A (failure)";
                           const reps = Number(activeTrainingReport.report?.reps || 0);
                           const weight = Number(activeTrainingReport.report?.weight || 0);
                           const volume = sets > 0 && reps > 0 && weight > 0 ? sets * reps * weight : 0;
@@ -885,6 +1057,39 @@ export default function LogsPage({ mode = "gym" }) {
                       </div>
                     </div>
                   ) : null}
+                  {reportInsights?.previousLabel ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Compared to Previous</div>
+                        <div className="logs-list-sub">{reportInsights.previousLabel}</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {reportInsights?.deltas ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Change</div>
+                        <div className="logs-list-sub">
+                          {`Weight ${reportInsights.deltas.weight >= 0 ? "+" : ""}${reportInsights.deltas.weight} kg`}
+                          {` · Reps ${reportInsights.deltas.reps >= 0 ? "+" : ""}${reportInsights.deltas.reps}`}
+                          {` · Sets ${reportInsights.deltas.sets >= 0 ? "+" : ""}${reportInsights.deltas.sets}`}
+                          {` · Volume ${reportInsights.deltas.volume >= 0 ? "+" : ""}${reportInsights.deltas.volume.toLocaleString()} kg`}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {(reportInsights?.prs?.weight || reportInsights?.prs?.volume) ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">PR Flags</div>
+                        <div className="logs-list-sub">
+                          {reportInsights?.prs?.weight ? "Heaviest load PR" : ""}
+                          {reportInsights?.prs?.weight && reportInsights?.prs?.volume ? " · " : ""}
+                          {reportInsights?.prs?.volume ? "Session volume PR" : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
               {activeTrainingReport.sourceType === "session_completion" && (
@@ -897,15 +1102,43 @@ export default function LogsPage({ mode = "gym" }) {
                   </div>
                   {activeTrainingReport.report?.details?.category === "workout_program" && (
                     <>
+                      {reportInsights?.previousLabel ? (
+                        <div className="logs-list-row">
+                          <div className="logs-list-main">
+                            <div className="logs-list-title">Compared to Previous</div>
+                            <div className="logs-list-sub">{reportInsights.previousLabel}</div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {reportInsights?.deltas ? (
+                        <div className="logs-list-row">
+                          <div className="logs-list-main">
+                            <div className="logs-list-title">Change</div>
+                            <div className="logs-list-sub">
+                              {`Volume ${reportInsights.deltas.tonnage >= 0 ? "+" : ""}${reportInsights.deltas.tonnage.toLocaleString()} kg`}
+                              {` · Exercises ${reportInsights.deltas.exercises >= 0 ? "+" : ""}${reportInsights.deltas.exercises}`}
+                              {` · Sets ${reportInsights.deltas.sets >= 0 ? "+" : ""}${reportInsights.deltas.sets}`}
+                              {` · Duration ${reportInsights.deltas.duration >= 0 ? "+" : ""}${reportInsights.deltas.duration} min`}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="logs-list-row">
                         <div className="logs-list-main">
                           <div className="logs-list-title">Program Overview</div>
                           <div className="logs-list-sub">
                             {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises
                             {activeTrainingReport.report?.details?.duration ? ` · ${activeTrainingReport.report?.details?.duration}` : ""}
-                            {(activeTrainingReport.report?.details?.totalTonnage ?? 0) > 0
-                              ? ` · ${Number(activeTrainingReport.report?.details?.totalTonnage || 0).toLocaleString()} kg volume`
-                              : ""}
+                            {(() => {
+                              const exercises = activeTrainingReport.report?.details?.exercises || [];
+                              const hasFailure = exercises.some((exercise) =>
+                                String(exercise?.reps || "").toLowerCase().includes("failure")
+                              );
+                              const tonnage = Number(activeTrainingReport.report?.details?.totalTonnage || 0);
+                              if (tonnage > 0) return ` · ${tonnage.toLocaleString()} kg volume`;
+                              if (hasFailure) return " · Volume N/A (failure sets)";
+                              return "";
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -919,11 +1152,27 @@ export default function LogsPage({ mode = "gym" }) {
                         <div className="logs-program-report-body">
                           {(activeTrainingReport.report?.details?.exercises || []).map((exercise, index) => (
                             <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-program-report-row">
-                              <span className="logs-program-report-col exercise">{exercise.name || `Exercise ${index + 1}`}</span>
+                              <span className="logs-program-report-col exercise">
+                                {exercise.name || `Exercise ${index + 1}`}
+                                {(() => {
+                                  const key = String(exercise?.name || "").trim().toLowerCase();
+                                  return reportInsights?.prs?.exerciseWeight?.[key] ? " · PR" : "";
+                                })()}
+                              </span>
                               <span className="logs-program-report-col">{Number(exercise.sets) || 0}</span>
                               <span className="logs-program-report-col">{exercise.reps || "custom"}</span>
                               <span className="logs-program-report-col">
                                 {Number(exercise.weight) > 0 ? exercise.weight : "-"}
+                                {(() => {
+                                  const key = String(exercise?.name || "").trim().toLowerCase();
+                                  const prev = reportInsights?.previousByExercise?.[key];
+                                  const prevWeight = Number(prev?.weight || 0);
+                                  const currentWeight = Number(exercise?.weight || 0);
+                                  if (prevWeight <= 0 || currentWeight <= 0) return "";
+                                  const delta = currentWeight - prevWeight;
+                                  if (delta === 0) return "";
+                                  return ` (${delta >= 0 ? "+" : ""}${delta})`;
+                                })()}
                               </span>
                             </div>
                           ))}
