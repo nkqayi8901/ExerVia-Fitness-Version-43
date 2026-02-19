@@ -2,7 +2,7 @@
 // useState manages local UI state (tabs, modals, forms, loaded data),
 // useEffect runs side effects like fetching data + realtime subscriptions,
 // useMemo memoises expensive derived values (filtering + sorting lists).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // adapted from https://reactrouter.com/en/main/hooks/use-navigate
 // useNavigate is used for client-side navigation
 import { useNavigate, useParams } from "react-router-dom";
@@ -112,13 +112,26 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       ? "gym"
       : "athlete";
   const communityBasePath = `/${routePrefix}/${userId || ""}/community`;
+  const messagesBasePath = `/${routePrefix}/${userId || ""}/messages`;
   const groupRoomPath = (groupId) => `${communityBasePath}/group/${groupId}`;
   const threadPath = (threadId) => `${communityBasePath}/thread/${threadId}`;
+  const messagesPath = (friendId) =>
+    friendId ? `${messagesBasePath}?friend=${friendId}` : messagesBasePath;
   const openThreadPage = (threadId) => {
     const id = String(threadId || "").trim();
     if (!id) return;
     setActiveThreadId(id);
     navigate(threadPath(id));
+  };
+  const openUserProfile = (targetProfileId) => {
+    const resolvedTarget = Number(targetProfileId);
+    if (!resolvedTarget || !userId) return;
+    const selfId = Number(userId);
+    if (resolvedTarget === selfId) {
+      navigate(`/${routePrefix}/${userId}/profile`);
+      return;
+    }
+    navigate(`/${routePrefix}/${userId}/profile/${resolvedTarget}`);
   };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
@@ -136,10 +149,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [globalPostReplies, setGlobalPostReplies] = useState({});
   const [profiles, setProfiles] = useState({});
   const [friendStats, setFriendStats] = useState({});
-  const [selectedFriendId, setSelectedFriendId] = useState(null);
-  const [friendMessages, setFriendMessages] = useState([]);
-  const [friendMessageDraft, setFriendMessageDraft] = useState("");
-  const [friendLastSeen, setFriendLastSeen] = useState({});
   const [friendLatest, setFriendLatest] = useState({});
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [routeThread, setRouteThread] = useState(null);
@@ -189,8 +198,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [threadInlineReplyOpen, setThreadInlineReplyOpen] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
-  const [newFriendId, setNewFriendId] = useState("");
-  const friendChatListRef = useRef(null);
+  const [newFriendUsername, setNewFriendUsername] = useState("");
   const groupRoomListRef = useRef(null);
   const [expandedPostIds, setExpandedPostIds] = useState({});
   const [forumThreadCounts, setForumThreadCounts] = useState({});
@@ -245,9 +253,20 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (error || !data) return;
     const mapped = {};
     data.forEach((profile) => {
-      mapped[profile.id] = profile.display_name || profile.username || profile.id;
+      const username = String(profile.username || "").trim();
+      mapped[profile.id] = username ? `@${username}` : profile.display_name || `User ${profile.id}`;
     });
     setProfiles((prev) => ({ ...prev, ...mapped }));
+  };
+
+  const refreshGroupsAndMemberships = async () => {
+    if (!userId) return;
+    const [{ data: groupData }, { data: membershipData }] = await Promise.all([
+      supabase.from("community_groups").select("*").order("created_at", { ascending: false }),
+      supabase.from("community_group_members").select("*").eq("user_id", Number(userId))
+    ]);
+    setGroups(groupData || []);
+    setMemberships(membershipData || []);
   };
 // loadFriendStats is similar but it fetches the rank and level of friends to display
 // in the friend list, it also maps the stats into a dictionary keyed by user id for easy lookup
@@ -272,14 +291,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // "incoming" if the current user received a request, and "" if there is no relationship
 // this function is used when rendering the friend list to determine what 
 // actions to show for each friend
-  const getFriendStatus = (friendRow) => {
+  const getFriendStatus = useCallback((friendRow) => {
     if (friendRow.status === "accepted") return "accepted";
     const currentId = Number(userId);
     const requesterId =
       friendRow.status === "pending_low" ? friendRow.user_id : friendRow.friend_user_id;
     if (currentId === requesterId) return "outgoing";
     return "incoming";
-  };
+  }, [userId]);
 // loadFriendMessageSummaries fetches the latest message for 
 // each friend conversation to display
 // in the friend list, and keeps the preview list fresh,
@@ -421,6 +440,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // the active group changes
 // the function also handles the case where the forum data is not yet 
 // loaded and uses the forumTracks as a fallback
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!userId) return;
     let mounted = true;
@@ -513,7 +533,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       loadProfiles(friendIds);
       loadFriendStats(friendIds);
       loadFriendMessageSummaries();
-      const defaultForum = activeForum || forumTracks[0].id;
+      const defaultForum = forumTracks[0].id;
       setActiveForum(defaultForum);
       await loadForumPosts(defaultForum, forumRes.data || []);
       await loadSharedTemplateData();
@@ -581,10 +601,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           const otherId =
             Number(message.user_id) === currentId ? Number(message.friend_user_id) : Number(message.user_id);
           setFriendLatest((prev) => ({ ...prev, [otherId]: message }));
-          if (Number(selectedFriendId) === otherId) {
-            setFriendMessages((prev) => [...prev, message]);
-            setFriendLastSeen((prev) => ({ ...prev, [otherId]: message.created_at }));
-          }
         }
       )
       .subscribe();
@@ -592,7 +608,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, selectedFriendId]);
+  }, [userId]);
 // the second subscription listens for new forum posts and replies,
 // it keeps the thread list and reply list in sync with realtime inserts,
 // this prevents users from missing new activity while they browse,
@@ -656,7 +672,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
 // derived forum lists and select options are memoised to avoid
 // re-filtering and re-mapping on every render,
@@ -999,28 +1017,33 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     await recordEngagementAction("community_post");
   };
 
-// send a friend request by numeric user id,
+// send a message request by username,
 // validates input, checks that the user exists,
 // inserts the relationship row with ordered ids,
 // then refreshes the friends list and closes the modal
   const handleAddFriend = async () => {
-    if (!newFriendId.trim()) return;
+    if (!newFriendUsername.trim()) return;
     if (!userId) {
-      setBanner("Sign in to add friends.");
+      setBanner("Sign in to send request.");
       return;
     }
-    const parsedFriendId = Number(newFriendId.trim());
-    if (!Number.isInteger(parsedFriendId)) {
-      setBanner("Friend id must be a valid numeric user id.");
+    const requestedUsername = String(newFriendUsername).trim().toLowerCase();
+    if (requestedUsername.length < 3) {
+      setBanner("Username must be at least 3 characters.");
       return;
     }
     const { data: friendProfile, error: friendLookupError } = await supabase
       .from("user_profiles")
-      .select("id")
-      .eq("id", parsedFriendId)
-      .single();
+      .select("id, username")
+      .ilike("username", requestedUsername)
+      .maybeSingle();
     if (friendLookupError || !friendProfile) {
-      setBanner("Friend id not found. Ask them for their numeric profile id.");
+      setBanner("Username not found.");
+      return;
+    }
+    const parsedFriendId = Number(friendProfile.id);
+    if (!parsedFriendId || parsedFriendId === Number(userId)) {
+      setBanner("You can't send a request to yourself.");
       return;
     }
     const orderedUserId = Math.min(Number(userId), parsedFriendId);
@@ -1034,12 +1057,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         status: requesterIsLower ? "pending_low" : "pending_high"
       }
     ]);
-    if (error) {
-      setBanner(error.message || "Could not add friend.");
+    if (error && error.code !== "23505") {
+      setBanner(error.message || "Could not send message request.");
       return;
     }
     setAddFriendOpen(false);
-    setNewFriendId("");
+    setNewFriendUsername("");
     setBanner("Friend request sent.");
     const { data } = await supabase
       .from("community_friends")
@@ -1079,11 +1102,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       return;
     }
     setBanner("Joined group.");
-    const { data: membershipData } = await supabase
-      .from("community_group_members")
-      .select("*")
-      .eq("user_id", Number(userId));
-    setMemberships(membershipData || []);
+    await refreshGroupsAndMemberships();
     setActiveGroupId(groupId);
     await loadGroupStats();
     if (openAfterJoin) {
@@ -1103,13 +1122,38 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       return;
     }
     setBanner("Left group.");
-    const { data: membershipData } = await supabase
-      .from("community_group_members")
-      .select("*")
-      .eq("user_id", Number(userId));
-    setMemberships(membershipData || []);
+    await refreshGroupsAndMemberships();
     await loadGroupStats();
     if (Number(groupRoomId) === Number(groupId) || Number(activeGroupId) === Number(groupId)) {
+      setGroupRoomId(null);
+      setActiveGroupId(null);
+      navigate(communityBasePath);
+    }
+  };
+
+  const handleDeleteGroup = async (group) => {
+    if (!userId || !group?.id) return;
+    if (Number(group.created_by) !== Number(userId)) {
+      setBanner("Only the group owner can delete this group.");
+      return;
+    }
+    const confirmed = window.confirm(`Delete "${group.name || "this group"}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("community_groups")
+      .delete()
+      .eq("id", Number(group.id))
+      .eq("created_by", Number(userId));
+    if (error) {
+      setBanner(error.message || "Could not delete group.");
+      return;
+    }
+
+    setBanner("Group deleted.");
+    await refreshGroupsAndMemberships();
+    await loadGroupStats();
+    if (Number(groupRoomId) === Number(group.id) || Number(activeGroupId) === Number(group.id)) {
       setGroupRoomId(null);
       setActiveGroupId(null);
       navigate(communityBasePath);
@@ -1126,10 +1170,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       .update({ status: "accepted" })
       .eq("id", friendRow.id);
     if (error) {
-      setBanner(error.message || "Could not accept friend.");
+      setBanner(error.message || "Could not approve request.");
       return;
     }
-    setBanner("Friend request accepted.");
+    setBanner("Message request approved.");
     const { data } = await supabase
       .from("community_friends")
       .select("*")
@@ -1147,10 +1191,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       .delete()
       .eq("id", friendRow.id);
     if (error) {
-      setBanner(error.message || "Could not reject friend.");
+      setBanner(error.message || "Could not reject request.");
       return;
     }
-    setBanner("Friend request rejected.");
+    setBanner("Message request rejected.");
     const { data } = await supabase
       .from("community_friends")
       .select("*")
@@ -1168,17 +1212,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setBanner(error.message || "Could not remove friend.");
       return;
     }
-    setBanner("Friend removed.");
+    setBanner("Connection removed.");
     const { data } = await supabase
       .from("community_friends")
       .select("*")
       .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`);
     setFriends(data || []);
-    if (Number(selectedFriendId) === Number(friendRow.user_id) || Number(selectedFriendId) === Number(friendRow.friend_user_id)) {
-      setSelectedFriendId(null);
-      setFriendMessages([]);
-      setFriendMessageDraft("");
-    }
   };
 
 // build the display label for a friend row,
@@ -1204,73 +1243,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   };
 
 // determine whether a friend has unread messages,
-// compares the latest message timestamp to last seen,
 // ignores messages sent by the current user,
 // used to show notification dots in the UI
-  const getFriendUnread = (friendRow) => {
+  const getFriendUnread = useCallback((friendRow) => {
     const currentId = Number(userId);
     const otherId = friendRow.user_id === currentId ? friendRow.friend_user_id : friendRow.user_id;
     const latest = friendLatest[otherId];
     if (!latest) return false;
-    if (Number(latest.user_id) === Number(userId)) return false;
-    const lastSeen = friendLastSeen[otherId];
-    if (!lastSeen) return true;
-    return new Date(latest.created_at) > new Date(lastSeen);
-  };
-
-// load the full message history for a friend pair,
-// orders messages oldest -> newest for chat display,
-// updates the last seen timestamp to suppress unread dots,
-// then refreshes the message summaries list
-  const loadFriendMessages = async (friendId) => {
-    if (!friendId || !userId) return;
-    const currentId = Number(userId);
-    const low = Math.min(currentId, friendId);
-    const high = Math.max(currentId, friendId);
-    const { data } = await supabase
-      .from("community_friend_messages")
-      .select("*")
-      .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
-      .order("created_at", { ascending: true });
-    setFriendMessages(data || []);
-    const lastSeen = data?.length ? data[data.length - 1].created_at : new Date().toISOString();
-    setFriendLastSeen((prev) => ({ ...prev, [friendId]: lastSeen }));
-    loadFriendMessageSummaries();
-  };
-
-// send a new private message to the selected friend,
-// inserts the message into the backend,
-// reloads the conversation and summary list,
-// and clears the draft input on success
-  const handleSendFriendMessage = async () => {
-    if (!friendMessageDraft.trim() || !selectedFriendId || !userId) return;
-    const currentId = Number(userId);
-    const otherId = Number(selectedFriendId);
-    const low = Math.min(currentId, otherId);
-    const high = Math.max(currentId, otherId);
-    const { error } = await supabase
-      .from("community_friend_messages")
-      .insert([
-        {
-          user_id: currentId,
-          friend_user_id: otherId,
-          body: friendMessageDraft.trim()
-        }
-      ]);
-    if (error) {
-      setBanner(error.message || "Could not send message.");
-      return;
-    }
-    setFriendMessageDraft("");
-    loadFriendMessages(otherId);
-    loadFriendMessageSummaries();
-    const next = await supabase
-      .from("community_friend_messages")
-      .select("*")
-      .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
-      .order("created_at", { ascending: true });
-    setFriendMessages(next.data || []);
-  };
+    return Number(latest.user_id) !== Number(userId);
+  }, [friendLatest, userId]);
 
 // delete a forum post owned by the current user,
 // validates user authentication and ownership,
@@ -1667,7 +1648,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // recalculates when message or friend state changes
   const unreadCount = useMemo(() => {
     return friends.reduce((count, friend) => (getFriendUnread(friend) ? count + 1 : count), 0);
-  }, [friends, friendLatest, friendLastSeen, userId]);
+  }, [friends, getFriendUnread]);
+
+  const incomingRequestCount = useMemo(() => {
+    return friends.reduce((count, friend) => (getFriendStatus(friend) === "incoming" ? count + 1 : count), 0);
+  }, [friends, getFriendStatus]);
 
 // build the "Thread Pulse" list (top 5 active threads),
 // counts replies per thread and sorts descending,
@@ -1802,7 +1787,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         <div key={reply.id} className={`community-reply-card ${level > 0 ? "nested" : ""}`}>
           <div className="community-reply-topline">
             <span className="community-reply-avatar" aria-hidden="true">{avatarInitial}</span>
-            <span className="community-reply-author">{author}</span>
+            <button type="button" className="community-profile-link community-reply-author" onClick={() => openUserProfile(reply.created_by)}>{author}</button>
             <span className="community-reply-time">{formatTime(reply.created_at)}</span>
           </div>
           <div className="community-reply-body">{reply.body}</div>
@@ -1867,8 +1852,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // keeps the main render logic clean,
 // recalculates when groups or memberships update
   const activeGroup = groups.find((group) => Number(group.id) === Number(groupRoomId || activeGroupId)) || null;
-  const isGroupMember = (groupId) =>
-    memberships.some((membership) => Number(membership.group_id) === Number(groupId));
+  const isGroupMember = useCallback((groupId) =>
+    memberships.some((membership) => Number(membership.group_id) === Number(groupId)), [memberships]);
   const groupPrivacyLabel = (privacy) => {
     if (privacy === "open") return "Open";
     if (privacy === "request") return "Request";
@@ -1897,11 +1882,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const goal = String(group.goal || "").toLowerCase();
       return name.includes(query) || goal.includes(query);
     });
-  }, [groups, memberships, groupSearch]);
+  }, [groups, groupSearch, isGroupMember]);
   const discoverGroups = useMemo(() => {
     const next = visibleGroups.filter((group) => !isGroupMember(group.id));
     return groupSearch.trim() ? next : next.slice(0, 12);
-  }, [visibleGroups, memberships, groupSearch]);
+  }, [visibleGroups, groupSearch, isGroupMember]);
   const joinedChallengeIds = useMemo(() => {
     return new Set(Object.keys(challengeMyProgress).map((id) => Number(id)));
   }, [challengeMyProgress]);
@@ -2156,13 +2141,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   };
 
   useEffect(() => {
-    if (!selectedFriendId) return;
-    const list = friendChatListRef.current;
-    if (!list) return;
-    list.scrollTop = list.scrollHeight;
-  }, [friendMessages, selectedFriendId]);
-
-  useEffect(() => {
     if (!groupRoomId) return;
     const list = groupRoomListRef.current;
     if (!list) return;
@@ -2340,6 +2318,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {activeGroup?.privacy && (
             <span className="community-room-chip">{groupPrivacyLabel(activeGroup.privacy)}</span>
           )}
+          {activeGroup?.id && (
+            <button
+              className="studio-back community-cta-btn"
+              type="button"
+              onClick={() => handleLeaveGroup(activeGroup.id)}
+            >
+              Leave group
+            </button>
+          )}
         </div>
       </div>
       <div className="community-group-room-layout">
@@ -2364,7 +2351,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     <div className={`community-group-room-msg ${isSelf ? "self" : ""}`}>
                       <div className="community-group-room-msg-head">
                         <span className="community-group-room-avatar" aria-hidden="true">{initial}</span>
-                        <span className="community-group-room-author">{authorName}</span>
+                        <button type="button" className="community-profile-link community-group-room-author" onClick={() => openUserProfile(post.created_by)}>{authorName}</button>
                         <span className="community-group-room-time">{formatTime(post.created_at)}</span>
                       </div>
                       <div className="community-group-room-body">{post.body}</div>
@@ -2391,7 +2378,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             {groupRoomMembers.map((member) => (
               <div key={member.id} className="community-group-room-member">
                 <span className="community-notification-dot mini" />
-                <span>{profiles[member.user_id] || "Athlete"}</span>
+                <button type="button" className="community-profile-link" onClick={() => openUserProfile(member.user_id)}>
+                  {profiles[member.user_id] || "Athlete"}
+                </button>
               </div>
             ))}
           </div>
@@ -2428,7 +2417,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 Create group
               </button>
               <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
-                Add friend
+                Send request
               </button>
             </div>
           </div>
@@ -2498,7 +2487,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     <div className="community-feed-title community-thread-modal-title">{selectedThread.title}</div>
                     <div className="community-thread-meta">
                       <span className="community-meta-pill community-meta-author">
-                        {profiles[selectedThread.created_by] || selectedThread.created_by || "Anonymous"}
+                        <button type="button" className="community-profile-link community-meta-author-link" onClick={() => openUserProfile(selectedThread.created_by)}>
+                          {profiles[selectedThread.created_by] || selectedThread.created_by || "Anonymous"}
+                        </button>
                       </span>
                       <span className="community-meta-pill">{formatTime(selectedThread.created_at)}</span>
                       <span className="community-meta-pill">{selectedThreadReplies.length} replies</span>
@@ -2786,7 +2777,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       </button>
                     )}
                     <div className="community-thread-meta">
-                      <span className="community-meta-pill community-meta-author">{author}</span>
+                      <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(post.created_by)}>{author}</button>
                       <span className="community-meta-pill">{formatTime(post.created_at)}</span>
                       <span className="community-meta-pill">{replies.length} replies</span>
                       {usingGlobalForumSearch && forumTitle && (
@@ -3007,7 +2998,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                           <div className="community-template-swipe-main">
                             <div className="community-feed-title">{template.title}</div>
                             <div className="community-thread-meta">
-                              <span className="community-meta-pill community-meta-author">{author}</span>
+                              <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(template.created_by)}>{author}</button>
                               <span className="community-meta-pill">{formatTime(template.created_at)}</span>
                               <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
                             </div>
@@ -3190,7 +3181,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     <div key={template.id} className="community-feed-card">
                       <div className="community-feed-title">{template.title}</div>
                       <div className="community-thread-meta">
-                        <span className="community-meta-pill community-meta-author">{author}</span>
+                        <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(template.created_by)}>{author}</button>
                         <span className="community-meta-pill">{formatTime(template.created_at)}</span>
                         <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
                         {template.goal && <span className="community-meta-pill">{template.goal}</span>}
@@ -3340,9 +3331,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         <div key={comment.id} className="community-reply-card">
                           <div className="community-reply-body">{comment.body}</div>
                           <div className="community-thread-meta">
-                            <span className="community-meta-pill community-meta-author">
+                            <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(comment.user_id)}>
                               {profiles[comment.user_id] || "Athlete"}
-                            </span>
+                            </button>
                             <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
                           </div>
                         </div>
@@ -3447,6 +3438,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         >
                           Leave
                         </button>
+                        {Number(group.created_by) === Number(userId) && (
+                          <button
+                            type="button"
+                            className="studio-back community-cta-btn community-group-open-btn"
+                            onClick={() => handleDeleteGroup(group)}
+                          >
+                            Delete group
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -3541,11 +3541,22 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   <div className="community-circle-title">
                     Friends List
                     {unreadCount > 0 && <span className="community-notification-pill">{unreadCount}</span>}
+                    {incomingRequestCount > 0 && (
+                      <span
+                        className="community-notification-dot alert"
+                        title={`${incomingRequestCount} incoming friend request${incomingRequestCount === 1 ? "" : "s"}`}
+                      />
+                    )}
                   </div>
                   <div className="community-circle-sub">{friends.length} connections</div>
-                  <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
-                    Add friends
-                  </button>
+                  <div className="community-group-item-actions">
+                    <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
+                      Send request
+                    </button>
+                    <button className="studio-back community-cta-btn" onClick={() => navigate(messagesPath())}>
+                      Open inbox
+                    </button>
+                  </div>
                 </div>
               </div>
               {/* friends list with status + actions, */}
@@ -3562,22 +3573,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     <div key={friend.id} className="community-friend-card">
                       <div>
                         <div className="community-friend-title-row">
-                          <div className="community-friend-title">{label}</div>
+                          <button type="button" className="community-profile-link community-friend-title" onClick={() => openUserProfile(otherId)}>
+                            {label}
+                          </button>
                           {hasUnread && <span className="community-notification-dot" />}
+                          {status === "incoming" && <span className="community-notification-dot alert" title="Incoming friend request" />}
                         </div>
                         <div className="community-friend-sub">
                           {buildFriendMeta(friend)}
                         </div>
                         <div className="community-friend-sub">
-                          {status === "accepted" ? "Connected" : status === "outgoing" ? "Request sent" : "Request received"}
+                          {status === "accepted" ? "Connected" : status === "outgoing" ? "Friend request sent" : "Friend request received"}
                         </div>
                       </div>
                       <div className="community-friend-actions">
                         {status === "incoming" && (
                           <>
-                            <button className="studio-back community-cta-btn" onClick={() => handleAcceptFriend(friend)}>
-                              Accept
-                            </button>
+                            <button className="studio-back community-cta-btn" onClick={() => handleAcceptFriend(friend)}>Approve</button>
                             <button className="hud-secondary-btn danger" onClick={() => handleRejectFriend(friend)}>
                               Reject
                             </button>
@@ -3588,8 +3600,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                             <button
                               className="studio-back community-cta-btn"
                               onClick={() => {
-                                setSelectedFriendId(otherId);
-                                loadFriendMessages(otherId);
+                                navigate(messagesPath(otherId));
                               }}
                             >
                               Message
@@ -3608,71 +3619,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   renderEmptyState({
                     icon: "🤝",
                     title: "No connections yet",
-                    sub: "Add a friend to start private chat."
+                    sub: "Approve a friend request to unlock direct messages."
                   })}
               </div>
-              {/* private chat panel for the selected friend, */}
-              {/* shows message history + composer, */}
-              {/* updates in realtime via subscriptions, */}
-              {/* can be closed to return to the list */}
-              {selectedFriendId && (
-                <div className="community-friend-chat">
-                  <div className="community-panel-title">Private Chat</div>
-                  <div className="community-friend-chat-head">
-                    <div className="community-friend-title">
-                      {profiles[selectedFriendId] || "Athlete"}
-                    </div>
-                    <button
-                      className="studio-back community-cta-btn"
-                      onClick={() => {
-                        setSelectedFriendId(null);
-                        setFriendMessages([]);
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <div className="community-friend-chat-list" ref={friendChatListRef}>
-                    {friendMessages.map((msg) => {
-                      const isSelf = Number(msg.user_id) === Number(userId);
-                      const authorName = profiles[msg.user_id] || "Athlete";
-                      const initial = String(authorName).charAt(0).toUpperCase();
-                      return (
-                        <div key={msg.id} className={`community-friend-msg-row ${isSelf ? "self" : ""}`}>
-                          <div className={`community-friend-chat-bubble ${isSelf ? "me" : "them"}`}>
-                            <div className="community-friend-msg-head">
-                              <span className="community-friend-msg-avatar" aria-hidden="true">{initial}</span>
-                              <span className="community-friend-msg-author">{authorName}</span>
-                              <span className="community-friend-msg-time">{formatTime(msg.created_at)}</span>
-                            </div>
-                            <div className="community-friend-msg-body">{msg.body}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {!friendMessages.length &&
-                      renderEmptyState({
-                        icon: "💬",
-                        title: "No messages yet",
-                        sub: "Say hello and kick things off."
-                      })}
-                  </div>
-                  <div className="community-friend-chat-input">
-                    <input
-                      className="community-modal-input"
-                      placeholder="Write a message"
-                      value={friendMessageDraft}
-                      onChange={(event) => setFriendMessageDraft(event.target.value)}
-                    />
-                    <button className="studio-back community-cta-btn community-primary-btn community-chat-send-btn" onClick={handleSendFriendMessage}>
-                      Send
-                    </button>
-                  </div>
-                  {friendMessageDraft.trim().length > 0 && (
-                    <div className="community-typing-indicator">Typing...</div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </main>
@@ -3910,19 +3859,19 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         </div>
       )}
 
-      {/* add friend modal using numeric user id, */}
-      {/* validates the user and inserts a friend request, */}
+      {/* send message request modal using username, */}
+      {/* validates the user and inserts a message request, */}
       {/* refreshes the friends list after send, */}
       {/* closes on cancel or submit */}
       {addFriendOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
-            <div className="community-modal-title">Add friend</div>
+            <div className="community-modal-title">Send message request</div>
             <input
               className="community-modal-input"
-              placeholder="Friend user id"
-              value={newFriendId}
-              onChange={(event) => setNewFriendId(event.target.value)}
+              placeholder="Username (e.g. steven78)"
+              value={newFriendUsername}
+              onChange={(event) => setNewFriendUsername(event.target.value)}
             />
             <div className="community-modal-actions">
               <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(false)}>
@@ -3938,3 +3887,4 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     </div>
   );
 }
+

@@ -17,8 +17,14 @@ const parseAuthError = (error, fallback) => {
   if (message.includes("invalid login credentials")) {
     return "Invalid email or password.";
   }
+  if (message.includes("email address") && message.includes("already")) {
+    return "Email already in use.";
+  }
+  if (message.includes("user already registered")) {
+    return "Email already in use.";
+  }
   if (message.includes("already registered") || message.includes("already been registered")) {
-    return "This email is already registered. Try login instead.";
+    return "Email already in use.";
   }
   if (message.includes("email not confirmed")) {
     return "Email not confirmed yet. Check your inbox and confirm the account.";
@@ -141,6 +147,20 @@ export default function FitnessProfileForm() {
     setLoading(false);
   };
 
+  const resolveHomePath = async (profileId) => {
+    if (!profileId) return "/auth";
+    const { data } = await supabase
+      .from("user_state")
+      .select("active_mode")
+      .eq("user_id", profileId)
+      .maybeSingle();
+    const modeFromState = data?.active_mode;
+    const modeFromStorage = localStorage.getItem("exervia_active_mode");
+    const preferredMode = modeFromState || modeFromStorage || "gym";
+    localStorage.setItem("exervia_active_mode", preferredMode);
+    return preferredMode === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`;
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -163,9 +183,10 @@ export default function FitnessProfileForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const goToApp = () => {
+  const goToApp = async () => {
     if (!profile?.id) return;
-    navigate(`/gym/${profile.id}`);
+    const destination = await resolveHomePath(profile.id);
+    navigate(destination);
   };
 
   const handleLogin = async () => {
@@ -190,7 +211,8 @@ export default function FitnessProfileForm() {
       if (row) {
         setProfile(row);
         setUserStorage(row, authUser);
-        navigate(`/gym/${row.id}`);
+        const destination = await resolveHomePath(row.id);
+        navigate(destination);
         return;
       }
     }
@@ -271,7 +293,8 @@ export default function FitnessProfileForm() {
     if (row) {
       setProfile(row);
       setUserStorage(row, authUser);
-      navigate(`/gym/${row.id}`);
+      const destination = await resolveHomePath(row.id);
+      navigate(destination);
       return;
     }
     setBanner("Account created.");
@@ -376,7 +399,8 @@ export default function FitnessProfileForm() {
     if (row) {
       setProfile(row);
       setUserStorage(row, authUser);
-      navigate(`/gym/${row.id}`);
+      const destination = await resolveHomePath(row.id);
+      navigate(destination);
       return;
     }
     setBanner("Profile claimed successfully.");

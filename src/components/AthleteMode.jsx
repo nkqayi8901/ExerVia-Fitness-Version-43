@@ -9,6 +9,8 @@ import LogsPage from "./LogsPage";
 import AthleteTrainingTab from "./AthleteTrainingTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
+import PublicProfilePage from "./PublicProfilePage";
+import MessagesPage from "./MessagesPage";
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -20,47 +22,6 @@ import WorkoutProgram from "./WorkoutProgram";
 // and output feeds the UI state or data flow
 function AthleteDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
-  const [lastSession, setLastSession] = useState(null);
-  const [lastLift, setLastLift] = useState(null);
-
-// loadLastSession manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const loadLastSession = async () => {
-    const { data } = await supabase
-      .from("training_sessions")
-      .select("*")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    setLastSession(data || null);
-  };
-
-// loadLastLift manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const loadLastLift = async () => {
-    const { data } = await supabase
-      .from("strength_logs")
-      .select("*")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    setLastLift(data || null);
-  };
-
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!id) return;
-    loadLastSession();
-    loadLastLift();
-  }, [id]);
-
 
 // dayMarker manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -283,7 +244,7 @@ export default function AthleteMode() {
     };
 
     setMode();
-  }, [id]);
+  }, [id, routeLocation.pathname]);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -373,6 +334,10 @@ export default function AthleteMode() {
           element={<AthleteProfileOverview profile={profile} userState={userState} />}
         />
         <Route
+          path="profile/:targetId"
+          element={<PublicProfilePage mode="athlete" viewerId={id} />}
+        />
+        <Route
           path="community"
           element={<CommunityHub userId={id} />}
         />
@@ -384,6 +349,7 @@ export default function AthleteMode() {
           path="community/thread/:threadId"
           element={<CommunityHub userId={id} forceThreadPage />}
         />
+        <Route path="messages" element={<MessagesPage mode="athlete" userId={id} />} />
       </Routes>
     </div>
   );

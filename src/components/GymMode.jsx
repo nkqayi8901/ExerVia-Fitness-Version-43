@@ -9,6 +9,8 @@ import LogsPage from "./LogsPage";
 import StrengthProgressTab from "./StrengthProgressTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
+import PublicProfilePage from "./PublicProfilePage";
+import MessagesPage from "./MessagesPage";
 // Component: GymMode - UI layout and interactions.
 // This component renders the gymmode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -20,48 +22,6 @@ import WorkoutProgram from "./WorkoutProgram";
 // and output feeds the UI state or data flow
 function GymDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
-  const [lastLift, setLastLift] = useState(null);
-  const [lastSession, setLastSession] = useState(null);
-
-// loadLastLift manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const loadLastLift = async () => {
-    const { data } = await supabase
-      .from("strength_logs")
-      .select("*")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    setLastLift(data || null);
-  };
-
-// loadLastSession manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-  const loadLastSession = async () => {
-    const { data } = await supabase
-      .from("training_sessions")
-      .select("*")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    setLastSession(data || null);
-  };
-
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!id) return;
-    loadLastLift();
-    loadLastSession();
-  }, [id]);
-
 
 // dayMarker manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -344,9 +304,11 @@ export default function GymMode() {
         <Route path="logs" element={<LogsPage mode="gym" />} />
         <Route path="program/*" element={<WorkoutProgram mode="gym" />} />
         <Route path="profile" element={<GymProfileOverview profile={profile} userState={userState} />} />
+        <Route path="profile/:targetId" element={<PublicProfilePage mode="gym" viewerId={id} />} />
         <Route path="community" element={<CommunityHub userId={id} />} />
         <Route path="community/group/:groupId" element={<CommunityHub userId={id} forceGroupRoom />} />
         <Route path="community/thread/:threadId" element={<CommunityHub userId={id} forceThreadPage />} />
+        <Route path="messages" element={<MessagesPage mode="gym" userId={id} />} />
       </Routes>
     </div>
   );
