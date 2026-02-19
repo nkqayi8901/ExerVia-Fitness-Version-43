@@ -125,7 +125,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
       },
     ]);
     if (error && error.code !== "23505") {
-      setBanner(error.message || "Could not send message request.");
+      setBanner(error.message || "Could not send friend request.");
       return;
     }
     setFriendStatus("outgoing");

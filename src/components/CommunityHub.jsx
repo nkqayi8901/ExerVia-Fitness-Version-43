@@ -1017,7 +1017,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     await recordEngagementAction("community_post");
   };
 
-// send a message request by username,
+// send a friend request by username,
 // validates input, checks that the user exists,
 // inserts the relationship row with ordered ids,
 // then refreshes the friends list and closes the modal
@@ -1058,7 +1058,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       }
     ]);
     if (error && error.code !== "23505") {
-      setBanner(error.message || "Could not send message request.");
+      setBanner(error.message || "Could not send friend request.");
       return;
     }
     setAddFriendOpen(false);
@@ -2417,7 +2417,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 Create group
               </button>
               <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
-                Send request
+                Add friend
               </button>
             </div>
           </div>
@@ -3550,9 +3550,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   </div>
                   <div className="community-circle-sub">{friends.length} connections</div>
                   <div className="community-group-item-actions">
-                    <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
-                      Send request
-                    </button>
+                  <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
+                    Add friend
+                  </button>
                     <button className="studio-back community-cta-btn" onClick={() => navigate(messagesPath())}>
                       Open inbox
                     </button>
@@ -3859,14 +3859,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         </div>
       )}
 
-      {/* send message request modal using username, */}
-      {/* validates the user and inserts a message request, */}
+      {/* send friend request modal using username, */}
+      {/* validates the user and inserts a friend request, */}
       {/* refreshes the friends list after send, */}
       {/* closes on cancel or submit */}
       {addFriendOpen && (
         <div className="community-modal-backdrop">
           <div className="community-modal">
-            <div className="community-modal-title">Send message request</div>
+            <div className="community-modal-title">Send friend request</div>
             <input
               className="community-modal-input"
               placeholder="Username (e.g. steven78)"
@@ -3878,7 +3878,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 Cancel
               </button>
               <button className="studio-back community-cta-btn" onClick={handleAddFriend}>
-                Send request
+                Send friend request
               </button>
             </div>
           </div>
