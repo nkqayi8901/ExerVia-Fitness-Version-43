@@ -1,6 +1,6 @@
 // src/components/StrengthProgressTab.jsx
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
@@ -863,6 +863,15 @@ const normalizeRepRange = (value) => {
   return '10-12';
 };
 
+const toLiftDayKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // StrengthProgressTab manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -915,6 +924,7 @@ const StrengthProgressTab = ({ userId }) => {
   const pinnedProgramsStorageKey = userId ? `exervia_pinned_programs_${userId}` : null;
   const exerciseWeightsStorageKey = userId ? `exervia_exercise_weights_${userId}` : null;
   const [exerciseWeightMemory, setExerciseWeightMemory] = useState({});
+  const [selectedStrengthTrendDay, setSelectedStrengthTrendDay] = useState('');
 
   const weightExercises = [
     { value: 'squat', label: 'Squat', icon: '' },
@@ -1456,7 +1466,7 @@ const StrengthProgressTab = ({ userId }) => {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(4);
+      .limit(60);
 
     if (!error && data) {
       setRecentLifts(data);
@@ -1501,6 +1511,50 @@ const StrengthProgressTab = ({ userId }) => {
   const totalPrs = prList.length;
   const uniqueExercisesTracked = new Set(recentLifts.map((lift) => lift.exercise_name)).size;
   const topEstimatedOneRm = prList[0]?.one_rm_est ? `${prList[0].one_rm_est.toFixed(1)}kg` : 'No 1RM yet';
+  const recentLiftVolumeByDay = useMemo(() => {
+    const totals = new Map();
+    recentLifts.forEach((lift) => {
+      const dayKey = toLiftDayKey(lift.created_at);
+      const label = new Date(lift.created_at).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      });
+      const sets = Number(lift.sets) || 0;
+      const reps = Number(lift.reps) || 0;
+      const weight = Number(lift.weight) || 0;
+      const volume = sets > 0 && reps > 0 && weight > 0 ? sets * reps * weight : sets * reps;
+      if (!totals.has(dayKey)) {
+        totals.set(dayKey, { dayKey, label, volume: 0 });
+      }
+      const row = totals.get(dayKey);
+      row.volume += volume;
+    });
+
+    return Array.from(totals.values())
+      .slice(0, 7)
+      .reverse();
+  }, [recentLifts]);
+  const maxRecentLiftVolume = Math.max(1, ...recentLiftVolumeByDay.map((item) => item.volume || 0));
+  const exerciseCountTrend = useMemo(() => {
+    const counts = {};
+    recentLifts.forEach((lift) => {
+      const key = getExerciseLabel(lift.exercise_name);
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [recentLifts]);
+  const maxExerciseCount = Math.max(1, ...exerciseCountTrend.map((item) => item.count || 0));
+  const selectedTrendDay = selectedStrengthTrendDay || recentLiftVolumeByDay[recentLiftVolumeByDay.length - 1]?.dayKey || '';
+  const selectedTrendDayLifts = useMemo(
+    () =>
+      recentLifts
+        .filter((lift) => toLiftDayKey(lift.created_at) === selectedTrendDay)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [recentLifts, selectedTrendDay]
+  );
 
   const filteredPrograms = programs.filter(program => {
     const query = programSearch.toLowerCase();
@@ -2157,7 +2211,7 @@ const StrengthProgressTab = ({ userId }) => {
             </section>
           </div>
         ) : (
-          <div className="studio-story">
+          <div className="studio-stats">
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-title">Stats Snapshot</div>
               <div className="studio-pr-grid">
@@ -2182,6 +2236,82 @@ const StrengthProgressTab = ({ userId }) => {
                   <div className="studio-pr-sub">Best current estimate</div>
                 </div>
               </div>
+            </section>
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Progress Trends</div>
+              <div className="studio-progress-grid">
+                <div className="studio-progress-card">
+                  <div className="studio-progress-title">7-Day Training Volume</div>
+                  <div className="studio-progress-list">
+                    {recentLiftVolumeByDay.length ? (
+                      recentLiftVolumeByDay.map((item) => (
+                        <button
+                          type="button"
+                          className={`studio-progress-row studio-progress-row-btn${selectedTrendDay === item.dayKey ? ' active' : ''}`}
+                          key={`vol-${item.dayKey}`}
+                          onClick={() => setSelectedStrengthTrendDay(item.dayKey)}
+                        >
+                          <div className="studio-progress-label">{item.label}</div>
+                          <div className="studio-progress-bar-shell">
+                            <div
+                              className="studio-progress-bar"
+                              style={{ width: `${Math.max(6, (item.volume / maxRecentLiftVolume) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="studio-progress-value">{Math.round(item.volume)}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="studio-empty">Log sessions to unlock your 7-day volume trend.</div>
+                    )}
+                  </div>
+                </div>
+                <div className="studio-progress-card">
+                  <div className="studio-progress-title">Most Trained Exercises</div>
+                  <div className="studio-progress-list">
+                    {exerciseCountTrend.length ? (
+                      exerciseCountTrend.map((item) => (
+                        <div className="studio-progress-row" key={`freq-${item.name}`}>
+                          <div className="studio-progress-label">{item.name}</div>
+                          <div className="studio-progress-bar-shell">
+                            <div
+                              className="studio-progress-bar alt"
+                              style={{ width: `${Math.max(8, (item.count / maxExerciseCount) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="studio-progress-value">{item.count}x</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="studio-empty">No frequency trend yet.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {selectedTrendDayLifts.length > 0 && (
+                <div className="studio-progress-drilldown">
+                  <div className="studio-progress-drilldown-top">
+                    <div className="studio-progress-title">Day Breakdown</div>
+                    <div className="studio-progress-value">
+                      {new Date(selectedTrendDay).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="studio-progress-list">
+                    {selectedTrendDayLifts.map((lift) => (
+                      <div className="studio-progress-row" key={`lift-${lift.id}`}>
+                        <div className="studio-progress-label">{lift.exercise_name}</div>
+                        <div className="studio-progress-bar-shell">
+                          <div className="studio-progress-bar alt" style={{ width: '100%' }} />
+                        </div>
+                        <div className="studio-progress-value">
+                          {Number(lift.sets) || 0}x{Number(lift.reps) || 0}
+                          {Number(lift.weight) > 0 ? ` · ${lift.weight}kg` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
             {/* Section block */}
             {/* Layout grouping for readability. */}

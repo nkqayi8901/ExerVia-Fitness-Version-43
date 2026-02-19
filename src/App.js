@@ -7,27 +7,30 @@ import AthleteMode from "./components/AthleteMode";
 import NutritionPage from "./components/NutritionPage";
 import JournalPage from "./components/JournalPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<FitnessProfileForm />} />
-          <Route path="/create-profile" element={<FitnessProfileForm />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <ErrorBoundary>
+        <div className="min-h-screen">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<FitnessProfileForm />} />
+            <Route path="/create-profile" element={<FitnessProfileForm />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* ✅ IMPORTANT: allow nested pages */}
-          <Route path="/gym/:id/*" element={<GymMode />} />
-          <Route path="/athlete/:id/*" element={<AthleteMode />} />
+            {/* IMPORTANT: allow nested pages */}
+            <Route path="/gym/:id/*" element={<GymMode />} />
+            <Route path="/athlete/:id/*" element={<AthleteMode />} />
 
-          <Route path="/nutrition" element={<NutritionPage />} />
+            <Route path="/nutrition" element={<NutritionPage />} />
 
-          {/* optional standalone journal route */}
-          <Route path="/journal" element={<JournalPage />} />
-        </Routes>
-      </div>
+            {/* optional standalone journal route */}
+            <Route path="/journal" element={<JournalPage />} />
+          </Routes>
+        </div>
+      </ErrorBoundary>
     </Router>
   );
 }

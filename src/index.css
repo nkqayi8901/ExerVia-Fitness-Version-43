@@ -10564,6 +10564,334 @@ code {
   background: rgba(16, 185, 129, 0.85);
 }
 
+/* Strength stats trend cards */
+.studio-stats {
+  display: grid;
+  gap: 16px;
+}
+.studio-progress-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.studio-progress-card {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.26);
+}
+.studio-progress-title {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.8);
+  margin-bottom: 10px;
+}
+.studio-progress-list {
+  display: grid;
+  gap: 8px;
+}
+.studio-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.studio-progress-row-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.studio-progress-row-btn:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+.studio-progress-row-btn.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+}
+.studio-progress-drilldown {
+  margin-top: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.2);
+}
+.studio-progress-drilldown-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.studio-progress-label {
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.studio-progress-bar-shell {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.4);
+  overflow: hidden;
+}
+.studio-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.92), rgba(59, 130, 246, 0.9));
+}
+.studio-progress-bar.alt {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.9), rgba(99, 102, 241, 0.9));
+}
+.studio-progress-value {
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 0.8rem;
+}
+
+/* Journal mood + filters */
+.journal-mood-card {
+  margin-top: 12px;
+}
+.journal-mood-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.journal-mood-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.journal-mood-average {
+  font-size: 0.82rem;
+  color: rgba(148, 163, 184, 0.95);
+}
+.journal-mood-bars {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.journal-mood-col {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+}
+.journal-mood-col-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.journal-mood-col-btn:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+}
+.journal-mood-col-btn.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+}
+.journal-mood-track {
+  width: 100%;
+  max-width: 26px;
+  height: 70px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.journal-mood-fill {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(16, 185, 129, 0.95));
+}
+.journal-mood-score,
+.journal-mood-label {
+  font-size: 0.72rem;
+  color: rgba(226, 232, 240, 0.88);
+}
+.journal-history-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+.journal-history-search {
+  max-width: 340px;
+}
+.journal-tags-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.journal-tag-pill {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.28);
+  color: rgba(226, 232, 240, 0.9);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+}
+.journal-tag-pill.active {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.16);
+}
+
+/* Logs trends + goals */
+.logs-trend-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.logs-trend-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.24);
+}
+.logs-trend-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(226, 232, 240, 0.85);
+}
+.logs-trend-bars {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.logs-trend-col {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+}
+.logs-trend-col-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.logs-trend-col-btn:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+.logs-trend-col-btn.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+}
+.logs-trend-track {
+  width: 100%;
+  max-width: 22px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.logs-trend-fill {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.94), rgba(99, 102, 241, 0.9));
+}
+.logs-trend-fill.alt {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(14, 165, 233, 0.9));
+}
+.logs-trend-label {
+  font-size: 0.7rem;
+  color: rgba(226, 232, 240, 0.84);
+}
+.logs-goal-row {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+.logs-goal-note {
+  font-size: 0.76rem;
+  color: rgba(148, 163, 184, 0.92);
+}
+.logs-day-controls {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.logs-viewing-day {
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.92);
+}
+.logs-viewing-day span {
+  color: rgba(226, 232, 240, 0.92);
+  font-weight: 600;
+}
+
+.mode-gym .studio-progress-card,
+.mode-gym .studio-progress-drilldown,
+.mode-gym .logs-trend-card,
+.mode-gym .journal-mood-track,
+.mode-gym .logs-trend-track,
+.mode-gym .journal-tag-pill {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.88));
+  border-color: rgba(15, 23, 42, 0.14);
+}
+.mode-gym .studio-progress-title,
+.mode-gym .studio-progress-label,
+.mode-gym .studio-progress-value,
+.mode-gym .journal-mood-average,
+.mode-gym .journal-mood-score,
+.mode-gym .journal-mood-label,
+.mode-gym .journal-tag-pill,
+.mode-gym .logs-trend-title,
+.mode-gym .logs-trend-label,
+.mode-gym .logs-goal-note {
+  color: #1f2937;
+}
+.mode-gym .logs-viewing-day,
+.mode-gym .logs-viewing-day span {
+  color: #1f2937;
+}
+.mode-gym .studio-progress-row-btn:hover,
+.mode-gym .journal-mood-col-btn:hover,
+.mode-gym .logs-trend-col-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+@media (max-width: 900px) {
+  .studio-progress-grid,
+  .logs-trend-grid {
+    grid-template-columns: 1fr;
+  }
+  .journal-history-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .logs-day-controls {
+    justify-items: stretch;
+  }
+  .journal-history-search {
+    max-width: none;
+  }
+}
+
 
 
 

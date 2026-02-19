@@ -19,6 +19,7 @@ import { supabase } from "../supabaseClient";
  */
 
 const MEALDB = "https://www.themealdb.com/api/json/v1/1";
+const DUMMY_RECIPES_SEARCH = "https://dummyjson.com/recipes/search?q=";
 const OFF_SEARCH =
   "https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=8&search_terms=";
 
@@ -183,6 +184,47 @@ async function mealdbSearchByName(term) {
   return normalizeMealList(json?.meals || []);
 }
 
+async function dummySearchByName(term) {
+  const t = String(term || "").trim();
+  if (!t) return [];
+  const res = await fetch(`${DUMMY_RECIPES_SEARCH}${encodeURIComponent(t)}`);
+  const json = await res.json();
+  const recipes = Array.isArray(json?.recipes) ? json.recipes : [];
+  return recipes
+    .filter((r) => r?.id && r?.name)
+    .map((r) => ({
+      idMeal: `dummy-${r.id}`,
+      strMeal: String(r.name || ""),
+      strMealThumb: String(r.image || ""),
+      source: "dummy",
+      dummyRecipe: r
+    }));
+}
+
+function normalizeTextId(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function convertDummyToMealShape(recipe) {
+  const base = {
+    idMeal: `dummy-${recipe?.id || Date.now()}`,
+    strMeal: String(recipe?.name || "Recipe"),
+    strMealThumb: String(recipe?.image || ""),
+    strCategory: Array.isArray(recipe?.mealType) ? recipe.mealType[0] || "Recipe" : "Recipe",
+    strArea: String(recipe?.cuisine || ""),
+    strInstructions: Array.isArray(recipe?.instructions)
+      ? recipe.instructions.join("\n")
+      : String(recipe?.instructions || ""),
+  };
+  const ingredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
+  for (let i = 0; i < 20; i += 1) {
+    const value = ingredients[i] ? String(ingredients[i]) : "";
+    base[`strIngredient${i + 1}`] = value;
+    base[`strMeasure${i + 1}`] = "";
+  }
+  return base;
+}
+
 export default function NutritionPage() {
   const navigate = useNavigate();
   const storedId = localStorage.getItem("exervia_user_id");
@@ -331,12 +373,28 @@ export default function NutritionPage() {
         list = [...a, ...b, ...c];
       }
 
-      // de-dup by idMeal
+      // pull a second pool from DummyJSON to avoid thin result sets
+      const dummyTerms = {
+        chicken: ["chicken"],
+        beef: ["beef"],
+        turkey: ["turkey"],
+        seafood: ["fish", "salmon"],
+        vegetarian: ["vegetable", "tofu"],
+        chickpeas: ["chickpea"],
+        pork: ["pork"]
+      };
+      const terms = dummyTerms[preference] || [preference];
+      const dummyLists = await Promise.all(terms.map((term) => dummySearchByName(term)));
+      const dummyMeals = dummyLists.flat();
+      list = [...list, ...dummyMeals];
+
+      // de-dup by normalized meal name + id fallback
       const seen = new Set();
       list = list.filter((m) => {
-        if (!m?.idMeal) return false;
-        if (seen.has(m.idMeal)) return false;
-        seen.add(m.idMeal);
+        const key = normalizeTextId(m?.strMeal) || normalizeTextId(m?.idMeal);
+        if (!key) return false;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       });
 
@@ -408,6 +466,13 @@ export default function NutritionPage() {
   const fetchMealDetail = async (idMeal) => {
     setDetailLoading(true);
     try {
+      if (String(idMeal || "").startsWith("dummy-")) {
+        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        if (sourceMeal?.dummyRecipe) {
+          setActiveMeal(convertDummyToMealShape(sourceMeal.dummyRecipe));
+          return;
+        }
+      }
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
@@ -416,6 +481,38 @@ export default function NutritionPage() {
       setActiveMeal(null);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleMoreLikeThis = async () => {
+    if (!activeMeal) return;
+    const rawName = String(activeMeal.strMeal || "").trim();
+    const keyword = rawName.split(" ").find((part) => part.length > 3) || rawName;
+    if (!keyword) return;
+    setLoading(true);
+    setError("");
+    try {
+      const [mealdbHits, dummyHits] = await Promise.all([
+        mealdbSearchByName(keyword),
+        dummySearchByName(keyword)
+      ]);
+      const merged = [...mealdbHits, ...dummyHits]
+        .filter((meal) => looksHealthyEnough(meal?.strMeal, goal))
+        .filter((meal) => normalizeTextId(meal?.strMeal) !== normalizeTextId(activeMeal.strMeal));
+      const seen = new Set();
+      const deduped = merged.filter((meal) => {
+        const key = normalizeTextId(meal?.strMeal) || normalizeTextId(meal?.idMeal);
+        if (!key) return false;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setProtocolMeals(clampList(shuffle(deduped), cap));
+      setSaveBanner(`Loaded more options like ${activeMeal.strMeal}.`);
+    } catch {
+      setError("Could not load similar meals right now.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -858,6 +955,13 @@ export default function NutritionPage() {
                     type="button"
                   >
                     Save to logs
+                  </button>
+                  <button
+                    className="studio-back fuel-save-btn"
+                    onClick={handleMoreLikeThis}
+                    type="button"
+                  >
+                    More like this
                   </button>
                   <button
                     className="studio-back fuel-save-btn"

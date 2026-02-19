@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -80,6 +80,18 @@ const parseDurationMinutes = (value) => {
   return match ? Number(match[1] || 0) : 0;
 };
 
+const toKg = (value, unit) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return String(unit || "kg").toLowerCase() === "lbs" ? num * 0.453592 : num;
+};
+
+const toMl = (value, unit) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return String(unit || "ml").toLowerCase() === "liters" ? num * 1000 : num;
+};
+
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -99,12 +111,38 @@ export default function LogsPage({ mode = "gym" }) {
   const [activeTrainingReport, setActiveTrainingReport] = useState(null);
   const [banner, setBanner] = useState("");
   const [glanceDetail, setGlanceDetail] = useState("training");
+  const [weightGoalKg, setWeightGoalKg] = useState("");
+  const [waterGoalMl, setWaterGoalMl] = useState("2000");
 
   useEffect(() => {
     if (!banner) return;
     const timeout = setTimeout(() => setBanner(""), 2600);
     return () => clearTimeout(timeout);
   }, [banner]);
+
+  useEffect(() => {
+    if (!id) return;
+    const raw = localStorage.getItem(`exervia_logs_goals_${id}`);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.weightGoalKg !== undefined) setWeightGoalKg(String(parsed.weightGoalKg));
+      if (parsed?.waterGoalMl !== undefined) setWaterGoalMl(String(parsed.waterGoalMl));
+    } catch {
+      // ignore invalid goal cache
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    localStorage.setItem(
+      `exervia_logs_goals_${id}`,
+      JSON.stringify({
+        weightGoalKg: weightGoalKg || "",
+        waterGoalMl: waterGoalMl || "",
+      })
+    );
+  }, [id, waterGoalMl, weightGoalKg]);
 
   useEffect(() => {
     const run = async () => {
@@ -204,8 +242,8 @@ export default function LogsPage({ mode = "gym" }) {
     return map;
   }, [trainingRows]);
 
-  const dayTraining = trainingByDay[selectedDay] || [];
-  const allExtraActivities = selectedLog.extraActivities || [];
+  const dayTraining = useMemo(() => trainingByDay[selectedDay] || [], [trainingByDay, selectedDay]);
+  const allExtraActivities = useMemo(() => selectedLog.extraActivities || [], [selectedLog]);
   const sessionCompletionEntries = useMemo(
     () =>
       allExtraActivities.filter(
@@ -289,6 +327,40 @@ export default function LogsPage({ mode = "gym" }) {
     }),
     [combinedTrainingItems.length, loggedExtraActivities.length, selectedLog]
   );
+
+  const sevenDayTrend = useMemo(() => {
+    const result = [];
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - offset);
+      const key = toDayKeyLocal(date);
+      const day = dailyLogsByDate[key] || emptyDay();
+      result.push({
+        key,
+        label: date.toLocaleDateString(undefined, { weekday: "short" }),
+        weightKg: toKg(day.weightValue, day.weightUnit || "kg"),
+        waterMl: toMl(day.waterAmount, day.waterUnit || "ml"),
+      });
+    }
+    return result;
+  }, [dailyLogsByDate]);
+
+  const maxWeightInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.weightKg || 0));
+  const maxWaterInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.waterMl || 0));
+  const selectedWeightKg = toKg(selectedLog.weightValue, selectedLog.weightUnit || "kg");
+  const selectedWaterMl = toMl(selectedLog.waterAmount, selectedLog.waterUnit || "ml");
+  const weightGoalStatus =
+    Number(weightGoalKg) > 0 && selectedWeightKg > 0
+      ? `${selectedWeightKg >= Number(weightGoalKg) ? "On/above" : "Below"} target by ${Math.abs(
+          selectedWeightKg - Number(weightGoalKg)
+        ).toFixed(1)} kg`
+      : "Set a target weight to track progress";
+  const waterGoalStatus =
+    Number(waterGoalMl) > 0 && selectedWaterMl > 0
+      ? `${selectedWaterMl >= Number(waterGoalMl) ? "Hydration goal hit" : "Hydration goal pending"} (${Math.round(
+          selectedWaterMl
+        )}/${Math.round(Number(waterGoalMl))} ml)`
+      : "Set a hydration goal to track consistency";
 
   const allSessionCompletions = useMemo(() => {
     const rows = [];
@@ -460,19 +532,19 @@ export default function LogsPage({ mode = "gym" }) {
     window.dispatchEvent(new Event("user_state_updated"));
   };
 
-  const patchDayLogLocal = (dayKey, updater) => {
+  const patchDayLogLocal = useCallback((dayKey, updater) => {
     setDailyLogsByDate((prev) => {
       const current = prev[dayKey] || emptyDay();
       return { ...prev, [dayKey]: updater(current) };
     });
-  };
+  }, []);
 
-  const nextDayLog = (dayKey, updater) => {
+  const nextDayLog = useCallback((dayKey, updater) => {
     const current = dailyLogsByDate[dayKey] || emptyDay();
     return updater(current);
-  };
+  }, [dailyLogsByDate]);
 
-  const saveDayLog = async (dayKey, log) => {
+  const saveDayLog = useCallback(async (dayKey, log) => {
     if (!id || !log) return false;
 
     const local = getLogsStore(id);
@@ -490,7 +562,7 @@ export default function LogsPage({ mode = "gym" }) {
       setBanner("Saved locally. Cloud sync will work after logs tables are active.");
     }
     return ok;
-  };
+  }, [id]);
 
   useEffect(() => {
     const run = async () => {
@@ -519,7 +591,7 @@ export default function LogsPage({ mode = "gym" }) {
     };
 
     run();
-  }, [id, todayKey]);
+  }, [id, nextDayLog, saveDayLog, todayKey]);
 
   const applyWeight = async () => {
     const value = Number(selectedLog.weightValue);
@@ -691,13 +763,25 @@ export default function LogsPage({ mode = "gym" }) {
       <div className="hud-card logs-top-card">
         <div className="logs-top-row">
           <div className="studio-panel-title logs-panel-title">Day In A Glance</div>
-          <input
-            className="studio-form-input logs-date-input"
-            type="date"
-            value={selectedDay}
-            onChange={(event) => setSelectedDay(event.target.value || todayKey)}
-            max={todayKey}
-          />
+          <div className="logs-day-controls">
+            <div className="logs-viewing-day">
+              Viewing:{" "}
+              <span>
+                {new Date(selectedDay || todayKey).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+            <input
+              className="studio-form-input logs-date-input"
+              type="date"
+              value={selectedDay}
+              onChange={(event) => setSelectedDay(event.target.value || todayKey)}
+              max={todayKey}
+            />
+          </div>
         </div>
         <div className="logs-top-note">Tap a card to inspect details and clean up accidental entries.</div>
 
@@ -723,6 +807,50 @@ export default function LogsPage({ mode = "gym" }) {
         <div className="logs-week-summary">
           <div>Weight: {dayGlance.weight}</div>
           <div>Water: {dayGlance.water}</div>
+        </div>
+        <div className="logs-trend-grid">
+          <div className="logs-trend-card">
+            <div className="logs-trend-title">Weight trend (7 days)</div>
+            <div className="logs-trend-bars">
+              {sevenDayTrend.map((row) => (
+                <button
+                  type="button"
+                  key={`weight-${row.key}`}
+                  className={`logs-trend-col logs-trend-col-btn${selectedDay === row.key ? " active" : ""}`}
+                  onClick={() => setSelectedDay(row.key)}
+                >
+                  <div className="logs-trend-track">
+                    <div
+                      className="logs-trend-fill"
+                      style={{ height: `${row.weightKg > 0 ? Math.max(6, (row.weightKg / maxWeightInTrend) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <div className="logs-trend-label">{row.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="logs-trend-card">
+            <div className="logs-trend-title">Hydration trend (7 days)</div>
+            <div className="logs-trend-bars">
+              {sevenDayTrend.map((row) => (
+                <button
+                  type="button"
+                  key={`water-${row.key}`}
+                  className={`logs-trend-col logs-trend-col-btn${selectedDay === row.key ? " active" : ""}`}
+                  onClick={() => setSelectedDay(row.key)}
+                >
+                  <div className="logs-trend-track">
+                    <div
+                      className="logs-trend-fill alt"
+                      style={{ height: `${row.waterMl > 0 ? Math.max(6, (row.waterMl / maxWaterInTrend) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <div className="logs-trend-label">{row.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="logs-list">
@@ -809,6 +937,16 @@ export default function LogsPage({ mode = "gym" }) {
         <div className="hud-card">
           <div className="hud-card-title">Weight</div>
           <div className="hud-dim">How is the weight looking today? Keep it honest and consistent.</div>
+          <div className="logs-goal-row">
+            <input
+              className="studio-form-input"
+              type="number"
+              value={weightGoalKg}
+              onChange={(event) => setWeightGoalKg(event.target.value)}
+              placeholder="Goal (kg)"
+            />
+            <div className="logs-goal-note">{weightGoalStatus}</div>
+          </div>
           <div className="logs-row">
             <input
               className="studio-form-input"
@@ -832,6 +970,16 @@ export default function LogsPage({ mode = "gym" }) {
         <div className="hud-card">
           <div className="hud-card-title">Water</div>
           <div className="hud-dim">Were you able to hit at least 2000ml today?</div>
+          <div className="logs-goal-row">
+            <input
+              className="studio-form-input"
+              type="number"
+              value={waterGoalMl}
+              onChange={(event) => setWaterGoalMl(event.target.value)}
+              placeholder="Goal (ml)"
+            />
+            <div className="logs-goal-note">{waterGoalStatus}</div>
+          </div>
           <div className="logs-row">
             <input
               className="studio-form-input"
@@ -1212,3 +1360,4 @@ export default function LogsPage({ mode = "gym" }) {
     </div>
   );
 }
+

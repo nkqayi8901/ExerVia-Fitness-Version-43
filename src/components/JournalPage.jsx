@@ -27,6 +27,8 @@ const emptyEvening = {
   wentWell: "",
   feltHard: "",
   adjustTomorrow: "",
+  mood: "",
+  tags: "",
 };
 
 function formatDayKey(value) {
@@ -111,6 +113,9 @@ export default function JournalPage({ mode = "gym" }) {
   const [evening, setEvening] = useState({ ...emptyEvening });
   const [activeSlot, setActiveSlot] = useState("morning");
   const [editingTarget, setEditingTarget] = useState(null);
+  const [historySearch, setHistorySearch] = useState("");
+  const [selectedTag, setSelectedTag] = useState("all");
+  const [selectedMoodDay, setSelectedMoodDay] = useState("");
 
   const [savingSlot, setSavingSlot] = useState("");
 
@@ -171,6 +176,54 @@ export default function JournalPage({ mode = "gym" }) {
       .filter((d) => d.morning || d.evening)
       .sort((a, b) => new Date(b.dayKey) - new Date(a.dayKey));
   }, [structuredEntries]);
+
+  const moodTrend = useMemo(() => {
+    return historyDays
+      .map((day) => {
+        const mood = Number(day.evening?.data?.mood || 0);
+        if (!mood || mood < 1 || mood > 5) return null;
+        return {
+          dayKey: day.dayKey,
+          label: new Date(day.dayKey).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          mood,
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 7)
+      .reverse();
+  }, [historyDays]);
+
+  const averageMood = useMemo(() => {
+    if (!moodTrend.length) return null;
+    const total = moodTrend.reduce((sum, row) => sum + row.mood, 0);
+    return (total / moodTrend.length).toFixed(1);
+  }, [moodTrend]);
+
+  const availableTags = useMemo(() => {
+    const tags = new Set();
+    historyDays.forEach((day) => {
+      const rawTags = String(day.evening?.data?.tags || "");
+      rawTags
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+        .forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [historyDays]);
+
+  const filteredHistoryDays = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    return historyDays.filter((day) => {
+      const morningBlob = `${day.morning?.data?.intention || ""} ${day.morning?.data?.sessionFocus || ""} ${day.morning?.data?.nonNegotiable || ""}`.toLowerCase();
+      const eveningBlob = `${day.evening?.data?.wentWell || ""} ${day.evening?.data?.feltHard || ""} ${day.evening?.data?.adjustTomorrow || ""}`.toLowerCase();
+      const tagsBlob = String(day.evening?.data?.tags || "").toLowerCase();
+      const passesSearch = !query || morningBlob.includes(query) || eveningBlob.includes(query) || tagsBlob.includes(query);
+      const passesTag = selectedTag === "all" || tagsBlob.split(",").map((tag) => tag.trim()).includes(selectedTag);
+      const passesMoodDay = !selectedMoodDay || day.dayKey === selectedMoodDay;
+      return passesSearch && passesTag && passesMoodDay;
+    });
+  }, [historyDays, historySearch, selectedTag, selectedMoodDay]);
 
   const dayInOneGlance = useMemo(() => {
     const morningData = todayMorningEntry ? parseStructuredEntry(todayMorningEntry)?.data : null;
@@ -372,6 +425,40 @@ export default function JournalPage({ mode = "gym" }) {
         </div>
       </div>
 
+      <div className="hud-card journal-mood-card">
+        <div className="journal-mood-top">
+          <div className="hud-card-title">MOOD TREND</div>
+          <div className="journal-mood-actions">
+            <div className="journal-mood-average">{averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}</div>
+            {selectedMoodDay && (
+              <button className="studio-back journal-action-btn" type="button" onClick={() => setSelectedMoodDay("")}>
+                Clear day filter
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="journal-mood-bars">
+          {moodTrend.length ? (
+            moodTrend.map((item) => (
+              <button
+                type="button"
+                key={item.dayKey}
+                className={`journal-mood-col journal-mood-col-btn${selectedMoodDay === item.dayKey ? " active" : ""}`}
+                onClick={() => setSelectedMoodDay(item.dayKey)}
+              >
+                <div className="journal-mood-track">
+                  <div className="journal-mood-fill" style={{ height: `${(item.mood / 5) * 100}%` }} />
+                </div>
+                <div className="journal-mood-score">{item.mood}</div>
+                <div className="journal-mood-label">{item.label}</div>
+              </button>
+            ))
+          ) : (
+            <div className="hud-dim">Log evening mood to unlock your trend.</div>
+          )}
+        </div>
+      </div>
+
       <div className="journal-premium-grid">
         <div className="hud-card journal-slot-card">
           <div className="journal-slot-top">
@@ -479,6 +566,32 @@ export default function JournalPage({ mode = "gym" }) {
                 />
               </div>
 
+              <div className="journal-field-block">
+                <label className="journal-field-label">Mood score (1-5)</label>
+                <select
+                  className="journal-input"
+                  value={evening.mood || ""}
+                  onChange={(e) => setEvening((prev) => ({ ...prev, mood: e.target.value }))}
+                >
+                  <option value="">Select mood</option>
+                  <option value="1">1 - rough day</option>
+                  <option value="2">2 - off</option>
+                  <option value="3">3 - neutral</option>
+                  <option value="4">4 - good</option>
+                  <option value="5">5 - locked in</option>
+                </select>
+              </div>
+
+              <div className="journal-field-block">
+                <label className="journal-field-label">Tags (comma separated)</label>
+                <input
+                  className="journal-input"
+                  placeholder="legs day, recovery, sleep"
+                  value={evening.tags || ""}
+                  onChange={(e) => setEvening((prev) => ({ ...prev, tags: e.target.value }))}
+                />
+              </div>
+
               <button className="hud-primary-btn" onClick={() => saveSlot("evening")} disabled={savingSlot === "evening"}>
                 {savingSlot === "evening" ? "Saving..." : todayEveningEntry ? "Update Evening Reflection" : "Save Evening Reflection"}
               </button>
@@ -488,10 +601,39 @@ export default function JournalPage({ mode = "gym" }) {
       </div>
 
       <div className="hud-card journal-entries">
-        <div className="hud-card-title">ENTRY HISTORY</div>
-        {historyDays.length === 0 && <div className="hud-dim">No entries yet.</div>}
+        <div className="journal-history-top">
+          <div className="hud-card-title">ENTRY HISTORY</div>
+          <input
+            className="studio-form-input journal-history-search"
+            value={historySearch}
+            onChange={(event) => setHistorySearch(event.target.value)}
+            placeholder="Search entries, focus, wins, tags..."
+          />
+        </div>
+        {availableTags.length > 0 && (
+          <div className="journal-tags-row">
+            <button
+              type="button"
+              className={`journal-tag-pill${selectedTag === "all" ? " active" : ""}`}
+              onClick={() => setSelectedTag("all")}
+            >
+              All tags
+            </button>
+            {availableTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={`journal-tag-pill${selectedTag === tag ? " active" : ""}`}
+                onClick={() => setSelectedTag(tag)}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+        {filteredHistoryDays.length === 0 && <div className="hud-dim">No entries match this filter yet.</div>}
 
-        {historyDays.map((day) => (
+        {filteredHistoryDays.map((day) => (
           <div key={day.dayKey} className="journal-history-day">
             <div className="journal-history-date">{new Date(day.dayKey).toLocaleDateString()}</div>
 
@@ -524,6 +666,8 @@ export default function JournalPage({ mode = "gym" }) {
                   <div className="journal-history-line"><span>Went well:</span> {day.evening.data?.wentWell || "-"}</div>
                   <div className="journal-history-line"><span>Felt hard:</span> {day.evening.data?.feltHard || "-"}</div>
                   <div className="journal-history-line"><span>Adjust:</span> {day.evening.data?.adjustTomorrow || "-"}</div>
+                  <div className="journal-history-line"><span>Mood:</span> {day.evening.data?.mood || "-"}</div>
+                  <div className="journal-history-line"><span>Tags:</span> {day.evening.data?.tags || "-"}</div>
                   <div className="journal-history-actions">
                     <button
                       className="studio-back journal-action-btn"
