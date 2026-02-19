@@ -1188,7 +1188,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const buildFriendLabel = (friendRow) => {
     const currentId = Number(userId);
     const otherId = friendRow.user_id === currentId ? friendRow.friend_user_id : friendRow.user_id;
-    return profiles[otherId] || `User ${otherId}`;
+    return profiles[otherId] || "Athlete";
   };
 
 // build the small stats line for a friend row,
@@ -2356,7 +2356,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             )}
             {!groupRoomLoading &&
               groupRoomPosts.map((post) => {
-                const authorName = profiles[post.created_by] || `User ${post.created_by}`;
+                const authorName = profiles[post.created_by] || "Athlete";
                 const initial = String(authorName).charAt(0).toUpperCase();
                 const isSelf = Number(post.created_by) === Number(userId);
                 return (
@@ -2391,7 +2391,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             {groupRoomMembers.map((member) => (
               <div key={member.id} className="community-group-room-member">
                 <span className="community-notification-dot mini" />
-                <span>{profiles[member.user_id] || `User ${member.user_id}`}</span>
+                <span>{profiles[member.user_id] || "Athlete"}</span>
               </div>
             ))}
           </div>
@@ -2973,7 +2973,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       const avg = rating.count > 0 ? rating.sum / rating.count : 0;
                       const tryCount = Number(templateTryCounts[template.id] || 0);
                       const comments = templateComments[template.id] || [];
-                      const author = profiles[template.created_by] || `User ${template.created_by}`;
+                      const author = profiles[template.created_by] || "Athlete";
                       const previewRows = getTemplatePreviewRows(template, true);
                       const metaBadges = getTemplateMetaBadges(template);
                       const payload = template.payload || {};
@@ -3180,9 +3180,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   const myRating = Number(rating.mine || 0);
                   const tryCount = Number(templateTryCounts[template.id] || 0);
                   const comments = templateComments[template.id] || [];
-                  const author = profiles[template.created_by] || `User ${template.created_by}`;
-                  const previewRows = getTemplatePreviewRows(template);
+                  const author = profiles[template.created_by] || "Athlete";
+                  const previewRows = getTemplatePreviewRows(template, true);
                   const metaBadges = getTemplateMetaBadges(template);
+                  const payload = template.payload || {};
+                  const workoutRows = Array.isArray(payload.exercises) ? payload.exercises : [];
+                  const outlineRows = Array.isArray(payload.outline) ? payload.outline : [];
                   return (
                     <div key={template.id} className="community-feed-card">
                       <div className="community-feed-title">{template.title}</div>
@@ -3202,9 +3205,53 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                           ))}
                         </div>
                       )}
-                      {previewRows.length > 0 && (
+                      {template.template_type === "workout_program" && workoutRows.length > 0 && (
+                        <div className="community-template-program-report">
+                          <div className="community-template-program-head">
+                            <span className="exercise">Exercise</span>
+                            <span>Sets</span>
+                            <span>Rep Range</span>
+                            <span>Weight (kg)</span>
+                          </div>
+                          <div className="community-template-program-body">
+                            {workoutRows.map((exercise, index) => (
+                              <div className="community-template-program-row" key={`forum-program-${template.id}-${index}`}>
+                                <span className="exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
+                                <span>{Number(exercise?.sets) || 0}</span>
+                                <span>{exercise?.reps || "custom"}</span>
+                                <span>{Number(exercise?.weight) > 0 ? exercise.weight : "-"}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {template.template_type === "training_plan" && outlineRows.length > 0 && (
+                        <div className="community-template-outline">
+                          <div className="community-template-preview-title">Full plan outline</div>
+                          <div className="community-template-outline-list">
+                            {outlineRows.map((block, blockIndex) => {
+                              const sessions = Array.isArray(block?.sessions) ? block.sessions : [];
+                              return (
+                                <div key={`forum-outline-${template.id}-${blockIndex}`} className="community-template-outline-block">
+                                  <div className="community-template-outline-week">{block?.week || `Week ${blockIndex + 1}`}</div>
+                                  <div className="community-template-outline-sessions">
+                                    {sessions.length
+                                      ? sessions.map((item, itemIndex) => (
+                                          <div key={`forum-outline-session-${template.id}-${blockIndex}-${itemIndex}`}>
+                                            {item}
+                                          </div>
+                                        ))
+                                      : "No sessions"}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {template.template_type === "recipe" && previewRows.length > 0 && (
                         <div className="community-template-preview">
-                          <div className="community-template-preview-title">Preview</div>
+                          <div className="community-template-preview-title">Recipe</div>
                           <div className="community-template-preview-list">
                             {previewRows.map((row, index) => (
                               <div key={`${template.id}-preview-${index}`} className="community-template-preview-item">
@@ -3245,6 +3292,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       </div>
                       <div className="community-thread-actions">
                         <button
+                          className="studio-back community-action-btn"
+                          type="button"
+                          onClick={() => {
+                            const targetIndex = swipeTemplates.findIndex((item) => item.id === template.id);
+                            setTemplateViewMode("swipe");
+                            if (targetIndex >= 0) {
+                              setTemplateDeckIndex(targetIndex);
+                            } else {
+                              setTemplateDeckIndex(0);
+                            }
+                            setTemplateDeckDragX(0);
+                            setTemplateDeckAnimating(null);
+                          }}
+                        >
+                          View
+                        </button>
+                        <button
                           className="studio-back community-action-btn community-primary-btn"
                           type="button"
                           onClick={() => handleAddTemplateToMine(template)}
@@ -3277,7 +3341,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                           <div className="community-reply-body">{comment.body}</div>
                           <div className="community-thread-meta">
                             <span className="community-meta-pill community-meta-author">
-                              {profiles[comment.user_id] || `User ${comment.user_id}`}
+                              {profiles[comment.user_id] || "Athlete"}
                             </span>
                             <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
                           </div>
@@ -3556,7 +3620,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   <div className="community-panel-title">Private Chat</div>
                   <div className="community-friend-chat-head">
                     <div className="community-friend-title">
-                      {profiles[selectedFriendId] || `User ${selectedFriendId}`}
+                      {profiles[selectedFriendId] || "Athlete"}
                     </div>
                     <button
                       className="studio-back community-cta-btn"
@@ -3571,7 +3635,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   <div className="community-friend-chat-list" ref={friendChatListRef}>
                     {friendMessages.map((msg) => {
                       const isSelf = Number(msg.user_id) === Number(userId);
-                      const authorName = profiles[msg.user_id] || `User ${msg.user_id}`;
+                      const authorName = profiles[msg.user_id] || "Athlete";
                       const initial = String(authorName).charAt(0).toUpperCase();
                       return (
                         <div key={msg.id} className={`community-friend-msg-row ${isSelf ? "self" : ""}`}>

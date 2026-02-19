@@ -835,6 +835,34 @@ const exerciseGroups = {
   ]
 };
 
+const REP_RANGE_OPTIONS = ['1-3', '4-6', '7-9', '10-12', '13-15', 'Failure'];
+
+const normalizeRepRange = (value) => {
+  if (value === null || value === undefined) return '10-12';
+  const raw = String(value).trim();
+  if (!raw) return '10-12';
+  if (/failure/i.test(raw)) return 'Failure';
+  if (REP_RANGE_OPTIONS.includes(raw)) return raw;
+  if (/^\d+$/.test(raw)) {
+    const parsed = Number(raw);
+    if (parsed <= 3) return '1-3';
+    if (parsed <= 6) return '4-6';
+    if (parsed <= 9) return '7-9';
+    if (parsed <= 12) return '10-12';
+    return '13-15';
+  }
+  const range = raw.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (range) {
+    const first = Number(range[1]);
+    if (first <= 3) return '1-3';
+    if (first <= 6) return '4-6';
+    if (first <= 9) return '7-9';
+    if (first <= 12) return '10-12';
+    return '13-15';
+  }
+  return '10-12';
+};
+
 // StrengthProgressTab manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -885,6 +913,8 @@ const StrengthProgressTab = ({ userId }) => {
   const [guideLoading, setGuideLoading] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const pinnedProgramsStorageKey = userId ? `exervia_pinned_programs_${userId}` : null;
+  const exerciseWeightsStorageKey = userId ? `exervia_exercise_weights_${userId}` : null;
+  const [exerciseWeightMemory, setExerciseWeightMemory] = useState({});
 
   const weightExercises = [
     { value: 'squat', label: 'Squat', icon: '' },
@@ -946,6 +976,19 @@ const StrengthProgressTab = ({ userId }) => {
     return 'weights';
   };
 
+  const normalizeExerciseName = (value) => String(value || '').trim().toLowerCase();
+  const getSavedWeightForExercise = (name) => {
+    const key = normalizeExerciseName(name);
+    const remembered = Number(exerciseWeightMemory[key] || 0);
+    return remembered > 0 ? remembered : '';
+  };
+  const saveExerciseWeightMemory = (nextMemory) => {
+    setExerciseWeightMemory(nextMemory);
+    if (exerciseWeightsStorageKey) {
+      localStorage.setItem(exerciseWeightsStorageKey, JSON.stringify(nextMemory));
+    }
+  };
+
 // buildExerciseTemplate manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -954,7 +997,8 @@ const StrengthProgressTab = ({ userId }) => {
     name,
     type: getExerciseTypeForName(name),
     sets: sets || 3,
-    reps: reps || 10,
+    reps: normalizeRepRange(reps || '10-12'),
+    weight: getSavedWeightForExercise(name),
   });
 
 
@@ -1068,6 +1112,27 @@ const StrengthProgressTab = ({ userId }) => {
     return () => clearTimeout(timeout);
   }, [creatorFeedback]);
 
+  useEffect(() => {
+    if (!exerciseWeightsStorageKey) return;
+    const stored = localStorage.getItem(exerciseWeightsStorageKey);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object') {
+        setExerciseWeightMemory(parsed);
+      }
+    } catch (error) {
+      console.error('Failed to parse exercise weight memory', error);
+    }
+  }, [exerciseWeightsStorageKey]);
+
+  useEffect(() => {
+    if (!Object.keys(exerciseWeightMemory || {}).length) return;
+    setPrograms((prev) =>
+      prev.map((program) => mapSupabaseProgram(program, program.source || 'user'))
+    );
+  }, [exerciseWeightMemory]);
+
 // mapSupabaseProgram manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -1079,7 +1144,18 @@ const StrengthProgressTab = ({ userId }) => {
     focus: program.focus || 'Mixed',
     description: program.description || 'Curated routine',
     exercises: Array.isArray(program.exercises)
-      ? program.exercises
+      ? program.exercises.map((exercise) => {
+          const name = String(exercise?.name || '').trim();
+          const fallbackWeight = getSavedWeightForExercise(name);
+          const parsedWeight = Number(exercise?.weight || 0);
+          return {
+            ...exercise,
+            name,
+            sets: Number(exercise?.sets) || 3,
+            reps: normalizeRepRange(exercise?.reps),
+            weight: parsedWeight > 0 ? parsedWeight : fallbackWeight
+          };
+        })
       : [],
     source
   });
@@ -1102,7 +1178,7 @@ const StrengthProgressTab = ({ userId }) => {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const fetchPrograms = async () => {
-    const collected = fallbackPrograms.map(program => ({ ...program, source: 'fallback' }));
+    const collected = fallbackPrograms.map(program => mapSupabaseProgram(program, 'fallback'));
     const { data: templateData } = await supabase
       .from('program_templates')
       .select('*')
@@ -1157,7 +1233,8 @@ const StrengthProgressTab = ({ userId }) => {
     const remixedExercises = (program.exercises || []).map((exercise) => ({
       name: exercise.name || '',
       sets: Number(exercise.sets) || 3,
-      reps: Number(exercise.reps) || 10,
+      reps: normalizeRepRange(exercise.reps),
+      weight: Number(exercise.weight) > 0 ? Number(exercise.weight) : getSavedWeightForExercise(exercise.name),
       type: exercise.type || getExerciseTypeForName(exercise.name)
     }));
 
@@ -1241,7 +1318,7 @@ const StrengthProgressTab = ({ userId }) => {
       buildExerciseTemplate(
         name,
         sessionQueue[swapIndex]?.sets || 3,
-        sessionQueue[swapIndex]?.reps || 10
+        sessionQueue[swapIndex]?.reps || '10-12'
       )
     );
     setSwapResults(localMatches);
@@ -1263,7 +1340,7 @@ const StrengthProgressTab = ({ userId }) => {
           buildExerciseTemplate(
             name,
             sessionQueue[swapIndex]?.sets || 3,
-            sessionQueue[swapIndex]?.reps || 10
+            sessionQueue[swapIndex]?.reps || '10-12'
           )
         );
       const merged = [...localMatches, ...remoteResults].filter(
@@ -1292,7 +1369,7 @@ const StrengthProgressTab = ({ userId }) => {
         buildExerciseTemplate(
           name,
           newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-          newProgram.exercises[creatorFocusedIndex]?.reps || 10
+          newProgram.exercises[creatorFocusedIndex]?.reps || '10-12'
         )
       );
       setCreatorResults(localMatches);
@@ -1311,7 +1388,7 @@ const StrengthProgressTab = ({ userId }) => {
           buildExerciseTemplate(
             name,
             newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-            newProgram.exercises[creatorFocusedIndex]?.reps || 10
+            newProgram.exercises[creatorFocusedIndex]?.reps || '10-12'
           )
         );
       const merged = [...localMatches, ...remoteResults].filter(
@@ -1324,7 +1401,7 @@ const StrengthProgressTab = ({ userId }) => {
         buildExerciseTemplate(
           name,
           newProgram.exercises[creatorFocusedIndex]?.sets || 3,
-          newProgram.exercises[creatorFocusedIndex]?.reps || 10
+          newProgram.exercises[creatorFocusedIndex]?.reps || '10-12'
         )
       ));
     }
@@ -1491,7 +1568,6 @@ const StrengthProgressTab = ({ userId }) => {
     .sort((a, b) => scoreProgram(b) - scoreProgram(a))
     .slice(0, 3);
 
-  const normalizeExerciseName = (value) => String(value || '').trim().toLowerCase();
   const isExerciseInDraft = (name) =>
     newProgram.exercises.some((exercise) => normalizeExerciseName(exercise.name) === normalizeExerciseName(name));
 
@@ -1501,8 +1577,38 @@ const StrengthProgressTab = ({ userId }) => {
 // and output feeds the UI state or data flow
   const updateNewExercise = (index, field, value) => {
     const next = [...newProgram.exercises];
-    next[index] = { ...next[index], [field]: value };
+    const current = { ...next[index], [field]: value };
+    if (field === 'name') {
+      current.type = getExerciseTypeForName(value);
+      const remembered = getSavedWeightForExercise(value);
+      if (!Number(current.weight) && remembered) {
+        current.weight = remembered;
+      }
+    }
+    if (field === 'reps') {
+      current.reps = normalizeRepRange(value);
+    }
+    if (field === 'weight') {
+      const normalizedWeight = Number(value);
+      current.weight = Number.isFinite(normalizedWeight) && normalizedWeight > 0 ? normalizedWeight : '';
+    }
+    next[index] = current;
     setNewProgram(prev => ({ ...prev, exercises: next }));
+  };
+
+  const handleExerciseWeightBlur = (index) => {
+    const exercise = newProgram.exercises[index];
+    if (!exercise?.name) return;
+    const weight = Number(exercise.weight || 0);
+    if (!weight) return;
+    const key = normalizeExerciseName(exercise.name);
+    const previous = Number(exerciseWeightMemory[key] || 0);
+    if (previous === weight) return;
+    saveExerciseWeightMemory({
+      ...exerciseWeightMemory,
+      [key]: weight
+    });
+    setCreatorFeedback(`Saved default weight for ${exercise.name}: ${weight}kg`);
   };
 
   const addExerciseFromPick = (name, typeOverride) => {
@@ -1511,7 +1617,7 @@ const StrengthProgressTab = ({ userId }) => {
       setCreatorFeedback(`Already added: ${name}`);
       return;
     }
-    const newExercise = buildExerciseTemplate(name, 3, 10);
+    const newExercise = buildExerciseTemplate(name, 3, '10-12');
     if (typeOverride) newExercise.type = typeOverride;
     setNewProgram(prev => {
       const nextIndex = prev.exercises.length;
@@ -1540,7 +1646,7 @@ const StrengthProgressTab = ({ userId }) => {
       lastAddedTimeoutRef.current = setTimeout(() => setLastAddedExerciseIndex(null), 1600);
       return {
         ...prev,
-        exercises: [...prev.exercises, { name: '', sets: 3, reps: 10, type: 'weights' }]
+        exercises: [...prev.exercises, { name: '', sets: 3, reps: '10-12', weight: '', type: 'weights' }]
       };
     });
     setCreatorFeedback('Added blank row');
@@ -1587,7 +1693,8 @@ const StrengthProgressTab = ({ userId }) => {
       .map(ex => ({
         name: ex.name.trim(),
         sets: Number(ex.sets) || 3,
-        reps: Number(ex.reps) || 10,
+        reps: normalizeRepRange(ex.reps),
+        weight: Number(ex.weight) > 0 ? Number(ex.weight) : '',
         type: ex.type || 'weights'
       }))
       .filter(ex => ex.name.length > 0);
@@ -1608,6 +1715,13 @@ const StrengthProgressTab = ({ userId }) => {
     }]);
 
     if (!error) {
+      const nextWeights = { ...exerciseWeightMemory };
+      cleanedExercises.forEach((exercise) => {
+        if (Number(exercise.weight) > 0) {
+          nextWeights[normalizeExerciseName(exercise.name)] = Number(exercise.weight);
+        }
+      });
+      saveExerciseWeightMemory(nextWeights);
       setBanner({ type: 'success', message: 'Program saved to your library.' });
       setShowCreateProgram(false);
       setNewProgram({
@@ -2338,7 +2452,8 @@ the createPRogram helps resolve this problem  */}
                     <div className="studio-create-head">
                       <span>Exercise</span>
                       <span>Sets</span>
-                      <span>Reps</span>
+                      <span>Rep Range</span>
+                      <span>Weight (kg)</span>
                       <span>Remove</span>
                     </div>
                     {newProgram.exercises.map((exercise, index) => (
@@ -2369,12 +2484,26 @@ the createPRogram helps resolve this problem  */}
                           value={exercise.sets}
                           onChange={(event) => updateNewExercise(index, 'sets', event.target.value)}
                         />
+                        <select
+                          className="studio-create-mini"
+                          value={normalizeRepRange(exercise.reps)}
+                          onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                        >
+                          {REP_RANGE_OPTIONS.map((range) => (
+                            <option key={`${index}-range-${range}`} value={range}>
+                              {range}
+                            </option>
+                          ))}
+                        </select>
                         <input
                           className="studio-create-mini"
                           type="number"
-                          min="1"
-                          value={exercise.reps}
-                          onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                          min="0"
+                          step="0.5"
+                          placeholder="-"
+                          value={exercise.weight ?? ''}
+                          onChange={(event) => updateNewExercise(index, 'weight', event.target.value)}
+                          onBlur={() => handleExerciseWeightBlur(index)}
                         />
                         <button
                           className="studio-remove-btn"
@@ -2440,7 +2569,7 @@ the createPRogram helps resolve this problem  */}
                             buildExerciseTemplate(
                               item,
                               sessionQueue[swapIndex]?.sets || 3,
-                              sessionQueue[swapIndex]?.reps || 10
+                              sessionQueue[swapIndex]?.reps || '10-12'
                             )
                           )
                         }
@@ -2517,7 +2646,7 @@ the createPRogram helps resolve this problem  */}
                                         buildExerciseTemplate(
                                           item,
                                           sessionQueue[swapIndex]?.sets || 3,
-                                          sessionQueue[swapIndex]?.reps || 10
+                                          sessionQueue[swapIndex]?.reps || '10-12'
                                         )
                                       )
                                     }

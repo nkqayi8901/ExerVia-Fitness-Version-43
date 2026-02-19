@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from '../supabaseClient';
 import ModeNav from "./ModeNav";
 // Component: Navbar - UI layout and interactions.
@@ -7,7 +8,11 @@ import ModeNav from "./ModeNav";
 // Comment blocks explain intent without changing behavior.
 
 export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = null }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [userState, setUserState] = useState(null);
+  const [account, setAccount] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const xp = userState?.xp ?? 0;
   const level = userState?.level ?? 1;
   const rank = userState?.rank ?? "E";
@@ -19,22 +24,69 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     0,
     Math.min(100, Math.round(((xp - levelStartXp) / levelSpan) * 100))
   );
+  const resolvedUserId = userId || localStorage.getItem('exervia_user_id');
+  const initials = useMemo(() => {
+    const source = account?.display_name || account?.username || "Athlete";
+    return String(source)
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }, [account]);
 
 // fetchUserState manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const fetchUserState = async () => {
-    const userId = localStorage.getItem('exervia_user_id');
-    if (!userId) return;
+    const localUserId = localStorage.getItem('exervia_user_id');
+    if (!localUserId) return;
 
     const { data, error } = await supabase
       .from('user_state')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', localUserId)
       .single();
 
     if (!error && data) setUserState(data);
+  };
+
+  const fetchAccount = async () => {
+    if (!resolvedUserId) {
+      setAccount(null);
+      return;
+    }
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, display_name, username, email")
+      .eq("id", resolvedUserId)
+      .single();
+    if (data) {
+      setAccount(data);
+      localStorage.setItem("exervia_username", String(data.username || ""));
+      localStorage.setItem("exervia_display_name", String(data.display_name || data.full_name || ""));
+    }
+  };
+
+  const resolveProfilePath = () => {
+    if (!resolvedUserId) return "/auth";
+    const activeMode = mode || localStorage.getItem("exervia_active_mode") || "athlete";
+    return activeMode === "gym"
+      ? `/gym/${resolvedUserId}/profile`
+      : `/athlete/${resolvedUserId}/profile`;
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("exervia_user_id");
+    localStorage.removeItem("exervia_username");
+    localStorage.removeItem("exervia_display_name");
+    localStorage.removeItem("exervia_auth_uid");
+    localStorage.removeItem("exervia_active_mode");
+    setMenuOpen(false);
+    navigate("/auth");
   };
 
 // lifecycle hook for side effects,
@@ -43,6 +95,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
 // cleans up to prevent leaks
   useEffect(() => {
     fetchUserState();
+    fetchAccount();
 
 // handler manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -55,7 +108,12 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
 
     // Render
     return () => window.removeEventListener("user_state_updated", handler);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedUserId]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
 
   return (
@@ -94,6 +152,40 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
           </div>
           <span className="hud-progress-lv">LV {safeLevel + 1}</span>
         </div>
+      </div>
+
+      <div className="hud-account">
+        {resolvedUserId ? (
+          <>
+            <button
+              type="button"
+              className="hud-account-trigger"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+            >
+              <span className="hud-account-avatar">{initials || "A"}</span>
+              <span className="hud-account-copy">
+                <span className="hud-account-name">{account?.display_name || account?.full_name || "Athlete"}</span>
+                <span className="hud-account-username">@{account?.username || "username"}</span>
+              </span>
+            </button>
+            {menuOpen && (
+              <div className="hud-account-menu" role="menu">
+                <button className="hud-account-action" type="button" role="menuitem" onClick={() => navigate(resolveProfilePath())}>
+                  Profile
+                </button>
+                <button className="hud-account-action danger" type="button" role="menuitem" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <button type="button" className="studio-back hud-account-signin" onClick={() => navigate("/auth")}>
+            Sign in
+          </button>
+        )}
       </div>
     </nav>
   );

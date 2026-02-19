@@ -25,7 +25,7 @@ export default function LandingPage() {
               <h1 className="text-2xl font-bold text-white">Exervia Fitness</h1>
             </div>
             <button 
-              onClick={() => navigate('/create-profile')}
+              onClick={() => navigate('/auth')}
               className="landing-button-primary"
             >
               Get Started
@@ -54,7 +54,7 @@ export default function LandingPage() {
           {/* This is the Gym Mode card */}
           <div 
             className="landing-card landing-card-gym"
-            onClick={() => navigate('/create-profile')}
+            onClick={() => navigate('/auth')}
           >
             <div className="text-4xl mb-4">💪</div>
             <h3 className="text-2xl font-bold text-white mb-4">Gym Mode</h3>
@@ -71,7 +71,7 @@ export default function LandingPage() {
            https://tailwindui.com/preview and https://react.dev/learn/responding-to-events ,*/}
           <div 
             className="landing-card landing-card-athlete"
-            onClick={() => navigate('/create-profile')}
+            onClick={() => navigate('/auth')}
           >
             <div className="text-4xl mb-4">🏃‍♂️</div>
             <h3 className="text-2xl font-bold text-white mb-4">Athlete Mode</h3>
@@ -86,7 +86,7 @@ export default function LandingPage() {
         {/* As mentioned above button similarly this button is  adapted and created from 
         https://react.dev/learn/responding-to-events, */}
         <button
-          onClick={() => navigate('/create-profile')}
+          onClick={() => navigate('/auth')}
           className="landing-button-primary text-lg py-3 px-8"
         >
           Start Your Journey

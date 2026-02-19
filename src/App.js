@@ -6,6 +6,7 @@ import GymMode from "./components/GymMode";
 import AthleteMode from "./components/AthleteMode";
 import NutritionPage from "./components/NutritionPage";
 import JournalPage from "./components/JournalPage";
+import ResetPasswordPage from "./components/ResetPasswordPage";
 
 function App() {
   return (
@@ -13,7 +14,9 @@ function App() {
       <div className="min-h-screen">
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<FitnessProfileForm />} />
           <Route path="/create-profile" element={<FitnessProfileForm />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* ✅ IMPORTANT: allow nested pages */}
           <Route path="/gym/:id/*" element={<GymMode />} />
