@@ -394,7 +394,6 @@ function ProgramSession({ backPath, backLabel }) {
   const [restOpen, setRestOpen] = useState(false);
   const [restSeconds, setRestSeconds] = useState(0);
   const [restContext, setRestContext] = useState("set");
-  const [pendingAdvance, setPendingAdvance] = useState(null);
   const [currentSet, setCurrentSet] = useState(1);
   const [sessionPerformance, setSessionPerformance] = useState({});
 
@@ -434,7 +433,6 @@ function ProgramSession({ backPath, backLabel }) {
     setRestOpen(false);
     setRestSeconds(0);
     setRestContext("set");
-    setPendingAdvance(null);
     setCurrentSet(1);
     setSessionPerformance(buildInitialPerformance(exercises));
   }, [programId, exercises]);
@@ -468,24 +466,12 @@ function ProgramSession({ backPath, backLabel }) {
 
   useEffect(() => {
     if (!restOpen) return undefined;
-    if (restSeconds <= 0) {
-      if (pendingAdvance === "next_set") {
-        setCurrentSet((prev) => Math.min(prev + 1, targetSets));
-      }
-      if (pendingAdvance === "next_exercise") {
-        setCurrentIndex((prev) => Math.min(prev + 1, exercises.length - 1));
-        setCurrentSet(1);
-      }
-      setPendingAdvance(null);
-      setRestOpen(false);
-      setRestContext("set");
-      return undefined;
-    }
+    if (restSeconds <= 0) return undefined;
     const id = setInterval(() => {
       setRestSeconds((prev) => Math.max(prev - 1, 0));
     }, 1000);
     return () => clearInterval(id);
-  }, [exercises.length, pendingAdvance, restOpen, restSeconds, targetSets]);
+  }, [restOpen, restSeconds]);
 
   if (!program) {
     return null;
@@ -516,18 +502,10 @@ function ProgramSession({ backPath, backLabel }) {
     };
     setSessionPerformance(nextPerformance);
 
-    const restTargetSeconds = parseRestSeconds(currentExercise?.rest);
     const isLastSet = currentSet >= targetSets;
 
     if (!isLastSet) {
-      if (restTargetSeconds > 0) {
-        setPendingAdvance("next_set");
-        setRestContext("set");
-        setRestSeconds(restTargetSeconds);
-        setRestOpen(true);
-      } else {
-        setCurrentSet((prev) => Math.min(prev + 1, targetSets));
-      }
+      setCurrentSet((prev) => Math.min(prev + 1, targetSets));
       return;
     }
 
@@ -541,15 +519,8 @@ function ProgramSession({ backPath, backLabel }) {
       });
       return;
     }
-    if (restTargetSeconds <= 0) {
-      setCurrentIndex((prev) => prev + 1);
-      setCurrentSet(1);
-      return;
-    }
-    setPendingAdvance("next_exercise");
-    setRestContext("exercise");
-    setRestSeconds(restTargetSeconds);
-    setRestOpen(true);
+    setCurrentIndex((prev) => prev + 1);
+    setCurrentSet(1);
   };
 
   const handlePrevious = () => {
@@ -557,7 +528,6 @@ function ProgramSession({ backPath, backLabel }) {
       setRestOpen(false);
       setRestSeconds(0);
       setRestContext("set");
-      setPendingAdvance(null);
       return;
     }
     if (currentSet > 1) {
@@ -571,12 +541,23 @@ function ProgramSession({ backPath, backLabel }) {
     setCurrentSet(previousSets);
   };
 
-  const handleSkipRest = () => {
-    setRestSeconds(0);
-  };
-
   const handleAddRest = () => {
     setRestSeconds((prev) => Math.min(prev + 15, 900));
+  };
+
+  const handleStartRest = () => {
+    const restTargetSeconds = parseRestSeconds(currentExercise?.rest);
+    const nextSeconds = restTargetSeconds > 0 ? restTargetSeconds : 60;
+    setRestContext("set");
+    setRestSeconds(nextSeconds);
+    setRestOpen(true);
+  };
+
+  const handleRestAdvance = () => {
+    if (!restOpen) return;
+    setRestOpen(false);
+    setRestSeconds(0);
+    setRestContext("set");
   };
 
 // handleExerciseInfo manages a focused piece of logic,
@@ -624,12 +605,13 @@ function ProgramSession({ backPath, backLabel }) {
           <div className="hud-card program-timer">
             <div className="hud-card-title">Rest Timer</div>
             <div className="program-timer-main">{formatTime(restSeconds)}</div>
+            <div className="program-status-sub">Manual mode. Continue when ready.</div>
             <div className="program-timer-actions">
               <button className="hud-secondary-btn" onClick={handleAddRest} type="button">
                 +15s
               </button>
-              <button className="hud-secondary-btn" onClick={handleSkipRest} type="button">
-                Skip rest
+              <button className="hud-secondary-btn" onClick={handleRestAdvance} type="button">
+                {restSeconds > 0 ? "Advance now" : "Continue"}
               </button>
             </div>
           </div>
@@ -643,7 +625,7 @@ function ProgramSession({ backPath, backLabel }) {
             <div className="program-status-main">Exercise {currentIndex + 1} of {exercises.length}</div>
             <div className="program-status-sub">
               {restOpen
-                ? `${restContext === "set" ? "Reset between sets." : "Recover before the next exercise."}`
+                ? `${restContext === "set" ? "Reset between sets." : "Recover before the next exercise."} Continue when ready.`
                 : "Stay smooth and control the tempo."}
             </div>
             <div className="program-set-row">
@@ -662,10 +644,7 @@ function ProgramSession({ backPath, backLabel }) {
               {Array.from({ length: targetSets }).map((_, idx) => {
                 const setNumber = idx + 1;
                 const isDone =
-                  setNumber < currentSet ||
-                  (setNumber === currentSet &&
-                    restOpen &&
-                    (pendingAdvance === "next_set" || pendingAdvance === "next_exercise"));
+                  setNumber < currentSet;
                 const isActive = !restOpen && setNumber === currentSet;
                 return (
                   <span
@@ -695,16 +674,21 @@ function ProgramSession({ backPath, backLabel }) {
                 Previous exercise
               </button>
               {!restOpen ? (
-                <button className="hud-secondary-btn program-done" onClick={handleDone}>
-                  {currentSet < targetSets
-                    ? "Complete set"
-                    : currentIndex >= exercises.length - 1
-                      ? "Finish session"
-                      : "Complete exercise"}
-                </button>
+                <>
+                  <button className="hud-secondary-btn" onClick={handleStartRest} type="button">
+                    Rest
+                  </button>
+                  <button className="hud-secondary-btn program-done" onClick={handleDone}>
+                    {currentSet < targetSets
+                      ? "Complete set"
+                      : currentIndex >= exercises.length - 1
+                        ? "Finish session"
+                        : "Complete exercise"}
+                  </button>
+                </>
               ) : (
-                <button className="hud-secondary-btn program-done" onClick={handleSkipRest}>
-                  Skip rest
+                <button className="hud-secondary-btn program-done" type="button" onClick={handleRestAdvance}>
+                  {restSeconds > 0 ? "Advance now" : "Continue"}
                 </button>
               )}
             </div>

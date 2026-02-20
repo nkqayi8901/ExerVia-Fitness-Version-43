@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+// Component: ResetPasswordPage - UI layout and interactions.
+// This component renders the reset password experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
+// this is the reset password page which allows users to set a new password after they have requested a password reset email
+// the UI layout and styling was adapted from Tailwind form components found on https://tailwindui.com/preview
+// the data fetching and state management logic was adapted from the patterns 
+// I learned in the SystemStatus and Navbar components
+// the password reset flow was adapted from the official Supabase 
+// documentation found at https://supabase.com/docs/guides/auth/managing-users#resetting-passwords
+// this page is accessed through a link sent to the user's email when they request a password reset
+// the link contains a token that allows the user to set a new password without being logged in
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();

@@ -6,6 +6,13 @@ import ModeNav from "./ModeNav";
 // This component renders the navbar experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the main navigation bar that is shown at the top of the app when a user is logged in
+// it shows the app logo and name, the current mode (gym or athlete),
+// the user's level, rank, and XP, and an account menu with profile and logout options
+// the UI layout and styling was adapted from Tailwind components found on https://tailwindui.com/preview
+// the data fetching and state management logic was adapted from the patterns I learned in the SystemStatus component
+// the account menu is accessible by clicking on the user's name or avatar in the top right corner
+// the menu provides options to view the user's profile, go to profile settings, or log out
 
 export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = null }) {
   const navigate = useNavigate();

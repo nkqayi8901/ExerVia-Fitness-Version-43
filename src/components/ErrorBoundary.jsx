@@ -1,4 +1,13 @@
 import React from "react";
+// Component: ErrorBoundary - UI layout and interactions.
+// This component renders the errorboundary experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
+// this is a React error boundary component that catches JavaScript errors anywhere in its child component tree,
+// logs those errors, and displays a fallback UI instead of the component tree that crashed
+// it is used to wrap the entire app to catch any unexpected errors and provide a user-friendly message
+// the UI layout and styling was adapted from Tailwind card components found on https://tailwindui.com/preview
+// the error logging is kept simple to ensure that crashes are visible in dev tools without being obscured by additional logging logic
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {

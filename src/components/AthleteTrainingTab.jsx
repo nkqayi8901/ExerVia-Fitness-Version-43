@@ -1,4 +1,4 @@
-// src/components/AthleteTrainingTab.jsx
+﻿// src/components/AthleteTrainingTab.jsx
 // this component powers the Athlete Training area,
 // it manages plans, sessions, timers, and reflections,
 // and coordinates UI state with Supabase data,
@@ -13,6 +13,14 @@ import { trackDailyActivity } from '../services/activityTracker';
 // This component renders the athletetrainingtab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// the Athlete Training Tab is the core of the athlete mode experience,
+// it allows users to browse training plans, log sessions, and track their progress,
+// it integrates with Supabase to fetch and store plans and sessions,
+// it also includes timers and countdowns for session execution,
+// the UI layout and styling was adapted from Tailwind
+// components found on https://tailwindui.com/preview
+// the data fetching and state management logic was 
+// adapted from the patterns I learned in the SystemStatus and Navbar components,
 
 // fallbackPlans provide a local default when the API is empty,
 // they ensure the UI has content for new users,
@@ -185,6 +193,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [newPlan, setNewPlan] = useState({ ...emptyPlan });
   const [apiStatus, setApiStatus] = useState('idle');
   const [congratsOpen, setCongratsOpen] = useState(false);
+  const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
 
   // focusOptions and sports drive filters + dropdowns,
   // trainingWorlds define the themed entry points,
@@ -737,8 +746,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // attaches plan info + intention to notes,
   // resets form state and refreshes user stats
   const handleLogSession = async () => {
-    if (!session.duration || !session.sport) {
-      setBanner({ type: 'warn', message: 'Please add duration and a sport.' });
+    const typedDuration = parseInt(session.duration, 10);
+    const timerDerivedDuration = timerSeconds > 0 ? Math.max(1, Math.round(timerSeconds / 60)) : 0;
+    const planDurationTarget = Number(selectedPlan?.durationTarget || 0);
+    const resolvedDuration =
+      (Number.isFinite(typedDuration) && typedDuration > 0 ? typedDuration : 0) ||
+      timerDerivedDuration ||
+      (planDurationTarget > 0 ? planDurationTarget : 0);
+
+    if (!resolvedDuration || !session.sport) {
+      setBanner({ type: 'warn', message: 'Please add a duration source and sport before logging.' });
       return;
     }
 
@@ -758,7 +775,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       user_id: userId,
       sport: session.sport,
       level: 'advanced',
-      duration_minutes: parseInt(session.duration, 10),
+      duration_minutes: resolvedDuration,
       effort_level: null,
       mood_emoji: session.mood,
       notes: combinedNotes,
@@ -781,7 +798,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       .single();
 
     if (!error) {
-      const durationBaseXp = parseInt(session.duration, 10) || 0;
+      const durationBaseXp = resolvedDuration || 0;
       if (data?.id && durationBaseXp > 0) {
         const { error: xpError } = await supabase.rpc('grant_xp_event', {
           p_user_id: Number(userId),
@@ -802,8 +819,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           console.error('grant_xp_event failed:', xpError);
         }
       }
-      await trackDailyActivity(userId, 'training_session');
-      await recalcUserState(userId);
+      try {
+        await trackDailyActivity(userId, 'training_session');
+      } catch (activityError) {
+        console.error('trackDailyActivity failed:', activityError);
+      }
+      try {
+        await recalcUserState(userId);
+      } catch (stateError) {
+        console.error('recalcUserState failed:', stateError);
+      }
       window.dispatchEvent(new Event('user_state_updated'));
 
       if (efficiencyData && parseFloat(efficiencyData.value) < 0.03) {
@@ -827,7 +852,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setCompletedSessionLabel(loggedLabel);
       setSessionFocus('Base');
       setSelectedPlan(null);
-      setCongratsOpen(true);
+      setBanner({ type: 'success', message: '✓ Session logged.' });
+      setCongratsOpen(false);
+      setSessionLoggedPulseOpen(true);
+      if (sessionLoggedPulseTimerRef.current) {
+        clearTimeout(sessionLoggedPulseTimerRef.current);
+      }
+      sessionLoggedPulseTimerRef.current = setTimeout(() => {
+        setSessionLoggedPulseOpen(false);
+        navigate(`/athlete/${userId}/logs`);
+      }, 1100);
     } else {
       console.error('Error logging session:', error);
       setBanner({ type: 'error', message: 'Could not log session. Try again.' });
@@ -989,6 +1023,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const pinnedPlan = pinnedPlans[0] || null;
   const timelinePlan = selectedPlan || pinnedPlan || recommendedPlans[0];
   const holdTimerRef = useRef(null);
+  const sessionLoggedPulseTimerRef = useRef(null);
 
   // timer values are derived from session or plan,
   // targetSeconds drives the progress ring,
@@ -1060,6 +1095,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => {
       if (holdTimerRef.current) {
         clearInterval(holdTimerRef.current);
+      }
+      if (sessionLoggedPulseTimerRef.current) {
+        clearTimeout(sessionLoggedPulseTimerRef.current);
       }
     };
   }, []);
@@ -1821,6 +1859,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           <div className={`studio-countdown-ring countdown-${countdown}`}>
             <div className={`studio-countdown-number countdown-${countdown}`}>{countdown}</div>
             <div className="studio-countdown-sub">Lock in</div>
+          </div>
+        </div>
+      )}
+
+      {sessionLoggedPulseOpen && (
+        <div className="studio-log-pulse-overlay" role="status" aria-live="polite">
+          <div className="studio-log-pulse-card">
+            <div className="studio-log-pulse-check" aria-hidden="true">&#10003;</div>
+            <div className="studio-log-pulse-title">Session logged</div>
+            <div className="studio-log-pulse-sub">Opening your logs...</div>
           </div>
         </div>
       )}

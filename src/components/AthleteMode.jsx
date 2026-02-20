@@ -15,6 +15,14 @@ import MessagesPage from "./MessagesPage";
 // This component renders the athletemode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the main component for the athlete mode experience
+// it manages the overall layout and routing for the athlete mode sections
+// it also handles fetching the user's profile and state information to
+// display in the navbar and profile overview
+// the athlete mode is focused on holistic athlete development and provides
+// features like training plans, a training journal, progress tracking, and a community hub for athletes
+// the UI layout and styling was adapted from Tailwind components found on https://tailwindui.com/preview
+// the data fetching and state management logic was adapted from the patterns I learned in the SystemStatus and Navbar components
 
 // AthleteDashboard manages a focused piece of logic,
 // it keeps behavior isolated for readability,

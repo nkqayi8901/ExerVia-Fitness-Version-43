@@ -9,6 +9,10 @@ import { supabase } from "../supabaseClient";
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the nutrition page which is a key part of the athlete mode experience
+// it provides users with meal recommendations based on 
+// their fitness level, goals, and preferences
+// the UI layout and styling was adapted from Tailwind card and form components
 
 /**
  * ExerVia Fuel Protocol (world-class nutrition UX)

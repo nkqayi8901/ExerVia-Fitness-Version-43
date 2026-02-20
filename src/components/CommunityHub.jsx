@@ -15,6 +15,12 @@ import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the main Community Hub component which serves as the
+//  central place for all community interactions
+// it manages state for forums, groups, challenges, posts, replies, friends, and more,
+// it also handles all interactions like creating posts, joining groups, adding friends, etc.
+// The UI is organized into tabs for forums, groups, challenges, and friends,
+// with modals for creating new content and managing interactions.
 
 // This is the main Community Hub component 
 // which serves as the central place for all community interactions

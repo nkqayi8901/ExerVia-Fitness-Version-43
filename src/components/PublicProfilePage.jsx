@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+// Component: PublicProfilePage - UI layout and interactions.
+// This component renders the publicprofilepage experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
+// this is the public profile page which shows a user's profile information,
+// their groups, and recent training sessions
+// this page is accessible from the community section of both gym and athlete modes by clicking on a user's name or avatar
+// the UI layout and styling was adapted from Tailwind card components found on https://tailwindui.com/preview
+// the data fetching and state management logic was adapted from the patterns I learned in the SystemStatus and Navbar components
 
 const formatDate = (value) => {
   if (!value) return "";

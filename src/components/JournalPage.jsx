@@ -3,6 +3,20 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
+// Component: JournalPage - UI layout and interactions.
+// This component renders the journalpage experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
+// this is the journal page which is a key part of both gym and athlete modes
+// it allows users to set a morning intention and an evening reflection each day
+// the journal entries are stored as structured JSON blobs in the database
+// the UI layout and styling was adapted from Tailwind card and
+// form components found on https://tailwindui.com/preview
+// the data fetching and state management logic was adapted from 
+//the patterns I learned in the SystemStatus and Navbar components
+// the morning intention and evening reflection prompts were adapted 
+// from the principles of effective journaling outlined in th
+// e book "The Power of Daily Reflection" by Dr. John Demartini
 
 const SLOT_PREFIX = {
   morning: "MORNING_PREP::",

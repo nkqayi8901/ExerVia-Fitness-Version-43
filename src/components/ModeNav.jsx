@@ -3,6 +3,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 // This component renders the modenav experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the modenav component which provides navigation buttons for the main sections of the app
+// it is used in both gym and athlete modes and adapts its links 
+// based on the current mode and user ID
+// the navigation buttons include icons and labels for Home, 
+// Progress/Training, Journal, Logs, Nutrition, Profile, Community, and a mode switcher
+// the UI layout and styling was adapted from Tailwind components found on https://tailwindui.com/preview
 
 // IconHome manages a focused piece of logic,
 // it keeps behavior isolated for readability,

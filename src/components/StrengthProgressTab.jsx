@@ -9,6 +9,13 @@ import { supabase } from '../supabaseClient';
 // This component renders the strengthprogresstab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
 // Comment blocks explain intent without changing behavior.
+// this is the strength progress tab which is a key part of the gym mode experience
+// it shows users their progress in the gym mode and 
+// allows them to track their strength gains over time
+// the UI layout and styling was adapted from Tailwind card components 
+// found on https://tailwindui.com/preview
+// the data fetching and state management logic w
+// as adapted from the patterns I learned in the SystemStatus and Navbar components
 
 const fallbackPrograms = [
   {

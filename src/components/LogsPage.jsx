@@ -201,9 +201,9 @@ export default function LogsPage({ mode = "gym" }) {
           report: {
             sport: row.sport || "training",
             durationMinutes: row.duration_minutes || 0,
-            distanceKm: row?.distance_km || row?.metrics?.distance || "",
-            heartRate: row?.heart_rate || row?.metrics?.heartRate || "",
-            mood: row?.mood || row?.metrics?.mood || "",
+            distanceKm: row?.distance_km || row?.metrics?.distance || row?.metrics?.distance_km || "",
+            heartRate: row?.heart_rate || row?.metrics?.heart_rate || row?.metrics?.heartRate || "",
+            mood: row?.mood || row?.mood_emoji || row?.metrics?.mood || row?.metrics?.mood_emoji || "",
             planName: row?.metrics?.plan_name || row?.metrics?.program_name || "",
             notes: row?.notes || row?.metrics?.notes || "",
           },

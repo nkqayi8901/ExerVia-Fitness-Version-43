@@ -3,6 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 
+// adapted from https://reactrouter.com/en/main/hooks/use-navigate
+// this is used for navigating between various pages  
+// this is the messages page component which will allow users to chat with their friends
+// adapted general layout style and structure from Tailwind landing page examples
+// I found on https://tailwindui.com/preview , chat UI inspired by various messaging apps and
+// adapted for while on https://tailwindui.com/preview , buttons were created
+// and adapted from https://react.dev/learn/responding-to-events , time formatting adapted from
+// various patterns seen on Twitter and Instagram with some custom logic to show "just now" and
+//  "X min ago" etc.
+// this page also includes the ability to block users and report users and specific messages
+// reports are stored in a "community_reports" table in the database which is not yet configured on the backend
 const formatTime = (value) => {
   if (!value) return "";
   try {

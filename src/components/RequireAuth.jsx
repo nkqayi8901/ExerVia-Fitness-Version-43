@@ -2,6 +2,19 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+// Component: RequireAuth - UI layout and interactions.
+// This component renders the authentication gate experience and wires up its local UI state.
+// Sections below are grouped to keep the layout and user flow readable.
+// Comment blocks explain intent without changing behavior.
+// this is a wrapper component that checks if the user is authenticated before allowing access to certain routes
+// if the user is not authenticated, they are redirected to the login page
+// if they are authenticated but do not have a profile, they are redirected to the create profile page
+// this component is used to protect routes that require authentication and profile access
+// the authentication check is done by checking the Supabase auth session and
+//  then verifying if there is a corresponding user profile in the database
+// the logic for resolving the correct profile path based on the current URL 
+// and user profile is handled in the resolveProfilePath function
+// the UI layout for the loading state is a simple card that says "Checking account session..."
 const resolveProfilePath = (pathname, profileId) => {
   const match = String(pathname || "").match(/^\/(gym|athlete)\/[^/]+(\/.*)?$/);
   if (!match) return null;
