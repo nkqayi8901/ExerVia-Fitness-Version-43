@@ -22,6 +22,8 @@ const MEALDB = "https://www.themealdb.com/api/json/v1/1";
 const DUMMY_RECIPES_SEARCH = "https://dummyjson.com/recipes/search?q=";
 const OFF_SEARCH =
   "https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=8&search_terms=";
+const SPOON_BASE = "https://api.spoonacular.com";
+const SPOON_KEY = String(process.env.REACT_APP_SPOONACULAR_API_KEY || "").trim();
 
 const GOALS = [
   { key: "high_protein", label: "High Protein", hint: "lean + performance" },
@@ -44,6 +46,26 @@ const PREFERENCES = [
   { key: "chickpeas", label: "Chickpeas" },
   { key: "pork", label: "Pork" },
 ];
+
+const MEALDB_SEARCH_TERMS = {
+  chicken: ["chicken", "chicken breast", "grilled chicken"],
+  beef: ["beef", "steak", "mince"],
+  turkey: ["turkey", "ground turkey", "turkey breast", "roast turkey", "thanksgiving"],
+  seafood: ["fish", "salmon", "tuna", "prawn"],
+  vegetarian: ["vegetable", "tofu", "lentil"],
+  chickpeas: ["chickpea", "chickpeas", "garbanzo", "hummus"],
+  pork: ["pork", "pork chop", "pulled pork"]
+};
+
+const DUMMY_SEARCH_TERMS = {
+  chicken: ["chicken"],
+  beef: ["beef"],
+  turkey: ["turkey", "ground turkey", "turkey breast"],
+  seafood: ["fish", "salmon"],
+  vegetarian: ["vegetable", "tofu"],
+  chickpeas: ["chickpea", "hummus"],
+  pork: ["pork"]
+};
 
 // clampList manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -201,8 +223,45 @@ async function dummySearchByName(term) {
     }));
 }
 
+const stripHtml = (value) =>
+  String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+async function spoonSearchByName(term, limit = 8) {
+  if (!SPOON_KEY) return [];
+  const query = String(term || "").trim();
+  if (!query) return [];
+  const url = `${SPOON_BASE}/recipes/complexSearch?query=${encodeURIComponent(
+    query
+  )}&number=${Math.max(1, Math.min(12, Number(limit) || 8))}&addRecipeInformation=true&fillIngredients=true&apiKey=${encodeURIComponent(
+    SPOON_KEY
+  )}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const rows = Array.isArray(json?.results) ? json.results : [];
+  return rows
+    .filter((row) => row?.id && row?.title)
+    .map((row) => ({
+      idMeal: `spoon-${row.id}`,
+      strMeal: String(row.title || ""),
+      strMealThumb: String(row.image || ""),
+      source: "spoon",
+      spoonRecipe: row
+    }));
+}
+
 function normalizeTextId(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function recipeIdentityKey(meal) {
+  return (
+    normalizeTextId(meal?.idMeal) ||
+    normalizeTextId(meal?.strMeal) ||
+    `${normalizeTextId(meal?.source)}:${normalizeTextId(meal?.strMeal)}`
+  );
 }
 
 function convertDummyToMealShape(recipe) {
@@ -227,6 +286,45 @@ function convertDummyToMealShape(recipe) {
     protein: Number(recipe?.protein) || 0,
     carbs: Number(recipe?.carbs) || 0,
     fat: Number(recipe?.fat) || 0,
+  };
+  return base;
+}
+
+function convertSpoonToMealShape(recipe) {
+  const base = {
+    idMeal: `spoon-${recipe?.id || Date.now()}`,
+    strMeal: String(recipe?.title || "Recipe"),
+    strMealThumb: String(recipe?.image || ""),
+    strCategory: "Recipe",
+    strArea: "",
+    strInstructions: "",
+  };
+  const ingredients = Array.isArray(recipe?.extendedIngredients) ? recipe.extendedIngredients : [];
+  for (let i = 0; i < 20; i += 1) {
+    const row = ingredients[i];
+    base[`strIngredient${i + 1}`] = String(row?.name || "");
+    base[`strMeasure${i + 1}`] = String(
+      row?.amount && row?.unit ? `${row.amount} ${row.unit}` : row?.original || ""
+    );
+  }
+  const analyzedSteps = Array.isArray(recipe?.analyzedInstructions)
+    ? recipe.analyzedInstructions.flatMap((block) => block?.steps || [])
+    : [];
+  const instructionText = analyzedSteps.length
+    ? analyzedSteps.map((step) => step?.step).filter(Boolean).join("\n")
+    : stripHtml(recipe?.instructions || recipe?.summary || "");
+  base.strInstructions = instructionText;
+
+  const nutrients = Array.isArray(recipe?.nutrition?.nutrients) ? recipe.nutrition.nutrients : [];
+  const findNutrient = (name) =>
+    Number(
+      nutrients.find((row) => String(row?.name || "").toLowerCase() === name)?.amount || 0
+    );
+  base.__nutrition = {
+    calories: findNutrient("calories"),
+    protein: findNutrient("protein"),
+    carbs: findNutrient("carbohydrates"),
+    fat: findNutrient("fat"),
   };
   return base;
 }
@@ -284,6 +382,7 @@ export default function NutritionPage() {
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const [availabilityNote, setAvailabilityNote] = useState("");
 
   const [offQuery, setOffQuery] = useState("");
   const [offResults, setOffResults] = useState([]);
@@ -314,12 +413,46 @@ export default function NutritionPage() {
     carbs: "",
     fat: "",
   });
+  const [userNutritionContext, setUserNutritionContext] = useState({
+    fitnessLevel: "",
+    primaryGoal: "",
+    level: 1
+  });
 
   useEffect(() => {
     if (!saveBanner) return;
     const timeout = setTimeout(() => setSaveBanner(""), 2800);
     return () => clearTimeout(timeout);
   }, [saveBanner]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadUserContext = async () => {
+      if (!storedId) return;
+      const [{ data: profileRow }, { data: stateRow }] = await Promise.all([
+        supabase
+          .from("user_profiles")
+          .select("fitness_level,primary_goal")
+          .eq("id", Number(storedId))
+          .maybeSingle(),
+        supabase
+          .from("user_state")
+          .select("level")
+          .eq("user_id", Number(storedId))
+          .maybeSingle()
+      ]);
+      if (cancelled) return;
+      setUserNutritionContext({
+        fitnessLevel: String(profileRow?.fitness_level || ""),
+        primaryGoal: String(profileRow?.primary_goal || ""),
+        level: Number(stateRow?.level || 1)
+      });
+    };
+    loadUserContext();
+    return () => {
+      cancelled = true;
+    };
+  }, [storedId]);
 
   // Persist protocol choices
   useEffect(() => {
@@ -354,21 +487,42 @@ export default function NutritionPage() {
   }, [goal, preference, timeWindow]);
 
   const cap = useMemo(() => {
-    // more options than before + scales with time window
     if (timeWindow === "15") return 6;
     if (timeWindow === "30") return 6;
     return 6;
   }, [timeWindow]);
 
   const macroTargets = useMemo(() => {
-    if (goal === "cut") {
-      return { calories: 2100, protein: 180, carbs: 180, fat: 65 };
-    }
-    if (goal === "balanced") {
-      return { calories: 2400, protein: 155, carbs: 260, fat: 75 };
-    }
-    return { calories: 2700, protein: 190, carbs: 290, fat: 80 };
-  }, [goal]);
+    const fit = String(userNutritionContext.fitnessLevel || "").toLowerCase();
+    const profileGoal = String(userNutritionContext.primaryGoal || "").toLowerCase();
+    const userLevel = Math.max(1, Number(userNutritionContext.level || 1));
+
+    let baseCalories = 2400;
+    if (fit.includes("beginner")) baseCalories = 2200;
+    if (fit.includes("intermediate")) baseCalories = 2500;
+    if (fit.includes("advanced")) baseCalories = 2800;
+
+    if (profileGoal.includes("lose weight")) baseCalories -= 250;
+    if (profileGoal.includes("build muscle")) baseCalories += 200;
+    if (profileGoal.includes("endurance")) baseCalories += 120;
+
+    baseCalories += Math.min(300, Math.max(0, (userLevel - 1) * 18));
+
+    if (goal === "cut") baseCalories -= 220;
+    if (goal === "high_protein") baseCalories += 120;
+
+    const totalCalories = Math.max(1600, Math.round(baseCalories / 25) * 25);
+    const ratios =
+      goal === "cut"
+        ? { protein: 0.36, carbs: 0.29, fat: 0.35 }
+        : goal === "balanced"
+          ? { protein: 0.30, carbs: 0.42, fat: 0.28 }
+          : { protein: 0.35, carbs: 0.37, fat: 0.28 };
+    const protein = Math.max(120, Math.round((totalCalories * ratios.protein) / 4));
+    const carbs = Math.max(120, Math.round((totalCalories * ratios.carbs) / 4));
+    const fat = Math.max(40, Math.round((totalCalories * ratios.fat) / 9));
+    return { calories: totalCalories, protein, carbs, fat };
+  }, [goal, userNutritionContext]);
   const todayMacroTotals = useMemo(() => sumMacros(todayMeals), [todayMeals]);
   const selectedDayMeals = useMemo(() => logMealsByDate[selectedMacroDay] || [], [logMealsByDate, selectedMacroDay]);
   const weeklyMacroTrend = useMemo(() => {
@@ -464,6 +618,7 @@ export default function NutritionPage() {
 // and output feeds the UI state or data flow
   const fetchProtocolMeals = async () => {
     setError("");
+    setAvailabilityNote("");
     setLoading(true);
     setActiveMeal(null);
 
@@ -473,6 +628,7 @@ export default function NutritionPage() {
        * Then: goal health-filter + shuffle + pick cap
        */
       let list = [];
+      const mealdbTerms = MEALDB_SEARCH_TERMS[preference] || [preference];
 
       if (preference === "seafood") {
         list = await mealdbFilterByCategory("Seafood");
@@ -485,36 +641,29 @@ export default function NutritionPage() {
       } else if (preference === "chicken") {
         // MealDB has a Chicken category (better than searching chicken every time)
         list = await mealdbFilterByCategory("Chicken");
-        // add a small top-up from name search to diversify
-        const extra = await mealdbSearchByName("chicken");
-        list = [...list, ...extra];
-      } else if (preference === "turkey") {
-        // no reliable category; search is best
-        const a = await mealdbSearchByName("turkey");
-        const b = await mealdbSearchByName("ground turkey");
-        list = [...a, ...b];
-      } else if (preference === "chickpeas") {
-        // search a few common terms
-        const a = await mealdbSearchByName("chickpea");
-        const b = await mealdbSearchByName("chickpeas");
-        const c = await mealdbSearchByName("garbanzo");
-        list = [...a, ...b, ...c];
+        const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
+        list = [...list, ...extraLists.flat()];
+      } else {
+        const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
+        list = extraLists.flat();
       }
 
       // pull a second pool from DummyJSON to avoid thin result sets
-      const dummyTerms = {
-        chicken: ["chicken"],
-        beef: ["beef"],
-        turkey: ["turkey"],
-        seafood: ["fish", "salmon"],
-        vegetarian: ["vegetable", "tofu"],
-        chickpeas: ["chickpea"],
-        pork: ["pork"]
-      };
-      const terms = dummyTerms[preference] || [preference];
+      const terms = DUMMY_SEARCH_TERMS[preference] || [preference];
       const dummyLists = await Promise.all(terms.map((term) => dummySearchByName(term)));
       const dummyMeals = dummyLists.flat();
       list = [...list, ...dummyMeals];
+
+      // third pool from Spoonacular (optional API key)
+      // used when categories are thin (especially turkey) or result set is still small
+      if (SPOON_KEY && (preference === "turkey" || list.length < cap + 2)) {
+        const spoonTerms = (MEALDB_SEARCH_TERMS[preference] || [preference]).slice(
+          0,
+          preference === "turkey" ? 3 : 1
+        );
+        const spoonLists = await Promise.all(spoonTerms.map((term) => spoonSearchByName(term, 8)));
+        list = [...list, ...spoonLists.flat()];
+      }
 
       // de-dup by normalized meal name + id fallback
       const seen = new Set();
@@ -555,14 +704,17 @@ export default function NutritionPage() {
           else if (preference === "beef") raw = await mealdbFilterByCategory("Beef");
           else if (preference === "pork") raw = await mealdbFilterByCategory("Pork");
           else if (preference === "chicken") raw = await mealdbFilterByCategory("Chicken");
-          else if (preference === "turkey") raw = await mealdbSearchByName("turkey");
-          else if (preference === "chickpeas") raw = await mealdbSearchByName("chickpea");
-          raw = normalizeMealList(raw);
+          const fallbackTerms = MEALDB_SEARCH_TERMS[preference] || [preference];
+          const fallbackLists = await Promise.all(
+            fallbackTerms.map((term) => mealdbSearchByName(term))
+          );
+          raw = [...normalizeMealList(raw), ...fallbackLists.flat()];
           const s2 = new Set();
           raw = raw.filter((m) => {
-            if (!m?.idMeal) return false;
-            if (s2.has(m.idMeal)) return false;
-            s2.add(m.idMeal);
+            const key = normalizeTextId(m?.strMeal) || normalizeTextId(m?.idMeal);
+            if (!key) return false;
+            if (s2.has(key)) return false;
+            s2.add(key);
             return true;
           });
           return raw.filter((m) => {
@@ -576,8 +728,37 @@ export default function NutritionPage() {
         })());
       }
 
-      // Shuffle so "Rebuild Protocol" visibly changes results
-      const picked = clampList(shuffle(list), cap);
+      // Avoid repeating the same list over and over:
+      // keep a short rolling history per preference and prioritize unseen picks.
+      const seenKey = `exervia_fuel_seen_${preference}`;
+      const seenRaw = localStorage.getItem(seenKey);
+      const seenList = (() => {
+        try {
+          const parsed = JSON.parse(seenRaw || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      })();
+      const seenSet = new Set(seenList.map((row) => String(row)));
+      const unseenPool = list.filter((meal) => !seenSet.has(recipeIdentityKey(meal)));
+      const fallbackPool = list.filter((meal) => seenSet.has(recipeIdentityKey(meal)));
+      const orderedPool = [...shuffle(unseenPool), ...shuffle(fallbackPool)];
+      const picked = clampList(orderedPool, cap);
+      const nextSeen = [
+        ...seenList,
+        ...picked.map((meal) => recipeIdentityKey(meal)).filter(Boolean)
+      ];
+      localStorage.setItem(seenKey, JSON.stringify(nextSeen.slice(-180)));
+      if (preference === "turkey" && picked.length <= 3) {
+        if (SPOON_KEY) {
+          setAvailabilityNote("Turkey recipes are limited today. Showing the best available matches.");
+        } else {
+          setAvailabilityNote(
+            "Turkey recipes are limited on free sources. Add REACT_APP_SPOONACULAR_API_KEY to expand results."
+          );
+        }
+      }
       setProtocolMeals(picked);
     } catch {
       setError("Fuel feed failed. Try again.");
@@ -601,6 +782,26 @@ export default function NutritionPage() {
           return;
         }
       }
+      if (String(idMeal || "").startsWith("spoon-")) {
+        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        if (sourceMeal?.spoonRecipe) {
+          setActiveMeal(convertSpoonToMealShape(sourceMeal.spoonRecipe));
+          return;
+        }
+        if (SPOON_KEY) {
+          const spoonId = String(idMeal).replace("spoon-", "");
+          const res = await fetch(
+            `${SPOON_BASE}/recipes/${encodeURIComponent(
+              spoonId
+            )}/information?includeNutrition=true&apiKey=${encodeURIComponent(SPOON_KEY)}`
+          );
+          const json = await res.json();
+          if (json?.id) {
+            setActiveMeal(convertSpoonToMealShape(json));
+            return;
+          }
+        }
+      }
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
@@ -620,11 +821,12 @@ export default function NutritionPage() {
     setLoading(true);
     setError("");
     try {
-      const [mealdbHits, dummyHits] = await Promise.all([
+      const [mealdbHits, dummyHits, spoonHits] = await Promise.all([
         mealdbSearchByName(keyword),
-        dummySearchByName(keyword)
+        dummySearchByName(keyword),
+        SPOON_KEY ? spoonSearchByName(keyword, 8) : Promise.resolve([])
       ]);
-      const merged = [...mealdbHits, ...dummyHits]
+      const merged = [...mealdbHits, ...dummyHits, ...spoonHits]
         .filter((meal) => looksHealthyEnough(meal?.strMeal, goal))
         .filter((meal) => normalizeTextId(meal?.strMeal) !== normalizeTextId(activeMeal.strMeal));
       const seen = new Set();
@@ -1038,6 +1240,9 @@ export default function NutritionPage() {
             <div className="hud-divider" />
 
             <div className="hud-card-title">TODAY'S INTAKE</div>
+            <div className="hud-dim" style={{ marginBottom: 10 }}>
+              Targets are personalized from your profile, current level, and selected protocol.
+            </div>
             <div className="fuel-macro-grid">
               <div className="fuel-macro-card">
                 <div className="fuel-macro-label">Calories</div>
@@ -1307,6 +1512,11 @@ export default function NutritionPage() {
                 ))}
               </div>
             )}
+            {availabilityNote ? (
+              <div className="hud-dim" style={{ marginTop: 10 }}>
+                {availabilityNote}
+              </div>
+            ) : null}
           </div>
         </div>
 

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
+import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -117,6 +118,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const threadPath = (threadId) => `${communityBasePath}/thread/${threadId}`;
   const messagesPath = (friendId) =>
     friendId ? `${messagesBasePath}?friend=${friendId}` : messagesBasePath;
+  const blockedProfilesStorageKey = `exervia_blocked_profiles_${userId || ""}`;
   const openThreadPage = (threadId) => {
     const id = String(threadId || "").trim();
     if (!id) return;
@@ -159,6 +161,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [banner, setBanner] = useState("");
+  const [blockedProfileIds, setBlockedProfileIds] = useState([]);
 // below are state variables to manage the open/close state of various modals for 
 // creating groups, challenges, posts, replies, and adding friends
 // there are also state variables to hold the form data for these modals, as well as
@@ -231,6 +234,49 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const timeout = setTimeout(() => setBanner(""), 2600);
     return () => clearTimeout(timeout);
   }, [banner]);
+
+  useEffect(() => {
+    if (!userId) return;
+    setBlockedProfileIds(parseBlockedIds(localStorage.getItem(blockedProfilesStorageKey)));
+  }, [blockedProfilesStorageKey, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(blockedProfilesStorageKey, JSON.stringify(blockedProfileIds));
+    } catch {
+      // no-op
+    }
+  }, [blockedProfilesStorageKey, blockedProfileIds, userId]);
+
+  const isBlockedProfile = useCallback(
+    (profileId) => blockedProfileIds.includes(Number(profileId)),
+    [blockedProfileIds]
+  );
+
+  const handleToggleBlockProfile = (profileId) => {
+    const normalized = Number(profileId);
+    if (!normalized || Number(normalized) === Number(userId)) return;
+    const currentlyBlocked = isBlockedProfile(normalized);
+    setBlockedProfileIds((prev) => toggleBlockedId(prev, normalized));
+    setBanner(currentlyBlocked ? "Profile unblocked." : "Profile blocked.");
+  };
+
+  const handleReportContent = async ({ targetType, targetId, targetUserId = null }) => {
+    if (!userId || !targetType || !targetId) return;
+    const payload = {
+      reporter_id: Number(userId),
+      target_type: String(targetType),
+      target_id: String(targetId),
+      target_user_id: targetUserId ? Number(targetUserId) : null
+    };
+    const { error } = await supabase.from("community_reports").insert([payload]);
+    if (error) {
+      setBanner("Report noted locally. Backend report table not configured yet.");
+      return;
+    }
+    setBanner("Report submitted.");
+  };
 
   const recordEngagementAction = async (actionType) => {
     if (!userId) return;
@@ -1785,6 +1831,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const renderReplies = (replyNodes, level = 0, rootPostId = null) => {
     if (!replyNodes?.length) return null;
     return replyNodes.map((reply) => {
+      if (isBlockedProfile(reply.created_by)) return null;
       const author = profiles[reply.created_by] || reply.created_by || "Anonymous";
       const avatarInitial = String(author).charAt(0).toUpperCase();
       const replyKeyPrefix = `reply:${reply.id}`;
@@ -1839,6 +1886,28 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 type="button"
               >
                 Delete
+              </button>
+            )}
+            <button
+              className="community-reply-btn"
+              type="button"
+              onClick={() =>
+                handleReportContent({
+                  targetType: "reply",
+                  targetId: reply.id,
+                  targetUserId: reply.created_by
+                })
+              }
+            >
+              Report
+            </button>
+            {Number(reply.created_by) !== Number(userId) && (
+              <button
+                className="community-reply-btn"
+                type="button"
+                onClick={() => handleToggleBlockProfile(reply.created_by)}
+              >
+                {isBlockedProfile(reply.created_by) ? "Unblock" : "Block"}
               </button>
             )}
           </div>
@@ -2347,7 +2416,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               renderEmptyState({ icon: "💬", title: "No messages yet", sub: "Start the room with your first message." })
             )}
             {!groupRoomLoading &&
-              groupRoomPosts.map((post) => {
+              groupRoomPosts
+                .filter((post) => !isBlockedProfile(post.created_by))
+                .map((post) => {
                 const authorName = profiles[post.created_by] || "Athlete";
                 const initial = String(authorName).charAt(0).toUpperCase();
                 const isSelf = Number(post.created_by) === Number(userId);
@@ -2360,6 +2431,30 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         <span className="community-group-room-time">{formatTime(post.created_at)}</span>
                       </div>
                       <div className="community-group-room-body">{post.body}</div>
+                      <div className="community-reply-actions">
+                        <button
+                          className="community-reply-btn"
+                          type="button"
+                          onClick={() =>
+                            handleReportContent({
+                              targetType: "group_post",
+                              targetId: post.id,
+                              targetUserId: post.created_by
+                            })
+                          }
+                        >
+                          Report
+                        </button>
+                        {!isSelf && (
+                          <button
+                            className="community-reply-btn"
+                            type="button"
+                            onClick={() => handleToggleBlockProfile(post.created_by)}
+                          >
+                            {isBlockedProfile(post.created_by) ? "Unblock" : "Block"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -2540,6 +2635,28 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   >
                     Reply
                   </button>
+                  <button
+                    className="studio-back community-action-btn"
+                    type="button"
+                    onClick={() =>
+                      handleReportContent({
+                        targetType: "thread",
+                        targetId: selectedThread.id,
+                        targetUserId: selectedThread.created_by
+                      })
+                    }
+                  >
+                    Report
+                  </button>
+                  {Number(selectedThread.created_by) !== Number(userId) && (
+                    <button
+                      className="studio-back community-action-btn"
+                      type="button"
+                      onClick={() => handleToggleBlockProfile(selectedThread.created_by)}
+                    >
+                      {isBlockedProfile(selectedThread.created_by) ? "Unblock" : "Block"}
+                    </button>
+                  )}
                   {Number(userId) === Number(selectedThread.created_by) && (
                     <button
                       className="community-reply-btn danger"
@@ -2738,7 +2855,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 </div>
               </div>
               <div className="community-thread-list">
-              {filteredThreadPosts.map((post) => {
+              {filteredThreadPosts
+                .filter((post) => !isBlockedProfile(post.created_by))
+                .map((post) => {
                 const usingGlobalForumSearch = Boolean(search.trim());
                 const repliesByPost = usingGlobalForumSearch ? globalPostReplies : postReplies;
                 const replies = repliesByPost[post.id] || [];
@@ -2818,6 +2937,28 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       {Number(userId) === Number(post.created_by) && (
                         <button className="hud-secondary-btn danger" type="button" onClick={() => handleDeletePost(post.id)}>
                           Delete
+                        </button>
+                      )}
+                      <button
+                        className="studio-back community-action-btn"
+                        type="button"
+                        onClick={() =>
+                          handleReportContent({
+                            targetType: "thread",
+                            targetId: post.id,
+                            targetUserId: post.created_by
+                          })
+                        }
+                      >
+                        Report
+                      </button>
+                      {Number(post.created_by) !== Number(userId) && (
+                        <button
+                          className="studio-back community-action-btn"
+                          type="button"
+                          onClick={() => handleToggleBlockProfile(post.created_by)}
+                        >
+                          {isBlockedProfile(post.created_by) ? "Unblock" : "Block"}
                         </button>
                       )}
                     </div>

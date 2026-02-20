@@ -72,7 +72,13 @@ export default function RequireAuth({ children }) {
     };
   }, [currentProfileId, location.pathname]);
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <div className="page-shell">
+        <div className="hud-card">Checking account session...</div>
+      </div>
+    );
+  }
   if (!authed) return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
   if (redirectPath) return <Navigate to={redirectPath} replace />;
   return children;

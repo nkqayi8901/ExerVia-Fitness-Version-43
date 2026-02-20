@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 
 const formatTime = (value) => {
   if (!value) return "";
@@ -39,12 +40,14 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const [newChatTargetId, setNewChatTargetId] = useState("");
   const [draft, setDraft] = useState("");
   const [banner, setBanner] = useState("");
+  const [blockedUserIds, setBlockedUserIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const listRef = useRef(null);
 
   const basePath = mode === "gym" ? `/gym/${userId}` : `/athlete/${userId}`;
   const communityPath = `${basePath}/community`;
   const seenStorageKey = `exervia_messages_seen_${userId || ""}`;
+  const blockedStorageKey = `exervia_blocked_users_${userId || ""}`;
 
   useEffect(() => {
     if (!banner) return;
@@ -64,12 +67,26 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
 
   useEffect(() => {
     if (!userId) return;
+    setBlockedUserIds(parseBlockedIds(localStorage.getItem(blockedStorageKey)));
+  }, [blockedStorageKey, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
     try {
       localStorage.setItem(seenStorageKey, JSON.stringify(lastSeenByFriend));
     } catch {
       // no-op
     }
   }, [lastSeenByFriend, seenStorageKey, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(blockedStorageKey, JSON.stringify(blockedUserIds));
+    } catch {
+      // no-op
+    }
+  }, [blockedStorageKey, blockedUserIds, userId]);
 
   const loadProfiles = async (ids) => {
     const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
@@ -224,6 +241,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
 
   const conversationRows = useMemo(() => {
     return Object.entries(acceptedByOtherId)
+      .filter(([otherId]) => !blockedUserIds.includes(Number(otherId)))
       .filter(([otherId]) => Boolean(conversationHeads[otherId]))
       .map(([_, row]) => row)
       .sort((a, b) => {
@@ -233,11 +251,15 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
         const bTs = new Date(conversationHeads[bId]?.created_at || 0).getTime();
         return bTs - aTs;
       });
-  }, [acceptedByOtherId, conversationHeads, otherIdFromRow]);
+  }, [acceptedByOtherId, conversationHeads, otherIdFromRow, blockedUserIds]);
 
   const incomingRequests = useMemo(() => {
-    return friends.filter((row) => getFriendStatus(row) === "incoming");
-  }, [friends, getFriendStatus]);
+    return friends.filter((row) => {
+      if (getFriendStatus(row) !== "incoming") return false;
+      const otherId = otherIdFromRow(row);
+      return !blockedUserIds.includes(Number(otherId));
+    });
+  }, [friends, getFriendStatus, otherIdFromRow, blockedUserIds]);
 
   const hasUnreadConversation = useCallback((otherId) => {
     const head = conversationHeads[otherId];
@@ -251,6 +273,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const startableFriends = useMemo(() => {
     return Object.entries(acceptedByOtherId)
       .filter(([otherId]) => !conversationHeads[otherId])
+      .filter(([otherId]) => !blockedUserIds.includes(Number(otherId)))
       .map(([otherId, row]) => ({
         otherId: Number(otherId),
         row
@@ -260,7 +283,41 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
         const bName = String(profiles[b.otherId] || `User ${b.otherId}`).toLowerCase();
         return aName.localeCompare(bName);
       });
-  }, [acceptedByOtherId, conversationHeads, profiles]);
+  }, [acceptedByOtherId, conversationHeads, profiles, blockedUserIds]);
+
+  const isBlockedUser = useCallback(
+    (targetId) => blockedUserIds.includes(Number(targetId)),
+    [blockedUserIds]
+  );
+
+  const handleToggleBlock = (targetId, name) => {
+    const normalizedId = Number(targetId);
+    if (!normalizedId) return;
+    const currentlyBlocked = isBlockedUser(normalizedId);
+    setBlockedUserIds((prev) => toggleBlockedId(prev, normalizedId));
+    if (!currentlyBlocked && Number(selectedFriendId) === normalizedId) {
+      setSelectedFriendId(null);
+      setMessages([]);
+      setDraft("");
+    }
+    setBanner(currentlyBlocked ? `Unblocked ${name}.` : `Blocked ${name}.`);
+  };
+
+  const handleReport = async ({ targetUserId = null, targetMessageId = null, reason = "safety" }) => {
+    if (!userId) return;
+    const payload = {
+      reporter_id: Number(userId),
+      target_user_id: targetUserId ? Number(targetUserId) : null,
+      message_id: targetMessageId || null,
+      reason
+    };
+    const { error } = await supabase.from("community_reports").insert([payload]);
+    if (error) {
+      setBanner("Report noted locally. Backend report table not configured yet.");
+      return;
+    }
+    setBanner("Report submitted.");
+  };
 
   const handleApprove = async (row) => {
     const { error } = await supabase.from("community_friends").update({ status: "accepted" }).eq("id", row.id);
@@ -300,6 +357,10 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
 
   const handleSend = async () => {
     if (!selectedFriendId || !draft.trim() || !userId) return;
+    if (isBlockedUser(selectedFriendId)) {
+      setBanner("Unblock this user before sending messages.");
+      return;
+    }
     const current = Number(userId);
     const other = Number(selectedFriendId);
     const low = Math.min(current, other);
@@ -328,6 +389,10 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const handleStartNewChat = async () => {
     const targetId = Number(newChatTargetId);
     if (!targetId) return;
+    if (isBlockedUser(targetId)) {
+      setBanner("Unblock this user to start a chat.");
+      return;
+    }
     setSelectedFriendId(targetId);
     setMessages([]);
     setNewChatTargetId("");
@@ -365,6 +430,13 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                   </button>
                   <button className="hud-secondary-btn danger" type="button" onClick={() => handleReject(row)}>
                     Reject
+                  </button>
+                  <button
+                    className="studio-back community-cta-btn"
+                    type="button"
+                    onClick={() => handleToggleBlock(otherId, profiles[otherId] || `User ${otherId}`)}
+                  >
+                    {isBlockedUser(otherId) ? "Unblock" : "Block"}
                   </button>
                 </div>
               </div>
@@ -424,6 +496,13 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                   <button className="studio-back community-cta-btn" type="button" onClick={() => handleRemove(row)}>
                     Remove
                   </button>
+                  <button
+                    className="studio-back community-cta-btn"
+                    type="button"
+                    onClick={() => handleToggleBlock(otherId, profiles[otherId] || `User ${otherId}`)}
+                  >
+                    {isBlockedUser(otherId) ? "Unblock" : "Block"}
+                  </button>
                 </div>
               </div>
             );
@@ -436,6 +515,32 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
               <div className="community-friend-chat-head">
                 <div className="community-friend-title">{profiles[selectedFriendId] || "Athlete"}</div>
                 <div className="messages-scroll-actions">
+                  <button
+                    className="studio-back community-cta-btn messages-scroll-btn"
+                    type="button"
+                    onClick={() =>
+                      handleReport({
+                        targetUserId: selectedFriendId,
+                        reason: "dm_conversation"
+                      })
+                    }
+                    title="Report user"
+                  >
+                    !
+                  </button>
+                  <button
+                    className="studio-back community-cta-btn messages-scroll-btn"
+                    type="button"
+                    onClick={() =>
+                      handleToggleBlock(
+                        selectedFriendId,
+                        profiles[selectedFriendId] || `User ${selectedFriendId}`
+                      )
+                    }
+                    title={isBlockedUser(selectedFriendId) ? "Unblock user" : "Block user"}
+                  >
+                    {isBlockedUser(selectedFriendId) ? "U" : "B"}
+                  </button>
                   <button
                     className="studio-back community-cta-btn messages-scroll-btn"
                     type="button"
@@ -476,6 +581,21 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                           <span className="community-friend-msg-avatar" aria-hidden="true">{initial}</span>
                           <span className="community-friend-msg-author">{authorName}</span>
                           <span className="community-friend-msg-time">{formatTime(msg.created_at)}</span>
+                          {!isSelf && (
+                            <button
+                              className="community-reply-btn"
+                              type="button"
+                              onClick={() =>
+                                handleReport({
+                                  targetUserId: msg.user_id,
+                                  targetMessageId: msg.id,
+                                  reason: "dm_message"
+                                })
+                              }
+                            >
+                              Report
+                            </button>
+                          )}
                         </div>
                         <div className="community-friend-msg-body">{msg.body}</div>
                       </div>
@@ -486,11 +606,17 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
               <div className="community-friend-chat-input">
                 <input
                   className="community-modal-input"
-                  placeholder="Write a message"
+                  placeholder={isBlockedUser(selectedFriendId) ? "User blocked" : "Write a message"}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  disabled={isBlockedUser(selectedFriendId)}
                 />
-                <button className="studio-back community-cta-btn community-primary-btn community-chat-send-btn" type="button" onClick={handleSend}>
+                <button
+                  className="studio-back community-cta-btn community-primary-btn community-chat-send-btn"
+                  type="button"
+                  onClick={handleSend}
+                  disabled={isBlockedUser(selectedFriendId)}
+                >
                   Send
                 </button>
               </div>

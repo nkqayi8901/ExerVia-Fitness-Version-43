@@ -9,6 +9,7 @@ import JournalPage from "./components/JournalPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
+import NotFoundPage from "./components/NotFoundPage";
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
                 </RequireAuth>
               }
             />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
       </ErrorBoundary>

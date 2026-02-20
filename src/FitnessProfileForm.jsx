@@ -35,6 +35,7 @@ const parseAuthError = (error, fallback) => {
 export default function FitnessProfileForm({ settingsOnly = false }) {
   const navigate = useNavigate();
   const hasAutoRedirectedRef = useRef(false);
+  const settingsSnapshotRef = useRef(null);
 
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
@@ -56,6 +57,17 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [profile, setProfile] = useState(null);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
+  const isSettingsDirty = useMemo(() => {
+    if (!settingsOnly || !session?.user || !profile?.id) return false;
+    const snapshot = settingsSnapshotRef.current;
+    if (!snapshot) return false;
+    return (
+      String(fullName || "").trim() !== snapshot.fullName ||
+      String(username || "").trim() !== snapshot.username ||
+      String(fitnessLevel || "").trim() !== snapshot.fitnessLevel ||
+      String(primaryGoal || "").trim() !== snapshot.primaryGoal
+    );
+  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal]);
 
   const setUserStorage = (profileRow, authUser) => {
     localStorage.setItem("exervia_user_id", String(profileRow.id));
@@ -144,6 +156,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       setFitnessLevel(row.fitness_level || "Beginner");
       setPrimaryGoal(row.primary_goal || "Build Muscle");
       setUserStorage(row, nextSession.user);
+      settingsSnapshotRef.current = {
+        fullName: String(row.full_name || "").trim(),
+        username: String(row.username || "").trim(),
+        fitnessLevel: String(row.fitness_level || "Beginner").trim(),
+        primaryGoal: String(row.primary_goal || "Build Muscle").trim()
+      };
     }
     setLoading(false);
   };
@@ -203,7 +221,24 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     };
   }, [settingsOnly, loading, session, profile, resolveHomePath, navigate]);
 
+  useEffect(() => {
+    if (!settingsOnly || !session?.user) return undefined;
+    const beforeUnloadHandler = (event) => {
+      if (!isSettingsDirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", beforeUnloadHandler);
+    return () => window.removeEventListener("beforeunload", beforeUnloadHandler);
+  }, [settingsOnly, session, isSettingsDirty]);
+
+  const confirmDiscardIfDirty = () => {
+    if (!isSettingsDirty) return true;
+    return window.confirm("You have unsaved profile changes. Leave without saving?");
+  };
+
   const goToApp = async () => {
+    if (!confirmDiscardIfDirty()) return;
     if (!profile?.id) return;
     const destination = await resolveHomePath(profile.id);
     navigate(destination);
@@ -474,14 +509,34 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     setProfile(data);
     setUserStorage(data, session?.user || null);
+    settingsSnapshotRef.current = {
+      fullName: String(data.full_name || "").trim(),
+      username: String(data.username || "").trim(),
+      fitnessLevel: String(data.fitness_level || "Beginner").trim(),
+      primaryGoal: String(data.primary_goal || "Build Muscle").trim()
+    };
     setBanner("Profile updated.");
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (!confirmDiscardIfDirty()) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Logout failed:", error.message);
+    }
     clearUserStorage();
     setMode("login");
     setBanner("Logged out.");
+  };
+
+  const handleBack = async () => {
+    if (!confirmDiscardIfDirty()) return;
+    if (settingsOnly && profile?.id) {
+      const destination = await resolveHomePath(profile.id);
+      navigate(destination);
+      return;
+    }
+    navigate("/");
   };
 
   if (loading) {
@@ -505,7 +560,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
               <div className="landing-logo">E</div>
               <h1 className="text-2xl font-bold text-white">ExerVia Account</h1>
             </div>
-            <button onClick={() => navigate("/")} className="studio-back" type="button">
+            <button onClick={handleBack} className="studio-back" type="button">
               {"<- Back"}
             </button>
           </div>
@@ -623,6 +678,11 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                 <button className="profile-button-secondary" onClick={handleLogout} type="button">Logout</button>
               </div>
             </div>
+            {isSettingsDirty ? (
+              <div className="hud-dim" style={{ marginBottom: 12 }}>
+                You have unsaved changes.
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>

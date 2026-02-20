@@ -42,7 +42,7 @@ export default function LandingPage() {
           Dual-Mode <span className="landing-gradient-text">Fitness Assistant</span>
         </h1>
         <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-          Choose your path: Gym strength training or athletic performance. AI-powered guidance for every goal.
+          Choose your path: Gym strength training or athletic performance. Smart guidance for every goal.
         </p>
 
         {/* below is a Dual Mode Cards designed i got inspiration and 

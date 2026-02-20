@@ -79,14 +79,17 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Logout failed:", error.message);
+    }
     localStorage.removeItem("exervia_user_id");
     localStorage.removeItem("exervia_username");
     localStorage.removeItem("exervia_display_name");
     localStorage.removeItem("exervia_auth_uid");
     localStorage.removeItem("exervia_active_mode");
     setMenuOpen(false);
-    navigate("/auth");
+    navigate("/auth", { replace: true });
   };
 
 // lifecycle hook for side effects,
