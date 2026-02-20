@@ -1574,6 +1574,69 @@ code {
   line-height: 1.45;
 }
 
+.program-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.program-set-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.program-set-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.program-set-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.9), rgba(99, 102, 241, 0.92));
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.32);
+  transition: width 0.25s ease;
+}
+
+.program-set-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.program-set-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.22);
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.program-set-dot.done {
+  border-color: rgba(56, 189, 248, 0.72);
+  background: rgba(56, 189, 248, 0.76);
+}
+
+.program-set-dot.active {
+  border-color: rgba(34, 211, 238, 0.92);
+  background: rgba(34, 211, 238, 0.94);
+  transform: scale(1.15);
+  animation: programSetPulse 1s ease infinite;
+}
+
+@keyframes programSetPulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.34); }
+  100% { box-shadow: 0 0 0 9px rgba(34, 211, 238, 0); }
+}
+
 .program-deck {
   display: grid;
   gap: 18px;
@@ -1959,7 +2022,8 @@ code {
 
 @media (prefers-reduced-motion: reduce) {
   .program-celebration-badge,
-  .program-spark {
+  .program-spark,
+  .program-set-dot.active {
     animation: none;
     opacity: 1;
   }
@@ -5686,6 +5750,42 @@ code {
   box-shadow: 0 18px 50px rgba(2, 6, 23, 0.45);
 }
 
+.community-activity-card {
+  padding: 14px 16px;
+}
+
+.community-feed-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.community-leaderboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.community-leaderboard-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.community-leaderboard-row:first-of-type {
+  border-top: 0;
+}
+
+.community-leaderboard-name {
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
 .community-thread-card.new-thread {
   border-color: rgba(34, 211, 238, 0.64);
   box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22), 0 14px 36px rgba(34, 211, 238, 0.2);
@@ -8188,6 +8288,10 @@ code {
     align-self: flex-start;
   }
 
+  .community-leaderboard-grid {
+    grid-template-columns: 1fr;
+  }
+
   .community-thread-route-panel {
     padding: 8px 8px 14px;
   }
@@ -10446,6 +10550,28 @@ code {
   background: rgba(15,23,42,0.04);
   border-color: rgba(15,23,42,0.14);
   color: #0f172a;
+}
+.mode-gym .program-set-label {
+  color: #0f172a;
+}
+.mode-gym .program-set-track {
+  background: rgba(15, 23, 42, 0.12);
+}
+.mode-gym .program-set-fill {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.88), rgba(59, 130, 246, 0.85));
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.22);
+}
+.mode-gym .program-set-dot {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: rgba(15, 23, 42, 0.1);
+}
+.mode-gym .program-set-dot.done {
+  border-color: rgba(16, 185, 129, 0.62);
+  background: rgba(16, 185, 129, 0.6);
+}
+.mode-gym .program-set-dot.active {
+  border-color: rgba(16, 185, 129, 0.85);
+  background: rgba(16, 185, 129, 0.9);
 }
 .mode-gym .program-hold {
   background: rgba(15,23,42,0.08);

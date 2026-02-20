@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { queueLogsTrainingPrefill } from "../services/logsStorage";
+import { supabase } from "../supabaseClient";
 // Component: WorkoutProgram - UI layout and interactions.
 // This component renders the workoutprogram experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -33,6 +34,7 @@ const programs = [
 
 const REP_RANGE_OPTIONS = ["1-3", "4-6", "7-9", "10-12", "13-15", "Failure"];
 const MAX_SETS = 10;
+const EMPTY_OBJECT = Object.freeze({});
 
 const estimateRepCount = (value) => {
   const raw = String(value || "").trim().toLowerCase();
@@ -85,6 +87,25 @@ const formatTime = (value) => {
   const minutes = Math.floor(value / 60);
   const seconds = value % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
+const parseRestSeconds = (restValue) => {
+  const raw = String(restValue || "").trim().toLowerCase();
+  if (!raw) return 0;
+  if (raw.includes(":")) {
+    const [mins, secs] = raw.split(":").map((part) => Number(part || 0));
+    if (Number.isFinite(mins) && Number.isFinite(secs)) return Math.max((mins * 60) + secs, 0);
+  }
+  const minuteMatch = raw.match(/(\d+)\s*m/);
+  const secondMatch = raw.match(/(\d+)\s*s/);
+  if (minuteMatch || secondMatch) {
+    const mins = Number(minuteMatch?.[1] || 0);
+    const secs = Number(secondMatch?.[1] || 0);
+    return Math.max((mins * 60) + secs, 0);
+  }
+  const numeric = Number(raw.replace(/[^\d]/g, ""));
+  if (Number.isFinite(numeric)) return Math.max(numeric, 0);
+  return 0;
 };
 
 // findProgram manages a focused piece of logic,
@@ -370,6 +391,12 @@ function ProgramSession({ backPath, backLabel }) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [countdownOpen, setCountdownOpen] = useState(true);
   const [countdown, setCountdown] = useState(3);
+  const [restOpen, setRestOpen] = useState(false);
+  const [restSeconds, setRestSeconds] = useState(0);
+  const [restContext, setRestContext] = useState("set");
+  const [pendingAdvance, setPendingAdvance] = useState(null);
+  const [currentSet, setCurrentSet] = useState(1);
+  const [sessionPerformance, setSessionPerformance] = useState({});
 
   const exercises = useMemo(
     () =>
@@ -380,6 +407,20 @@ function ProgramSession({ backPath, backLabel }) {
     [program]
   );
   const currentExercise = exercises[currentIndex];
+  const targetSets = Math.max(Number(currentExercise?.sets) || 1, 1);
+  const setProgressPercent = Math.min((currentSet / targetSets) * 100, 100);
+
+  const buildInitialPerformance = (list) =>
+    (list || []).reduce((acc, exercise) => {
+      const id = String(exercise?.id || "");
+      if (!id) return acc;
+      acc[id] = {
+        targetSets: Math.max(Number(exercise?.sets) || 1, 1),
+        completedSets: 0,
+        completedAt: [],
+      };
+      return acc;
+    }, {});
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -390,7 +431,13 @@ function ProgramSession({ backPath, backLabel }) {
     setCountdown(3);
     setTimerSeconds(0);
     setTimerRunning(false);
-  }, [programId]);
+    setRestOpen(false);
+    setRestSeconds(0);
+    setRestContext("set");
+    setPendingAdvance(null);
+    setCurrentSet(1);
+    setSessionPerformance(buildInitialPerformance(exercises));
+  }, [programId, exercises]);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -419,6 +466,27 @@ function ProgramSession({ backPath, backLabel }) {
     return () => clearInterval(id);
   }, [timerRunning]);
 
+  useEffect(() => {
+    if (!restOpen) return undefined;
+    if (restSeconds <= 0) {
+      if (pendingAdvance === "next_set") {
+        setCurrentSet((prev) => Math.min(prev + 1, targetSets));
+      }
+      if (pendingAdvance === "next_exercise") {
+        setCurrentIndex((prev) => Math.min(prev + 1, exercises.length - 1));
+        setCurrentSet(1);
+      }
+      setPendingAdvance(null);
+      setRestOpen(false);
+      setRestContext("set");
+      return undefined;
+    }
+    const id = setInterval(() => {
+      setRestSeconds((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [exercises.length, pendingAdvance, restOpen, restSeconds, targetSets]);
+
   if (!program) {
     return null;
   }
@@ -428,16 +496,87 @@ function ProgramSession({ backPath, backLabel }) {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const handleDone = () => {
-    if (currentIndex >= exercises.length - 1) {
-      navigate(`../${programId}/finish`, { state: { ...location.state } });
+    if (!currentExercise) return;
+    const exerciseId = String(currentExercise.id || "");
+    const nowIso = new Date().toISOString();
+    const existingEntry = sessionPerformance[exerciseId] || {
+      targetSets,
+      completedSets: 0,
+      completedAt: [],
+    };
+    const nextEntry = {
+      ...existingEntry,
+      targetSets,
+      completedSets: Math.min(Number(existingEntry.completedSets || 0) + 1, targetSets),
+      completedAt: [...(existingEntry.completedAt || []), nowIso],
+    };
+    const nextPerformance = {
+      ...sessionPerformance,
+      [exerciseId]: nextEntry,
+    };
+    setSessionPerformance(nextPerformance);
+
+    const restTargetSeconds = parseRestSeconds(currentExercise?.rest);
+    const isLastSet = currentSet >= targetSets;
+
+    if (!isLastSet) {
+      if (restTargetSeconds > 0) {
+        setPendingAdvance("next_set");
+        setRestContext("set");
+        setRestSeconds(restTargetSeconds);
+        setRestOpen(true);
+      } else {
+        setCurrentSet((prev) => Math.min(prev + 1, targetSets));
+      }
       return;
     }
-    setCurrentIndex((prev) => prev + 1);
+
+    if (currentIndex >= exercises.length - 1) {
+      navigate(`../${programId}/finish`, {
+        state: {
+          ...location.state,
+          sessionPerformance: nextPerformance,
+          sessionDurationSeconds: timerSeconds,
+        },
+      });
+      return;
+    }
+    if (restTargetSeconds <= 0) {
+      setCurrentIndex((prev) => prev + 1);
+      setCurrentSet(1);
+      return;
+    }
+    setPendingAdvance("next_exercise");
+    setRestContext("exercise");
+    setRestSeconds(restTargetSeconds);
+    setRestOpen(true);
   };
 
   const handlePrevious = () => {
+    if (restOpen) {
+      setRestOpen(false);
+      setRestSeconds(0);
+      setRestContext("set");
+      setPendingAdvance(null);
+      return;
+    }
+    if (currentSet > 1) {
+      setCurrentSet((prev) => Math.max(prev - 1, 1));
+      return;
+    }
     if (currentIndex <= 0) return;
-    setCurrentIndex((prev) => prev - 1);
+    const previousIndex = currentIndex - 1;
+    const previousSets = Math.max(Number(exercises[previousIndex]?.sets) || 1, 1);
+    setCurrentIndex(previousIndex);
+    setCurrentSet(previousSets);
+  };
+
+  const handleSkipRest = () => {
+    setRestSeconds(0);
+  };
+
+  const handleAddRest = () => {
+    setRestSeconds((prev) => Math.min(prev + 15, 900));
   };
 
 // handleExerciseInfo manages a focused piece of logic,
@@ -481,6 +620,20 @@ function ProgramSession({ backPath, backLabel }) {
             <button className="hud-secondary-btn" onClick={() => setTimerSeconds(0)}>Reset</button>
           </div>
         </div>
+        {restOpen && (
+          <div className="hud-card program-timer">
+            <div className="hud-card-title">Rest Timer</div>
+            <div className="program-timer-main">{formatTime(restSeconds)}</div>
+            <div className="program-timer-actions">
+              <button className="hud-secondary-btn" onClick={handleAddRest} type="button">
+                +15s
+              </button>
+              <button className="hud-secondary-btn" onClick={handleSkipRest} type="button">
+                Skip rest
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {currentExercise && (
@@ -488,7 +641,40 @@ function ProgramSession({ backPath, backLabel }) {
           <div className="hud-card program-card active">
             <div className="hud-card-title">Session Status</div>
             <div className="program-status-main">Exercise {currentIndex + 1} of {exercises.length}</div>
-            <div className="program-status-sub">Stay smooth and control the tempo.</div>
+            <div className="program-status-sub">
+              {restOpen
+                ? `${restContext === "set" ? "Reset between sets." : "Recover before the next exercise."}`
+                : "Stay smooth and control the tempo."}
+            </div>
+            <div className="program-set-row">
+              <div className="program-set-label">Set {Math.min(currentSet, targetSets)} of {targetSets}</div>
+              <span className={`program-card-badge ${restOpen ? "" : "muted"}`}>
+                {restOpen ? `Rest ${formatTime(restSeconds)}` : `Rest ${currentExercise.rest || "0s"}`}
+              </span>
+            </div>
+            <div className="program-status-sub">
+              Completed {sessionPerformance[currentExercise.id]?.completedSets || 0} / {targetSets} sets
+            </div>
+            <div className="program-set-track" aria-hidden="true">
+              <div className="program-set-fill" style={{ width: `${setProgressPercent}%` }} />
+            </div>
+            <div className="program-set-dots" aria-label={`Set progress ${currentSet} of ${targetSets}`}>
+              {Array.from({ length: targetSets }).map((_, idx) => {
+                const setNumber = idx + 1;
+                const isDone =
+                  setNumber < currentSet ||
+                  (setNumber === currentSet &&
+                    restOpen &&
+                    (pendingAdvance === "next_set" || pendingAdvance === "next_exercise"));
+                const isActive = !restOpen && setNumber === currentSet;
+                return (
+                  <span
+                    key={`set-dot-${currentExercise.id}-${setNumber}`}
+                    className={`program-set-dot ${isDone ? "done" : ""} ${isActive ? "active" : ""}`}
+                  />
+                );
+              })}
+            </div>
             <div className="program-card-head">
               <button className="program-card-title" onClick={handleExerciseInfo} type="button">
                 {currentExercise.name}
@@ -504,13 +690,23 @@ function ProgramSession({ backPath, backLabel }) {
               <button
                 className="hud-secondary-btn program-back-step"
                 onClick={handlePrevious}
-                disabled={currentIndex === 0}
+                disabled={currentIndex === 0 && currentSet === 1 && !restOpen}
               >
                 Previous exercise
               </button>
-              <button className="hud-secondary-btn program-done" onClick={handleDone}>
-                Complete exercise
-              </button>
+              {!restOpen ? (
+                <button className="hud-secondary-btn program-done" onClick={handleDone}>
+                  {currentSet < targetSets
+                    ? "Complete set"
+                    : currentIndex >= exercises.length - 1
+                      ? "Finish session"
+                      : "Complete exercise"}
+                </button>
+              ) : (
+                <button className="hud-secondary-btn program-done" onClick={handleSkipRest}>
+                  Skip rest
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -607,19 +803,30 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { programId } = useParams();
+  const persistedRef = useRef(false);
   const injectedProgram = location.state?.program;
   const program = injectedProgram || findProgram(programId);
+  const sessionPerformance = useMemo(
+    () => location.state?.sessionPerformance || EMPTY_OBJECT,
+    [location.state]
+  );
+  const sessionDurationSeconds = Number(location.state?.sessionDurationSeconds || 0);
   const resolvedUserId = userId || localStorage.getItem("exervia_user_id") || "";
   const logsPath = mode === "athlete" ? `/athlete/${resolvedUserId}/logs` : `/gym/${resolvedUserId}/logs`;
 
   useEffect(() => {
-    if (!resolvedUserId) return;
-    const durationText = String(program?.duration || "");
-    const minutesMatch = durationText.match(/\d+/);
-    const minutes = minutesMatch ? Number(minutesMatch[0]) : "";
+    if (!resolvedUserId || persistedRef.current) return;
+    persistedRef.current = true;
+    const templateDurationText = String(program?.duration || "");
+    const templateMinutesMatch = templateDurationText.match(/\d+/);
+    const templateMinutes = templateMinutesMatch ? Number(templateMinutesMatch[0]) : "";
+    const minutes = sessionDurationSeconds > 0 ? Math.max(1, Math.round(sessionDurationSeconds / 60)) : templateMinutes;
+    const durationText = minutes ? `${minutes} min` : templateDurationText;
     const planName = program?.name || "Program";
     const reportExercises = (program?.exercises || []).map((exercise, index) => {
-      const sets = Number(exercise?.sets) || 0;
+      const entry = sessionPerformance[String(exercise?.id || "")] || null;
+      const targetSets = Number(exercise?.sets) || 0;
+      const sets = Number(entry?.completedSets ?? targetSets) || 0;
       const reps = normalizeRepTarget(exercise?.reps);
       const weight = Number(exercise?.weight) || 0;
       const repCount = estimateRepCount(reps);
@@ -628,6 +835,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         id: exercise?.id || `${planName}-${index + 1}`,
         name: exercise?.name || `Exercise ${index + 1}`,
         sets,
+        targetSets,
         reps,
         weight: exercise?.weight ?? "",
         rest: exercise?.rest || "",
@@ -636,26 +844,83 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     });
     const totalSets = reportExercises.reduce((sum, item) => sum + (Number(item.sets) || 0), 0);
     const totalTonnage = reportExercises.reduce((sum, item) => sum + (Number(item.tonnage) || 0), 0);
-    queueLogsTrainingPrefill(resolvedUserId, {
-      source: "session_completion",
-      type: mode === "athlete" ? "Training Program" : "Workout Program",
-      title: planName,
-      minutes,
-      notes: `${planName} completed`,
-      report: {
-        category: "workout_program",
-        duration: durationText || "",
-        totalExercises: reportExercises.length,
-        totalSets,
-        totalTonnage,
-        exercises: reportExercises,
-      },
-    });
-    const redirectTimer = setTimeout(() => {
-      navigate(logsPath, { state: location.state });
-    }, 1800);
-    return () => clearTimeout(redirectTimer);
-  }, [location.state, logsPath, mode, navigate, program?.name, program?.duration, program?.exercises, resolvedUserId]);
+    const persistCompletion = async () => {
+      const validStrengthRows = reportExercises
+        .filter((exercise) => exercise?.name && Number(exercise.sets || 0) > 0)
+        .map((exercise) => ({
+          user_id: Number(resolvedUserId),
+          exercise_name: String(exercise.name),
+          exercise_type: Number(exercise.weight || 0) > 0 ? "weights" : "bodyweight",
+          weight: Number(exercise.weight || 0),
+          reps: Math.max(estimateRepCount(exercise.reps), 1),
+          sets: Number(exercise.sets || 1),
+          notes: `${planName} completion`,
+          mood_emoji: "🔥",
+        }));
+
+      if (validStrengthRows.length > 0) {
+        const { data: insertedRows, error: insertError } = await supabase
+          .from("strength_logs")
+          .insert(validStrengthRows)
+          .select("id,exercise_name,weight,reps,sets");
+
+        if (insertError) {
+          console.error("Could not persist program lifts to strength_logs:", insertError);
+        } else {
+          for (const row of insertedRows || []) {
+            const idempotencyKey = `pr:${row.id}:user:${Number(resolvedUserId)}`;
+            const { error: prError } = await supabase.rpc("verify_pr_and_award_xp", {
+              p_log_id: String(row.id),
+              p_user_id: Number(resolvedUserId),
+              p_exercise_name: String(row.exercise_name || ""),
+              p_weight: Number(row.weight || 0),
+              p_reps: Number(row.reps || 0),
+              p_sets: Number(row.sets || 0),
+              p_idempotency_key: idempotencyKey,
+            });
+            if (prError) {
+              console.error("verify_pr_and_award_xp failed:", prError);
+            }
+          }
+        }
+      }
+
+      queueLogsTrainingPrefill(resolvedUserId, {
+        source: "session_completion",
+        type: mode === "athlete" ? "Training Program" : "Workout Program",
+        title: planName,
+        minutes,
+        notes: `${planName} completed`,
+        report: {
+          category: "workout_program",
+          duration: durationText || "",
+          durationSeconds: sessionDurationSeconds || null,
+          totalExercises: reportExercises.length,
+          totalSets,
+          totalTonnage,
+          exercises: reportExercises,
+        },
+      });
+
+      setTimeout(() => {
+        navigate(logsPath, { state: location.state });
+      }, 1800);
+    };
+
+    persistCompletion();
+    return undefined;
+  }, [
+    location.state,
+    logsPath,
+    mode,
+    navigate,
+    program?.name,
+    program?.duration,
+    program?.exercises,
+    resolvedUserId,
+    sessionDurationSeconds,
+    sessionPerformance,
+  ]);
 
   return (
     <div className="page-shell program-shell">

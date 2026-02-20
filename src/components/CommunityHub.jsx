@@ -98,6 +98,21 @@ const buildReplyTree = (replies) => {
   });
   return roots;
 };
+
+const getActivityLabel = (activityType) => {
+  const normalized = String(activityType || "").trim().toLowerCase();
+  if (normalized === "training_session") return "logged a training session";
+  if (normalized === "strength_log") return "logged a strength session";
+  if (normalized === "journal_entry") return "wrote a journal entry";
+  if (normalized === "community_post") return "created a forum post";
+  if (normalized === "community_reply") return "replied in forum";
+  if (normalized === "community_reaction") return "reacted to a post";
+  if (normalized === "community_template_rate") return "rated a template";
+  if (normalized === "community_template_try") return "tried a template";
+  if (normalized === "nutrition_log") return "logged nutrition";
+  if (normalized === "daily_log") return "updated daily log";
+  return normalized ? normalized.replaceAll("_", " ") : "recorded activity";
+};
 // CommunityHub is the main component for the community section of the app,
 // it manages state for forums, groups, challenges, posts, replies, friends, and more,
 // it also handles all interactions like creating posts, joining groups, adding friends, etc.
@@ -227,7 +242,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
+  const [groupLeaderboard, setGroupLeaderboard] = useState([]);
+  const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
+  const [activityFeedItems, setActivityFeedItems] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [activityFeedLoading, setActivityFeedLoading] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
+  const completedChallengeAwardRef = useRef(new Set());
 
   useEffect(() => {
     if (!banner) return;
@@ -367,6 +389,145 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     });
     setFriendLatest(latest);
   };
+
+  const loadGlobalLeaderboard = useCallback(async () => {
+    if (!userId) return;
+    setLeaderboardLoading(true);
+    const { data, error } = await supabase
+      .from("user_state")
+      .select("user_id,xp,level,rank,streak_days")
+      .order("xp", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      setGlobalLeaderboard([]);
+      setLeaderboardLoading(false);
+      return;
+    }
+    const rows = data || [];
+    setGlobalLeaderboard(rows);
+    loadProfiles(rows.map((row) => row.user_id));
+    setLeaderboardLoading(false);
+  }, [userId]);
+
+  const loadGroupLeaderboard = useCallback(async (groupId) => {
+    if (!groupId || !userId) {
+      setGroupLeaderboard([]);
+      return;
+    }
+    const { data: members, error: memberError } = await supabase
+      .from("community_group_members")
+      .select("user_id")
+      .eq("group_id", groupId);
+    if (memberError) {
+      setGroupLeaderboard([]);
+      return;
+    }
+    const memberIds = Array.from(new Set((members || []).map((row) => Number(row.user_id)).filter(Boolean)));
+    if (!memberIds.length) {
+      setGroupLeaderboard([]);
+      return;
+    }
+    const { data: rows, error: boardError } = await supabase
+      .from("user_state")
+      .select("user_id,xp,level,rank,streak_days")
+      .in("user_id", memberIds)
+      .order("xp", { ascending: false });
+    if (boardError) {
+      setGroupLeaderboard([]);
+      return;
+    }
+    setGroupLeaderboard(rows || []);
+    loadProfiles(memberIds);
+  }, [userId]);
+
+  const loadActivityFeed = useCallback(async () => {
+    if (!userId) return;
+    setActivityFeedLoading(true);
+    const acceptedFriends = friends.filter((row) => row.status === "accepted");
+    const friendIds = acceptedFriends.map((row) =>
+      Number(row.user_id) === Number(userId) ? Number(row.friend_user_id) : Number(row.user_id)
+    );
+    const actorIds = Array.from(new Set([Number(userId), ...friendIds].filter(Boolean)));
+    const joinedGroupIds = Array.from(new Set(memberships.map((row) => String(row.group_id)).filter(Boolean)));
+
+    const requests = [
+      supabase
+        .from("daily_activity")
+        .select("id,user_id,activity_type,activity_date,created_at")
+        .in("user_id", actorIds)
+        .order("created_at", { ascending: false })
+        .limit(120),
+      joinedGroupIds.length
+        ? supabase
+            .from("community_group_posts")
+            .select("id,group_id,created_by,created_at,body")
+            .in("group_id", joinedGroupIds)
+            .order("created_at", { ascending: false })
+            .limit(60)
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("community_posts")
+        .select("id,forum_id,title,created_by,created_at")
+        .in("created_by", actorIds)
+        .order("created_at", { ascending: false })
+        .limit(40),
+    ];
+
+    const [activityRes, groupPostRes, forumPostRes] = await Promise.all(requests);
+    const activityRows = activityRes.data || [];
+    const groupPostRows = groupPostRes.data || [];
+    const forumPostRows = forumPostRes.data || [];
+
+    const groupIdSet = Array.from(new Set(groupPostRows.map((row) => String(row.group_id)).filter(Boolean)));
+    let groupNameById = {};
+    if (groupIdSet.length) {
+      const { data: groupRows } = await supabase.from("community_groups").select("id,name").in("id", groupIdSet);
+      groupNameById = (groupRows || []).reduce((acc, row) => {
+        acc[row.id] = row.name || "Group";
+        return acc;
+      }, {});
+    }
+
+    const actorProfileIds = [
+      ...activityRows.map((row) => row.user_id),
+      ...groupPostRows.map((row) => row.created_by),
+      ...forumPostRows.map((row) => row.created_by),
+    ];
+    loadProfiles(actorProfileIds);
+
+    const normalized = [
+      ...activityRows.map((row) => ({
+        id: `activity-${row.id}`,
+        created_at: row.created_at || `${row.activity_date}T12:00:00`,
+        actor_id: row.user_id,
+        title: getActivityLabel(row.activity_type),
+        sub: row.activity_date ? `on ${row.activity_date}` : "",
+        type: "activity",
+      })),
+      ...groupPostRows.map((row) => ({
+        id: `group-post-${row.id}`,
+        created_at: row.created_at,
+        actor_id: row.created_by,
+        title: `posted in ${groupNameById[row.group_id] || "group chat"}`,
+        sub: row.body ? String(row.body).slice(0, 120) : "",
+        type: "group_post",
+      })),
+      ...forumPostRows.map((row) => ({
+        id: `forum-post-${row.id}`,
+        created_at: row.created_at,
+        actor_id: row.created_by,
+        title: "created a forum thread",
+        sub: row.title || "",
+        type: "forum_post",
+      })),
+    ]
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .slice(0, 80);
+
+    setActivityFeedItems(normalized);
+    setActivityFeedLoading(false);
+  }, [friends, memberships, userId]);
 
   const loadForumThreadCounts = async () => {
     const { data } = await supabase.from("community_posts").select("id,forum_id");
@@ -752,8 +913,30 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return forums.length ? forums : forumTracks;
   }, [forums]);
 
-  const tabOrder = ["forums", "templates", "groups", "challenges", "circle"];
+  const tabOrder = ["forums", "feed", "leaderboard", "templates", "groups", "challenges", "circle"];
   const activeTabIndex = Math.max(tabOrder.indexOf(activeTab), 0);
+
+  useEffect(() => {
+    if (!leaderboardGroupId && memberships.length) {
+      const nextGroupId = String(memberships[0]?.group_id || "");
+      if (nextGroupId) setLeaderboardGroupId(nextGroupId);
+    }
+  }, [leaderboardGroupId, memberships]);
+
+  useEffect(() => {
+    if (activeTab !== "feed") return;
+    loadActivityFeed();
+  }, [activeTab, loadActivityFeed]);
+
+  useEffect(() => {
+    if (activeTab !== "leaderboard") return;
+    loadGlobalLeaderboard();
+  }, [activeTab, loadGlobalLeaderboard]);
+
+  useEffect(() => {
+    if (activeTab !== "leaderboard" || !leaderboardGroupId) return;
+    loadGroupLeaderboard(leaderboardGroupId);
+  }, [activeTab, leaderboardGroupId, loadGroupLeaderboard]);
 
 // sync the new post modal forum selector with the active forum,
 // this ensures the modal always defaults to the forum the user is browsing,
@@ -1363,7 +1546,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const { error } = await supabase.from("community_challenge_participants").insert([
       {
         challenge_id: challengeId,
-        user_id: userId,
+        user_id: Number(userId),
         progress: 0
       }
     ]);
@@ -1962,8 +2145,53 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return groupSearch.trim() ? next : next.slice(0, 12);
   }, [visibleGroups, groupSearch, isGroupMember]);
   const joinedChallengeIds = useMemo(() => {
-    return new Set(Object.keys(challengeMyProgress).map((id) => Number(id)));
+    return new Set(Object.keys(challengeMyProgress).map((id) => String(id)));
   }, [challengeMyProgress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId || !challenges.length) return undefined;
+
+    const awardChallengeCompletions = async () => {
+      let awardedCount = 0;
+      for (const challenge of challenges) {
+        const challengeId = String(challenge?.id || "");
+        if (!challengeId) continue;
+        const targetValue = Number(challenge?.target_value || 0);
+        if (targetValue <= 0) continue;
+        const myProgress = Number(challengeMyProgress[challengeId] || 0);
+        if (myProgress < targetValue) continue;
+
+        const idempotencyKey = `challenge:${challengeId}:user:${Number(userId)}`;
+        if (completedChallengeAwardRef.current.has(idempotencyKey)) continue;
+
+        const { error } = await supabase.rpc("complete_challenge_with_xp", {
+          p_challenge_id: challengeId,
+          p_user_id: Number(userId),
+          p_progress: myProgress,
+          p_idempotency_key: idempotencyKey,
+        });
+        if (error) {
+          console.error("complete_challenge_with_xp failed:", error);
+          continue;
+        }
+
+        completedChallengeAwardRef.current.add(idempotencyKey);
+        awardedCount += 1;
+      }
+
+      if (!cancelled && awardedCount > 0) {
+        setBanner(awardedCount === 1 ? "Challenge completed. XP awarded." : "Challenges completed. XP awarded.");
+        await recalcUserState(userId);
+        window.dispatchEvent(new Event("user_state_updated"));
+      }
+    };
+
+    awardChallengeCompletions();
+    return () => {
+      cancelled = true;
+    };
+  }, [challengeMyProgress, challenges, userId]);
   const selectedThreadRepliesCollapsed = selectedThread
     ? Boolean(collapsedThreadIds[selectedThread.id])
     : false;
@@ -2534,6 +2762,20 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               Forums
             </button>
             <button
+              className={`community-tab ${activeTab === "feed" ? "active" : ""}`}
+              onClick={() => setActiveTab("feed")}
+              type="button"
+            >
+              Feed
+            </button>
+            <button
+              className={`community-tab ${activeTab === "leaderboard" ? "active" : ""}`}
+              onClick={() => setActiveTab("leaderboard")}
+              type="button"
+            >
+              Leaderboard
+            </button>
+            <button
               className={`community-tab ${activeTab === "templates" ? "active" : ""}`}
               onClick={() => setActiveTab("templates")}
               type="button"
@@ -2984,6 +3226,111 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         setCreatePostOpen(true);
                       }
                 })}
+            </div>
+          )}
+
+          {activeTab === "feed" && (
+            <div className="community-panel">
+              <div className="community-panel-title">Activity Feed</div>
+              <div className="community-feed-list">
+                {activityFeedLoading && <div className="community-empty">Loading feed...</div>}
+                {!activityFeedLoading &&
+                  activityFeedItems.map((item) => (
+                    <div key={item.id} className="community-feed-card community-activity-card">
+                      <div className="community-feed-head">
+                        <div className="community-feed-title-row">
+                          <button
+                            type="button"
+                            className="community-profile-link community-feed-title"
+                            onClick={() => openUserProfile(item.actor_id)}
+                          >
+                            {profiles[item.actor_id] || `User ${item.actor_id}`}
+                          </button>
+                          <span className="community-feed-sub">{formatTime(item.created_at)}</span>
+                        </div>
+                      </div>
+                      <div className="community-feed-sub">{item.title}</div>
+                      {item.sub ? <div className="community-feed-sub">{item.sub}</div> : null}
+                    </div>
+                  ))}
+                {!activityFeedLoading &&
+                  !activityFeedItems.length &&
+                  renderEmptyState({
+                    icon: "LIVE",
+                    title: "No activity yet",
+                    sub: "When your friends and groups log progress, it will appear here.",
+                  })}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "leaderboard" && (
+            <div className="community-panel">
+              <div className="community-panel-title">Leaderboards</div>
+              <div className="community-thread-toolbar">
+                <div className="community-thread-toolbar-left">
+                  <div className="community-thread-label">Group leaderboard</div>
+                  <select
+                    className="community-thread-select"
+                    value={leaderboardGroupId}
+                    onChange={(event) => setLeaderboardGroupId(event.target.value)}
+                  >
+                    <option value="">Select group</option>
+                    {memberships.map((membership) => {
+                      const id = String(membership.group_id || "");
+                      const group = groups.find((item) => String(item.id) === id);
+                      return (
+                        <option key={`lb-group-${id}`} value={id}>
+                          {group?.name || "Group"}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+              <div className="community-leaderboard-grid">
+                <div className="community-feed-card">
+                  <div className="community-panel-title">Global Top</div>
+                  {leaderboardLoading && <div className="community-empty">Loading leaderboard...</div>}
+                  {!leaderboardLoading &&
+                    globalLeaderboard.slice(0, 15).map((row, index) => (
+                      <div key={`global-${row.user_id}`} className="community-leaderboard-row">
+                        <span className="community-meta-pill">#{index + 1}</span>
+                        <button
+                          type="button"
+                          className="community-profile-link community-leaderboard-name"
+                          onClick={() => openUserProfile(row.user_id)}
+                        >
+                          {profiles[row.user_id] || `User ${row.user_id}`}
+                        </button>
+                        <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
+                        <span className="community-meta-pill">{row.rank || "-"}</span>
+                      </div>
+                    ))}
+                </div>
+                <div className="community-feed-card">
+                  <div className="community-panel-title">Group Top</div>
+                  {!leaderboardGroupId && <div className="community-empty">Join a group to view rankings.</div>}
+                  {!!leaderboardGroupId &&
+                    groupLeaderboard.slice(0, 15).map((row, index) => (
+                      <div key={`group-${row.user_id}`} className="community-leaderboard-row">
+                        <span className="community-meta-pill">#{index + 1}</span>
+                        <button
+                          type="button"
+                          className="community-profile-link community-leaderboard-name"
+                          onClick={() => openUserProfile(row.user_id)}
+                        >
+                          {profiles[row.user_id] || `User ${row.user_id}`}
+                        </button>
+                        <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
+                        <span className="community-meta-pill">{row.rank || "-"}</span>
+                      </div>
+                    ))}
+                  {!!leaderboardGroupId && !groupLeaderboard.length && (
+                    <div className="community-empty">No ranked members yet.</div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -3627,7 +3974,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 const targetValue = Number(challenge.target_value || 0);
                 const myProgress = Number(challengeMyProgress[challenge.id] || 0);
                 const completion = targetValue > 0 ? Math.min((myProgress / targetValue) * 100, 100) : 0;
-                const joined = joinedChallengeIds.has(Number(challenge.id));
+                const joined = joinedChallengeIds.has(String(challenge.id));
                 const createdAtMs = Date.parse(challenge.created_at || "");
                 const durationDays = Number(challenge.duration_days || 7);
                 const elapsedDays =

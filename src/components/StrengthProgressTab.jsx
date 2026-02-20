@@ -906,6 +906,7 @@ const StrengthProgressTab = ({ userId }) => {
   const [creatorFeedback, setCreatorFeedback] = useState('');
   const lastAddedTimeoutRef = useRef(null);
   const lastRowTapRef = useRef({ index: null, time: 0 });
+  const prVerificationRef = useRef(new Set());
   const [creatorSearch, setCreatorSearch] = useState('');
   const [creatorResults, setCreatorResults] = useState([]);
   const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
@@ -988,6 +989,17 @@ const StrengthProgressTab = ({ userId }) => {
   };
 
   const normalizeExerciseName = (value) => String(value || '').trim().toLowerCase();
+  const getDefaultRestForType = (type) => {
+    const normalized = String(type || '').toLowerCase();
+    if (normalized === 'bodyweight') return '60s';
+    if (normalized === 'conditioning') return '75s';
+    return '90s';
+  };
+  const normalizeExerciseRest = (rest, type) => {
+    const raw = String(rest || '').trim();
+    if (!raw) return getDefaultRestForType(type);
+    return raw;
+  };
   const getSavedWeightForExercise = (name) => {
     const key = normalizeExerciseName(name);
     const remembered = Number(exerciseWeightMemory[key] || 0);
@@ -1010,6 +1022,7 @@ const StrengthProgressTab = ({ userId }) => {
     sets: sets || 3,
     reps: normalizeRepRange(reps || '10-12'),
     weight: getSavedWeightForExercise(name),
+    rest: normalizeExerciseRest('', getExerciseTypeForName(name)),
   });
 
 
@@ -1124,6 +1137,49 @@ const StrengthProgressTab = ({ userId }) => {
   }, [creatorFeedback]);
 
   useEffect(() => {
+    if (!userId) return () => {};
+    const verifyPrForLog = async (lift) => {
+      if (!lift?.id) return;
+      const idempotencyKey = `pr:${lift.id}:user:${Number(userId)}`;
+      if (prVerificationRef.current.has(idempotencyKey)) return;
+
+      const { error } = await supabase.rpc('verify_pr_and_award_xp', {
+        p_log_id: String(lift.id),
+        p_user_id: Number(userId),
+        p_exercise_name: String(lift.exercise_name || ''),
+        p_weight: Number(lift.weight || 0),
+        p_reps: Number(lift.reps || 0),
+        p_sets: Number(lift.sets || 0),
+        p_idempotency_key: idempotencyKey,
+      });
+      if (error) {
+        console.error('verify_pr_and_award_xp failed:', error);
+        return;
+      }
+      prVerificationRef.current.add(idempotencyKey);
+      window.dispatchEvent(new Event('user_state_updated'));
+    };
+
+    const channel = supabase
+      .channel(`strength-pr-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'strength_logs' },
+        async (payload) => {
+          const lift = payload?.new;
+          if (!lift || Number(lift.user_id) !== Number(userId)) return;
+          setRecentLifts((prev) => [lift, ...prev].slice(0, 120));
+          await verifyPrForLog(lift);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  useEffect(() => {
     if (!exerciseWeightsStorageKey) return;
     const stored = localStorage.getItem(exerciseWeightsStorageKey);
     if (!stored) return;
@@ -1157,6 +1213,7 @@ const StrengthProgressTab = ({ userId }) => {
     exercises: Array.isArray(program.exercises)
       ? program.exercises.map((exercise) => {
           const name = String(exercise?.name || '').trim();
+          const resolvedType = exercise?.type || getExerciseTypeForName(name);
           const fallbackWeight = getSavedWeightForExercise(name);
           const parsedWeight = Number(exercise?.weight || 0);
           return {
@@ -1165,6 +1222,9 @@ const StrengthProgressTab = ({ userId }) => {
             sets: Number(exercise?.sets) || 3,
             reps: normalizeRepRange(exercise?.reps),
             weight: parsedWeight > 0 ? parsedWeight : fallbackWeight
+            ,
+            type: resolvedType,
+            rest: normalizeExerciseRest(exercise?.rest, resolvedType),
           };
         })
       : [],
@@ -1246,7 +1306,8 @@ const StrengthProgressTab = ({ userId }) => {
       sets: Number(exercise.sets) || 3,
       reps: normalizeRepRange(exercise.reps),
       weight: Number(exercise.weight) > 0 ? Number(exercise.weight) : getSavedWeightForExercise(exercise.name),
-      type: exercise.type || getExerciseTypeForName(exercise.name)
+      type: exercise.type || getExerciseTypeForName(exercise.name),
+      rest: normalizeExerciseRest(exercise.rest, exercise.type || getExerciseTypeForName(exercise.name)),
     }));
 
     setNewProgram({
@@ -1674,6 +1735,7 @@ const StrengthProgressTab = ({ userId }) => {
     const current = { ...next[index], [field]: value };
     if (field === 'name') {
       current.type = getExerciseTypeForName(value);
+      current.rest = normalizeExerciseRest(current.rest, current.type);
       const remembered = getSavedWeightForExercise(value);
       if (!Number(current.weight) && remembered) {
         current.weight = remembered;
@@ -1740,7 +1802,10 @@ const StrengthProgressTab = ({ userId }) => {
       lastAddedTimeoutRef.current = setTimeout(() => setLastAddedExerciseIndex(null), 1600);
       return {
         ...prev,
-        exercises: [...prev.exercises, { name: '', sets: 3, reps: '10-12', weight: '', type: 'weights' }]
+        exercises: [
+          ...prev.exercises,
+          { name: '', sets: 3, reps: '10-12', weight: '', type: 'weights', rest: getDefaultRestForType('weights') }
+        ]
       };
     });
     setCreatorFeedback('Added blank row');
@@ -1789,7 +1854,8 @@ const StrengthProgressTab = ({ userId }) => {
         sets: Number(ex.sets) || 3,
         reps: normalizeRepRange(ex.reps),
         weight: Number(ex.weight) > 0 ? Number(ex.weight) : '',
-        type: ex.type || 'weights'
+        type: ex.type || 'weights',
+        rest: normalizeExerciseRest(ex.rest, ex.type || 'weights')
       }))
       .filter(ex => ex.name.length > 0);
 
@@ -2212,7 +2278,21 @@ const StrengthProgressTab = ({ userId }) => {
                   <div className="studio-queue-actions studio-session-preview-actions">
                     <button
                       className="studio-queue-btn"
-                      onClick={() =>
+                      onClick={() => {
+                        const normalizedExercises = (selectedProgram.exercises || []).map((exercise) => {
+                          const resolvedType = exercise.type || getExerciseTypeForName(exercise.name);
+                          return {
+                            ...exercise,
+                            sets: Number(exercise.sets) || 3,
+                            reps: normalizeRepRange(exercise.reps),
+                            weight:
+                              Number(exercise.weight) > 0
+                                ? Number(exercise.weight)
+                                : getSavedWeightForExercise(exercise.name),
+                            type: resolvedType,
+                            rest: normalizeExerciseRest(exercise.rest, resolvedType),
+                          };
+                        });
                         navigate(`/gym/${userId}/program/${selectedProgram.id}`, {
                           state: {
                             program: {
@@ -2220,11 +2300,11 @@ const StrengthProgressTab = ({ userId }) => {
                               name: selectedProgram.name,
                               focus: selectedProgram.goal || selectedProgram.description || 'Strength session',
                               duration: selectedProgram.duration || '',
-                              exercises: selectedProgram.exercises || []
+                              exercises: normalizedExercises
                             }
                           }
-                        })
-                      }
+                        });
+                      }}
                       type="button"
                     >
                       Start session queue

@@ -781,6 +781,27 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       .single();
 
     if (!error) {
+      const durationBaseXp = parseInt(session.duration, 10) || 0;
+      if (data?.id && durationBaseXp > 0) {
+        const { error: xpError } = await supabase.rpc('grant_xp_event', {
+          p_user_id: Number(userId),
+          p_event_type: 'training_session',
+          p_base_xp: durationBaseXp,
+          p_idempotency_key: `training_session:${data.id}`,
+          p_source_table: 'training_sessions',
+          p_source_id: String(data.id),
+          p_meta: {
+            sport: session.sport,
+            focus: sessionFocus,
+            duration_minutes: durationBaseXp,
+            plan_id: selectedPlan ? selectedPlan.id : null,
+            plan_name: selectedPlan ? selectedPlan.name : null,
+          },
+        });
+        if (xpError) {
+          console.error('grant_xp_event failed:', xpError);
+        }
+      }
       await trackDailyActivity(userId, 'training_session');
       await recalcUserState(userId);
       window.dispatchEvent(new Event('user_state_updated'));
