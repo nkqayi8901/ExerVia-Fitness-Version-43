@@ -10892,6 +10892,222 @@ code {
   }
 }
 
+/* Strength exercise progress selector */
+.studio-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.studio-chip {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.3);
+  color: rgba(226, 232, 240, 0.92);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}
+.studio-chip.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+/* Nutrition macro tracking */
+.fuel-macro-grid {
+  margin: 8px 0 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.fuel-macro-card {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.24);
+}
+.fuel-macro-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(148, 163, 184, 0.95);
+}
+.fuel-macro-value {
+  margin-top: 6px;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.95);
+}
+.fuel-macro-value span {
+  font-weight: 500;
+  color: rgba(148, 163, 184, 0.9);
+}
+.fuel-macro-bar {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+}
+.fuel-macro-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.95), rgba(59, 130, 246, 0.9));
+}
+.fuel-macro-fill.protein {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.95), rgba(45, 212, 191, 0.9));
+}
+.fuel-macro-fill.carbs {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.9));
+}
+.fuel-macro-fill.fat {
+  background: linear-gradient(90deg, rgba(244, 114, 182, 0.9), rgba(236, 72, 153, 0.9));
+}
+.fuel-quick-row {
+  display: grid;
+  grid-template-columns: 2fr repeat(4, minmax(68px, 1fr)) auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fuel-intake-list {
+  display: grid;
+  gap: 6px;
+  max-height: 170px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.fuel-intake-row {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.22);
+}
+.fuel-intake-name {
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.82rem;
+}
+.fuel-intake-macros {
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
+.fuel-intake-empty {
+  margin-bottom: 10px;
+}
+.fuel-intake-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.fuel-off-add-btn {
+  margin-top: 8px;
+}
+.fuel-weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.fuel-weekly-card {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.22);
+}
+.fuel-weekly-bars {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.fuel-weekly-col {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+}
+.fuel-weekly-col-btn {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 4px 3px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.fuel-weekly-col-btn:hover {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: rgba(56, 189, 248, 0.08);
+}
+.fuel-weekly-col-btn.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+}
+.fuel-weekly-track {
+  width: 100%;
+  max-width: 20px;
+  height: 58px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.fuel-weekly-fill {
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.95), rgba(59, 130, 246, 0.9));
+}
+.fuel-weekly-fill.protein {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(45, 212, 191, 0.9));
+}
+.fuel-weekly-fill.carbs {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.9));
+}
+.fuel-weekly-fill.fat {
+  background: linear-gradient(180deg, rgba(244, 114, 182, 0.9), rgba(236, 72, 153, 0.9));
+}
+.fuel-weekly-label {
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.mode-gym .studio-chip,
+.mode-gym .fuel-macro-card,
+.mode-gym .fuel-intake-row,
+.mode-gym .fuel-weekly-card,
+.mode-gym .fuel-weekly-track {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+  border-color: rgba(15, 23, 42, 0.14);
+}
+.mode-gym .studio-chip,
+.mode-gym .fuel-macro-label,
+.mode-gym .fuel-macro-value,
+.mode-gym .fuel-macro-value span,
+.mode-gym .fuel-intake-name,
+.mode-gym .fuel-intake-macros,
+.mode-gym .fuel-weekly-label {
+  color: #1f2937;
+}
+.mode-gym .fuel-weekly-col-btn:hover {
+  border-color: rgba(16, 185, 129, 0.36);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+@media (max-width: 860px) {
+  .fuel-macro-grid {
+    grid-template-columns: 1fr;
+  }
+  .fuel-weekly-grid {
+    grid-template-columns: 1fr;
+  }
+  .fuel-quick-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 
 
 

@@ -175,7 +175,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
                 <button className="hud-account-action" type="button" role="menuitem" onClick={() => navigate(resolveProfilePath())}>
                   Profile
                 </button>
-                <button className="hud-account-action" type="button" role="menuitem" onClick={() => navigate("/auth")}>
+                <button className="hud-account-action" type="button" role="menuitem" onClick={() => navigate("/settings")}>
                   Profile Settings
                 </button>
                 <button className="hud-account-action danger" type="button" role="menuitem" onClick={handleLogout}>

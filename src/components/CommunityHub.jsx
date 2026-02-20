@@ -983,7 +983,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const openGroupRoom = async (groupId) => {
     if (!groupId) return;
     const member = memberships.some(
-      (membership) => Number(membership.group_id) === Number(groupId)
+      (membership) => String(membership.group_id) === String(groupId)
     );
     if (!member) {
       setBanner("Join group first to open room.");
@@ -1081,7 +1081,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       return;
     }
     const alreadyMember = memberships.some(
-      (membership) => Number(membership.group_id) === Number(groupId)
+      (membership) => String(membership.group_id) === String(groupId)
     );
     if (alreadyMember) {
       setBanner("Already joined.");
@@ -1124,7 +1124,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setBanner("Left group.");
     await refreshGroupsAndMemberships();
     await loadGroupStats();
-    if (Number(groupRoomId) === Number(groupId) || Number(activeGroupId) === Number(groupId)) {
+    if (String(groupRoomId) === String(groupId) || String(activeGroupId) === String(groupId)) {
       setGroupRoomId(null);
       setActiveGroupId(null);
       navigate(communityBasePath);
@@ -1133,7 +1133,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   const handleDeleteGroup = async (group) => {
     if (!userId || !group?.id) return;
-    if (Number(group.created_by) !== Number(userId)) {
+    const createdBy = group.created_by;
+    const userNumeric = Number(userId);
+    const ownerMatches =
+      (Number.isFinite(Number(createdBy)) && Number(createdBy) === userNumeric) ||
+      String(createdBy) === String(userId);
+    if (!ownerMatches) {
       setBanner("Only the group owner can delete this group.");
       return;
     }
@@ -1143,8 +1148,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const { error } = await supabase
       .from("community_groups")
       .delete()
-      .eq("id", Number(group.id))
-      .eq("created_by", Number(userId));
+      .eq("id", String(group.id))
+      .eq("created_by", createdBy);
     if (error) {
       setBanner(error.message || "Could not delete group.");
       return;
@@ -1153,7 +1158,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setBanner("Group deleted.");
     await refreshGroupsAndMemberships();
     await loadGroupStats();
-    if (Number(groupRoomId) === Number(group.id) || Number(activeGroupId) === Number(group.id)) {
+    if (String(groupRoomId) === String(group.id) || String(activeGroupId) === String(group.id)) {
       setGroupRoomId(null);
       setActiveGroupId(null);
       navigate(communityBasePath);
@@ -1851,9 +1856,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // used to show join/open actions in groups tab,
 // keeps the main render logic clean,
 // recalculates when groups or memberships update
-  const activeGroup = groups.find((group) => Number(group.id) === Number(groupRoomId || activeGroupId)) || null;
+  const activeGroup = groups.find((group) => String(group.id) === String(groupRoomId || activeGroupId)) || null;
   const isGroupMember = useCallback((groupId) =>
-    memberships.some((membership) => Number(membership.group_id) === Number(groupId)), [memberships]);
+    memberships.some((membership) => String(membership.group_id) === String(groupId)), [memberships]);
   const groupPrivacyLabel = (privacy) => {
     if (privacy === "open") return "Open";
     if (privacy === "request") return "Request";
@@ -2207,14 +2212,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   useEffect(() => {
     if (!forceGroupRoom || !routeGroupId || !userId) return;
-    if (Number(groupRoomId) === Number(routeGroupId)) return;
+    if (String(groupRoomId) === String(routeGroupId)) return;
     let cancelled = false;
 
     const openRoutedRoom = async () => {
       setActiveTab("groups");
       const localMember = memberships.some(
         (membership) =>
-          Number(membership.group_id) === Number(routeGroupId) &&
+          String(membership.group_id) === String(routeGroupId) &&
           Number(membership.user_id) === Number(userId)
       );
 
@@ -3438,7 +3443,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         >
                           Leave
                         </button>
-                        {Number(group.created_by) === Number(userId) && (
+                        {(() => {
+                          const createdBy = group.created_by;
+                          const userNumeric = Number(userId);
+                          return (
+                            (Number.isFinite(Number(createdBy)) && Number(createdBy) === userNumeric) ||
+                            String(createdBy) === String(userId)
+                          );
+                        })() && (
                           <button
                             type="button"
                             className="studio-back community-cta-btn community-group-open-btn"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 
@@ -32,8 +32,9 @@ const parseAuthError = (error, fallback) => {
   return fallback;
 };
 
-export default function FitnessProfileForm() {
+export default function FitnessProfileForm({ settingsOnly = false }) {
   const navigate = useNavigate();
+  const hasAutoRedirectedRef = useRef(false);
 
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
@@ -147,7 +148,7 @@ export default function FitnessProfileForm() {
     setLoading(false);
   };
 
-  const resolveHomePath = async (profileId) => {
+  const resolveHomePath = useCallback(async (profileId) => {
     if (!profileId) return "/auth";
     const { data } = await supabase
       .from("user_state")
@@ -159,7 +160,7 @@ export default function FitnessProfileForm() {
     const preferredMode = modeFromState || modeFromStorage || "gym";
     localStorage.setItem("exervia_active_mode", preferredMode);
     return preferredMode === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`;
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -182,6 +183,25 @@ export default function FitnessProfileForm() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (settingsOnly || loading || !session?.user || !profile?.id || hasAutoRedirectedRef.current) {
+      return () => {
+        active = false;
+      };
+    }
+    hasAutoRedirectedRef.current = true;
+    (async () => {
+      const destination = await resolveHomePath(profile.id);
+      if (active) {
+        navigate(destination, { replace: true });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [settingsOnly, loading, session, profile, resolveHomePath, navigate]);
 
   const goToApp = async () => {
     if (!profile?.id) return;
@@ -497,7 +517,7 @@ export default function FitnessProfileForm() {
           </div>
         ) : null}
 
-        {!session?.user ? (
+        {!session?.user && !settingsOnly ? (
           <div className="profile-section">
             <div className="flex gap-2 flex-wrap mb-6">
               <button className={`studio-toggle-btn ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")} type="button">Login</button>

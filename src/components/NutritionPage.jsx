@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
-import { emptyDay, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
+import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
 // Component: NutritionPage - UI layout and interactions.
@@ -222,8 +222,50 @@ function convertDummyToMealShape(recipe) {
     base[`strIngredient${i + 1}`] = value;
     base[`strMeasure${i + 1}`] = "";
   }
+  base.__nutrition = {
+    calories: Number(recipe?.calories) || 0,
+    protein: Number(recipe?.protein) || 0,
+    carbs: Number(recipe?.carbs) || 0,
+    fat: Number(recipe?.fat) || 0,
+  };
   return base;
 }
+
+const toMacroNumber = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : 0;
+};
+
+const emptyMacros = () => ({
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+});
+
+const getEntryMacros = (entry) => {
+  const base = entry?.nutrition || {};
+  const servings = Math.max(1, Number(entry?.servings || 1));
+  return {
+    calories: toMacroNumber(base.calories) * servings,
+    protein: toMacroNumber(base.protein) * servings,
+    carbs: toMacroNumber(base.carbs) * servings,
+    fat: toMacroNumber(base.fat) * servings,
+  };
+};
+
+const sumMacros = (entries) =>
+  (Array.isArray(entries) ? entries : []).reduce(
+    (acc, item) => {
+      const m = getEntryMacros(item);
+      acc.calories += m.calories;
+      acc.protein += m.protein;
+      acc.carbs += m.carbs;
+      acc.fat += m.fat;
+      return acc;
+    },
+    emptyMacros()
+  );
 
 export default function NutritionPage() {
   const navigate = useNavigate();
@@ -247,6 +289,16 @@ export default function NutritionPage() {
   const [offResults, setOffResults] = useState([]);
   const [offLoading, setOffLoading] = useState(false);
   const [saveBanner, setSaveBanner] = useState("");
+  const [todayMeals, setTodayMeals] = useState([]);
+  const [logMealsByDate, setLogMealsByDate] = useState({});
+  const [selectedMacroDay, setSelectedMacroDay] = useState(getTodayLogKey());
+  const [quickMacro, setQuickMacro] = useState({
+    title: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+  });
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
@@ -257,6 +309,10 @@ export default function NutritionPage() {
     ingredients: "",
     steps: "",
     tags: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
   });
 
   useEffect(() => {
@@ -303,6 +359,78 @@ export default function NutritionPage() {
     if (timeWindow === "30") return 6;
     return 6;
   }, [timeWindow]);
+
+  const macroTargets = useMemo(() => {
+    if (goal === "cut") {
+      return { calories: 2100, protein: 180, carbs: 180, fat: 65 };
+    }
+    if (goal === "balanced") {
+      return { calories: 2400, protein: 155, carbs: 260, fat: 75 };
+    }
+    return { calories: 2700, protein: 190, carbs: 290, fat: 80 };
+  }, [goal]);
+  const todayMacroTotals = useMemo(() => sumMacros(todayMeals), [todayMeals]);
+  const selectedDayMeals = useMemo(() => logMealsByDate[selectedMacroDay] || [], [logMealsByDate, selectedMacroDay]);
+  const weeklyMacroTrend = useMemo(() => {
+    const rows = [];
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const date = new Date();
+      date.setDate(date.getDate() - offset);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const key = `${year}-${month}-${day}`;
+      const meals = logMealsByDate[key] || [];
+      rows.push({
+        key,
+        label: date.toLocaleDateString(undefined, { weekday: "short" }),
+        totals: sumMacros(meals),
+      });
+    }
+    return rows;
+  }, [logMealsByDate]);
+  const weeklyMax = useMemo(
+    () => ({
+      calories: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.calories || 0)),
+      protein: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.protein || 0)),
+      carbs: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.carbs || 0)),
+      fat: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.fat || 0)),
+    }),
+    [weeklyMacroTrend]
+  );
+
+  const loadTodayMeals = async () => {
+    if (!storedId) return;
+    const dayKey = getTodayLogKey();
+    const local = getLogsStore(storedId);
+    const cloudMap = await fetchDailyLogs(storedId);
+    const mergedByDate = { ...(cloudMap || {}) };
+    Object.entries(local.byDate || {}).forEach(([key, day]) => {
+      const cloudMeals = mergedByDate[key]?.meals || [];
+      const localMeals = day?.meals || [];
+      const merged = [...cloudMeals];
+      localMeals.forEach((meal) => {
+        const mealKey = String(meal?.text || "").trim().toLowerCase();
+        if (!mealKey) return;
+        if (!merged.some((row) => String(row?.text || "").trim().toLowerCase() === mealKey)) {
+          merged.push(meal);
+        }
+      });
+      mergedByDate[key] = {
+        ...(mergedByDate[key] || {}),
+        meals: merged,
+      };
+    });
+    const mealsByDate = {};
+    Object.entries(mergedByDate).forEach(([key, day]) => {
+      mealsByDate[key] = Array.isArray(day?.meals) ? day.meals : [];
+    });
+    setLogMealsByDate(mealsByDate);
+    setTodayMeals(mealsByDate[dayKey] || []);
+    if (!selectedMacroDay || !mealsByDate[selectedMacroDay]) {
+      setSelectedMacroDay(dayKey);
+    }
+  };
 
   // --- MealDB fetchers ---
   const fetchMealOfDay = async () => {
@@ -536,22 +664,21 @@ export default function NutritionPage() {
     }
   };
 
-  const handleSaveMealToLogs = async () => {
-    if (!activeMeal?.strMeal || !storedId) return;
-
-    const mealName = String(activeMeal.strMeal).trim();
+  const saveMealEntryToToday = async (entry, source = "recipe") => {
+    if (!storedId || !entry?.text) return { savedLibrary: false, savedCloud: false, mealName: "" };
+    const mealName = String(entry.text || "").trim();
     const dayKey = getTodayLogKey();
     const local = getLogsStore(storedId);
     const currentDay = local.byDate?.[dayKey] || emptyDay();
     const alreadyLogged = (currentDay.meals || []).some(
-      (entry) => String(entry?.text || "").trim().toLowerCase() === mealName.toLowerCase()
+      (item) => String(item?.text || "").trim().toLowerCase() === mealName.toLowerCase()
     );
 
     const nextDay = alreadyLogged
       ? currentDay
       : {
           ...currentDay,
-          meals: [...(currentDay.meals || []), { id: `meal-${Date.now()}`, text: mealName }],
+          meals: [...(currentDay.meals || []), { id: `meal-${Date.now()}`, ...entry }],
         };
 
     saveLogsStore(storedId, {
@@ -562,10 +689,70 @@ export default function NutritionPage() {
       },
     });
 
+    setTodayMeals(nextDay.meals || []);
+    setLogMealsByDate((prev) => ({ ...prev, [dayKey]: nextDay.meals || [] }));
     const [savedLibrary, savedCloud] = await Promise.all([
-      saveMealToLibrary(storedId, mealName, "recipe"),
+      saveMealToLibrary(storedId, mealName, source),
       upsertDailyLog(storedId, dayKey, nextDay),
     ]);
+    return { savedLibrary, savedCloud, mealName };
+  };
+
+  const handleAddOffProductToToday = async (product) => {
+    const title = String(product?.product_name || "").trim();
+    if (!title) return;
+    const nutrition = {
+      calories: toMacroNumber(product?.nutriments?.["energy-kcal"]),
+      protein: toMacroNumber(product?.nutriments?.proteins),
+      carbs: toMacroNumber(product?.nutriments?.carbohydrates),
+      fat: toMacroNumber(product?.nutriments?.fat),
+    };
+    const { savedCloud } = await saveMealEntryToToday({ text: title, nutrition }, "off_verify");
+    setSaveBanner(
+      savedCloud
+        ? `${title} added to today's intake.`
+        : `${title} added locally. Cloud sync pending.`
+    );
+  };
+
+  const handleQuickMacroAdd = async () => {
+    const title = String(quickMacro.title || "").trim();
+    if (!title) {
+      setSaveBanner("Add a meal name for quick log.");
+      return;
+    }
+    const nutrition = {
+      calories: toMacroNumber(quickMacro.calories),
+      protein: toMacroNumber(quickMacro.protein),
+      carbs: toMacroNumber(quickMacro.carbs),
+      fat: toMacroNumber(quickMacro.fat),
+    };
+    const { savedCloud } = await saveMealEntryToToday({ text: title, nutrition }, "quick_macro");
+    setQuickMacro({ title: "", calories: "", protein: "", carbs: "", fat: "" });
+    setSaveBanner(
+      savedCloud
+        ? `${title} logged to today's intake.`
+        : `${title} saved locally. Cloud sync pending.`
+    );
+  };
+
+  const handleSaveMealToLogs = async () => {
+    if (!activeMeal?.strMeal || !storedId) return;
+
+    const mealName = String(activeMeal.strMeal).trim();
+    const nutrition = {
+      calories: toMacroNumber(activeMeal?.__nutrition?.calories),
+      protein: toMacroNumber(activeMeal?.__nutrition?.protein),
+      carbs: toMacroNumber(activeMeal?.__nutrition?.carbs),
+      fat: toMacroNumber(activeMeal?.__nutrition?.fat),
+    };
+    const { savedLibrary, savedCloud } = await saveMealEntryToToday(
+      {
+        text: mealName,
+        nutrition,
+      },
+      "recipe"
+    );
 
     if (!savedLibrary || !savedCloud) {
       setSaveBanner(`${mealName} saved locally. Cloud sync pending.`);
@@ -664,6 +851,12 @@ export default function NutritionPage() {
       prepMinutes: customRecipeDraft.prepMinutes ? Number(customRecipeDraft.prepMinutes) : null,
       cookMinutes: customRecipeDraft.cookMinutes ? Number(customRecipeDraft.cookMinutes) : null,
       servings: customRecipeDraft.servings ? Number(customRecipeDraft.servings) : null,
+      nutrition: {
+        calories: toMacroNumber(customRecipeDraft.calories),
+        protein: toMacroNumber(customRecipeDraft.protein),
+        carbs: toMacroNumber(customRecipeDraft.carbs),
+        fat: toMacroNumber(customRecipeDraft.fat),
+      },
       ingredients,
       steps,
       tags,
@@ -696,41 +889,14 @@ export default function NutritionPage() {
       }
     }
 
-    const dayKey = getTodayLogKey();
-    const local = getLogsStore(storedId);
-    const currentDay = local.byDate?.[dayKey] || emptyDay();
-    const alreadyLogged = (currentDay.meals || []).some(
-      (entry) => String(entry?.text || "").trim().toLowerCase() === title.toLowerCase()
-    );
-    const nextDay = alreadyLogged
-      ? currentDay
-      : {
-          ...currentDay,
-          meals: [...(currentDay.meals || []), { id: `meal-${Date.now()}`, text: title }],
-        };
-
-    const existingSavedMeal = (local.savedMeals || []).some(
-      (item) => String(item?.name || "").trim().toLowerCase() === title.toLowerCase()
-    );
-    const nextStore = {
-      ...local,
-      savedMeals: existingSavedMeal
-        ? local.savedMeals || []
-        : [
-            ...(local.savedMeals || []),
-            { id: `meal-lib-${Date.now()}`, name: title, source: "custom_recipe" },
-          ],
-      byDate: {
-        ...(local.byDate || {}),
-        [dayKey]: nextDay,
+    const { savedLibrary, savedCloud } = await saveMealEntryToToday(
+      {
+        text: title,
+        nutrition: payload.nutrition,
+        servings: payload.servings || 1,
       },
-    };
-    saveLogsStore(storedId, nextStore);
-
-    const [savedLibrary, savedCloud] = await Promise.all([
-      saveMealToLibrary(storedId, title, "custom_recipe"),
-      upsertDailyLog(storedId, dayKey, nextDay),
-    ]);
+      "custom_recipe"
+    );
 
     setCustomRecipeDraft({
       title: "",
@@ -741,6 +907,10 @@ export default function NutritionPage() {
       ingredients: "",
       steps: "",
       tags: "",
+      calories: "",
+      protein: "",
+      carbs: "",
+      fat: "",
     });
     setCustomRecipeOpen(false);
     if (!sharedOk) {
@@ -757,6 +927,7 @@ export default function NutritionPage() {
   useEffect(() => {
     fetchMealOfDay();
     fetchProtocolMeals();
+    loadTodayMeals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -865,6 +1036,223 @@ export default function NutritionPage() {
             </div>
 
             <div className="hud-divider" />
+
+            <div className="hud-card-title">TODAY'S INTAKE</div>
+            <div className="fuel-macro-grid">
+              <div className="fuel-macro-card">
+                <div className="fuel-macro-label">Calories</div>
+                <div className="fuel-macro-value">
+                  {Math.round(todayMacroTotals.calories)}
+                  <span> / {macroTargets.calories}</span>
+                </div>
+                <div className="fuel-macro-bar">
+                  <div
+                    className="fuel-macro-fill"
+                    style={{ width: `${Math.min(100, (todayMacroTotals.calories / Math.max(1, macroTargets.calories)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="fuel-macro-card">
+                <div className="fuel-macro-label">Protein</div>
+                <div className="fuel-macro-value">
+                  {Math.round(todayMacroTotals.protein)}g
+                  <span> / {macroTargets.protein}g</span>
+                </div>
+                <div className="fuel-macro-bar">
+                  <div
+                    className="fuel-macro-fill protein"
+                    style={{ width: `${Math.min(100, (todayMacroTotals.protein / Math.max(1, macroTargets.protein)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="fuel-macro-card">
+                <div className="fuel-macro-label">Carbs</div>
+                <div className="fuel-macro-value">
+                  {Math.round(todayMacroTotals.carbs)}g
+                  <span> / {macroTargets.carbs}g</span>
+                </div>
+                <div className="fuel-macro-bar">
+                  <div
+                    className="fuel-macro-fill carbs"
+                    style={{ width: `${Math.min(100, (todayMacroTotals.carbs / Math.max(1, macroTargets.carbs)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="fuel-macro-card">
+                <div className="fuel-macro-label">Fat</div>
+                <div className="fuel-macro-value">
+                  {Math.round(todayMacroTotals.fat)}g
+                  <span> / {macroTargets.fat}g</span>
+                </div>
+                <div className="fuel-macro-bar">
+                  <div
+                    className="fuel-macro-fill fat"
+                    style={{ width: `${Math.min(100, (todayMacroTotals.fat / Math.max(1, macroTargets.fat)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="fuel-quick-row">
+              <input
+                className="studio-form-input"
+                placeholder="Quick log meal"
+                value={quickMacro.title}
+                onChange={(event) => setQuickMacro((prev) => ({ ...prev, title: event.target.value }))}
+              />
+              <input
+                className="studio-form-input"
+                placeholder="kcal"
+                value={quickMacro.calories}
+                onChange={(event) => setQuickMacro((prev) => ({ ...prev, calories: event.target.value }))}
+              />
+              <input
+                className="studio-form-input"
+                placeholder="P"
+                value={quickMacro.protein}
+                onChange={(event) => setQuickMacro((prev) => ({ ...prev, protein: event.target.value }))}
+              />
+              <input
+                className="studio-form-input"
+                placeholder="C"
+                value={quickMacro.carbs}
+                onChange={(event) => setQuickMacro((prev) => ({ ...prev, carbs: event.target.value }))}
+              />
+              <input
+                className="studio-form-input"
+                placeholder="F"
+                value={quickMacro.fat}
+                onChange={(event) => setQuickMacro((prev) => ({ ...prev, fat: event.target.value }))}
+              />
+              <button className="studio-back fuel-compact-btn" type="button" onClick={handleQuickMacroAdd}>
+                Add intake
+              </button>
+            </div>
+            <div className="fuel-weekly-grid">
+              <div className="fuel-weekly-card">
+                <div className="fuel-macro-label">Calories · 7 days</div>
+                <div className="fuel-weekly-bars">
+                  {weeklyMacroTrend.map((row) => (
+                    <button
+                      type="button"
+                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
+                      key={`wk-cal-${row.key}`}
+                      onClick={() => setSelectedMacroDay(row.key)}
+                    >
+                      <div className="fuel-weekly-track">
+                        <div
+                          className="fuel-weekly-fill"
+                          style={{
+                            height: `${row.totals.calories > 0 ? Math.max(5, (row.totals.calories / weeklyMax.calories) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="fuel-weekly-label">{row.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="fuel-weekly-card">
+                <div className="fuel-macro-label">Protein · 7 days</div>
+                <div className="fuel-weekly-bars">
+                  {weeklyMacroTrend.map((row) => (
+                    <button
+                      type="button"
+                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
+                      key={`wk-pro-${row.key}`}
+                      onClick={() => setSelectedMacroDay(row.key)}
+                    >
+                      <div className="fuel-weekly-track">
+                        <div
+                          className="fuel-weekly-fill protein"
+                          style={{
+                            height: `${row.totals.protein > 0 ? Math.max(5, (row.totals.protein / weeklyMax.protein) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="fuel-weekly-label">{row.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="fuel-weekly-card">
+                <div className="fuel-macro-label">Carbs · 7 days</div>
+                <div className="fuel-weekly-bars">
+                  {weeklyMacroTrend.map((row) => (
+                    <button
+                      type="button"
+                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
+                      key={`wk-carb-${row.key}`}
+                      onClick={() => setSelectedMacroDay(row.key)}
+                    >
+                      <div className="fuel-weekly-track">
+                        <div
+                          className="fuel-weekly-fill carbs"
+                          style={{
+                            height: `${row.totals.carbs > 0 ? Math.max(5, (row.totals.carbs / weeklyMax.carbs) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="fuel-weekly-label">{row.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="fuel-weekly-card">
+                <div className="fuel-macro-label">Fat · 7 days</div>
+                <div className="fuel-weekly-bars">
+                  {weeklyMacroTrend.map((row) => (
+                    <button
+                      type="button"
+                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
+                      key={`wk-fat-${row.key}`}
+                      onClick={() => setSelectedMacroDay(row.key)}
+                    >
+                      <div className="fuel-weekly-track">
+                        <div
+                          className="fuel-weekly-fill fat"
+                          style={{
+                            height: `${row.totals.fat > 0 ? Math.max(5, (row.totals.fat / weeklyMax.fat) * 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="fuel-weekly-label">{row.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="fuel-intake-top">
+              <div className="fuel-macro-label">
+                Intake for{" "}
+                {new Date(selectedMacroDay).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </div>
+              {selectedMacroDay !== getTodayLogKey() ? (
+                <button className="studio-back fuel-compact-btn" type="button" onClick={() => setSelectedMacroDay(getTodayLogKey())}>
+                  Back to today
+                </button>
+              ) : null}
+            </div>
+            {selectedDayMeals.length > 0 ? (
+              <div className="fuel-intake-list">
+                {selectedDayMeals.slice(-5).reverse().map((meal, index) => {
+                  const macros = getEntryMacros(meal);
+                  return (
+                    <div className="fuel-intake-row" key={`${meal.id || meal.text}-${index}`}>
+                      <div className="fuel-intake-name">{meal.text}</div>
+                      <div className="fuel-intake-macros">
+                        {Math.round(macros.calories)} kcal · P {Math.round(macros.protein)} · C {Math.round(macros.carbs)} · F {Math.round(macros.fat)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="hud-dim fuel-intake-empty">No intake logged for this day yet.</div>
+            )}
 
             <div className="hud-card-title">MEAL OF THE DAY</div>
             {mealOfDay ? (
@@ -1058,6 +1446,13 @@ export default function NutritionPage() {
                                 {p.nutriments?.carbohydrates ?? "—"}g • fat:{" "}
                                 {p.nutriments?.fat ?? "—"}g
                               </div>
+                              <button
+                                className="studio-back fuel-compact-btn fuel-off-add-btn"
+                                type="button"
+                                onClick={() => handleAddOffProductToToday(p)}
+                              >
+                                Add to intake
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -1120,6 +1515,32 @@ export default function NutritionPage() {
                   placeholder="Servings"
                   value={customRecipeDraft.servings}
                   onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, servings: event.target.value }))}
+                />
+              </div>
+              <div className="logs-row">
+                <input
+                  className="community-modal-input"
+                  placeholder="Calories / serving"
+                  value={customRecipeDraft.calories}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, calories: event.target.value }))}
+                />
+                <input
+                  className="community-modal-input"
+                  placeholder="Protein (g)"
+                  value={customRecipeDraft.protein}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, protein: event.target.value }))}
+                />
+                <input
+                  className="community-modal-input"
+                  placeholder="Carbs (g)"
+                  value={customRecipeDraft.carbs}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, carbs: event.target.value }))}
+                />
+                <input
+                  className="community-modal-input"
+                  placeholder="Fat (g)"
+                  value={customRecipeDraft.fat}
+                  onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, fat: event.target.value }))}
                 />
               </div>
               <textarea

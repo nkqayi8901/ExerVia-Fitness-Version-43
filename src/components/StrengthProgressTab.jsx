@@ -925,6 +925,7 @@ const StrengthProgressTab = ({ userId }) => {
   const exerciseWeightsStorageKey = userId ? `exervia_exercise_weights_${userId}` : null;
   const [exerciseWeightMemory, setExerciseWeightMemory] = useState({});
   const [selectedStrengthTrendDay, setSelectedStrengthTrendDay] = useState('');
+  const [selectedProgressExercise, setSelectedProgressExercise] = useState('');
 
   const weightExercises = [
     { value: 'squat', label: 'Squat', icon: '' },
@@ -1547,6 +1548,45 @@ const StrengthProgressTab = ({ userId }) => {
       .slice(0, 5);
   }, [recentLifts]);
   const maxExerciseCount = Math.max(1, ...exerciseCountTrend.map((item) => item.count || 0));
+  const exerciseProgressOptions = useMemo(() => {
+    const counts = new Map();
+    recentLifts.forEach((lift) => {
+      const key = String(lift.exercise_name || '').trim();
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [recentLifts]);
+  useEffect(() => {
+    if (selectedProgressExercise) return;
+    if (!exerciseProgressOptions.length) return;
+    setSelectedProgressExercise(exerciseProgressOptions[0].name);
+  }, [exerciseProgressOptions, selectedProgressExercise]);
+  const exerciseProgressSeries = useMemo(() => {
+    if (!selectedProgressExercise) return [];
+    return recentLifts
+      .filter((lift) => String(lift.exercise_name || '').trim() === selectedProgressExercise)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .slice(-10)
+      .map((lift) => {
+        const reps = Number(lift.reps) || 0;
+        const sets = Number(lift.sets) || 0;
+        const weight = Number(lift.weight) || 0;
+        const oneRm = weight > 0 && reps > 0 ? weight * (1 + reps / 30) : 0;
+        return {
+          id: lift.id,
+          label: new Date(lift.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          reps,
+          sets,
+          weight,
+          oneRm,
+        };
+      });
+  }, [recentLifts, selectedProgressExercise]);
+  const maxExerciseProgressWeight = Math.max(1, ...exerciseProgressSeries.map((item) => item.weight || 0));
   const selectedTrendDay = selectedStrengthTrendDay || recentLiftVolumeByDay[recentLiftVolumeByDay.length - 1]?.dayKey || '';
   const selectedTrendDayLifts = useMemo(
     () =>
@@ -2312,6 +2352,48 @@ const StrengthProgressTab = ({ userId }) => {
                   </div>
                 </div>
               )}
+              <div className="studio-progress-drilldown">
+                <div className="studio-progress-drilldown-top">
+                  <div className="studio-progress-title">Lift Progress By Exercise</div>
+                </div>
+                {exerciseProgressOptions.length > 0 ? (
+                  <>
+                    <div className="studio-chip-row">
+                      {exerciseProgressOptions.map((item) => (
+                        <button
+                          key={`prog-opt-${item.name}`}
+                          type="button"
+                          className={`studio-chip ${selectedProgressExercise === item.name ? 'active' : ''}`}
+                          onClick={() => setSelectedProgressExercise(item.name)}
+                        >
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="studio-progress-list">
+                      {exerciseProgressSeries.map((item) => (
+                        <div className="studio-progress-row" key={`prog-row-${item.id}`}>
+                          <div className="studio-progress-label">{item.label}</div>
+                          <div className="studio-progress-bar-shell">
+                            <div
+                              className="studio-progress-bar"
+                              style={{
+                                width: `${item.weight > 0 ? Math.max(6, (item.weight / maxExerciseProgressWeight) * 100) : 6}%`,
+                              }}
+                            />
+                          </div>
+                          <div className="studio-progress-value">
+                            {item.weight > 0 ? `${item.weight}kg` : `${item.reps} reps`}
+                            {item.oneRm > 0 ? ` · ${item.oneRm.toFixed(1)} e1RM` : ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="studio-empty">No exercise progression yet. Keep logging lifts.</div>
+                )}
+              </div>
             </section>
             {/* Section block */}
             {/* Layout grouping for readability. */}

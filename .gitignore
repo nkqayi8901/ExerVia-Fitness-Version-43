@@ -26,3 +26,6 @@ yarn-error.log*
 
 # local CSS audit scratch files
 .tmp_css_*.txt
+ 
+# keep local DB scripts out of git
+/supabase/

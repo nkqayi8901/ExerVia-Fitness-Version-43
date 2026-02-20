@@ -8,6 +8,7 @@ import NutritionPage from "./components/NutritionPage";
 import JournalPage from "./components/JournalPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
 import ErrorBoundary from "./components/ErrorBoundary";
+import RequireAuth from "./components/RequireAuth";
 
 function App() {
   return (
@@ -17,17 +18,53 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<FitnessProfileForm />} />
+            <Route
+              path="/settings"
+              element={
+                <RequireAuth>
+                  <FitnessProfileForm settingsOnly />
+                </RequireAuth>
+              }
+            />
             <Route path="/create-profile" element={<FitnessProfileForm />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* IMPORTANT: allow nested pages */}
-            <Route path="/gym/:id/*" element={<GymMode />} />
-            <Route path="/athlete/:id/*" element={<AthleteMode />} />
+            <Route
+              path="/gym/:id/*"
+              element={
+                <RequireAuth>
+                  <GymMode />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/athlete/:id/*"
+              element={
+                <RequireAuth>
+                  <AthleteMode />
+                </RequireAuth>
+              }
+            />
 
-            <Route path="/nutrition" element={<NutritionPage />} />
+            <Route
+              path="/nutrition"
+              element={
+                <RequireAuth>
+                  <NutritionPage />
+                </RequireAuth>
+              }
+            />
 
             {/* optional standalone journal route */}
-            <Route path="/journal" element={<JournalPage />} />
+            <Route
+              path="/journal"
+              element={
+                <RequireAuth>
+                  <JournalPage />
+                </RequireAuth>
+              }
+            />
           </Routes>
         </div>
       </ErrorBoundary>
