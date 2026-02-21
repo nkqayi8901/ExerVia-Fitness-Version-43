@@ -523,6 +523,45 @@ function ProgramSession({ backPath, backLabel }) {
     setCurrentSet(1);
   };
 
+  const handleCompleteExercise = () => {
+    if (!currentExercise) return;
+    const exerciseId = String(currentExercise.id || "");
+    const nowIso = new Date().toISOString();
+    const existingEntry = sessionPerformance[exerciseId] || {
+      targetSets,
+      completedSets: 0,
+      completedAt: [],
+    };
+    const nextEntry = {
+      ...existingEntry,
+      targetSets,
+      completedSets: targetSets,
+      completedAt:
+        (existingEntry.completedAt || []).length > 0
+          ? existingEntry.completedAt
+          : [nowIso],
+    };
+    const nextPerformance = {
+      ...sessionPerformance,
+      [exerciseId]: nextEntry,
+    };
+    setSessionPerformance(nextPerformance);
+
+    if (currentIndex >= exercises.length - 1) {
+      navigate(`../${programId}/finish`, {
+        state: {
+          ...location.state,
+          sessionPerformance: nextPerformance,
+          sessionDurationSeconds: timerSeconds,
+        },
+      });
+      return;
+    }
+
+    setCurrentIndex((prev) => prev + 1);
+    setCurrentSet(1);
+  };
+
   const handlePrevious = () => {
     if (restOpen) {
       setRestOpen(false);
@@ -679,11 +718,10 @@ function ProgramSession({ backPath, backLabel }) {
                     Rest
                   </button>
                   <button className="hud-secondary-btn program-done" onClick={handleDone}>
-                    {currentSet < targetSets
-                      ? "Complete set"
-                      : currentIndex >= exercises.length - 1
-                        ? "Finish session"
-                        : "Complete exercise"}
+                    Complete set
+                  </button>
+                  <button className="hud-secondary-btn program-done" onClick={handleCompleteExercise}>
+                    {currentIndex >= exercises.length - 1 ? "Finish session" : "Complete exercise"}
                   </button>
                 </>
               ) : (

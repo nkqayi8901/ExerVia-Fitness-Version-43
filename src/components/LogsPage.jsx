@@ -290,8 +290,24 @@ export default function LogsPage({ mode = "gym" }) {
         })
         .filter(Boolean);
 
+      const completionExerciseNames = new Set(
+        completionRows
+          .flatMap((row) => (Array.isArray(row?.report?.details?.exercises) ? row.report.details.exercises : []))
+          .map((exercise) => String(exercise?.name || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+
+      const filteredDayTraining = completionExerciseNames.size
+        ? dayTraining.filter((row) => {
+            if (row.sourceType !== "strength_log") return true;
+            const exerciseName = String(row.report?.exerciseName || row.title || "").trim().toLowerCase();
+            if (!exerciseName) return true;
+            return !completionExerciseNames.has(exerciseName);
+          })
+        : dayTraining;
+
       return [
-        ...dayTraining.map((row) => ({
+        ...filteredDayTraining.map((row) => ({
           id: row.id,
           sourceType: row.sourceType,
           created_at: row.created_at,

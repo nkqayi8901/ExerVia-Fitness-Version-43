@@ -92,7 +92,7 @@ export default function RequireAuth({ children }) {
       </div>
     );
   }
-  if (!authed) return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
+  if (!authed) return <Navigate to="/auth" replace />;
   if (redirectPath) return <Navigate to={redirectPath} replace />;
   return children;
 }

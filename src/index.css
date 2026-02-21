@@ -20,72 +20,132 @@ code {
 
 /* Landing Page Theme */
 .landing-body {
-  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
+  --exervia-hero-bg: url("./assets/exervia-hero.webp");
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(1200px 560px at 4% -4%, rgba(255, 255, 255, 0.04), transparent 62%),
+    radial-gradient(980px 500px at 100% 0%, rgba(255, 255, 255, 0.03), transparent 64%),
+    linear-gradient(145deg, rgba(3, 5, 10, 0.34), rgba(10, 10, 10, 0.28)),
+    var(--exervia-hero-bg) center / cover no-repeat;
   min-height: 100vh;
 }
 
+.landing-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(0, 0, 0, 0.24), rgba(8, 8, 8, 0.12)),
+    radial-gradient(860px 320px at 50% -10%, rgba(255, 255, 255, 0.04), transparent 68%);
+  backdrop-filter: saturate(102%);
+}
+
+.landing-body > * {
+  position: relative;
+  z-index: 1;
+}
+
 .landing-header {
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  background: rgba(8, 8, 8, 0.3);
 }
 
 .landing-card {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(42, 42, 42, 0.46), rgba(16, 16, 16, 0.42)),
+    radial-gradient(340px 160px at 12% -12%, rgba(255, 255, 255, 0.1), transparent 72%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
   padding: 32px;
-  transition: all 0.3s;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
   cursor: pointer;
+  backdrop-filter: blur(14px) saturate(125%);
+  box-shadow: 0 26px 58px rgba(2, 6, 23, 0.52);
 }
 
 .landing-card:hover {
-  transform: scale(1.05);
+  transform: translateY(-4px);
+  box-shadow: 0 28px 66px rgba(2, 6, 23, 0.58);
 }
 
 .landing-card-gym:hover {
-  border-color: #10b981;
+  border-color: rgba(255, 255, 255, 0.52);
 }
 
 .landing-card-athlete:hover {
-  border-color: #3b82f6;
+  border-color: rgba(255, 255, 255, 0.52);
 }
 
 .landing-button-primary {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
-  padding: 8px 24px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: opacity 0.3s;
+  background: linear-gradient(135deg, rgba(245, 245, 245, 0.95) 0%, rgba(203, 213, 225, 0.92) 100%);
+  color: #05070c;
+  padding: 9px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.34);
 }
 
 .landing-button-primary:hover {
-  opacity: 0.9;
+  opacity: 0.94;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.42);
 }
 
 .landing-logo {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.95), rgba(148, 163, 184, 0.9));
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #0f172a;
   font-weight: bold;
   font-size: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
 }
 
 .landing-gradient-text {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 /* Fitness Profile Form Theme */
 .profile-body {
-  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
+  --exervia-hero-bg: url("./assets/exervia-hero.webp");
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(150deg, rgba(8, 8, 8, 0.72), rgba(8, 8, 8, 0.64)),
+    radial-gradient(980px 420px at 8% 0%, rgba(255, 255, 255, 0.08), transparent 64%),
+    radial-gradient(900px 400px at 92% 8%, rgba(255, 255, 255, 0.06), transparent 66%),
+    var(--exervia-hero-bg) center / cover no-repeat;
   min-height: 100vh;
   padding: 24px;
+}
+
+.profile-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(125deg, rgba(0, 0, 0, 0.58), rgba(10, 10, 10, 0.4)),
+    radial-gradient(860px 320px at 50% -8%, rgba(255, 255, 255, 0.06), transparent 70%);
+  backdrop-filter: blur(4px) saturate(102%);
+}
+
+.profile-body > * {
+  position: relative;
+  z-index: 1;
 }
 
 .profile-container {
@@ -95,17 +155,22 @@ code {
 }
 
 .profile-header {
-  border-bottom: 1px solid #374151;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
   padding-bottom: 16px;
   margin-bottom: 32px;
+  backdrop-filter: blur(12px);
 }
 
 .profile-section {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  border: 1px solid #374151;
-  border-radius: 16px;
+  background:
+    linear-gradient(150deg, rgba(36, 36, 36, 0.56), rgba(12, 12, 12, 0.5)),
+    radial-gradient(360px 150px at 12% -10%, rgba(255, 255, 255, 0.08), transparent 68%);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 20px;
   padding: 32px;
   margin-bottom: 32px;
+  backdrop-filter: blur(16px) saturate(126%);
+  box-shadow: 0 24px 62px rgba(2, 6, 23, 0.55);
 }
 
 .profile-input {
@@ -120,8 +185,20 @@ code {
 
 .profile-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: rgba(226, 232, 240, 0.76);
+  box-shadow: 0 0 0 2px rgba(226, 232, 240, 0.2);
+}
+
+.profile-input:-webkit-autofill,
+.profile-input:-webkit-autofill:hover,
+.profile-input:-webkit-autofill:focus,
+.profile-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8fafc;
+  caret-color: #f8fafc;
+  -webkit-box-shadow: 0 0 0px 1000px #374151 inset;
+  box-shadow: 0 0 0px 1000px #374151 inset;
+  border: 1px solid #4b5563;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 .profile-select {
@@ -136,18 +213,19 @@ code {
 
 .profile-select:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: rgba(226, 232, 240, 0.76);
+  box-shadow: 0 0 0 2px rgba(226, 232, 240, 0.2);
 }
 
 .profile-button-primary {
-  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-  color: white;
+  background: linear-gradient(135deg, rgba(245, 245, 245, 0.96) 0%, rgba(203, 213, 225, 0.9) 100%);
+  color: #05070c;
   padding: 16px 24px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.3s;
   flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.7);
 }
 
 .profile-button-primary:hover {
@@ -155,13 +233,14 @@ code {
 }
 
 .profile-button-update {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.94) 0%, rgba(148, 163, 184, 0.86) 100%);
+  color: #05070c;
   padding: 16px 24px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.3s;
   flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.64);
 }
 
 .profile-button-update:hover {
@@ -180,6 +259,61 @@ code {
 
 .profile-button-secondary:hover {
   background: #4b5563;
+}
+
+.profile-section .studio-toggle-btn {
+  background: rgba(17, 24, 39, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.profile-section .studio-toggle-btn.active {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.95), rgba(148, 163, 184, 0.88));
+  color: #020617;
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.28);
+}
+
+.profile-header .landing-logo {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.96), rgba(148, 163, 184, 0.9));
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+}
+
+.profile-danger-zone {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(239, 68, 68, 0.35);
+  display: grid;
+  gap: 12px;
+}
+
+.profile-danger-head h3 {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.profile-danger-head p {
+  margin: 6px 0 0;
+  color: rgba(252, 165, 165, 0.85);
+  font-size: 13px;
+}
+
+.profile-button-danger {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.95) 0%, rgba(153, 27, 27, 0.95) 100%);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-button-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(127, 29, 29, 0.35);
 }
 
 .profile-button-view {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
+import heroImage from "./assets/exervia-hero.webp";
 
 const FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const PRIMARY_GOALS = ["Build Muscle", "Lose Weight", "Improve Endurance", "General Fitness"];
@@ -49,12 +50,13 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [username, setUsername] = useState("");
   const [fitnessLevel, setFitnessLevel] = useState("Beginner");
   const [primaryGoal, setPrimaryGoal] = useState("Build Muscle");
-
-  const [claimUsername, setClaimUsername] = useState("");
-  const [claimEmail, setClaimEmail] = useState("");
-  const [claimPassword, setClaimPassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [profile, setProfile] = useState(null);
+  const heroBackgroundStyle = { "--exervia-hero-bg": `url(${heroImage})` };
+  const hasSessionUser = Boolean(session?.user);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
   const isSettingsDirty = useMemo(() => {
@@ -140,30 +142,37 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   };
 
   const syncSession = async (nextSession) => {
-    setSession(nextSession || null);
-    if (!nextSession?.user) {
+    try {
+      setSession(nextSession || null);
+      if (!nextSession?.user) {
+        setProfile(null);
+        clearUserStorage();
+        return;
+      }
+
+      const row = await fetchProfileByAuthUser(nextSession.user);
+      if (row) {
+        setProfile(row);
+        setFullName(row.full_name || "");
+        setUsername(row.username || "");
+        setFitnessLevel(row.fitness_level || "Beginner");
+        setPrimaryGoal(row.primary_goal || "Build Muscle");
+        setUserStorage(row, nextSession.user);
+        settingsSnapshotRef.current = {
+          fullName: String(row.full_name || "").trim(),
+          username: String(row.username || "").trim(),
+          fitnessLevel: String(row.fitness_level || "Beginner").trim(),
+          primaryGoal: String(row.primary_goal || "Build Muscle").trim()
+        };
+      }
+    } catch (error) {
+      console.error("syncSession failed:", error);
+      setBanner("Could not load account right now.");
       setProfile(null);
       clearUserStorage();
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const row = await fetchProfileByAuthUser(nextSession.user);
-    if (row) {
-      setProfile(row);
-      setFullName(row.full_name || "");
-      setUsername(row.username || "");
-      setFitnessLevel(row.fitness_level || "Beginner");
-      setPrimaryGoal(row.primary_goal || "Build Muscle");
-      setUserStorage(row, nextSession.user);
-      settingsSnapshotRef.current = {
-        fullName: String(row.full_name || "").trim(),
-        username: String(row.username || "").trim(),
-        fitnessLevel: String(row.fitness_level || "Beginner").trim(),
-        primaryGoal: String(row.primary_goal || "Build Muscle").trim()
-      };
-    }
-    setLoading(false);
   };
 
   const resolveHomePath = useCallback(async (profileId) => {
@@ -182,12 +191,27 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
   useEffect(() => {
     let mounted = true;
+    let loadingGuardTimeout = null;
 
     const boot = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      await syncSession(data?.session || null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        await syncSession(data?.session || null);
+      } catch (error) {
+        console.error("auth boot failed:", error);
+        if (mounted) {
+          setLoading(false);
+          setBanner("Could not initialize auth session.");
+        }
+      }
     };
+
+    loadingGuardTimeout = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 7000);
 
     boot();
 
@@ -197,6 +221,9 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     return () => {
       mounted = false;
+      if (loadingGuardTimeout) {
+        clearTimeout(loadingGuardTimeout);
+      }
       authSub?.subscription?.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -373,94 +400,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setBanner("Password reset email sent.");
   };
 
-  const handleClaimExisting = async () => {
-    const cleanClaimUsername = slugifyUsername(claimUsername);
-    const cleanClaimEmail = claimEmail.trim().toLowerCase();
-    if (!cleanClaimUsername || !cleanClaimEmail || !claimPassword) {
-      setBanner("Add username, email, and password to claim your profile.");
-      return;
-    }
-
-    setSaving(true);
-
-    const { data: legacyProfile, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("username", cleanClaimUsername)
-      .is("auth_user_id", null)
-      .maybeSingle();
-
-    if (profileError) {
-      setSaving(false);
-      setBanner("Could not validate profile claim.");
-      return;
-    }
-
-    if (!legacyProfile) {
-      setSaving(false);
-      setBanner("No claimable profile found for that username.");
-      return;
-    }
-
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: cleanClaimEmail,
-      password: claimPassword,
-      options: {
-        data: {
-          full_name: legacyProfile.full_name || legacyProfile.display_name || cleanClaimUsername,
-          username: cleanClaimUsername
-        }
-      }
-    });
-
-    if (signUpError) {
-      setSaving(false);
-      setBanner(parseAuthError(signUpError, "Could not claim this profile."));
-      return;
-    }
-
-    const authUserId = signUpData?.user?.id;
-    if (!authUserId) {
-      setSaving(false);
-      setBanner("Claim created. Confirm your email, then log in.");
-      setMode("login");
-      return;
-    }
-
-    const { error: updateError } = await supabase
-      .from("user_profiles")
-      .update({
-        auth_user_id: authUserId,
-        email: cleanClaimEmail,
-        display_name: legacyProfile.display_name || legacyProfile.full_name
-      })
-      .eq("id", legacyProfile.id)
-      .is("auth_user_id", null);
-
-    if (updateError) {
-      setSaving(false);
-      setBanner("Profile linked, but record update failed. Contact support.");
-      return;
-    }
-
-    setSaving(false);
-    if (!signUpData?.session) {
-      setBanner("Profile claimed. Confirm your email, then log in.");
-      setMode("login");
-      return;
-    }
-    const authUser = signUpData.session.user;
-    const row = await fetchProfileByAuthUser(authUser);
-    if (row) {
-      setProfile(row);
-      setUserStorage(row, authUser);
-      const destination = await resolveHomePath(row.id);
-      navigate(destination);
-      return;
-    }
-    setBanner("Profile claimed successfully.");
-  };
-
   const handleProfileSave = async () => {
     if (!profile?.id) return;
     const cleanUsername = slugifyUsername(username);
@@ -520,13 +459,65 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
   const handleLogout = async () => {
     if (!confirmDiscardIfDirty()) return;
+    setSession(null);
+    setProfile(null);
+    setLoading(false);
+    clearUserStorage();
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Logout failed:", error.message);
     }
-    clearUserStorage();
     setMode("login");
     setBanner("Logged out.");
+    navigate("/auth", { replace: true });
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!session?.user?.email) {
+      setBanner("Missing account email. Please re-login and try again.");
+      return;
+    }
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      setBanner("Type DELETE to confirm account deletion.");
+      return;
+    }
+    if (!deletePassword) {
+      setBanner("Enter your password to confirm account deletion.");
+      return;
+    }
+    if (!window.confirm("Delete your account permanently? This cannot be undone.")) {
+      return;
+    }
+
+    setDeletingAccount(true);
+    setBanner("");
+
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: String(session.user.email).trim().toLowerCase(),
+      password: deletePassword,
+    });
+
+    if (reauthError) {
+      setDeletingAccount(false);
+      setBanner(parseAuthError(reauthError, "Password check failed."));
+      return;
+    }
+
+    const { error: deleteError } = await supabase.functions.invoke("delete-account");
+    if (deleteError) {
+      setDeletingAccount(false);
+      setBanner("Could not delete account right now. Please try again.");
+      return;
+    }
+
+    clearUserStorage();
+    setSession(null);
+    setProfile(null);
+    setLoading(false);
+    setDeletingAccount(false);
+    setMode("login");
+    setBanner("Account deleted.");
+    navigate("/", { replace: true });
   };
 
   const handleBack = async () => {
@@ -541,7 +532,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
   if (loading) {
     return (
-      <div className="profile-body">
+      <div className="profile-body" style={heroBackgroundStyle}>
         <div className="profile-container">
           <div className="profile-section">
             <p className="text-white">Loading account...</p>
@@ -552,7 +543,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   }
 
   return (
-    <div className="profile-body">
+    <div className="profile-body" style={heroBackgroundStyle}>
       <div className="profile-container">
         <header className="profile-header">
           <div className="flex justify-between items-center gap-3 flex-wrap">
@@ -572,13 +563,17 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
           </div>
         ) : null}
 
-        {!session?.user && !settingsOnly ? (
+        {!hasSessionUser ? (
+          settingsOnly ? (
+            <div className="profile-section">
+              <p className="text-white m-0">Signing out...</p>
+            </div>
+          ) : (
           <div className="profile-section">
             <div className="flex gap-2 flex-wrap mb-6">
               <button className={`studio-toggle-btn ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")} type="button">Login</button>
               <button className={`studio-toggle-btn ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")} type="button">Sign Up</button>
               <button className={`studio-toggle-btn ${mode === "forgot" ? "active" : ""}`} onClick={() => setMode("forgot")} type="button">Forgot Password</button>
-              <button className={`studio-toggle-btn ${mode === "claim" ? "active" : ""}`} onClick={() => setMode("claim")} type="button">Claim Existing</button>
             </div>
 
             {(mode === "login" || mode === "signup" || mode === "forgot") ? (
@@ -626,23 +621,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
               </div>
             ) : null}
 
-            {mode === "claim" ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-white mb-2">Existing Username</label>
-                  <input className="profile-input" value={claimUsername} onChange={(e) => setClaimUsername(e.target.value)} placeholder="johnsmith" />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">Email</label>
-                  <input className="profile-input" value={claimEmail} onChange={(e) => setClaimEmail(e.target.value)} placeholder="you@example.com" />
-                </div>
-                <div>
-                  <label className="block text-white mb-2">Set Password</label>
-                  <input type="password" className="profile-input" value={claimPassword} onChange={(e) => setClaimPassword(e.target.value)} placeholder="New password" />
-                </div>
-              </div>
-            ) : null}
-
             <div className="flex gap-3 mt-6 flex-wrap">
               {mode === "login" ? (
                 <button className="profile-button-primary" onClick={handleLogin} disabled={saving} type="button">
@@ -659,19 +637,15 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                   {saving ? "Sending..." : "Send Reset Email"}
                 </button>
               ) : null}
-              {mode === "claim" ? (
-                <button className="profile-button-primary" onClick={handleClaimExisting} disabled={saving} type="button">
-                  {saving ? "Claiming..." : "Claim Profile"}
-                </button>
-              ) : null}
             </div>
           </div>
+          )
         ) : (
           <div className="profile-section">
             <div className="flex justify-between items-center gap-3 flex-wrap mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">Account Profile</h2>
-                <p className="text-gray-300 m-0">Signed in as {session.user.email}</p>
+                <p className="text-gray-300 m-0">Signed in as {session?.user?.email || "Unknown user"}</p>
               </div>
               <div className="flex gap-2">
                 <button className="studio-back" onClick={goToApp} type="button">Go to App</button>
@@ -715,6 +689,44 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
               <button className="profile-button-update" onClick={handleProfileSave} disabled={saving} type="button">
                 {saving ? "Saving..." : "Save Profile"}
               </button>
+            </div>
+
+            <div className="profile-danger-zone">
+              <div className="profile-danger-head">
+                <h3>Danger Zone</h3>
+                <p>Permanently delete your account and all app data.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-white mb-2">Type DELETE</label>
+                  <input
+                    className="profile-input"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white mb-2">Password</label>
+                  <input
+                    type="password"
+                    className="profile-input"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Confirm password"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  className="profile-button-danger"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  type="button"
+                >
+                  {deletingAccount ? "Deleting..." : "Delete Account"}
+                </button>
+              </div>
             </div>
           </div>
         )}
