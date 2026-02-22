@@ -106,6 +106,7 @@ function normalizeMealList(list) {
       idMeal: m.idMeal,
       strMeal: m.strMeal,
       strMealThumb: m.strMealThumb,
+      source: "mealdb",
     }));
 }
 
@@ -279,6 +280,7 @@ function convertDummyToMealShape(recipe) {
     strInstructions: Array.isArray(recipe?.instructions)
       ? recipe.instructions.join("\n")
       : String(recipe?.instructions || ""),
+    source: "dummy",
   };
   const ingredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
   for (let i = 0; i < 20; i += 1) {
@@ -303,6 +305,7 @@ function convertSpoonToMealShape(recipe) {
     strCategory: "Recipe",
     strArea: "",
     strInstructions: "",
+    source: "spoon",
   };
   const ingredients = Array.isArray(recipe?.extendedIngredients) ? recipe.extendedIngredients : [];
   for (let i = 0; i < 20; i += 1) {
@@ -358,6 +361,10 @@ function convertLocalToMealShape(recipe) {
     carbs: Number(recipe?.nutrition?.carbs) || 0,
     fat: Number(recipe?.nutrition?.fat) || 0,
   };
+  base.__tip = String(recipe?.tip || "").trim();
+  base.__slotTags = Array.isArray(recipe?.slot_tags)
+    ? recipe.slot_tags.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
   return base;
 }
 
@@ -407,6 +414,24 @@ const getMealPreviewMacros = (meal) => ({
 const isCuratedMeal = (meal) =>
   String(meal?.idMeal || "").startsWith("local-") || String(meal?.source || "") === "local";
 
+const getRecipeSourceLabel = (meal) => {
+  const source = String(meal?.source || meal?.__source || "").toLowerCase();
+  if (source === "local") return "ExerVia Curated";
+  if (source === "dummy") return "DummyJSON";
+  if (source === "spoon") return "Spoonacular";
+  return "TheMealDB";
+};
+
+const getSlotLabel = (slot) => {
+  const map = {
+    morning: "Morning",
+    midday: "Midday",
+    pre_training: "Pre-Training",
+    recovery: "Recovery",
+  };
+  return map[String(slot || "").trim()] || String(slot || "").trim();
+};
+
 const sumMacros = (entries) =>
   (Array.isArray(entries) ? entries : []).reduce(
     (acc, item) => {
@@ -454,6 +479,9 @@ export default function NutritionPage() {
     fat: "",
   });
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
+  const [feedFilter, setFeedFilter] = useState("all");
+  const [curatedOnly, setCuratedOnly] = useState(false);
+  const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
     mealType: "Dinner",
@@ -473,12 +501,30 @@ export default function NutritionPage() {
     primaryGoal: "",
     level: 1
   });
+  const favoriteStorageKey = useMemo(
+    () => `exervia_fuel_favorites_${storedId || "guest"}`,
+    [storedId]
+  );
 
   useEffect(() => {
     if (!saveBanner) return;
     const timeout = setTimeout(() => setSaveBanner(""), 2800);
     return () => clearTimeout(timeout);
   }, [saveBanner]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(favoriteStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setFavoriteRecipeKeys(Array.isArray(parsed) ? parsed.map((item) => String(item)) : []);
+    } catch {
+      setFavoriteRecipeKeys([]);
+    }
+  }, [favoriteStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteRecipeKeys.slice(-400)));
+  }, [favoriteRecipeKeys, favoriteStorageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,6 +593,19 @@ export default function NutritionPage() {
     return 6;
   }, [timeWindow]);
 
+  const isRecipeFavorite = (meal) => favoriteRecipeKeys.includes(recipeIdentityKey(meal));
+
+  const toggleRecipeFavorite = async (meal) => {
+    const key = recipeIdentityKey(meal);
+    if (!key) return;
+    setFavoriteRecipeKeys((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+    if (storedId && meal?.strMeal) {
+      await saveMealToLibrary(storedId, meal.strMeal, "favorite");
+    }
+  };
+
   const macroTargets = useMemo(() => {
     const fit = String(userNutritionContext.fitnessLevel || "").toLowerCase();
     const profileGoal = String(userNutritionContext.primaryGoal || "").toLowerCase();
@@ -607,6 +666,10 @@ export default function NutritionPage() {
     }),
     [weeklyMacroTrend]
   );
+  const visibleProtocolMeals = useMemo(() => {
+    if (feedFilter !== "favorites") return protocolMeals;
+    return protocolMeals.filter((meal) => isRecipeFavorite(meal));
+  }, [feedFilter, protocolMeals, favoriteRecipeKeys]);
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -648,6 +711,10 @@ export default function NutritionPage() {
       setMealOfDay(localPool[Math.floor(Math.random() * localPool.length)]);
       return;
     }
+    if (curatedOnly) {
+      setMealOfDay(null);
+      return;
+    }
     // try a few times to avoid a random dessert/junk pick
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
@@ -687,40 +754,39 @@ export default function NutritionPage() {
        * preference → sources (category if possible; fallback to name search)
        * Then: goal health-filter + shuffle + pick cap
        */
-      let list = [];
+      const localMeals = getLocalRecipePool(preference, timeWindow, goal);
+      const useLocalOnly = curatedOnly || localMeals.length >= cap;
+      let list = [...localMeals];
       const mealdbTerms = MEALDB_SEARCH_TERMS[preference] || [preference];
 
-      if (preference === "seafood") {
-        list = await mealdbFilterByCategory("Seafood");
-      } else if (preference === "vegetarian") {
-        list = await mealdbFilterByCategory("Vegetarian");
-      } else if (preference === "beef") {
-        list = await mealdbFilterByCategory("Beef");
-      } else if (preference === "pork") {
-        list = await mealdbFilterByCategory("Pork");
-      } else if (preference === "chicken") {
-        // MealDB has a Chicken category (better than searching chicken every time)
-        list = await mealdbFilterByCategory("Chicken");
-        const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
-        list = [...list, ...extraLists.flat()];
-      } else {
-        const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
-        list = extraLists.flat();
+      if (!useLocalOnly) {
+        let mealdbList = [];
+        if (preference === "seafood") {
+          mealdbList = await mealdbFilterByCategory("Seafood");
+        } else if (preference === "vegetarian") {
+          mealdbList = await mealdbFilterByCategory("Vegetarian");
+        } else if (preference === "beef") {
+          mealdbList = await mealdbFilterByCategory("Beef");
+        } else if (preference === "pork") {
+          mealdbList = await mealdbFilterByCategory("Pork");
+        } else if (preference === "chicken") {
+          mealdbList = await mealdbFilterByCategory("Chicken");
+          const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
+          mealdbList = [...mealdbList, ...extraLists.flat()];
+        } else {
+          const extraLists = await Promise.all(mealdbTerms.map((term) => mealdbSearchByName(term)));
+          mealdbList = extraLists.flat();
+        }
+        list = [...list, ...mealdbList];
+
+        const terms = DUMMY_SEARCH_TERMS[preference] || [preference];
+        const dummyLists = await Promise.all(terms.map((term) => dummySearchByName(term)));
+        list = [...list, ...dummyLists.flat()];
       }
-
-      // pull a second pool from DummyJSON to avoid thin result sets
-      const terms = DUMMY_SEARCH_TERMS[preference] || [preference];
-      const dummyLists = await Promise.all(terms.map((term) => dummySearchByName(term)));
-      const dummyMeals = dummyLists.flat();
-      list = [...list, ...dummyMeals];
-
-      // local curated library for stable variety
-      const localMeals = getLocalRecipePool(preference, timeWindow, goal);
-      list = [...list, ...localMeals];
 
       // third pool from Spoonacular (optional API key)
       // used when categories are thin (especially turkey) or result set is still small
-      if (SPOON_KEY && (preference === "turkey" || list.length < cap + 2)) {
+      if (!useLocalOnly && SPOON_KEY && (preference === "turkey" || list.length < cap + 2)) {
         const spoonTerms = (MEALDB_SEARCH_TERMS[preference] || [preference]).slice(
           0,
           preference === "turkey" ? 3 : 1
@@ -806,8 +872,14 @@ export default function NutritionPage() {
         }
       })();
       const seenSet = new Set(seenList.map((row) => String(row)));
-      const unseenPool = list.filter((meal) => !seenSet.has(recipeIdentityKey(meal)));
-      const fallbackPool = list.filter((meal) => seenSet.has(recipeIdentityKey(meal)));
+      const curated = list.filter((meal) => isCuratedMeal(meal));
+      const nonCurated = list.filter((meal) => !isCuratedMeal(meal));
+      const unseenCurated = curated.filter((meal) => !seenSet.has(recipeIdentityKey(meal)));
+      const seenCurated = curated.filter((meal) => seenSet.has(recipeIdentityKey(meal)));
+      const unseenOther = nonCurated.filter((meal) => !seenSet.has(recipeIdentityKey(meal)));
+      const seenOther = nonCurated.filter((meal) => seenSet.has(recipeIdentityKey(meal)));
+      const unseenPool = [...unseenCurated, ...unseenOther];
+      const fallbackPool = [...seenCurated, ...seenOther];
       const orderedPool = [...shuffle(unseenPool), ...shuffle(fallbackPool)];
       const picked = clampList(orderedPool, cap);
       const nextSeen = [
@@ -823,6 +895,9 @@ export default function NutritionPage() {
             "Turkey recipes are limited on free sources. Add REACT_APP_SPOONACULAR_API_KEY to expand results."
           );
         }
+      }
+      if (useLocalOnly) {
+        setAvailabilityNote("Showing curated recipes for this protocol.");
       }
       setProtocolMeals(picked);
     } catch {
@@ -881,10 +956,11 @@ export default function NutritionPage() {
           return;
         }
       }
+      const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
-      setActiveMeal(meal);
+      setActiveMeal(meal ? { ...meal, source: sourceMeal?.source || "mealdb" } : null);
     } catch {
       setActiveMeal(null);
     } finally {
@@ -910,7 +986,12 @@ export default function NutritionPage() {
           String(recipe?.title || "").toLowerCase().includes(String(keyword || "").toLowerCase())
         )
         .map((recipe) => convertLocalToMealShape(recipe));
-      const merged = [...mealdbHits, ...dummyHits, ...spoonHits, ...localHits]
+      const merged = [
+        ...localHits,
+        ...(curatedOnly ? [] : mealdbHits),
+        ...(curatedOnly ? [] : dummyHits),
+        ...(curatedOnly ? [] : spoonHits),
+      ]
         .filter((meal) => looksHealthyEnough(meal?.strMeal, goal))
         .filter((meal) => normalizeTextId(meal?.strMeal) !== normalizeTextId(activeMeal.strMeal));
       const seen = new Set();
@@ -921,7 +1002,11 @@ export default function NutritionPage() {
         seen.add(key);
         return true;
       });
-      setProtocolMeals(clampList(shuffle(deduped), cap));
+      const prioritized = [
+        ...deduped.filter((meal) => isCuratedMeal(meal)),
+        ...deduped.filter((meal) => !isCuratedMeal(meal)),
+      ];
+      setProtocolMeals(clampList(shuffle(prioritized), cap));
       setSaveBanner(`Loaded more options like ${activeMeal.strMeal}.`);
     } catch {
       setError("Could not load similar meals right now.");
@@ -1222,7 +1307,12 @@ export default function NutritionPage() {
   useEffect(() => {
     fetchMealOfDay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goal]);
+  }, [goal, curatedOnly]);
+
+  useEffect(() => {
+    fetchProtocolMeals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curatedOnly]);
 
 
   // Render
@@ -1264,6 +1354,29 @@ export default function NutritionPage() {
             >
               Create Custom Recipe
             </button>
+            <div className="fuel-feed-toggle-row">
+              <button
+                type="button"
+                className={`fuel-feed-toggle ${feedFilter === "all" ? "active" : ""}`}
+                onClick={() => setFeedFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`fuel-feed-toggle ${feedFilter === "favorites" ? "active" : ""}`}
+                onClick={() => setFeedFilter("favorites")}
+              >
+                Favorites ({favoriteRecipeKeys.length})
+              </button>
+              <button
+                type="button"
+                className={`fuel-feed-toggle ${curatedOnly ? "active" : ""}`}
+                onClick={() => setCuratedOnly((prev) => !prev)}
+              >
+                Curated only
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1554,6 +1667,18 @@ export default function NutritionPage() {
                     <span className="fuel-tile-kicker">{mealOfDay.strCategory || "Daily pick"}</span>
                     {isCuratedMeal(mealOfDay) ? <span className="fuel-curated-badge">Curated</span> : null}
                   </div>
+                  <span className="fuel-source-chip">{getRecipeSourceLabel(mealOfDay)}</span>
+                  <button
+                    type="button"
+                    className={`fuel-heart-btn ${isRecipeFavorite(mealOfDay) ? "active" : ""}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleRecipeFavorite(mealOfDay);
+                    }}
+                    aria-label={isRecipeFavorite(mealOfDay) ? "Remove favorite recipe" : "Save favorite recipe"}
+                  >
+                    {isRecipeFavorite(mealOfDay) ? "Saved" : "Save"}
+                  </button>
                   <span className="fuel-tile-open">Open recipe</span>
                 </div>
                 <div className="fuel-meal-body">
@@ -1578,7 +1703,11 @@ export default function NutritionPage() {
                 </div>
               </button>
             ) : (
-              <div className="hud-dim">Loading daily pick…</div>
+              <div className="hud-dim">
+                {curatedOnly
+                  ? "No curated daily pick for this filter yet. Try another preference/time."
+                  : "Loading daily pick…"}
+              </div>
             )}
           </div>
 
@@ -1590,13 +1719,15 @@ export default function NutritionPage() {
 
             {loading ? (
               <div className="hud-dim">Generating meals…</div>
-            ) : protocolMeals.length === 0 ? (
+            ) : visibleProtocolMeals.length === 0 ? (
               <div className="hud-dim">
-                No meals matched the current filters. Try a different preference or switch goal to Balanced.
+                {feedFilter === "favorites"
+                  ? "No favorite recipes in this protocol yet."
+                  : "No meals matched the current filters. Try a different preference or switch goal to Balanced."}
               </div>
             ) : (
               <div className="fuel-grid">
-                {protocolMeals.map((m, index) => (
+                {visibleProtocolMeals.map((m, index) => (
                   <button
                     key={m.idMeal}
                     className="fuel-tile"
@@ -1607,6 +1738,18 @@ export default function NutritionPage() {
                         <span className="fuel-tile-kicker">{m.strCategory || "Protocol recipe"}</span>
                         {isCuratedMeal(m) ? <span className="fuel-curated-badge">Curated</span> : null}
                       </div>
+                      <span className="fuel-source-chip">{getRecipeSourceLabel(m)}</span>
+                      <button
+                        type="button"
+                        className={`fuel-heart-btn ${isRecipeFavorite(m) ? "active" : ""}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleRecipeFavorite(m);
+                        }}
+                        aria-label={isRecipeFavorite(m) ? "Remove favorite recipe" : "Save favorite recipe"}
+                      >
+                        {isRecipeFavorite(m) ? "Saved" : "Save"}
+                      </button>
                       <span className="fuel-tile-open">Open</span>
                     </div>
                     <div className="fuel-tile-body">
@@ -1659,9 +1802,15 @@ export default function NutritionPage() {
                 <div>
                   <div className="fuel-modal-title">{activeMeal.strMeal}</div>
                   <div className="fuel-detail-tags">
+                    <span className="fuel-tag">{getRecipeSourceLabel(activeMeal)}</span>
                     {isCuratedMeal(activeMeal) ? (
                       <span className="fuel-tag fuel-tag-curated">Curated recipe</span>
                     ) : null}
+                    {(activeMeal?.__slotTags || []).map((slot) => (
+                      <span className="fuel-tag" key={`slot-${slot}`}>
+                        {getSlotLabel(slot)}
+                      </span>
+                    ))}
                     {activeMeal.strCategory ? (
                       <span className="fuel-tag">{activeMeal.strCategory}</span>
                     ) : null}
@@ -1691,6 +1840,13 @@ export default function NutritionPage() {
                     type="button"
                   >
                     Share template
+                  </button>
+                  <button
+                    className={`studio-back fuel-save-btn ${isRecipeFavorite(activeMeal) ? "active" : ""}`}
+                    type="button"
+                    onClick={() => toggleRecipeFavorite(activeMeal)}
+                  >
+                    {isRecipeFavorite(activeMeal) ? "Favorited" : "Save favorite"}
                   </button>
                   <button
                     className="hud-secondary-btn"
@@ -1741,6 +1897,12 @@ export default function NutritionPage() {
                   </div>
 
                   <div className="fuel-modal-right">
+                    {activeMeal?.__tip ? (
+                      <div className="fuel-tip-card">
+                        <div className="fuel-tip-title">Coach Tip</div>
+                        <div className="fuel-tip-body">{activeMeal.__tip}</div>
+                      </div>
+                    ) : null}
                     <div className="fuel-section-title">Instructions</div>
                     <div className="fuel-instructions">
                       {activeMeal.strInstructions || "No instructions provided."}
@@ -1919,3 +2081,4 @@ export default function NutritionPage() {
     </div>
   );
 }
+
