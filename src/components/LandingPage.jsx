@@ -26,7 +26,7 @@ export default function LandingPage() {
 
       <section className="max-w-6xl mx-auto px-6 py-16 text-center">
         <h1 className="text-5xl font-bold text-white mb-6">
-          Dual-Mode <span className="landing-gradient-text">Fitness Assistant</span>
+          Dual-Mode <span className="landing-gradient-text">Fitness Platform</span>
         </h1>
         <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
           Choose your path: Gym strength training or athletic performance. Smart guidance for every goal.

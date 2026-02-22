@@ -2242,7 +2242,7 @@ code {
   width: 100%;
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: stretch;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
@@ -2250,6 +2250,7 @@ code {
   text-align: left;
 }
 .fuel-mealofday:hover { border-color: rgba(34,211,238,0.45); }
+.fuel-meal-body { display: grid; gap: 6px; align-content: center; flex: 1; }
 
 .fuel-thumb {
   width: 64px;
@@ -2275,11 +2276,89 @@ code {
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
-  overflow: hidden;
+  overflow: clip;
   text-align: left;
   transition: 0.2s ease;
 }
 .fuel-tile:hover { border-color: rgba(168,85,247,0.55); transform: translateY(-1px); }
+
+.fuel-tile-body { padding: 10px; display: grid; gap: 8px; }
+.fuel-tile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fuel-meta-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.4);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 5px 8px;
+}
+.fuel-tile-visual {
+  min-height: 92px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(140deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+}
+.fuel-tile-toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fuel-feature-visual {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  min-width: 168px;
+}
+.fuel-gradient-1 {
+  background:
+    radial-gradient(120% 120% at 10% 10%, rgba(16, 185, 129, 0.35), transparent 58%),
+    linear-gradient(140deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+}
+.fuel-gradient-2 {
+  background:
+    radial-gradient(120% 120% at 90% 10%, rgba(59, 130, 246, 0.32), transparent 58%),
+    linear-gradient(140deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+}
+.fuel-gradient-3 {
+  background:
+    radial-gradient(120% 120% at 20% 90%, rgba(245, 158, 11, 0.28), transparent 62%),
+    linear-gradient(140deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+}
+.fuel-gradient-4 {
+  background:
+    radial-gradient(120% 120% at 85% 85%, rgba(244, 114, 182, 0.3), transparent 60%),
+    linear-gradient(140deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94));
+}
+.fuel-tile-kicker {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(226, 232, 240, 0.8);
+}
+.fuel-tile-open {
+  font-size: 0.72rem;
+  color: rgba(226, 232, 240, 0.95);
+  font-weight: 600;
+}
+.fuel-curated-badge {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  color: rgba(248, 250, 252, 0.94);
+  background: linear-gradient(140deg, rgba(16, 185, 129, 0.24), rgba(59, 130, 246, 0.2));
+  backdrop-filter: blur(4px);
+}
 
 .fuel-tile-thumb {
   width: 100%;
@@ -2309,6 +2388,10 @@ code {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.6px;
+}
+.fuel-tag-curated {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: linear-gradient(140deg, rgba(16, 185, 129, 0.18), rgba(59, 130, 246, 0.16));
 }
 
 /* modal recipe */
@@ -2398,6 +2481,24 @@ code {
   line-height: 1.6;
   color: rgba(255,255,255,0.88);
   font-size: 13px;
+}
+.fuel-detail-hero {
+  min-height: 160px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  padding: 14px;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  background:
+    radial-gradient(120% 120% at 10% 15%, rgba(34, 211, 238, 0.18), transparent 60%),
+    radial-gradient(120% 120% at 90% 80%, rgba(16, 185, 129, 0.18), transparent 60%),
+    linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.92));
+}
+.fuel-detail-hero-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: rgba(248, 250, 252, 0.96);
 }
 
 /* shopping */
@@ -3598,6 +3699,35 @@ code {
 .mode-gym .studio-program-story {
   color: #1f2937;
   opacity: 1;
+}
+.mode-gym .fuel-tile-visual,
+.mode-gym .fuel-feature-visual,
+.mode-gym .fuel-detail-hero {
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(120% 120% at 10% 12%, rgba(16, 185, 129, 0.18), transparent 58%),
+    radial-gradient(120% 120% at 90% 90%, rgba(59, 130, 246, 0.14), transparent 58%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+}
+.mode-gym .fuel-tile-kicker,
+.mode-gym .fuel-tile-open,
+.mode-gym .fuel-detail-hero-title {
+  color: #0f172a;
+}
+.mode-gym .fuel-curated-badge {
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #0f172a;
+  background: linear-gradient(140deg, rgba(16, 185, 129, 0.22), rgba(59, 130, 246, 0.12));
+}
+.mode-gym .fuel-meta-chip {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.88);
+  color: #1f2937;
+}
+.mode-gym .fuel-tag-curated {
+  border-color: rgba(16, 185, 129, 0.36);
+  background: linear-gradient(140deg, rgba(16, 185, 129, 0.14), rgba(59, 130, 246, 0.1));
+  color: #0f172a;
 }
 
 .mode-gym .studio-program-delete {

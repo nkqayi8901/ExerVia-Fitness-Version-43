@@ -1,0 +1,506 @@
+[
+  {
+    "id": "local-chicken-01",
+    "title": "Lemon Chicken Rice Bowl",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 30,
+    "goals": ["high_protein", "balanced", "cut"],
+    "nutrition": { "calories": 610, "protein": 52, "carbs": 58, "fat": 18 },
+    "ingredients": [
+      { "ingredient": "Chicken breast", "measure": "220g" },
+      { "ingredient": "Cooked rice", "measure": "180g" },
+      { "ingredient": "Broccoli", "measure": "120g" },
+      { "ingredient": "Olive oil", "measure": "10g" },
+      { "ingredient": "Lemon juice", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Season chicken and sear until cooked.", "Steam broccoli.", "Serve over rice with lemon and oil."]
+  },
+  {
+    "id": "local-chicken-02",
+    "title": "Chicken Yogurt Wrap",
+    "preference": "chicken",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 15,
+    "goals": ["high_protein", "balanced", "cut"],
+    "nutrition": { "calories": 470, "protein": 43, "carbs": 39, "fat": 16 },
+    "ingredients": [
+      { "ingredient": "Cooked chicken", "measure": "170g" },
+      { "ingredient": "Wholewheat wrap", "measure": "1 large" },
+      { "ingredient": "Greek yogurt", "measure": "70g" },
+      { "ingredient": "Lettuce", "measure": "50g" },
+      { "ingredient": "Tomato", "measure": "80g" }
+    ],
+    "instructions": ["Warm wrap.", "Mix chicken with yogurt and seasoning.", "Fill wrap with veg and roll."]
+  },
+  {
+    "id": "local-chicken-03",
+    "title": "Chicken Pasta Recovery Bowl",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 45,
+    "goals": ["high_protein", "balanced"],
+    "nutrition": { "calories": 730, "protein": 56, "carbs": 79, "fat": 19 },
+    "ingredients": [
+      { "ingredient": "Chicken breast", "measure": "220g" },
+      { "ingredient": "Wholewheat pasta", "measure": "95g dry" },
+      { "ingredient": "Passata", "measure": "180g" },
+      { "ingredient": "Parmesan", "measure": "12g" },
+      { "ingredient": "Spinach", "measure": "80g" }
+    ],
+    "instructions": ["Cook pasta.", "Pan-cook chicken and slice.", "Simmer passata and spinach, combine all."]
+  },
+  {
+    "id": "local-chicken-04",
+    "title": "Chicken Egg Fried Rice Lite",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": ["high_protein", "balanced"],
+    "nutrition": { "calories": 640, "protein": 49, "carbs": 62, "fat": 20 },
+    "ingredients": [
+      { "ingredient": "Cooked chicken", "measure": "180g" },
+      { "ingredient": "Cooked rice", "measure": "180g" },
+      { "ingredient": "Eggs", "measure": "2" },
+      { "ingredient": "Peas", "measure": "80g" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Scramble eggs in pan.", "Add chicken, rice and peas.", "Stir-fry with soy."]
+  },
+  {
+    "id": "local-beef-01",
+    "title": "Lean Beef Potato Hash",
+    "preference": "beef",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 30,
+    "goals": ["high_protein", "balanced"],
+    "nutrition": { "calories": 690, "protein": 48, "carbs": 60, "fat": 27 },
+    "ingredients": [
+      { "ingredient": "Lean beef mince 5%", "measure": "220g" },
+      { "ingredient": "Potatoes", "measure": "260g" },
+      { "ingredient": "Onion", "measure": "80g" },
+      { "ingredient": "Bell pepper", "measure": "90g" },
+      { "ingredient": "Olive oil", "measure": "10g" }
+    ],
+    "instructions": ["Cube and roast potatoes.", "Brown mince with onion.", "Add peppers and combine with potatoes."]
+  },
+  {
+    "id": "local-beef-02",
+    "title": "Beef Burrito Bowl",
+    "preference": "beef",
+    "mealType": "Lunch",
+    "area": "Mexican",
+    "minutes": 30,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 720, "protein": 51, "carbs": 68, "fat": 26 },
+    "ingredients": [
+      { "ingredient": "Lean beef mince 5%", "measure": "220g" },
+      { "ingredient": "Cooked rice", "measure": "170g" },
+      { "ingredient": "Black beans", "measure": "120g" },
+      { "ingredient": "Sweetcorn", "measure": "80g" },
+      { "ingredient": "Salsa", "measure": "80g" }
+    ],
+    "instructions": ["Cook beef with seasoning.", "Warm beans and rice.", "Layer all in bowl and top with salsa."]
+  },
+  {
+    "id": "local-beef-03",
+    "title": "Beef Stir Fry Noodles",
+    "preference": "beef",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 15,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 620, "protein": 44, "carbs": 57, "fat": 23 },
+    "ingredients": [
+      { "ingredient": "Beef strips", "measure": "200g" },
+      { "ingredient": "Egg noodles", "measure": "80g dry" },
+      { "ingredient": "Mixed stir-fry veg", "measure": "180g" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" },
+      { "ingredient": "Sesame oil", "measure": "6g" }
+    ],
+    "instructions": ["Cook noodles.", "Sear beef hot and fast.", "Add veg and sauce, toss with noodles."]
+  },
+  {
+    "id": "local-beef-04",
+    "title": "Beef Chili Meal Prep",
+    "preference": "beef",
+    "mealType": "Dinner",
+    "area": "Mexican",
+    "minutes": 45,
+    "goals": ["high_protein", "balanced", "cut"],
+    "nutrition": { "calories": 540, "protein": 45, "carbs": 43, "fat": 19 },
+    "ingredients": [
+      { "ingredient": "Lean beef mince 5%", "measure": "220g" },
+      { "ingredient": "Kidney beans", "measure": "130g" },
+      { "ingredient": "Chopped tomatoes", "measure": "220g" },
+      { "ingredient": "Onion", "measure": "80g" },
+      { "ingredient": "Chili spices", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook mince and onion.", "Add tomatoes, beans and spice.", "Simmer 25 minutes."]
+  },
+  {
+    "id": "local-turkey-01",
+    "title": "Turkey Quinoa Power Bowl",
+    "preference": "turkey",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 30,
+    "goals": ["high_protein", "cut", "balanced"],
+    "nutrition": { "calories": 590, "protein": 53, "carbs": 46, "fat": 20 },
+    "ingredients": [
+      { "ingredient": "Turkey mince 7%", "measure": "220g" },
+      { "ingredient": "Cooked quinoa", "measure": "170g" },
+      { "ingredient": "Cucumber", "measure": "90g" },
+      { "ingredient": "Tomato", "measure": "100g" },
+      { "ingredient": "Olive oil", "measure": "10g" }
+    ],
+    "instructions": ["Cook turkey mince with seasoning.", "Build bowl with quinoa and veg.", "Top with turkey and oil."]
+  },
+  {
+    "id": "local-turkey-02",
+    "title": "Turkey Taco Lettuce Boats",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Mexican",
+    "minutes": 15,
+    "goals": ["cut", "high_protein"],
+    "nutrition": { "calories": 430, "protein": 46, "carbs": 18, "fat": 19 },
+    "ingredients": [
+      { "ingredient": "Turkey mince 7%", "measure": "220g" },
+      { "ingredient": "Romaine lettuce", "measure": "120g" },
+      { "ingredient": "Salsa", "measure": "80g" },
+      { "ingredient": "Greek yogurt", "measure": "60g" },
+      { "ingredient": "Taco seasoning", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook turkey with taco seasoning.", "Fill lettuce leaves.", "Top with salsa and yogurt."]
+  },
+  {
+    "id": "local-turkey-03",
+    "title": "Turkey Sweet Potato Skillet",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 45,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 660, "protein": 50, "carbs": 62, "fat": 23 },
+    "ingredients": [
+      { "ingredient": "Turkey mince 7%", "measure": "220g" },
+      { "ingredient": "Sweet potato", "measure": "260g" },
+      { "ingredient": "Onion", "measure": "80g" },
+      { "ingredient": "Spinach", "measure": "90g" },
+      { "ingredient": "Olive oil", "measure": "10g" }
+    ],
+    "instructions": ["Pan-cook sweet potato cubes until tender.", "Cook turkey and onion.", "Fold in spinach and combine."]
+  },
+  {
+    "id": "local-turkey-04",
+    "title": "Turkey Pesto Pasta",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 30,
+    "goals": ["high_protein", "balanced"],
+    "nutrition": { "calories": 700, "protein": 54, "carbs": 65, "fat": 25 },
+    "ingredients": [
+      { "ingredient": "Turkey breast strips", "measure": "220g" },
+      { "ingredient": "Wholewheat pasta", "measure": "90g dry" },
+      { "ingredient": "Pesto", "measure": "20g" },
+      { "ingredient": "Cherry tomatoes", "measure": "120g" },
+      { "ingredient": "Parmesan", "measure": "10g" }
+    ],
+    "instructions": ["Cook pasta.", "Sear turkey strips.", "Toss with pesto, tomatoes, and parmesan."]
+  },
+  {
+    "id": "local-seafood-01",
+    "title": "Salmon Rice Recovery Plate",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 30,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 710, "protein": 47, "carbs": 62, "fat": 30 },
+    "ingredients": [
+      { "ingredient": "Salmon fillet", "measure": "200g" },
+      { "ingredient": "Cooked rice", "measure": "180g" },
+      { "ingredient": "Broccoli", "measure": "130g" },
+      { "ingredient": "Olive oil", "measure": "8g" },
+      { "ingredient": "Lemon", "measure": "1/2" }
+    ],
+    "instructions": ["Bake salmon 12-14 min.", "Steam broccoli.", "Serve with rice and lemon."]
+  },
+  {
+    "id": "local-seafood-02",
+    "title": "Tuna Chickpea Salad Jar",
+    "preference": "seafood",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": ["cut", "high_protein", "balanced"],
+    "nutrition": { "calories": 490, "protein": 42, "carbs": 33, "fat": 21 },
+    "ingredients": [
+      { "ingredient": "Tuna in water", "measure": "1 can (120g drained)" },
+      { "ingredient": "Chickpeas", "measure": "120g" },
+      { "ingredient": "Cucumber", "measure": "90g" },
+      { "ingredient": "Red onion", "measure": "40g" },
+      { "ingredient": "Olive oil", "measure": "10g" }
+    ],
+    "instructions": ["Drain tuna and chickpeas.", "Mix with chopped veg and oil.", "Season and serve cold."]
+  },
+  {
+    "id": "local-seafood-03",
+    "title": "Prawn Garlic Noodle Bowl",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 15,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 590, "protein": 44, "carbs": 66, "fat": 16 },
+    "ingredients": [
+      { "ingredient": "Prawns", "measure": "220g" },
+      { "ingredient": "Rice noodles", "measure": "85g dry" },
+      { "ingredient": "Garlic", "measure": "2 cloves" },
+      { "ingredient": "Pak choi", "measure": "120g" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook noodles.", "Sear prawns with garlic.", "Add greens, sauce, and toss with noodles."]
+  },
+  {
+    "id": "local-seafood-04",
+    "title": "Cod Potato Tray Bake",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "European",
+    "minutes": 45,
+    "goals": ["cut", "balanced", "high_protein"],
+    "nutrition": { "calories": 560, "protein": 49, "carbs": 55, "fat": 15 },
+    "ingredients": [
+      { "ingredient": "Cod fillet", "measure": "220g" },
+      { "ingredient": "Baby potatoes", "measure": "260g" },
+      { "ingredient": "Green beans", "measure": "120g" },
+      { "ingredient": "Olive oil", "measure": "10g" },
+      { "ingredient": "Paprika", "measure": "1 tsp" }
+    ],
+    "instructions": ["Roast potatoes first.", "Add cod and beans for final 12 min.", "Finish with paprika and lemon."]
+  },
+  {
+    "id": "local-veg-01",
+    "title": "Tofu Peanut Stir Fry",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 620, "protein": 34, "carbs": 57, "fat": 30 },
+    "ingredients": [
+      { "ingredient": "Firm tofu", "measure": "220g" },
+      { "ingredient": "Rice", "measure": "160g cooked" },
+      { "ingredient": "Stir-fry vegetables", "measure": "220g" },
+      { "ingredient": "Peanut butter", "measure": "16g" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Crisp tofu in pan.", "Cook vegetables.", "Stir in peanut-soy sauce and serve with rice."]
+  },
+  {
+    "id": "local-veg-02",
+    "title": "High Protein Lentil Pasta",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 30,
+    "goals": ["high_protein", "balanced", "cut"],
+    "nutrition": { "calories": 580, "protein": 36, "carbs": 76, "fat": 12 },
+    "ingredients": [
+      { "ingredient": "Red lentil pasta", "measure": "90g dry" },
+      { "ingredient": "Passata", "measure": "200g" },
+      { "ingredient": "Mushrooms", "measure": "140g" },
+      { "ingredient": "Spinach", "measure": "80g" },
+      { "ingredient": "Parmesan", "measure": "10g" }
+    ],
+    "instructions": ["Cook pasta.", "Simmer passata with mushrooms.", "Fold in spinach and combine."]
+  },
+  {
+    "id": "local-veg-03",
+    "title": "Egg White Veg Omelette Wrap",
+    "preference": "vegetarian",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": ["cut", "high_protein"],
+    "nutrition": { "calories": 390, "protein": 33, "carbs": 27, "fat": 14 },
+    "ingredients": [
+      { "ingredient": "Egg whites", "measure": "220g" },
+      { "ingredient": "Whole egg", "measure": "1" },
+      { "ingredient": "Wholewheat wrap", "measure": "1 medium" },
+      { "ingredient": "Peppers", "measure": "100g" },
+      { "ingredient": "Onion", "measure": "50g" }
+    ],
+    "instructions": ["Cook egg mixture with veg.", "Warm wrap.", "Fill and roll."]
+  },
+  {
+    "id": "local-veg-04",
+    "title": "Paneer Rice Bowl",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Indian",
+    "minutes": 45,
+    "goals": ["balanced"],
+    "nutrition": { "calories": 760, "protein": 33, "carbs": 68, "fat": 39 },
+    "ingredients": [
+      { "ingredient": "Paneer", "measure": "180g" },
+      { "ingredient": "Cooked rice", "measure": "180g" },
+      { "ingredient": "Tomato puree", "measure": "120g" },
+      { "ingredient": "Onion", "measure": "70g" },
+      { "ingredient": "Spices", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook onion and spices.", "Add tomato and paneer.", "Serve over rice."]
+  },
+  {
+    "id": "local-chickpea-01",
+    "title": "Chickpea Tuna Hybrid Bowl",
+    "preference": "chickpeas",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": ["cut", "high_protein", "balanced"],
+    "nutrition": { "calories": 520, "protein": 40, "carbs": 41, "fat": 20 },
+    "ingredients": [
+      { "ingredient": "Chickpeas", "measure": "150g" },
+      { "ingredient": "Tuna in water", "measure": "100g" },
+      { "ingredient": "Cucumber", "measure": "100g" },
+      { "ingredient": "Tomatoes", "measure": "100g" },
+      { "ingredient": "Olive oil", "measure": "10g" }
+    ],
+    "instructions": ["Drain chickpeas and tuna.", "Chop veg.", "Mix all ingredients and season."]
+  },
+  {
+    "id": "local-chickpea-02",
+    "title": "Chickpea Spinach Curry",
+    "preference": "chickpeas",
+    "mealType": "Dinner",
+    "area": "Indian",
+    "minutes": 30,
+    "goals": ["balanced", "cut"],
+    "nutrition": { "calories": 540, "protein": 24, "carbs": 68, "fat": 18 },
+    "ingredients": [
+      { "ingredient": "Chickpeas", "measure": "220g" },
+      { "ingredient": "Light coconut milk", "measure": "120ml" },
+      { "ingredient": "Spinach", "measure": "120g" },
+      { "ingredient": "Onion", "measure": "80g" },
+      { "ingredient": "Curry paste", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook onion and curry paste.", "Add chickpeas and coconut milk.", "Finish with spinach."]
+  },
+  {
+    "id": "local-chickpea-03",
+    "title": "Roasted Chickpea Grain Bowl",
+    "preference": "chickpeas",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 45,
+    "goals": ["balanced", "cut"],
+    "nutrition": { "calories": 560, "protein": 22, "carbs": 73, "fat": 20 },
+    "ingredients": [
+      { "ingredient": "Chickpeas", "measure": "180g" },
+      { "ingredient": "Cooked bulgur", "measure": "160g" },
+      { "ingredient": "Carrot", "measure": "90g" },
+      { "ingredient": "Kale", "measure": "90g" },
+      { "ingredient": "Tahini", "measure": "15g" }
+    ],
+    "instructions": ["Roast chickpeas with spice.", "Cook bulgur.", "Assemble with veg and tahini."]
+  },
+  {
+    "id": "local-chickpea-04",
+    "title": "Chickpea Scramble Toast",
+    "preference": "chickpeas",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": ["cut", "balanced"],
+    "nutrition": { "calories": 430, "protein": 19, "carbs": 52, "fat": 14 },
+    "ingredients": [
+      { "ingredient": "Mashed chickpeas", "measure": "160g" },
+      { "ingredient": "Wholegrain bread", "measure": "2 slices" },
+      { "ingredient": "Turmeric", "measure": "1 tsp" },
+      { "ingredient": "Tomato", "measure": "80g" },
+      { "ingredient": "Olive oil", "measure": "5g" }
+    ],
+    "instructions": ["Heat chickpeas with spices.", "Toast bread.", "Serve scramble on toast with tomato."]
+  },
+  {
+    "id": "local-pork-01",
+    "title": "Lean Pork Rice Stir Fry",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 680, "protein": 47, "carbs": 63, "fat": 24 },
+    "ingredients": [
+      { "ingredient": "Lean pork strips", "measure": "220g" },
+      { "ingredient": "Cooked rice", "measure": "170g" },
+      { "ingredient": "Mixed vegetables", "measure": "180g" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" },
+      { "ingredient": "Sesame oil", "measure": "6g" }
+    ],
+    "instructions": ["Sear pork strips.", "Add veg and sauce.", "Finish with rice."]
+  },
+  {
+    "id": "local-pork-02",
+    "title": "Pork Tenderloin Potato Plate",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "European",
+    "minutes": 45,
+    "goals": ["balanced", "high_protein", "cut"],
+    "nutrition": { "calories": 610, "protein": 49, "carbs": 52, "fat": 21 },
+    "ingredients": [
+      { "ingredient": "Pork tenderloin", "measure": "220g" },
+      { "ingredient": "Potatoes", "measure": "240g" },
+      { "ingredient": "Green beans", "measure": "120g" },
+      { "ingredient": "Olive oil", "measure": "10g" },
+      { "ingredient": "Mustard", "measure": "1 tsp" }
+    ],
+    "instructions": ["Roast potatoes.", "Pan-sear pork and finish in oven.", "Serve with beans and mustard."]
+  },
+  {
+    "id": "local-pork-03",
+    "title": "Pork Egg Noodle Bowl",
+    "preference": "pork",
+    "mealType": "Lunch",
+    "area": "Asian",
+    "minutes": 15,
+    "goals": ["balanced", "high_protein"],
+    "nutrition": { "calories": 640, "protein": 45, "carbs": 61, "fat": 22 },
+    "ingredients": [
+      { "ingredient": "Lean pork mince", "measure": "200g" },
+      { "ingredient": "Egg noodles", "measure": "85g dry" },
+      { "ingredient": "Pak choi", "measure": "120g" },
+      { "ingredient": "Garlic", "measure": "2 cloves" },
+      { "ingredient": "Soy sauce", "measure": "1 tbsp" }
+    ],
+    "instructions": ["Cook noodles.", "Brown pork with garlic.", "Add greens and toss with noodles."]
+  },
+  {
+    "id": "local-pork-04",
+    "title": "Pork Burrito Meal Prep",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "Mexican",
+    "minutes": 30,
+    "goals": ["balanced"],
+    "nutrition": { "calories": 730, "protein": 46, "carbs": 71, "fat": 27 },
+    "ingredients": [
+      { "ingredient": "Lean pork mince", "measure": "220g" },
+      { "ingredient": "Cooked rice", "measure": "170g" },
+      { "ingredient": "Black beans", "measure": "100g" },
+      { "ingredient": "Sweetcorn", "measure": "80g" },
+      { "ingredient": "Salsa", "measure": "90g" }
+    ],
+    "instructions": ["Cook pork with spice blend.", "Warm rice and beans.", "Combine all and top with salsa."]
+  }
+]

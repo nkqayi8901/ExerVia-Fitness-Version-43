@@ -5,6 +5,7 @@ import Navbar from "./Navbar";
 import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
+import localRecipes from "../data/recipes.json";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -333,6 +334,46 @@ function convertSpoonToMealShape(recipe) {
   return base;
 }
 
+function convertLocalToMealShape(recipe) {
+  const steps = Array.isArray(recipe?.instructions) ? recipe.instructions : [];
+  const ingredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
+  const base = {
+    idMeal: String(recipe?.id || `local-${Date.now()}`),
+    strMeal: String(recipe?.title || "Recipe"),
+    strMealThumb: "",
+    strCategory: String(recipe?.mealType || "Recipe"),
+    strArea: String(recipe?.area || "Custom"),
+    strInstructions: steps.join("\n"),
+    source: "local",
+    localRecipe: recipe,
+  };
+  for (let i = 0; i < 20; i += 1) {
+    const row = ingredients[i];
+    base[`strIngredient${i + 1}`] = String(row?.ingredient || "");
+    base[`strMeasure${i + 1}`] = String(row?.measure || "");
+  }
+  base.__nutrition = {
+    calories: Number(recipe?.nutrition?.calories) || 0,
+    protein: Number(recipe?.nutrition?.protein) || 0,
+    carbs: Number(recipe?.nutrition?.carbs) || 0,
+    fat: Number(recipe?.nutrition?.fat) || 0,
+  };
+  return base;
+}
+
+function getLocalRecipePool(preference, timeWindow, goal) {
+  const list = Array.isArray(localRecipes) ? localRecipes : [];
+  const timeValue = Number(timeWindow || 30);
+  return list
+    .filter((recipe) => String(recipe?.preference || "") === String(preference || ""))
+    .filter((recipe) => Number(recipe?.minutes || 999) <= timeValue)
+    .filter((recipe) => {
+      const goals = Array.isArray(recipe?.goals) ? recipe.goals : [];
+      return goals.length === 0 || goals.includes(goal);
+    })
+    .map((recipe) => convertLocalToMealShape(recipe));
+}
+
 const toMacroNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) && num > 0 ? num : 0;
@@ -355,6 +396,16 @@ const getEntryMacros = (entry) => {
     fat: toMacroNumber(base.fat) * servings,
   };
 };
+
+const getMealPreviewMacros = (meal) => ({
+  calories: toMacroNumber(meal?.__nutrition?.calories),
+  protein: toMacroNumber(meal?.__nutrition?.protein),
+  carbs: toMacroNumber(meal?.__nutrition?.carbs),
+  fat: toMacroNumber(meal?.__nutrition?.fat),
+});
+
+const isCuratedMeal = (meal) =>
+  String(meal?.idMeal || "").startsWith("local-") || String(meal?.source || "") === "local";
 
 const sumMacros = (entries) =>
   (Array.isArray(entries) ? entries : []).reduce(
@@ -592,6 +643,11 @@ export default function NutritionPage() {
 
   // --- MealDB fetchers ---
   const fetchMealOfDay = async () => {
+    const localPool = getLocalRecipePool(preference, "45", goal);
+    if (localPool.length) {
+      setMealOfDay(localPool[Math.floor(Math.random() * localPool.length)]);
+      return;
+    }
     // try a few times to avoid a random dessert/junk pick
     for (let attempt = 0; attempt < 6; attempt++) {
       try {
@@ -658,6 +714,10 @@ export default function NutritionPage() {
       const dummyMeals = dummyLists.flat();
       list = [...list, ...dummyMeals];
 
+      // local curated library for stable variety
+      const localMeals = getLocalRecipePool(preference, timeWindow, goal);
+      list = [...list, ...localMeals];
+
       // third pool from Spoonacular (optional API key)
       // used when categories are thin (especially turkey) or result set is still small
       if (SPOON_KEY && (preference === "turkey" || list.length < cap + 2)) {
@@ -713,6 +773,7 @@ export default function NutritionPage() {
             fallbackTerms.map((term) => mealdbSearchByName(term))
           );
           raw = [...normalizeMealList(raw), ...fallbackLists.flat()];
+          raw = [...raw, ...getLocalRecipePool(preference, timeWindow, goal)];
           const s2 = new Set();
           raw = raw.filter((m) => {
             const key = normalizeTextId(m?.strMeal) || normalizeTextId(m?.idMeal);
@@ -806,6 +867,20 @@ export default function NutritionPage() {
           }
         }
       }
+      if (String(idMeal || "").startsWith("local-")) {
+        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        if (sourceMeal?.localRecipe) {
+          setActiveMeal(convertLocalToMealShape(sourceMeal.localRecipe));
+          return;
+        }
+        const row = (Array.isArray(localRecipes) ? localRecipes : []).find(
+          (item) => String(item?.id) === String(idMeal)
+        );
+        if (row) {
+          setActiveMeal(convertLocalToMealShape(row));
+          return;
+        }
+      }
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
@@ -830,7 +905,12 @@ export default function NutritionPage() {
         dummySearchByName(keyword),
         SPOON_KEY ? spoonSearchByName(keyword, 8) : Promise.resolve([])
       ]);
-      const merged = [...mealdbHits, ...dummyHits, ...spoonHits]
+      const localHits = (Array.isArray(localRecipes) ? localRecipes : [])
+        .filter((recipe) =>
+          String(recipe?.title || "").toLowerCase().includes(String(keyword || "").toLowerCase())
+        )
+        .map((recipe) => convertLocalToMealShape(recipe));
+      const merged = [...mealdbHits, ...dummyHits, ...spoonHits, ...localHits]
         .filter((meal) => looksHealthyEnough(meal?.strMeal, goal))
         .filter((meal) => normalizeTextId(meal?.strMeal) !== normalizeTextId(activeMeal.strMeal));
       const seen = new Set();
@@ -1469,13 +1549,31 @@ export default function NutritionPage() {
                 className="fuel-mealofday"
                 onClick={() => fetchMealDetail(mealOfDay.idMeal)}
               >
-                <img
-                  src={mealOfDay.strMealThumb}
-                  alt={mealOfDay.strMeal}
-                  className="fuel-thumb"
-                />
-                <div>
+                <div className="fuel-tile-visual fuel-gradient-1 fuel-feature-visual">
+                  <div className="fuel-tile-toprow">
+                    <span className="fuel-tile-kicker">{mealOfDay.strCategory || "Daily pick"}</span>
+                    {isCuratedMeal(mealOfDay) ? <span className="fuel-curated-badge">Curated</span> : null}
+                  </div>
+                  <span className="fuel-tile-open">Open recipe</span>
+                </div>
+                <div className="fuel-meal-body">
                   <div className="fuel-meal-name">{mealOfDay.strMeal}</div>
+                  <div className="fuel-tile-meta">
+                    {(() => {
+                      const macros = getMealPreviewMacros(mealOfDay);
+                      if (!macros.calories && !macros.protein && !macros.carbs && !macros.fat) {
+                        return <span className="fuel-meta-chip">Macro preview in recipe</span>;
+                      }
+                      return (
+                        <>
+                          <span className="fuel-meta-chip">{Math.round(macros.calories)} kcal</span>
+                          <span className="fuel-meta-chip">P {Math.round(macros.protein)}g</span>
+                          <span className="fuel-meta-chip">C {Math.round(macros.carbs)}g</span>
+                          <span className="fuel-meta-chip">F {Math.round(macros.fat)}g</span>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <div className="hud-dim">Tap to open recipe + shopping list</div>
                 </div>
               </button>
@@ -1498,20 +1596,39 @@ export default function NutritionPage() {
               </div>
             ) : (
               <div className="fuel-grid">
-                {protocolMeals.map((m) => (
+                {protocolMeals.map((m, index) => (
                   <button
                     key={m.idMeal}
                     className="fuel-tile"
                     onClick={() => fetchMealDetail(m.idMeal)}
                   >
-                    <img
-                      src={m.strMealThumb}
-                      alt={m.strMeal}
-                      className="fuel-tile-thumb"
-                      loading="lazy"
-                    />
-                    <div className="fuel-tile-name">{m.strMeal}</div>
-                    <div className="fuel-tile-sub">Open recipe</div>
+                    <div className={`fuel-tile-visual fuel-gradient-${(index % 4) + 1}`}>
+                      <div className="fuel-tile-toprow">
+                        <span className="fuel-tile-kicker">{m.strCategory || "Protocol recipe"}</span>
+                        {isCuratedMeal(m) ? <span className="fuel-curated-badge">Curated</span> : null}
+                      </div>
+                      <span className="fuel-tile-open">Open</span>
+                    </div>
+                    <div className="fuel-tile-body">
+                      <div className="fuel-tile-name">{m.strMeal}</div>
+                      <div className="fuel-tile-meta">
+                        {(() => {
+                          const macros = getMealPreviewMacros(m);
+                          if (!macros.calories && !macros.protein && !macros.carbs && !macros.fat) {
+                            return <span className="fuel-meta-chip">Macro preview in recipe</span>;
+                          }
+                          return (
+                            <>
+                              <span className="fuel-meta-chip">{Math.round(macros.calories)} kcal</span>
+                              <span className="fuel-meta-chip">P {Math.round(macros.protein)}g</span>
+                              <span className="fuel-meta-chip">C {Math.round(macros.carbs)}g</span>
+                              <span className="fuel-meta-chip">F {Math.round(macros.fat)}g</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="fuel-tile-sub">Open recipe</div>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -1542,6 +1659,9 @@ export default function NutritionPage() {
                 <div>
                   <div className="fuel-modal-title">{activeMeal.strMeal}</div>
                   <div className="fuel-detail-tags">
+                    {isCuratedMeal(activeMeal) ? (
+                      <span className="fuel-tag fuel-tag-curated">Curated recipe</span>
+                    ) : null}
                     {activeMeal.strCategory ? (
                       <span className="fuel-tag">{activeMeal.strCategory}</span>
                     ) : null}
@@ -1590,11 +1710,11 @@ export default function NutritionPage() {
               ) : (
                 <div className="fuel-modal-body">
                   <div className="fuel-modal-left">
-                    <img
-                      src={activeMeal.strMealThumb}
-                      alt={activeMeal.strMeal}
-                      className="fuel-detail-img"
-                    />
+                    <div className="fuel-detail-hero">
+                      <span className="fuel-tile-kicker">{activeMeal.strCategory || "Recipe"}</span>
+                      <div className="fuel-detail-hero-title">{activeMeal.strMeal}</div>
+                      <span className="fuel-tile-open">Nutrition + shopping list</span>
+                    </div>
                     <div className="hud-divider" />
                     <div className="fuel-section-title">Shopping List</div>
 
@@ -1788,7 +1908,7 @@ export default function NutritionPage() {
         )}
 
         <div className="hud-dim" style={{ marginTop: 12 }}>
-          Data sources: TheMealDB (recipes) + OpenFoodFacts (packaged nutrition).
+          Data sources: Curated local recipe library + TheMealDB + OpenFoodFacts.
         </div>
         {saveBanner ? (
           <div className="studio-banner success" style={{ marginTop: 12 }}>
@@ -1799,4 +1919,3 @@ export default function NutritionPage() {
     </div>
   );
 }
-
