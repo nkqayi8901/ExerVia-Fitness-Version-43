@@ -482,6 +482,7 @@ export default function NutritionPage() {
   const [feedFilter, setFeedFilter] = useState("all");
   const [curatedOnly, setCuratedOnly] = useState(false);
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
+  const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
     mealType: "Dinner",
@@ -505,6 +506,10 @@ export default function NutritionPage() {
     () => `exervia_fuel_favorites_${storedId || "guest"}`,
     [storedId]
   );
+  const favoriteMealsStorageKey = useMemo(
+    () => `exervia_fuel_favorite_meals_${storedId || "guest"}`,
+    [storedId]
+  );
 
   useEffect(() => {
     if (!saveBanner) return;
@@ -523,8 +528,22 @@ export default function NutritionPage() {
   }, [favoriteStorageKey]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(favoriteMealsStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setFavoriteMeals(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setFavoriteMeals([]);
+    }
+  }, [favoriteMealsStorageKey]);
+
+  useEffect(() => {
     localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteRecipeKeys.slice(-400)));
   }, [favoriteRecipeKeys, favoriteStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(favoriteMeals.slice(-400)));
+  }, [favoriteMeals, favoriteMealsStorageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -598,9 +617,30 @@ export default function NutritionPage() {
   const toggleRecipeFavorite = async (meal) => {
     const key = recipeIdentityKey(meal);
     if (!key) return;
-    setFavoriteRecipeKeys((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
-    );
+    setFavoriteRecipeKeys((prev) => {
+      const exists = prev.includes(key);
+      return exists ? prev.filter((item) => item !== key) : [...prev, key];
+    });
+    setFavoriteMeals((prev) => {
+      const exists = prev.some((item) => recipeIdentityKey(item) === key);
+      if (exists) return prev.filter((item) => recipeIdentityKey(item) !== key);
+      return [
+        ...prev,
+        {
+          idMeal: meal?.idMeal,
+          strMeal: meal?.strMeal,
+          strCategory: meal?.strCategory,
+          strArea: meal?.strArea,
+          source: meal?.source,
+          __nutrition: meal?.__nutrition,
+          __tip: meal?.__tip,
+          __slotTags: meal?.__slotTags,
+          localRecipe: meal?.localRecipe,
+          dummyRecipe: meal?.dummyRecipe,
+          spoonRecipe: meal?.spoonRecipe,
+        },
+      ];
+    });
     if (storedId && meal?.strMeal) {
       await saveMealToLibrary(storedId, meal.strMeal, "favorite");
     }
@@ -667,9 +707,10 @@ export default function NutritionPage() {
     [weeklyMacroTrend]
   );
   const visibleProtocolMeals = useMemo(() => {
+    if (feedFilter === "saved") return favoriteMeals;
     if (feedFilter !== "favorites") return protocolMeals;
     return protocolMeals.filter((meal) => isRecipeFavorite(meal));
-  }, [feedFilter, protocolMeals, favoriteRecipeKeys]);
+  }, [feedFilter, protocolMeals, favoriteRecipeKeys, favoriteMeals]);
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -915,15 +956,16 @@ export default function NutritionPage() {
   const fetchMealDetail = async (idMeal) => {
     setDetailLoading(true);
     try {
+      const sourcePool = [...(protocolMeals || []), ...(favoriteMeals || [])];
       if (String(idMeal || "").startsWith("dummy-")) {
-        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        const sourceMeal = sourcePool.find((meal) => String(meal.idMeal) === String(idMeal));
         if (sourceMeal?.dummyRecipe) {
           setActiveMeal(convertDummyToMealShape(sourceMeal.dummyRecipe));
           return;
         }
       }
       if (String(idMeal || "").startsWith("spoon-")) {
-        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        const sourceMeal = sourcePool.find((meal) => String(meal.idMeal) === String(idMeal));
         if (sourceMeal?.spoonRecipe) {
           setActiveMeal(convertSpoonToMealShape(sourceMeal.spoonRecipe));
           return;
@@ -943,7 +985,7 @@ export default function NutritionPage() {
         }
       }
       if (String(idMeal || "").startsWith("local-")) {
-        const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+        const sourceMeal = sourcePool.find((meal) => String(meal.idMeal) === String(idMeal));
         if (sourceMeal?.localRecipe) {
           setActiveMeal(convertLocalToMealShape(sourceMeal.localRecipe));
           return;
@@ -956,7 +998,7 @@ export default function NutritionPage() {
           return;
         }
       }
-      const sourceMeal = protocolMeals.find((meal) => String(meal.idMeal) === String(idMeal));
+      const sourceMeal = sourcePool.find((meal) => String(meal.idMeal) === String(idMeal));
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
@@ -1371,6 +1413,13 @@ export default function NutritionPage() {
               </button>
               <button
                 type="button"
+                className={`fuel-feed-toggle ${feedFilter === "saved" ? "active" : ""}`}
+                onClick={() => setFeedFilter("saved")}
+              >
+                My Saved ({favoriteMeals.length})
+              </button>
+              <button
+                type="button"
                 className={`fuel-feed-toggle ${curatedOnly ? "active" : ""}`}
                 onClick={() => setCuratedOnly((prev) => !prev)}
               >
@@ -1677,7 +1726,7 @@ export default function NutritionPage() {
                     }}
                     aria-label={isRecipeFavorite(mealOfDay) ? "Remove favorite recipe" : "Save favorite recipe"}
                   >
-                    {isRecipeFavorite(mealOfDay) ? "Saved" : "Save"}
+                    {isRecipeFavorite(mealOfDay) ? "\u2665" : "\u2661"}
                   </button>
                   <span className="fuel-tile-open">Open recipe</span>
                 </div>
@@ -1721,7 +1770,9 @@ export default function NutritionPage() {
               <div className="hud-dim">Generating meals…</div>
             ) : visibleProtocolMeals.length === 0 ? (
               <div className="hud-dim">
-                {feedFilter === "favorites"
+                {feedFilter === "saved"
+                  ? "No saved recipes yet. Tap hearts to build your personal library."
+                  : feedFilter === "favorites"
                   ? "No favorite recipes in this protocol yet."
                   : "No meals matched the current filters. Try a different preference or switch goal to Balanced."}
               </div>
@@ -1748,7 +1799,7 @@ export default function NutritionPage() {
                         }}
                         aria-label={isRecipeFavorite(m) ? "Remove favorite recipe" : "Save favorite recipe"}
                       >
-                        {isRecipeFavorite(m) ? "Saved" : "Save"}
+                        {isRecipeFavorite(m) ? "\u2665" : "\u2661"}
                       </button>
                       <span className="fuel-tile-open">Open</span>
                     </div>
@@ -2081,4 +2132,5 @@ export default function NutritionPage() {
     </div>
   );
 }
+
 
