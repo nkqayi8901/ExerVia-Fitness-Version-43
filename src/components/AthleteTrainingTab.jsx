@@ -852,7 +852,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setCompletedSessionLabel(loggedLabel);
       setSessionFocus('Base');
       setSelectedPlan(null);
-      setBanner({ type: 'success', message: '✓ Session logged.' });
       setCongratsOpen(false);
       setSessionLoggedPulseOpen(true);
       if (sessionLoggedPulseTimerRef.current) {
@@ -1134,7 +1133,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               onClick={handleBack}
               type="button"
             >
-              {'<- Back'}
+              {'Back'}
             </button>
             <div className="studio-kicker">ATHLETE STUDIO</div>
             <h2 className="studio-title">Training Ritual</h2>
@@ -1884,7 +1883,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 {[...Array(10)].map((_, index) => (
                   <span key={`program-spark-${index}`} className={`program-spark spark-${index + 1}`} />
                 ))}
-                <div className="program-celebration-badge">✓</div>
+                <div className="program-celebration-badge">{"\u2713"}</div>
               </div>
               <div className="studio-congrats-title">Well done.</div>
               <div className="studio-congrats-sub">
@@ -1938,3 +1937,5 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 };
 
 export default AthleteTrainingTab;
+
+

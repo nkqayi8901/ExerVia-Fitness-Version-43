@@ -48,7 +48,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Lemon Chicken Rice Bowl: build around Chicken breast and prep one extra portion for your next fuel slot."
+    "tip": "Lemon Chicken Rice Bowl: cook the carb base ahead, then add Chicken breast fresh post-session for faster recovery prep."
   },
   {
     "id": "local-chicken-02",
@@ -99,7 +99,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Chicken Yogurt Wrap: build around Cooked chicken and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Yogurt Wrap: season Cooked chicken early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-03",
@@ -149,7 +149,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Chicken Pasta Recovery Bowl: build around Chicken breast and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Pasta Recovery Bowl: cook the carb base ahead, then add Chicken breast fresh post-session for faster recovery prep."
   },
   {
     "id": "local-chicken-04",
@@ -199,7 +199,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Chicken Egg Fried Rice Lite: build around Cooked chicken and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Egg Fried Rice Lite: cook the carb base ahead, then add Cooked chicken fresh post-session for faster recovery prep."
   },
   {
     "id": "local-beef-01",
@@ -248,7 +248,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Lean Beef Potato Hash: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Lean Beef Potato Hash: season Lean beef mince 5% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-beef-02",
@@ -298,7 +298,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Beef Burrito Bowl: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Beef Burrito Bowl: season Lean beef mince 5% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-beef-03",
@@ -309,7 +309,8 @@
     "minutes": 15,
     "goals": [
       "balanced",
-      "high_protein"
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 620,
@@ -348,7 +349,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Beef Stir Fry Noodles: build around Beef strips and prep one extra portion for your next fuel slot."
+    "tip": "Beef Stir Fry Noodles: choose lean strips and keep sauce light for a fast cut-friendly option."
   },
   {
     "id": "local-beef-04",
@@ -398,7 +399,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Beef Chili Meal Prep: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Beef Chili Meal Prep: season Lean beef mince 5% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-turkey-01",
@@ -449,7 +450,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Turkey Quinoa Power Bowl: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Quinoa Power Bowl: season Turkey mince 7% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-turkey-02",
@@ -498,7 +499,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Turkey Taco Lettuce Boats: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Taco Lettuce Boats: use sturdy leaves and serve immediately so crunch stays sharp while keeping carbs low."
   },
   {
     "id": "local-turkey-03",
@@ -547,7 +548,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Turkey Sweet Potato Skillet: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Sweet Potato Skillet: keep heat high and avoid overcrowding so Turkey mince 7% sears instead of steaming."
   },
   {
     "id": "local-turkey-04",
@@ -596,7 +597,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Turkey Pesto Pasta: build around Turkey breast strips and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Pesto Pasta: cook the carb base ahead, then add Turkey breast strips fresh post-session for faster recovery prep."
   },
   {
     "id": "local-seafood-01",
@@ -646,7 +647,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Salmon Rice Recovery Plate: build around Salmon fillet and prep one extra portion for your next fuel slot."
+    "tip": "Salmon Rice Recovery Plate: cook the carb base ahead, then add Salmon fillet fresh post-session for faster recovery prep."
   },
   {
     "id": "local-seafood-02",
@@ -696,7 +697,7 @@
     "slot_tags": [
       "midday"
     ],
-    "tip": "Tuna Chickpea Salad Jar: build around Tuna in water and prep one extra portion for your next fuel slot."
+    "tip": "Tuna Chickpea Salad Jar: season Tuna in water early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-03",
@@ -746,7 +747,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Prawn Garlic Noodle Bowl: build around Prawns and prep one extra portion for your next fuel slot."
+    "tip": "Prawn Garlic Noodle Bowl: season Prawns early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-04",
@@ -796,7 +797,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Cod Potato Tray Bake: build around Cod fillet and prep one extra portion for your next fuel slot."
+    "tip": "Cod Potato Tray Bake: spread ingredients in one layer for even roasting and better texture."
   },
   {
     "id": "local-veg-01",
@@ -845,7 +846,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Tofu Peanut Stir Fry: build around Firm tofu and prep one extra portion for your next fuel slot."
+    "tip": "Tofu Peanut Stir Fry: keep heat high and avoid overcrowding so Firm tofu sears instead of steaming."
   },
   {
     "id": "local-veg-02",
@@ -895,7 +896,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "High Protein Lentil Pasta: build around Red lentil pasta and prep one extra portion for your next fuel slot."
+    "tip": "High Protein Lentil Pasta: cook the carb base ahead, then add Red lentil pasta fresh post-session for faster recovery prep."
   },
   {
     "id": "local-veg-03",
@@ -945,7 +946,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Egg White Veg Omelette Wrap: build around Egg whites and prep one extra portion for your next fuel slot."
+    "tip": "Egg White Veg Omelette Wrap: season Egg whites early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-veg-04",
@@ -994,7 +995,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Paneer Rice Bowl: build around Paneer and prep one extra portion for your next fuel slot."
+    "tip": "Paneer Rice Bowl: cook the carb base ahead, then add Paneer fresh post-session for faster recovery prep."
   },
   {
     "id": "local-chickpea-01",
@@ -1045,7 +1046,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Chickpea Tuna Hybrid Bowl: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Tuna Hybrid Bowl: season Chickpeas early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpea-02",
@@ -1094,7 +1095,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Chickpea Spinach Curry: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Spinach Curry: season Chickpeas early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpea-03",
@@ -1144,7 +1145,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Roasted Chickpea Grain Bowl: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Roasted Chickpea Grain Bowl: season Chickpeas early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpea-04",
@@ -1193,7 +1194,7 @@
     "slot_tags": [
       "morning"
     ],
-    "tip": "Chickpea Scramble Toast: build around Mashed chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Scramble Toast: season Mashed chickpeas early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-pork-01",
@@ -1243,7 +1244,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Lean Pork Rice Stir Fry: build around Lean pork strips and prep one extra portion for your next fuel slot."
+    "tip": "Lean Pork Rice Stir Fry: cook the carb base ahead, then add Lean pork strips fresh post-session for faster recovery prep."
   },
   {
     "id": "local-pork-02",
@@ -1293,7 +1294,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Pork Tenderloin Potato Plate: build around Pork tenderloin and prep one extra portion for your next fuel slot."
+    "tip": "Pork Tenderloin Potato Plate: season Pork tenderloin early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-pork-03",
@@ -1343,7 +1344,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Pork Egg Noodle Bowl: build around Lean pork mince and prep one extra portion for your next fuel slot."
+    "tip": "Pork Egg Noodle Bowl: season Lean pork mince early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-pork-04",
@@ -1391,7 +1392,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Pork Burrito Meal Prep: build around Lean pork mince and prep one extra portion for your next fuel slot."
+    "tip": "Pork Burrito Meal Prep: season Lean pork mince early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-05",
@@ -1441,7 +1442,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Chicken Egg Muffin Cups: build around Chicken breast cooked diced and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Egg Muffin Cups: use sturdy leaves and serve immediately so crunch stays sharp while keeping carbs low."
   },
   {
     "id": "local-chicken-06",
@@ -1491,7 +1492,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Chicken Oat Savory Bowl: build around Rolled oats and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Oat Savory Bowl: season Rolled oats early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-07",
@@ -1542,7 +1543,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Chicken Pita Snack Pocket: build around Wholewheat pita and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Pita Snack Pocket: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-chicken-08",
@@ -1591,7 +1592,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Chicken Rice Cake Stack: build around Rice cakes and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Rice Cake Stack: cook the carb base ahead, then add Rice cakes fresh post-session for faster recovery prep."
   },
   {
     "id": "local-beef-05",
@@ -1641,7 +1642,7 @@
       "morning",
       "recovery"
     ],
-    "tip": "Beef Breakfast Hash: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Beef Breakfast Hash: prep Lean beef mince 5% the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-beef-06",
@@ -1691,7 +1692,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Beef Yogurt Flatbread: build around Lean beef strips cooked and prep one extra portion for your next fuel slot."
+    "tip": "Beef Yogurt Flatbread: season Lean beef strips cooked early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-beef-07",
@@ -1741,7 +1742,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Beef Egg Rice Bowl: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Beef Egg Rice Bowl: cook the carb base ahead, then add Lean beef mince 5% fresh post-session for faster recovery prep."
   },
   {
     "id": "local-beef-08",
@@ -1790,7 +1791,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Beef Protein Quesadilla: build around Wholewheat tortilla and prep one extra portion for your next fuel slot."
+    "tip": "Beef Protein Quesadilla: season Wholewheat tortilla early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-turkey-05",
@@ -1840,7 +1841,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Turkey Breakfast Scramble: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Breakfast Scramble: prep Turkey mince 7% the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-turkey-06",
@@ -1890,7 +1891,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Turkey Bagel Recovery: build around Wholegrain bagel thin and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Bagel Recovery: cook the carb base ahead, then add Wholegrain bagel thin fresh post-session for faster recovery prep."
   },
   {
     "id": "local-turkey-07",
@@ -1940,7 +1941,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Turkey Hummus Snack Box: build around Turkey breast slices and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Hummus Snack Box: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-turkey-08",
@@ -1990,7 +1991,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Turkey Couscous Bowl: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Couscous Bowl: season Turkey mince 7% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-05",
@@ -2040,7 +2041,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Salmon Avocado Toast: build around Wholegrain bread and prep one extra portion for your next fuel slot."
+    "tip": "Salmon Avocado Toast: season Wholegrain bread early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-06",
@@ -2090,7 +2091,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Tuna Egg Protein Pot: build around Tuna in water drained and prep one extra portion for your next fuel slot."
+    "tip": "Tuna Egg Protein Pot: season Tuna in water drained early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-07",
@@ -2139,7 +2140,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Prawn Rice Paper Rolls: build around Prawns cooked and prep one extra portion for your next fuel slot."
+    "tip": "Prawn Rice Paper Rolls: cook the carb base ahead, then add Prawns cooked fresh post-session for faster recovery prep."
   },
   {
     "id": "local-seafood-08",
@@ -2188,7 +2189,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Mackerel Potato Salad: build around Mackerel fillet and prep one extra portion for your next fuel slot."
+    "tip": "Mackerel Potato Salad: season Mackerel fillet early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-veg-05",
@@ -2238,7 +2239,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Greek Yogurt Berry Oats: build around Rolled oats and prep one extra portion for your next fuel slot."
+    "tip": "Greek Yogurt Berry Oats: season Rolled oats early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-veg-06",
@@ -2287,7 +2288,7 @@
     "slot_tags": [
       "midday"
     ],
-    "tip": "Cottage Cheese Toast Stack: build around Wholegrain toast and prep one extra portion for your next fuel slot."
+    "tip": "Cottage Cheese Toast Stack: season Wholegrain toast early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-veg-07",
@@ -2336,7 +2337,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Tofu Wrap Snack: build around Firm tofu grilled and prep one extra portion for your next fuel slot."
+    "tip": "Tofu Wrap Snack: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-veg-08",
@@ -2386,7 +2387,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Lentil Soup Recovery Cup: build around Red lentils dry and prep one extra portion for your next fuel slot."
+    "tip": "Lentil Soup Recovery Cup: cook the carb base ahead, then add Red lentils dry fresh post-session for faster recovery prep."
   },
   {
     "id": "local-chickpea-05",
@@ -2436,7 +2437,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Chickpea Protein Pancakes: build around Chickpea flour and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Protein Pancakes: season Chickpea flour early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpea-06",
@@ -2485,7 +2486,7 @@
     "slot_tags": [
       "midday"
     ],
-    "tip": "Chickpea Hummus Toast: build around Wholegrain toast and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Hummus Toast: season Wholegrain toast early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpea-07",
@@ -2535,7 +2536,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Chickpea Pasta Pot: build around Chickpea pasta dry and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Pasta Pot: cook the carb base ahead, then add Chickpea pasta dry fresh post-session for faster recovery prep."
   },
   {
     "id": "local-chickpea-08",
@@ -2584,7 +2585,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Chickpea Crunch Snack Mix: build around Roasted chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Crunch Snack Mix: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-pork-05",
@@ -2634,7 +2635,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Pork Egg White Breakfast Bowl: build around Lean pork mince and prep one extra portion for your next fuel slot."
+    "tip": "Pork Egg White Breakfast Bowl: prep Lean pork mince the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-pork-06",
@@ -2683,7 +2684,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Pork Apple Rice Bowl: build around Lean pork strips and prep one extra portion for your next fuel slot."
+    "tip": "Pork Apple Rice Bowl: cook the carb base ahead, then add Lean pork strips fresh post-session for faster recovery prep."
   },
   {
     "id": "local-pork-07",
@@ -2732,7 +2733,7 @@
     "slot_tags": [
       "midday"
     ],
-    "tip": "Pork Protein Snack Pot: build around Pork tenderloin cooked sliced and prep one extra portion for your next fuel slot."
+    "tip": "Pork Protein Snack Pot: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-pork-08",
@@ -2781,15 +2782,15 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Pork Sweetcorn Wrap: build around Lean pork mince cooked and prep one extra portion for your next fuel slot."
+    "tip": "Pork Sweetcorn Wrap: season Lean pork mince cooked early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-9",
-    "title": "Lemon Chicken Rice Bowl Reloaded",
+    "title": "Smoked Chicken Breakfast Skillet",
     "preference": "chicken",
     "mealType": "Breakfast",
     "area": "Global",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
       "high_protein",
       "balanced",
@@ -2829,21 +2830,21 @@
       "Serve over rice with lemon and oil."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Lemon Chicken Rice Bowl Reloaded: build around Chicken breast and prep one extra portion for your next fuel slot."
+    "tip": "Smoked Chicken Breakfast Skillet: prep Chicken breast the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-chicken-10",
-    "title": "Chicken Yogurt Wrap Reloaded",
+    "title": "Chicken Pesto Protein Toast",
     "preference": "chicken",
     "mealType": "Snack",
     "area": "Global",
     "minutes": 15,
     "goals": [
       "high_protein",
-      "balanced",
-      "cut"
+      "balanced"
     ],
     "nutrition": {
       "calories": 470,
@@ -2881,15 +2882,15 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Chicken Yogurt Wrap Reloaded: build around Cooked chicken and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Pesto Protein Toast: season Cooked chicken early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-11",
-    "title": "Chicken Pasta Recovery Bowl Reloaded",
+    "title": "Chicken Couscous Crunch Bowl",
     "preference": "chicken",
     "mealType": "Lunch",
     "area": "Italian",
-    "minutes": 45,
+    "minutes": 30,
     "goals": [
       "high_protein",
       "balanced"
@@ -2928,20 +2929,22 @@
       "Simmer passata and spinach, combine all."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Chicken Pasta Recovery Bowl Reloaded: build around Chicken breast and prep one extra portion for your next fuel slot."
+    "tip": "Chicken Couscous Crunch Bowl: season Chicken breast early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chicken-12",
-    "title": "Chicken Egg Fried Rice Lite Reloaded",
+    "title": "Garlic Chicken Veg Tray Bake",
     "preference": "chicken",
     "mealType": "Dinner",
     "area": "Asian",
-    "minutes": 30,
+    "minutes": 45,
     "goals": [
       "high_protein",
-      "balanced"
+      "balanced",
+      "cut"
     ],
     "nutrition": {
       "calories": 640,
@@ -2979,16 +2982,17 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Chicken Egg Fried Rice Lite Reloaded: build around Cooked chicken and prep one extra portion for your next fuel slot."
+    "tip": "Garlic Chicken Veg Tray Bake: spread ingredients in one layer for even roasting and better texture."
   },
   {
     "id": "local-beef-9",
-    "title": "Lean Beef Potato Hash Reloaded",
+    "title": "Lean Beef Egg White Scramble",
     "preference": "beef",
     "mealType": "Breakfast",
     "area": "Global",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
+      "cut",
       "high_protein",
       "balanced"
     ],
@@ -3026,19 +3030,20 @@
       "Add peppers and combine with potatoes."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Lean Beef Potato Hash Reloaded: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Lean Beef Egg White Scramble: season Lean beef mince 5% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-beef-10",
-    "title": "Beef Burrito Bowl Reloaded",
+    "title": "Beef Lettuce Cup Snack",
     "preference": "beef",
     "mealType": "Snack",
     "area": "Mexican",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
-      "balanced",
+      "cut",
       "high_protein"
     ],
     "nutrition": {
@@ -3049,8 +3054,8 @@
     },
     "ingredients": [
       {
-        "ingredient": "Lean beef mince 5%",
-        "measure": "220g"
+        "ingredient": "Lean beef strips",
+        "measure": "140g"
       },
       {
         "ingredient": "Cooked rice",
@@ -3077,18 +3082,19 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Beef Burrito Bowl Reloaded: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Beef Lettuce Cup Snack: use sturdy leaves and serve immediately so crunch stays sharp while keeping carbs low."
   },
   {
     "id": "local-beef-11",
-    "title": "Beef Stir Fry Noodles Reloaded",
+    "title": "Beef Tomato Rice Pot",
     "preference": "beef",
     "mealType": "Lunch",
     "area": "Asian",
-    "minutes": 15,
+    "minutes": 30,
     "goals": [
       "balanced",
-      "high_protein"
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 620,
@@ -3124,20 +3130,21 @@
       "Add veg and sauce, toss with noodles."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Beef Stir Fry Noodles Reloaded: build around Beef strips and prep one extra portion for your next fuel slot."
+    "tip": "Beef Tomato Rice Pot: cook the carb base ahead, then add Beef strips fresh post-session for faster recovery prep."
   },
   {
     "id": "local-beef-12",
-    "title": "Beef Chili Meal Prep Reloaded",
+    "title": "Pepper Beef Sheet Pan",
     "preference": "beef",
     "mealType": "Dinner",
     "area": "Mexican",
     "minutes": 45,
     "goals": [
-      "high_protein",
       "balanced",
+      "high_protein",
       "cut"
     ],
     "nutrition": {
@@ -3176,19 +3183,19 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Beef Chili Meal Prep Reloaded: build around Lean beef mince 5% and prep one extra portion for your next fuel slot."
+    "tip": "Pepper Beef Sheet Pan: season Lean beef mince 5% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-turkey-9",
-    "title": "Turkey Quinoa Power Bowl Reloaded",
+    "title": "Turkey Meatball Marinara Bowl",
     "preference": "turkey",
     "mealType": "Breakfast",
     "area": "Global",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
+      "balanced",
       "high_protein",
-      "cut",
-      "balanced"
+      "cut"
     ],
     "nutrition": {
       "calories": 590,
@@ -3224,20 +3231,21 @@
       "Top with turkey and oil."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Turkey Quinoa Power Bowl Reloaded: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Meatball Marinara Bowl: season Turkey mince 7% early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-turkey-10",
-    "title": "Turkey Taco Lettuce Boats Reloaded",
+    "title": "Smoked Turkey Apple Snack Wrap",
     "preference": "turkey",
     "mealType": "Snack",
     "area": "Mexican",
     "minutes": 15,
     "goals": [
-      "cut",
-      "high_protein"
+      "balanced",
+      "cut"
     ],
     "nutrition": {
       "calories": 430,
@@ -3275,15 +3283,15 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Turkey Taco Lettuce Boats Reloaded: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Smoked Turkey Apple Snack Wrap: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-turkey-11",
-    "title": "Turkey Sweet Potato Skillet Reloaded",
+    "title": "Turkey Black Bean Power Skillet",
     "preference": "turkey",
     "mealType": "Lunch",
     "area": "Global",
-    "minutes": 45,
+    "minutes": 30,
     "goals": [
       "balanced",
       "high_protein"
@@ -3322,20 +3330,22 @@
       "Fold in spinach and combine."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Turkey Sweet Potato Skillet Reloaded: build around Turkey mince 7% and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Black Bean Power Skillet: keep heat high and avoid overcrowding so Turkey mince 7% sears instead of steaming."
   },
   {
     "id": "local-turkey-12",
-    "title": "Turkey Pesto Pasta Reloaded",
+    "title": "Turkey Spinach Stuffed Peppers",
     "preference": "turkey",
     "mealType": "Dinner",
     "area": "Italian",
-    "minutes": 30,
+    "minutes": 45,
     "goals": [
+      "balanced",
       "high_protein",
-      "balanced"
+      "cut"
     ],
     "nutrition": {
       "calories": 700,
@@ -3373,15 +3383,15 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Turkey Pesto Pasta Reloaded: build around Turkey breast strips and prep one extra portion for your next fuel slot."
+    "tip": "Turkey Spinach Stuffed Peppers: season Turkey breast strips early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-9",
-    "title": "Salmon Rice Recovery Plate Reloaded",
+    "title": "Sardine Lemon Rye Plate",
     "preference": "seafood",
     "mealType": "Breakfast",
     "area": "Global",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
       "balanced",
       "high_protein"
@@ -3420,21 +3430,21 @@
       "Serve with rice and lemon."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Salmon Rice Recovery Plate Reloaded: build around Salmon fillet and prep one extra portion for your next fuel slot."
+    "tip": "Sardine Lemon Rye Plate: season Salmon fillet early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-10",
-    "title": "Tuna Chickpea Salad Jar Reloaded",
+    "title": "Tuna Cottage Cheese Snack Pot",
     "preference": "seafood",
     "mealType": "Snack",
     "area": "Mediterranean",
     "minutes": 15,
     "goals": [
       "cut",
-      "high_protein",
-      "balanced"
+      "high_protein"
     ],
     "nutrition": {
       "calories": 490,
@@ -3472,15 +3482,15 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Tuna Chickpea Salad Jar Reloaded: build around Tuna in water and prep one extra portion for your next fuel slot."
+    "tip": "Tuna Cottage Cheese Snack Pot: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-seafood-11",
-    "title": "Prawn Garlic Noodle Bowl Reloaded",
+    "title": "Seafood Bulgur Midday Bowl",
     "preference": "seafood",
     "mealType": "Lunch",
     "area": "Asian",
-    "minutes": 15,
+    "minutes": 30,
     "goals": [
       "balanced",
       "high_protein"
@@ -3519,21 +3529,22 @@
       "Add greens, sauce, and toss with noodles."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Prawn Garlic Noodle Bowl Reloaded: build around Prawns and prep one extra portion for your next fuel slot."
+    "tip": "Seafood Bulgur Midday Bowl: season Prawns early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-seafood-12",
-    "title": "Cod Potato Tray Bake Reloaded",
+    "title": "White Fish Herb Rice Tray",
     "preference": "seafood",
     "mealType": "Dinner",
     "area": "European",
     "minutes": 45,
     "goals": [
-      "cut",
       "balanced",
-      "high_protein"
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 560,
@@ -3571,17 +3582,18 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Cod Potato Tray Bake Reloaded: build around Cod fillet and prep one extra portion for your next fuel slot."
+    "tip": "White Fish Herb Rice Tray: cook the carb base ahead, then add Cod fillet fresh post-session for faster recovery prep."
   },
   {
     "id": "local-vegetarian-9",
-    "title": "Tofu Peanut Stir Fry Reloaded",
+    "title": "Skyr Berry Protein Pot",
     "preference": "vegetarian",
     "mealType": "Breakfast",
     "area": "Asian",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
       "balanced",
+      "cut",
       "high_protein"
     ],
     "nutrition": {
@@ -3618,21 +3630,20 @@
       "Stir in peanut-soy sauce and serve with rice."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Tofu Peanut Stir Fry Reloaded: build around Firm tofu and prep one extra portion for your next fuel slot."
+    "tip": "Skyr Berry Protein Pot: season Firm tofu early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-vegetarian-10",
-    "title": "High Protein Lentil Pasta Reloaded",
+    "title": "Halloumi Pepper Snack Bites",
     "preference": "vegetarian",
     "mealType": "Snack",
     "area": "Italian",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
+      "balanced"
     ],
     "nutrition": {
       "calories": 580,
@@ -3670,17 +3681,17 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "High Protein Lentil Pasta Reloaded: build around Red lentil pasta and prep one extra portion for your next fuel slot."
+    "tip": "Halloumi Pepper Snack Bites: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-vegetarian-11",
-    "title": "Egg White Veg Omelette Wrap Reloaded",
+    "title": "Tofu Quinoa Midday Bowl",
     "preference": "vegetarian",
     "mealType": "Lunch",
     "area": "Global",
-    "minutes": 15,
+    "minutes": 30,
     "goals": [
-      "cut",
+      "balanced",
       "high_protein"
     ],
     "nutrition": {
@@ -3717,19 +3728,22 @@
       "Fill and roll."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Egg White Veg Omelette Wrap Reloaded: build around Egg whites and prep one extra portion for your next fuel slot."
+    "tip": "Tofu Quinoa Midday Bowl: season Egg whites early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-vegetarian-12",
-    "title": "Paneer Rice Bowl Reloaded",
+    "title": "Lentil Mushroom Shepherd Tray",
     "preference": "vegetarian",
     "mealType": "Dinner",
     "area": "Indian",
     "minutes": 45,
     "goals": [
-      "balanced"
+      "balanced",
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 760,
@@ -3767,19 +3781,19 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Paneer Rice Bowl Reloaded: build around Paneer and prep one extra portion for your next fuel slot."
+    "tip": "Lentil Mushroom Shepherd Tray: spread ingredients in one layer for even roasting and better texture."
   },
   {
     "id": "local-chickpeas-9",
-    "title": "Chickpea Tuna Hybrid Bowl Reloaded",
+    "title": "Chickpea Greek Yogurt Breakfast Bowl",
     "preference": "chickpeas",
     "mealType": "Breakfast",
     "area": "Mediterranean",
     "minutes": 15,
     "goals": [
-      "cut",
       "high_protein",
-      "balanced"
+      "balanced",
+      "cut"
     ],
     "nutrition": {
       "calories": 520,
@@ -3815,18 +3829,20 @@
       "Mix all ingredients and season."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Chickpea Tuna Hybrid Bowl Reloaded: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Greek Yogurt Breakfast Bowl: prep Chickpeas the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-chickpeas-10",
-    "title": "Chickpea Spinach Curry Reloaded",
+    "title": "Chickpea Protein Crunch Snack",
     "preference": "chickpeas",
     "mealType": "Snack",
     "area": "Indian",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
+      "high_protein",
       "balanced",
       "cut"
     ],
@@ -3838,8 +3854,8 @@
     },
     "ingredients": [
       {
-        "ingredient": "Chickpeas",
-        "measure": "220g"
+        "ingredient": "Roasted chickpeas",
+        "measure": "120g"
       },
       {
         "ingredient": "Light coconut milk",
@@ -3866,18 +3882,18 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Chickpea Spinach Curry Reloaded: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Protein Crunch Snack: portion this into grab packs so you hit protein targets between sessions without guesswork."
   },
   {
     "id": "local-chickpeas-11",
-    "title": "Roasted Chickpea Grain Bowl Reloaded",
+    "title": "Chickpea Chicken Midday Mix",
     "preference": "chickpeas",
     "mealType": "Lunch",
     "area": "Global",
-    "minutes": 45,
+    "minutes": 30,
     "goals": [
-      "balanced",
-      "cut"
+      "high_protein",
+      "balanced"
     ],
     "nutrition": {
       "calories": 560,
@@ -3913,19 +3929,20 @@
       "Assemble with veg and tahini."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Roasted Chickpea Grain Bowl Reloaded: build around Chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Chicken Midday Mix: season Chickpeas early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-chickpeas-12",
-    "title": "Chickpea Scramble Toast Reloaded",
+    "title": "Chickpea Turkey Recovery Pot",
     "preference": "chickpeas",
     "mealType": "Dinner",
     "area": "Global",
-    "minutes": 15,
+    "minutes": 45,
     "goals": [
-      "cut",
+      "high_protein",
       "balanced"
     ],
     "nutrition": {
@@ -3964,18 +3981,19 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Chickpea Scramble Toast Reloaded: build around Mashed chickpeas and prep one extra portion for your next fuel slot."
+    "tip": "Chickpea Turkey Recovery Pot: cook the carb base ahead, then add Mashed chickpeas fresh post-session for faster recovery prep."
   },
   {
     "id": "local-pork-9",
-    "title": "Lean Pork Rice Stir Fry Reloaded",
+    "title": "Lean Pork Breakfast Stir",
     "preference": "pork",
     "mealType": "Breakfast",
     "area": "Asian",
-    "minutes": 30,
+    "minutes": 15,
     "goals": [
-      "balanced",
-      "high_protein"
+      "cut",
+      "high_protein",
+      "balanced"
     ],
     "nutrition": {
       "calories": 680,
@@ -4011,21 +4029,21 @@
       "Finish with rice."
     ],
     "slot_tags": [
-      "morning"
+      "morning",
+      "pre_training"
     ],
-    "tip": "Lean Pork Rice Stir Fry Reloaded: build around Lean pork strips and prep one extra portion for your next fuel slot."
+    "tip": "Lean Pork Breakfast Stir: prep Lean pork strips the night before so morning assembly stays under 10 minutes."
   },
   {
     "id": "local-pork-10",
-    "title": "Pork Tenderloin Potato Plate Reloaded",
+    "title": "Pork Cucumber Crunch Cups",
     "preference": "pork",
     "mealType": "Snack",
     "area": "European",
-    "minutes": 45,
+    "minutes": 15,
     "goals": [
-      "balanced",
-      "high_protein",
-      "cut"
+      "cut",
+      "high_protein"
     ],
     "nutrition": {
       "calories": 610,
@@ -4035,8 +4053,8 @@
     },
     "ingredients": [
       {
-        "ingredient": "Pork tenderloin",
-        "measure": "220g"
+        "ingredient": "Lean pork loin slices",
+        "measure": "130g"
       },
       {
         "ingredient": "Potatoes",
@@ -4063,18 +4081,19 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Pork Tenderloin Potato Plate Reloaded: build around Pork tenderloin and prep one extra portion for your next fuel slot."
+    "tip": "Pork Cucumber Crunch Cups: use sturdy leaves and serve immediately so crunch stays sharp while keeping carbs low."
   },
   {
     "id": "local-pork-11",
-    "title": "Pork Egg Noodle Bowl Reloaded",
+    "title": "Pork Bean Midday Bowl",
     "preference": "pork",
     "mealType": "Lunch",
     "area": "Asian",
-    "minutes": 15,
+    "minutes": 30,
     "goals": [
       "balanced",
-      "high_protein"
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 640,
@@ -4110,19 +4129,22 @@
       "Add greens and toss with noodles."
     ],
     "slot_tags": [
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Pork Egg Noodle Bowl Reloaded: build around Lean pork mince and prep one extra portion for your next fuel slot."
+    "tip": "Pork Bean Midday Bowl: season Lean pork mince early and prep one extra serving for tomorrow's training window."
   },
   {
     "id": "local-pork-12",
-    "title": "Pork Burrito Meal Prep Reloaded",
+    "title": "Pork Tomato Veg Bake",
     "preference": "pork",
     "mealType": "Dinner",
     "area": "Mexican",
-    "minutes": 30,
+    "minutes": 45,
     "goals": [
-      "balanced"
+      "balanced",
+      "high_protein",
+      "cut"
     ],
     "nutrition": {
       "calories": 730,
@@ -4160,6 +4182,6 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Pork Burrito Meal Prep Reloaded: build around Lean pork mince and prep one extra portion for your next fuel slot."
+    "tip": "Pork Tomato Veg Bake: spread ingredients in one layer for even roasting and better texture."
   }
 ]

@@ -767,7 +767,7 @@ export default function LogsPage({ mode = "gym" }) {
       <div className="page-header">
         <div>
           <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            {"<- Back"}
+            {"Back"}
           </button>
           <h2 className="page-title">Logs</h2>
           <p className="page-subtitle">Your daily command center for body, fuel, hydration, and training.</p>
@@ -1376,4 +1376,5 @@ export default function LogsPage({ mode = "gym" }) {
     </div>
   );
 }
+
 

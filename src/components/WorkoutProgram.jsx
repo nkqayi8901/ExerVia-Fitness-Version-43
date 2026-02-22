@@ -826,6 +826,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const location = useLocation();
   const { programId } = useParams();
   const persistedRef = useRef(false);
+  const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(true);
   const injectedProgram = location.state?.program;
   const program = injectedProgram || findProgram(programId);
   const sessionPerformance = useMemo(
@@ -925,8 +926,9 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
       });
 
       setTimeout(() => {
+        setSessionLoggedPulseOpen(false);
         navigate(logsPath, { state: location.state });
-      }, 1800);
+      }, 1100);
     };
 
     persistCompletion();
@@ -946,6 +948,15 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
 
   return (
     <div className="page-shell program-shell">
+      {sessionLoggedPulseOpen && (
+        <div className="studio-log-pulse-overlay" role="status" aria-live="polite">
+          <div className="studio-log-pulse-card">
+            <div className="studio-log-pulse-check" aria-hidden="true">&#10003;</div>
+            <div className="studio-log-pulse-title">Session logged</div>
+            <div className="studio-log-pulse-sub">Opening your logs...</div>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <div>
           <h2 className="page-title">Session Complete</h2>
@@ -963,7 +974,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         </div>
         <div className="program-complete-main">Locked in. Great work.</div>
         <div className="program-complete-sub">{program?.name || "Program"} logged.</div>
-        <div className="program-complete-sub">Session captured. Redirecting to Logs...</div>
+        <div className="program-complete-sub">Session captured. Opening your logs...</div>
         <button
           className="studio-back program-back-btn"
           onClick={() => navigate(logsPath, { state: location.state })}
@@ -980,7 +991,7 @@ export default function WorkoutProgram({ mode }) {
   const { id } = useParams();
   const backPath =
     mode === "gym" ? `/gym/${id}/progress` : mode === "athlete" ? `/athlete/${id}/training` : "/";
-  const backLabel = mode === "athlete" ? "Back to training" : "Back to strength";
+  const backLabel = mode === "athlete" ? "Back to Training" : "Back to Strength";
   return (
     <Routes>
       <Route index element={<ProgramList backPath={backPath} backLabel={backLabel} />} />

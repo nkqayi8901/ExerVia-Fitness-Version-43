@@ -192,7 +192,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
       <div className="page-shell">
         <div className="hud-card">
           <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            {"<- Back"}
+            {"Back"}
           </button>
           <div className="page-title mt-3">Profile not found</div>
         </div>
@@ -205,7 +205,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
       <div className="page-header">
         <div>
           <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            {"<- Back"}
+            {"Back"}
           </button>
           <h2 className="page-title">{handleLabel}</h2>
           <p className="page-subtitle">
@@ -284,3 +284,4 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
     </div>
   );
 }
+

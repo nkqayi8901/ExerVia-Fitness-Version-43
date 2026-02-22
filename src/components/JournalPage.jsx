@@ -415,7 +415,7 @@ export default function JournalPage({ mode = "gym" }) {
             onClick={() => navigate(mode === "athlete" ? `/athlete/${userId}` : `/gym/${userId}`)}
             type="button"
           >
-            {'<- Back'}
+            {'Back'}
           </button>
           <h2 className="page-title">Journal</h2>
           <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
@@ -702,3 +702,4 @@ export default function JournalPage({ mode = "gym" }) {
     </div>
   );
 }
+

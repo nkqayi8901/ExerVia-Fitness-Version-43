@@ -52,6 +52,13 @@ const PREFERENCES = [
   { key: "pork", label: "Pork" },
 ];
 
+const BOARD_SLOTS = [
+  { key: "morning", label: "Morning" },
+  { key: "midday", label: "Midday" },
+  { key: "pre_training", label: "Pre-Training" },
+  { key: "recovery", label: "Recovery" },
+];
+
 const MEALDB_SEARCH_TERMS = {
   chicken: ["chicken", "chicken breast", "grilled chicken"],
   beef: ["beef", "steak", "mince"],
@@ -432,6 +439,18 @@ const getSlotLabel = (slot) => {
   return map[String(slot || "").trim()] || String(slot || "").trim();
 };
 
+const getMealSlotTags = (meal) => {
+  const explicit = Array.isArray(meal?.__slotTags)
+    ? meal.__slotTags.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (explicit.length) return explicit;
+  const mealType = String(meal?.strCategory || meal?.mealType || "").toLowerCase();
+  if (mealType.includes("breakfast")) return ["morning"];
+  if (mealType.includes("snack")) return ["pre_training"];
+  if (mealType.includes("lunch")) return ["midday"];
+  return ["recovery"];
+};
+
 const sumMacros = (entries) =>
   (Array.isArray(entries) ? entries : []).reduce(
     (acc, item) => {
@@ -480,9 +499,16 @@ export default function NutritionPage() {
   });
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
-  const [curatedOnly, setCuratedOnly] = useState(false);
+  const [curatedOnly, setCuratedOnly] = useState(true);
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
+  const [activeBoardSlot, setActiveBoardSlot] = useState("");
+  const [fuelBoard, setFuelBoard] = useState({
+    morning: null,
+    midday: null,
+    pre_training: null,
+    recovery: null,
+  });
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
     mealType: "Dinner",
@@ -508,6 +534,10 @@ export default function NutritionPage() {
   );
   const favoriteMealsStorageKey = useMemo(
     () => `exervia_fuel_favorite_meals_${storedId || "guest"}`,
+    [storedId]
+  );
+  const fuelBoardStorageKey = useMemo(
+    () => `exervia_fuel_board_${storedId || "guest"}_${getTodayLogKey()}`,
     [storedId]
   );
 
@@ -544,6 +574,29 @@ export default function NutritionPage() {
   useEffect(() => {
     localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(favoriteMeals.slice(-400)));
   }, [favoriteMeals, favoriteMealsStorageKey]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(fuelBoardStorageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === "object") {
+        setFuelBoard({
+          morning: parsed.morning || null,
+          midday: parsed.midday || null,
+          pre_training: parsed.pre_training || null,
+          recovery: parsed.recovery || null,
+        });
+      } else {
+        setFuelBoard({ morning: null, midday: null, pre_training: null, recovery: null });
+      }
+    } catch {
+      setFuelBoard({ morning: null, midday: null, pre_training: null, recovery: null });
+    }
+  }, [fuelBoardStorageKey]);
+
+  useEffect(() => {
+    localStorage.setItem(fuelBoardStorageKey, JSON.stringify(fuelBoard));
+  }, [fuelBoard, fuelBoardStorageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -711,6 +764,41 @@ export default function NutritionPage() {
     if (feedFilter !== "favorites") return protocolMeals;
     return protocolMeals.filter((meal) => isRecipeFavorite(meal));
   }, [feedFilter, protocolMeals, favoriteRecipeKeys, favoriteMeals]);
+  const boardTotals = useMemo(() => {
+    return BOARD_SLOTS.reduce(
+      (acc, slot) => {
+        const item = fuelBoard[slot.key];
+        if (!item) return acc;
+        acc.calories += toMacroNumber(item?.nutrition?.calories);
+        acc.protein += toMacroNumber(item?.nutrition?.protein);
+        acc.carbs += toMacroNumber(item?.nutrition?.carbs);
+        acc.fat += toMacroNumber(item?.nutrition?.fat);
+        return acc;
+      },
+      emptyMacros()
+    );
+  }, [fuelBoard]);
+  const boardFilledCount = useMemo(
+    () => BOARD_SLOTS.filter((slot) => Boolean(fuelBoard[slot.key])).length,
+    [fuelBoard]
+  );
+  const boardProgressPct = useMemo(
+    () => Math.round((boardFilledCount / Math.max(1, BOARD_SLOTS.length)) * 100),
+    [boardFilledCount]
+  );
+  const activeSlotCandidates = useMemo(() => {
+    if (!activeBoardSlot) return [];
+    const pool = [...(protocolMeals || []), ...(favoriteMeals || []), ...(Array.isArray(localRecipes) ? localRecipes.map(convertLocalToMealShape) : [])];
+    const dedup = new Map();
+    for (const meal of pool) {
+      const key = recipeIdentityKey(meal);
+      if (!key) continue;
+      if (!getMealSlotTags(meal).includes(activeBoardSlot)) continue;
+      if (!looksHealthyEnough(meal?.strMeal, goal)) continue;
+      if (!dedup.has(key)) dedup.set(key, meal);
+    }
+    return Array.from(dedup.values()).slice(0, 12);
+  }, [activeBoardSlot, protocolMeals, favoriteMeals, goal]);
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -1149,6 +1237,52 @@ export default function NutritionPage() {
     );
   };
 
+  const handleAssignMealToBoardSlot = (slotKey, meal) => {
+    if (!slotKey || !meal?.strMeal) return;
+    setFuelBoard((prev) => ({
+      ...prev,
+      [slotKey]: {
+        idMeal: meal.idMeal,
+        text: meal.strMeal,
+        source: meal.source || "recipe",
+        nutrition: {
+          calories: toMacroNumber(meal?.__nutrition?.calories),
+          protein: toMacroNumber(meal?.__nutrition?.protein),
+          carbs: toMacroNumber(meal?.__nutrition?.carbs),
+          fat: toMacroNumber(meal?.__nutrition?.fat),
+        },
+      },
+    }));
+    setActiveBoardSlot("");
+  };
+
+  const handleClearBoardSlot = (slotKey) => {
+    setFuelBoard((prev) => ({ ...prev, [slotKey]: null }));
+  };
+
+  const handleSaveFuelBoardToLogs = async () => {
+    const filled = BOARD_SLOTS
+      .map((slot) => ({ slot: slot.key, item: fuelBoard[slot.key] }))
+      .filter((row) => row.item && row.item.text);
+    if (!filled.length) {
+      setSaveBanner("Fill at least one Build My Day slot first.");
+      return;
+    }
+    let synced = 0;
+    for (const row of filled) {
+      const result = await saveMealEntryToToday(
+        { text: `${getSlotLabel(row.slot)} · ${row.item.text}`, nutrition: row.item.nutrition },
+        row.item.source || "build_my_day"
+      );
+      if (result.savedCloud) synced += 1;
+    }
+    setSaveBanner(
+      synced === filled.length
+        ? "Build My Day saved to logs."
+        : "Build My Day saved locally. Cloud sync pending for some slots."
+    );
+  };
+
   const handleSaveMealToLogs = async () => {
     if (!activeMeal?.strMeal || !storedId) return;
 
@@ -1373,7 +1507,7 @@ export default function NutritionPage() {
               onClick={() => navigate(pageMode === "athlete" ? `/athlete/${storedId}` : `/gym/${storedId}`)}
               type="button"
             >
-              {'<- Back'}
+              {'Back'}
             </button>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
@@ -1543,6 +1677,109 @@ export default function NutritionPage() {
                 </div>
               </div>
             </div>
+            <div className="hud-divider" />
+            <div className="hud-card-title">BUILD MY DAY</div>
+            <div className="hud-dim" style={{ marginBottom: 10 }}>
+              Fill Morning, Midday, Pre-Training, and Recovery slots. Save once to log your day.
+            </div>
+            <div className="fuel-board-progress">
+              <div className="fuel-board-progress-top">
+                <span>{boardFilledCount} / {BOARD_SLOTS.length} slots filled</span>
+                <span>{boardProgressPct}%</span>
+              </div>
+              <div className="fuel-board-progress-bar" aria-hidden="true">
+                <div className="fuel-board-progress-fill" style={{ width: `${boardProgressPct}%` }} />
+              </div>
+            </div>
+            <div className="fuel-board-grid">
+              {BOARD_SLOTS.map((slot) => {
+                const item = fuelBoard[slot.key];
+                return (
+                  <div className={`fuel-board-slot${item ? " filled" : ""}`} key={`slot-${slot.key}`}>
+                    <div className="fuel-board-top">
+                      <div className="fuel-board-label">{slot.label}</div>
+                      {item ? (
+                        <button
+                          type="button"
+                          className="fuel-board-clear"
+                          onClick={() => handleClearBoardSlot(slot.key)}
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
+                    {item ? (
+                      <div className="fuel-board-filled">
+                        <div className="fuel-board-name">{item.text}</div>
+                        <div className="fuel-board-macros">
+                          {Math.round(toMacroNumber(item?.nutrition?.calories))} kcal · P {Math.round(toMacroNumber(item?.nutrition?.protein))} · C {Math.round(toMacroNumber(item?.nutrition?.carbs))} · F {Math.round(toMacroNumber(item?.nutrition?.fat))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="fuel-board-empty">No meal selected for this slot.</div>
+                    )}
+                    <div className="fuel-board-actions">
+                      <button
+                        type="button"
+                        className={`fuel-board-pick ${activeBoardSlot === slot.key ? "active" : ""}`}
+                        onClick={() => setActiveBoardSlot((prev) => (prev === slot.key ? "" : slot.key))}
+                      >
+                        Pick meal
+                      </button>
+                      {activeMeal ? (
+                        <button
+                          type="button"
+                          className="fuel-board-pick"
+                          onClick={() => handleAssignMealToBoardSlot(slot.key, activeMeal)}
+                        >
+                          Use open recipe
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {activeBoardSlot ? (
+              <div className="fuel-slot-picker">
+                <div className="fuel-slot-picker-top">
+                  <div className="fuel-board-label">Pick for {getSlotLabel(activeBoardSlot)}</div>
+                  <button type="button" className="fuel-board-clear" onClick={() => setActiveBoardSlot("")}>
+                    Close
+                  </button>
+                </div>
+                <div className="fuel-slot-picker-sub">
+                  Showing slot-matched meals first so you can fill the board fast.
+                </div>
+                <div className="fuel-slot-list">
+                  {activeSlotCandidates.length === 0 ? (
+                    <div className="fuel-board-empty">No slot-matched meals yet. Try Generate New Meals.</div>
+                  ) : (
+                    activeSlotCandidates.map((meal) => (
+                      <button
+                        key={`pick-${meal.idMeal}`}
+                        type="button"
+                        className="fuel-slot-item"
+                        onClick={() => handleAssignMealToBoardSlot(activeBoardSlot, meal)}
+                      >
+                        <div className="fuel-slot-item-name">{meal.strMeal}</div>
+                        <div className="fuel-slot-item-meta">
+                          {Math.round(toMacroNumber(meal?.__nutrition?.calories))} kcal · {getRecipeSourceLabel(meal)}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="fuel-slot-hint">Select a slot to see recommended meals for that timing window.</div>
+            )}
+            <div className="fuel-board-total">
+              Running total: {Math.round(boardTotals.calories)} cal | {Math.round(boardTotals.protein)}g P | {Math.round(boardTotals.carbs)}g C | {Math.round(boardTotals.fat)}g F
+            </div>
+            <button className="studio-back fuel-compact-btn" type="button" onClick={handleSaveFuelBoardToLogs}>
+              Save Build My Day to logs
+            </button>
             <div className="fuel-quick-row">
               <input
                 className="studio-form-input"
@@ -2132,5 +2369,6 @@ export default function NutritionPage() {
     </div>
   );
 }
+
 
 

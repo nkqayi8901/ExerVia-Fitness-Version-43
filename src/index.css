@@ -1430,6 +1430,20 @@ code {
   align-items: stretch;
 }
 
+/* Shared interaction focus ring for keyboard users */
+.studio-back:focus-visible,
+.studio-primary-btn:focus-visible,
+.hud-secondary-btn:focus-visible,
+.community-cta-btn:focus-visible,
+.fuel-feed-toggle:focus-visible,
+.fuel-board-pick:focus-visible,
+.fuel-board-clear:focus-visible,
+.fuel-heart-btn:focus-visible,
+.fuel-slot-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.24);
+}
+
 .journal-slot-card {
   display: grid;
   gap: 12px;
@@ -2569,6 +2583,167 @@ code {
 .fuel-tip-body {
   font-size: 0.84rem;
   color: rgba(241, 245, 249, 0.94);
+}
+.fuel-board-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.fuel-board-progress {
+  margin-bottom: 10px;
+}
+.fuel-board-progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: rgba(148, 163, 184, 0.92);
+  font-size: 0.74rem;
+  margin-bottom: 6px;
+}
+.fuel-board-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.3);
+  overflow: hidden;
+}
+.fuel-board-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.95), rgba(59, 130, 246, 0.9));
+  transition: width 220ms ease;
+}
+.fuel-board-slot {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.24);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+.fuel-board-slot:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.fuel-board-slot.filled {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.28), rgba(15, 23, 42, 0.2));
+}
+.fuel-board-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fuel-board-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+}
+.fuel-board-clear {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.3);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.68rem;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.fuel-board-name {
+  color: rgba(248, 250, 252, 0.94);
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+.fuel-board-macros,
+.fuel-board-empty {
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.74rem;
+}
+.fuel-board-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fuel-board-pick {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.3);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.72rem;
+  padding: 7px 11px;
+  cursor: pointer;
+}
+.fuel-board-pick.active {
+  border-color: rgba(16, 185, 129, 0.46);
+  background: linear-gradient(140deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.18));
+}
+.fuel-board-pick:hover,
+.fuel-board-clear:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.fuel-board-pick:focus-visible,
+.fuel-board-clear:focus-visible,
+.fuel-slot-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+}
+.fuel-slot-picker {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: rgba(15, 23, 42, 0.26);
+}
+.fuel-slot-picker-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.fuel-slot-picker-sub {
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.72rem;
+  margin-bottom: 8px;
+}
+.fuel-slot-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+.fuel-slot-item {
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.22);
+  text-align: left;
+  padding: 8px 9px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.fuel-slot-item:hover {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: rgba(15, 23, 42, 0.28);
+  transform: translateY(-1px);
+}
+.fuel-slot-item-name {
+  color: rgba(248, 250, 252, 0.94);
+  font-size: 0.8rem;
+}
+.fuel-slot-item-meta,
+.fuel-board-total {
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.74rem;
+}
+.fuel-board-total {
+  margin-bottom: 8px;
+}
+.fuel-slot-hint {
+  margin-bottom: 10px;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 0.74rem;
 }
 
 /* shopping */
@@ -3818,6 +3993,50 @@ code {
 .mode-gym .fuel-tip-title,
 .mode-gym .fuel-tip-body {
   color: #1f2937;
+}
+.mode-gym .fuel-board-slot,
+.mode-gym .fuel-slot-picker,
+.mode-gym .fuel-slot-item {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+  border-color: rgba(15, 23, 42, 0.14);
+}
+.mode-gym .fuel-board-progress-top,
+.mode-gym .fuel-slot-picker-sub,
+.mode-gym .fuel-slot-hint {
+  color: #1f2937;
+}
+.mode-gym .fuel-board-progress-bar {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(15, 23, 42, 0.08);
+}
+.mode-gym .fuel-board-label,
+.mode-gym .fuel-board-name,
+.mode-gym .fuel-board-macros,
+.mode-gym .fuel-board-empty,
+.mode-gym .fuel-slot-item-name,
+.mode-gym .fuel-slot-item-meta,
+.mode-gym .fuel-board-total {
+  color: #1f2937;
+}
+.mode-gym .fuel-board-clear,
+.mode-gym .fuel-board-pick {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fuel-tile:hover,
+  .fuel-slot-item:hover,
+  .community-feed-card:hover,
+  .community-forum-item:hover,
+  .community-thread-row:hover {
+    transform: none !important;
+  }
+}
+.mode-gym .fuel-board-slot.filled {
+  border-color: rgba(16, 185, 129, 0.32);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(236, 253, 245, 0.94));
 }
 .mode-gym .fuel-tag-curated {
   border-color: rgba(16, 185, 129, 0.36);
@@ -8823,6 +9042,13 @@ code {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .fuel-board-grid {
+    grid-template-columns: 1fr;
+  }
+  .fuel-board-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
   .fuel-feed-toggle {
     width: 100%;
   }
@@ -11019,6 +11245,54 @@ code {
   background: rgba(15,23,42,0.04);
   border-color: rgba(15,23,42,0.14);
   color: #0f172a;
+}
+.mode-gym .program-complete {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.9));
+  border-color: rgba(16, 185, 129, 0.24);
+  box-shadow: 0 16px 34px rgba(16, 185, 129, 0.12), 0 10px 22px rgba(59, 130, 246, 0.08);
+}
+.mode-gym .program-complete-sub {
+  color: rgba(31, 41, 55, 0.82);
+}
+.mode-gym .program-celebration-badge {
+  color: #0f172a;
+  border-color: rgba(16, 185, 129, 0.55);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(59, 130, 246, 0.18));
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+.mode-gym .studio-congrats-overlay {
+  background: radial-gradient(800px 400px at 50% 20%, rgba(16, 185, 129, 0.16), transparent 70%),
+    rgba(248, 250, 252, 0.78);
+}
+.mode-gym .studio-congrats-panel {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.92));
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.14);
+}
+.mode-gym .studio-congrats-title {
+  color: #0f172a;
+}
+.mode-gym .studio-congrats-sub {
+  color: rgba(31, 41, 55, 0.82);
+}
+.mode-gym .studio-congrats-reflection textarea {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+}
+.mode-gym .studio-log-pulse-overlay {
+  background: rgba(248, 250, 252, 0.7);
+}
+.mode-gym .studio-log-pulse-card {
+  border-color: rgba(16, 185, 129, 0.26);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.92));
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.12);
+}
+.mode-gym .studio-log-pulse-title {
+  color: #0f172a;
+}
+.mode-gym .studio-log-pulse-sub {
+  color: rgba(31, 41, 55, 0.78);
 }
 .mode-gym .program-preview-row {
   border-color: rgba(15, 23, 42, 0.14);

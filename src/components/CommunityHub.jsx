@@ -300,7 +300,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     };
     const { error } = await supabase.from("community_reports").insert([payload]);
     if (error) {
-      setBanner("Report noted locally. Backend report table not configured yet.");
+      setBanner("Report captured. Moderation review tools are not enabled yet.");
       return;
     }
     setBanner("Report submitted.");
@@ -2613,7 +2613,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             }}
             type="button"
           >
-            {'<- Back to groups'}
+            {'Back to groups'}
           </button>
           <div>
             <div className="community-group-room-title">{activeGroup?.name || "Group room"}</div>
@@ -2738,7 +2738,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           <div className="community-header">
             <div>
               <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-                {'<- Back'}
+                {'Back'}
               </button>
               <div className="community-kicker">COMMUNITY</div>
               <h2 className="community-title">Train With Others</h2>
@@ -3005,7 +3005,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               </div>
               <aside className="community-thread-side-column">
                 <button className="studio-back community-cta-btn community-thread-back-btn" onClick={() => navigate(communityBasePath)} type="button">
-                  {'<- Back to forums'}
+                  {'Back to forums'}
                 </button>
                 <div className="community-thread-side-card">
                   <div className="community-section-label">Thread Summary</div>
@@ -4393,4 +4393,5 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     </div>
   );
 }
+
 

@@ -2016,7 +2016,7 @@ const StrengthProgressTab = ({ userId }) => {
               }}
               type="button"
             >
-              {'<- Back'}
+              {'Back'}
             </button>
             <div className="studio-kicker">STRENGTH STUDIO</div>
             <h2 className="studio-title">Progress Ritual</h2>
@@ -3057,5 +3057,6 @@ the createPRogram helps resolve this problem  */}
 };
 
 export default StrengthProgressTab;
+
 
 

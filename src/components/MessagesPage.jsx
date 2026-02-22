@@ -324,7 +324,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
     };
     const { error } = await supabase.from("community_reports").insert([payload]);
     if (error) {
-      setBanner("Report noted locally. Backend report table not configured yet.");
+      setBanner("Report captured. Moderation review tools are not enabled yet.");
       return;
     }
     setBanner("Report submitted.");
@@ -414,7 +414,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
       <div className="page-header">
         <div>
           <button className="studio-back messages-back-btn" type="button" onClick={() => navigate(communityPath)}>
-            {"<- Back"}
+            {"Back"}
           </button>
           <h2 className="page-title">Messages</h2>
           <p className="page-subtitle">Direct chats for approved connections.</p>
@@ -638,3 +638,4 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
     </div>
   );
 }
+

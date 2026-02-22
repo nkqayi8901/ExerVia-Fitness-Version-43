@@ -98,7 +98,7 @@ function GymDashboard({ profile, id, userState }) {
 
       <div className="quick-add-row">
         <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/progress`)}>
-          Log lift
+          Log session
         </button>
         <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/logs`)}>
           Open logs
@@ -136,7 +136,7 @@ function GymProfileOverview({ profile, userState }) {
       <div className="page-header">
         <div>
           <button className="studio-back" onClick={() => navigate(`/gym/${profile?.id || ""}`)} type="button">
-            {"<- Back"}
+            {"Back"}
           </button>
           <h2 className="page-title">Profile</h2>
           <p className="page-subtitle">Rank, level, and identity snapshot for {profile?.full_name || "athlete"}.</p>
@@ -321,3 +321,4 @@ export default function GymMode() {
     </div>
   );
 }
+

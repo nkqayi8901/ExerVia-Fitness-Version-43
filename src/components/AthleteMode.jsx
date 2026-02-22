@@ -145,7 +145,7 @@ function AthleteProfileOverview({ profile, userState }) {
       <div className="page-header">
         <div>
           <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            {'<- Back'}
+            {'Back'}
           </button>
           <h2 className="page-title">Profile</h2>
           <p className="page-subtitle">Rank, level, and identity snapshot for {profile?.full_name || "athlete"}.</p>
@@ -362,3 +362,4 @@ export default function AthleteMode() {
     </div>
   );
 }
+
