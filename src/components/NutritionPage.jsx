@@ -2102,9 +2102,17 @@ export default function NutritionPage() {
 
             <div className="hud-card-title">MEAL OF THE DAY</div>
             {mealOfDay ? (
-              <button
+              <div
                 className="fuel-mealofday"
+                role="button"
+                tabIndex={0}
                 onClick={() => fetchMealDetail(mealOfDay.idMeal)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    fetchMealDetail(mealOfDay.idMeal);
+                  }
+                }}
               >
                 <div className="fuel-tile-visual fuel-gradient-1 fuel-feature-visual">
                   <div className="fuel-tile-toprow">
@@ -2145,7 +2153,7 @@ export default function NutritionPage() {
                   </div>
                   <div className="hud-dim">Tap to open recipe + shopping list</div>
                 </div>
-              </button>
+              </div>
             ) : (
               <div className="hud-dim">
                 {curatedOnly
@@ -2174,10 +2182,18 @@ export default function NutritionPage() {
             ) : (
               <div className="fuel-grid">
                 {visibleProtocolMeals.map((m, index) => (
-                  <button
+                  <div
                     key={m.idMeal}
                     className="fuel-tile"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => fetchMealDetail(m.idMeal)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        fetchMealDetail(m.idMeal);
+                      }
+                    }}
                   >
                     <div className={`fuel-tile-visual fuel-gradient-${(index % 4) + 1}`}>
                       <div className="fuel-tile-toprow">
@@ -2218,7 +2234,7 @@ export default function NutritionPage() {
                       </div>
                       <div className="fuel-tile-sub">Open recipe</div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

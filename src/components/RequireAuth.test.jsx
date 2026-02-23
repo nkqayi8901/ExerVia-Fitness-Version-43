@@ -95,6 +95,6 @@ test("redirects to resolved profile path when URL id mismatches stored profile",
   renderRequireAuthAt("/gym/123/nutrition");
 
   await waitFor(() => {
-    expect(screen.getByText("Navigate:/gym/999/nutrition")).toBeInTheDocument();
+    expect(screen.getByText(/Navigate:\/gym\/999\/nutrition/)).toBeInTheDocument();
   });
 });
