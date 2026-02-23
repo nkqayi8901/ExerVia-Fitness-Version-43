@@ -12,6 +12,7 @@ import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
+import { emitToast } from "../utils/toast";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -274,6 +275,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!banner) return;
     const timeout = setTimeout(() => setBanner(""), 2600);
     return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
+    if (!banner) return;
+    const errorLike =
+      /(could not|error|failed|not found|permission|sign in|join group first|thread not found|missing)/i.test(
+        banner
+      );
+    if (!errorLike) {
+      emitToast(banner, "info", 3000);
+    }
   }, [banner]);
 
   const closeTopModal = useCallback(() => {
@@ -3180,7 +3192,22 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           </button>
         </div>
       )}
-      {loading && <div className="community-empty">Loading community...</div>}
+      {loading && (
+        <div className="community-loading-skeleton" aria-hidden="true">
+          <div className="community-skeleton-sidebar">
+            <div className="community-skeleton-line w-70" />
+            <div className="community-skeleton-line w-90" />
+            <div className="community-skeleton-line w-80" />
+            <div className="community-skeleton-line w-75" />
+          </div>
+          <div className="community-skeleton-feed">
+            <div className="community-skeleton-row" />
+            <div className="community-skeleton-card" />
+            <div className="community-skeleton-card" />
+            <div className="community-skeleton-card" />
+          </div>
+        </div>
+      )}
 
       {/* main layout grid that pairs sidebar + feed, */}
       {/* keeps navigation lists on the left, */}

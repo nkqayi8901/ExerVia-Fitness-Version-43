@@ -111,6 +111,8 @@ export default function LogsPage({ mode = "gym" }) {
   const [trainingRows, setTrainingRows] = useState([]);
   const [activeTrainingReport, setActiveTrainingReport] = useState(null);
   const [banner, setBanner] = useState("");
+  const [logsBootLoading, setLogsBootLoading] = useState(true);
+  const [trainingBootLoading, setTrainingBootLoading] = useState(true);
   const [glanceDetail, setGlanceDetail] = useState("training");
   const [weightGoalKg, setWeightGoalKg] = useState("");
   const [waterGoalMl, setWaterGoalMl] = useState("2000");
@@ -159,29 +161,44 @@ export default function LogsPage({ mode = "gym" }) {
   useEffect(() => {
     const run = async () => {
       if (!id) return;
-      const [logsMap, meals, supplements] = await Promise.all([
-        fetchDailyLogs(id),
-        fetchSavedMeals(id),
-        fetchSupplementLibrary(id),
-      ]);
+      setLogsBootLoading(true);
+      try {
+        const [logsMap, meals, supplements] = await Promise.all([
+          fetchDailyLogs(id),
+          fetchSavedMeals(id),
+          fetchSupplementLibrary(id),
+        ]);
 
-      const local = getLogsStore(id);
-      const mergedLogs = { ...(local.byDate || {}), ...(logsMap || {}) };
-      const mergedMeals = [...(meals || [])];
-      (local.savedMeals || []).forEach((item) => {
-        if (!mergedMeals.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
-          mergedMeals.push(item);
-        }
-      });
-      const mergedSupps = Array.from(new Set([...(supplements || []), ...(local.supplementLibrary || [])]));
+        const local = getLogsStore(id);
+        const mergedLogs = { ...(local.byDate || {}), ...(logsMap || {}) };
+        const mergedMeals = [...(meals || [])];
+        (local.savedMeals || []).forEach((item) => {
+          if (!mergedMeals.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
+            mergedMeals.push(item);
+          }
+        });
+        const mergedSupps = Array.from(new Set([...(supplements || []), ...(local.supplementLibrary || [])]));
 
-      setDailyLogsByDate(mergedLogs);
-      setSavedMeals(mergedMeals);
-      setSupplementLibrary(mergedSupps);
+        setDailyLogsByDate(mergedLogs);
+        setSavedMeals(mergedMeals);
+        setSupplementLibrary(mergedSupps);
+      } finally {
+        setLogsBootLoading(false);
+      }
     };
 
     run();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    setTrainingBootLoading(true);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    setTrainingBootLoading(false);
+  }, [id, trainingRows]);
 
   useEffect(() => {
     const run = async () => {
@@ -787,6 +804,40 @@ export default function LogsPage({ mode = "gym" }) {
   };
 
   const backPath = mode === "athlete" ? `/athlete/${id}` : `/gym/${id}`;
+  const isBootLoading = logsBootLoading || trainingBootLoading;
+
+  if (isBootLoading) {
+    return (
+      <div className="page-shell logs-shell">
+        <div className="page-header">
+          <div>
+            <button className="studio-back" onClick={() => navigate(backPath)} type="button">
+              {"Back"}
+            </button>
+            <h2 className="page-title">Logs</h2>
+            <p className="page-subtitle">Your daily command center for body, fuel, hydration, and training.</p>
+          </div>
+        </div>
+        <div className="logs-loading-skeleton" aria-hidden="true">
+          <div className="logs-skeleton-card">
+            <div className="logs-skeleton-line w-45" />
+            <div className="logs-skeleton-grid">
+              <div className="logs-skeleton-pill" />
+              <div className="logs-skeleton-pill" />
+              <div className="logs-skeleton-pill" />
+              <div className="logs-skeleton-pill" />
+            </div>
+          </div>
+          <div className="logs-skeleton-card">
+            <div className="logs-skeleton-line w-60" />
+            <div className="logs-skeleton-row" />
+            <div className="logs-skeleton-row" />
+            <div className="logs-skeleton-row" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell logs-shell">

@@ -2155,11 +2155,19 @@ export default function NutritionPage() {
                 </div>
               </div>
             ) : (
-              <div className="hud-dim">
-                {curatedOnly
-                  ? "No curated daily pick for this filter yet. Try another preference/time."
-                  : "Loading daily pick…"}
-              </div>
+              loading ? (
+                <div className="fuel-skeleton-feature" aria-hidden="true">
+                  <div className="fuel-skeleton-shimmer fuel-skeleton-feature-top" />
+                  <div className="fuel-skeleton-shimmer fuel-skeleton-feature-line w-80" />
+                  <div className="fuel-skeleton-shimmer fuel-skeleton-feature-line w-55" />
+                </div>
+              ) : (
+                <div className="hud-dim">
+                  {curatedOnly
+                    ? "No curated daily pick for this filter yet. Try another preference/time."
+                    : "Loading daily pick…"}
+                </div>
+              )
             )}
           </div>
 
@@ -2170,7 +2178,15 @@ export default function NutritionPage() {
             {error ? <div className="fuel-error">{error}</div> : null}
 
             {loading ? (
-              <div className="hud-dim">Generating meals…</div>
+              <div className="fuel-skeleton-grid" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <div className="fuel-skeleton-tile" key={`fuel-skeleton-${idx}`}>
+                    <div className="fuel-skeleton-shimmer fuel-skeleton-visual" />
+                    <div className="fuel-skeleton-shimmer fuel-skeleton-line w-85" />
+                    <div className="fuel-skeleton-shimmer fuel-skeleton-line w-60" />
+                  </div>
+                ))}
+              </div>
             ) : visibleProtocolMeals.length === 0 ? (
               <div className="hud-dim">
                 {feedFilter === "saved"

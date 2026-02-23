@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
+import { emitToast } from "../utils/toast";
 import Navbar from "./Navbar";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
@@ -448,6 +449,8 @@ export default function JournalPage({ mode = "gym" }) {
 
   const [quote, setQuote] = useState(null);
   const [entries, setEntries] = useState([]);
+  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [entriesLoading, setEntriesLoading] = useState(true);
 
   const [morning, setMorning] = useState({ ...emptyMorning });
   const [evening, setEvening] = useState({ ...emptyEvening });
@@ -472,6 +475,12 @@ export default function JournalPage({ mode = "gym" }) {
     const timeout = setTimeout(() => setBanner("", "info"), 2800);
     return () => clearTimeout(timeout);
   }, [banner]);
+
+  useEffect(() => {
+    if (!banner) return;
+    if (bannerVariant === "error") return;
+    emitToast(banner, bannerVariant, 3200);
+  }, [banner, bannerVariant]);
 
   const structuredEntries = useMemo(
     () => entries.map((entry) => ({ entry, structured: parseStructuredEntry(entry) })),
@@ -595,8 +604,10 @@ export default function JournalPage({ mode = "gym" }) {
   }, [todayMorningEntry, todayEveningEntry]);
 
   const isDayComplete = Boolean(todayMorningEntry && todayEveningEntry);
+  const isBootLoading = quoteLoading || entriesLoading;
 
   const fetchQuote = async () => {
+    setQuoteLoading(true);
     const legacyCacheKey = `exervia_quote_${todayKey}`;
     const cacheKey = `exervia_quote_v2_${todayKey}`;
     localStorage.removeItem(legacyCacheKey);
@@ -606,6 +617,7 @@ export default function JournalPage({ mode = "gym" }) {
         const parsedCache = JSON.parse(cached);
         if (parsedCache?.source === "api" && parsedCache?.content) {
           setQuote(parsedCache);
+          setQuoteLoading(false);
           return;
         }
         localStorage.removeItem(cacheKey);
@@ -628,16 +640,22 @@ export default function JournalPage({ mode = "gym" }) {
         const payload = { ...parsed, source: "api" };
         setQuote(payload);
         localStorage.setItem(cacheKey, JSON.stringify(payload));
+        setQuoteLoading(false);
         return;
       }
     }
 
     const fallback = pickFallbackQuote();
     setQuote(fallback);
+    setQuoteLoading(false);
   };
 
   const loadEntries = async () => {
-    if (!userId) return;
+    setEntriesLoading(true);
+    if (!userId) {
+      setEntriesLoading(false);
+      return;
+    }
     const { data } = await supabase
       .from("journal_entries")
       .select("*")
@@ -645,11 +663,11 @@ export default function JournalPage({ mode = "gym" }) {
       .order("created_at", { ascending: false })
       .limit(120);
     setEntries(data || []);
+    setEntriesLoading(false);
   };
 
   useEffect(() => {
-    fetchQuote();
-    loadEntries();
+    Promise.all([fetchQuote(), loadEntries()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -781,44 +799,62 @@ export default function JournalPage({ mode = "gym" }) {
         </div>
         {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
 
-        <JournalMetaCards
-          isDayComplete={isDayComplete}
-          dayInOneGlance={dayInOneGlance}
-          thisMonthEntries={thisMonthEntries}
-          quote={quote}
-        />
+        {isBootLoading ? (
+          <div className="journal-loading-skeleton" aria-hidden="true">
+            <div className="journal-skeleton-card">
+              <div className="journal-skeleton-line w-60" />
+              <div className="journal-skeleton-line w-90" />
+              <div className="journal-skeleton-line w-70" />
+            </div>
+            <div className="journal-skeleton-card">
+              <div className="journal-skeleton-line w-55" />
+              <div className="journal-skeleton-row" />
+              <div className="journal-skeleton-row" />
+              <div className="journal-skeleton-row" />
+            </div>
+          </div>
+        ) : (
+          <>
+            <JournalMetaCards
+              isDayComplete={isDayComplete}
+              dayInOneGlance={dayInOneGlance}
+              thisMonthEntries={thisMonthEntries}
+              quote={quote}
+            />
 
-        <JournalMoodCard
-          averageMood={averageMood}
-          selectedMoodDay={selectedMoodDay}
-          setSelectedMoodDay={setSelectedMoodDay}
-          moodTrend={moodTrend}
-        />
+            <JournalMoodCard
+              averageMood={averageMood}
+              selectedMoodDay={selectedMoodDay}
+              setSelectedMoodDay={setSelectedMoodDay}
+              moodTrend={moodTrend}
+            />
 
-        <JournalDailyCheckinCard
-          activeSlot={activeSlot}
-          setActiveSlot={setActiveSlot}
-          editingTarget={editingTarget}
-          cancelHistoryEdit={cancelHistoryEdit}
-          morning={morning}
-          setMorning={setMorning}
-          evening={evening}
-          setEvening={setEvening}
-          saveSlot={saveSlot}
-          savingSlot={savingSlot}
-          todayMorningEntry={todayMorningEntry}
-          todayEveningEntry={todayEveningEntry}
-        />
+            <JournalDailyCheckinCard
+              activeSlot={activeSlot}
+              setActiveSlot={setActiveSlot}
+              editingTarget={editingTarget}
+              cancelHistoryEdit={cancelHistoryEdit}
+              morning={morning}
+              setMorning={setMorning}
+              evening={evening}
+              setEvening={setEvening}
+              saveSlot={saveSlot}
+              savingSlot={savingSlot}
+              todayMorningEntry={todayMorningEntry}
+              todayEveningEntry={todayEveningEntry}
+            />
 
-        <JournalHistoryCard
-          historySearch={historySearch}
-          setHistorySearch={setHistorySearch}
-          availableTags={availableTags}
-          selectedTag={selectedTag}
-          setSelectedTag={setSelectedTag}
-          filteredHistoryDays={filteredHistoryDays}
-          startEditFromHistory={startEditFromHistory}
-        />
+            <JournalHistoryCard
+              historySearch={historySearch}
+              setHistorySearch={setHistorySearch}
+              availableTags={availableTags}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              filteredHistoryDays={filteredHistoryDays}
+              startEditFromHistory={startEditFromHistory}
+            />
+          </>
+        )}
       </div>
     </div>
   );

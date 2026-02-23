@@ -1,4 +1,5 @@
 // App.js
+import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import FitnessProfileForm from "./FitnessProfileForm";
@@ -10,13 +11,29 @@ import ResetPasswordPage from "./components/ResetPasswordPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import NotFoundPage from "./components/NotFoundPage";
+import ToastHost from "./components/ToastHost";
 
 function App() {
   const withRouteBoundary = (element) => <ErrorBoundary>{element}</ErrorBoundary>;
+  const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
+
+  useEffect(() => {
+    const onOffline = () => setIsOffline(true);
+    const onOnline = () => setIsOffline(false);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
 
   return (
     <Router>
       <ErrorBoundary>
+        {isOffline ? (
+          <div className="exervia-offline-strip">You're offline - data may be stale until connection returns.</div>
+        ) : null}
         <div className="min-h-screen">
           <Routes>
             <Route path="/" element={withRouteBoundary(<LandingPage />)} />
@@ -71,6 +88,7 @@ function App() {
             <Route path="*" element={withRouteBoundary(<NotFoundPage />)} />
           </Routes>
         </div>
+        <ToastHost />
       </ErrorBoundary>
     </Router>
   );
