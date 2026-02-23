@@ -509,6 +509,7 @@ export default function NutritionPage() {
     pre_training: null,
     recovery: null,
   });
+  const [recoveryNudge, setRecoveryNudge] = useState(null);
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
     mealType: "Dinner",
@@ -538,6 +539,10 @@ export default function NutritionPage() {
   );
   const fuelBoardStorageKey = useMemo(
     () => `exervia_fuel_board_${storedId || "guest"}_${getTodayLogKey()}`,
+    [storedId]
+  );
+  const recoveryNudgeStorageKey = useMemo(
+    () => `exervia_recovery_nudge_${storedId || "guest"}`,
     [storedId]
   );
 
@@ -593,6 +598,31 @@ export default function NutritionPage() {
       setFuelBoard({ morning: null, midday: null, pre_training: null, recovery: null });
     }
   }, [fuelBoardStorageKey]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(recoveryNudgeStorageKey);
+      if (!raw) {
+        setRecoveryNudge(null);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const ageMs = Math.max(0, Date.now() - Number(parsed?.at || 0));
+      if (!parsed || ageMs > 1000 * 60 * 60 * 8) {
+        localStorage.removeItem(recoveryNudgeStorageKey);
+        setRecoveryNudge(null);
+        return;
+      }
+      setRecoveryNudge({
+        type: String(parsed?.type || "training_session"),
+        label: String(parsed?.label || "Session"),
+        minutes: Number(parsed?.minutes || 0),
+        at: Number(parsed?.at || Date.now()),
+      });
+    } catch {
+      setRecoveryNudge(null);
+    }
+  }, [recoveryNudgeStorageKey]);
 
   useEffect(() => {
     localStorage.setItem(fuelBoardStorageKey, JSON.stringify(fuelBoard));
@@ -799,6 +829,39 @@ export default function NutritionPage() {
     }
     return Array.from(dedup.values()).slice(0, 12);
   }, [activeBoardSlot, protocolMeals, favoriteMeals, goal]);
+
+  const recoveryNudgeMeal = useMemo(() => {
+    if (!recoveryNudge) return null;
+    const localRecovery = getLocalRecipePool(preference, timeWindow, goal).filter((meal) =>
+      getMealSlotTags(meal).includes("recovery")
+    );
+    const pool = [...(protocolMeals || []), ...(favoriteMeals || []), ...localRecovery];
+    const dedup = new Map();
+    for (const meal of pool) {
+      const key = recipeIdentityKey(meal);
+      if (!key) continue;
+      if (!getMealSlotTags(meal).includes("recovery")) continue;
+      if (!looksHealthyEnough(meal?.strMeal, goal)) continue;
+      if (!dedup.has(key)) dedup.set(key, meal);
+    }
+    const list = Array.from(dedup.values());
+    if (!list.length) return null;
+    const curated = list.find((meal) => isCuratedMeal(meal) && toMacroNumber(meal?.__nutrition?.protein) > 0);
+    return curated || list[0];
+  }, [recoveryNudge, protocolMeals, favoriteMeals, preference, timeWindow, goal]);
+
+  const dismissRecoveryNudge = () => {
+    localStorage.removeItem(recoveryNudgeStorageKey);
+    setRecoveryNudge(null);
+  };
+
+  const handleApplyRecoveryNudge = () => {
+    if (!recoveryNudgeMeal?.strMeal) return;
+    handleAssignMealToBoardSlot("recovery", recoveryNudgeMeal);
+    setActiveMeal(recoveryNudgeMeal);
+    setSaveBanner(`${recoveryNudgeMeal.strMeal} added to Recovery slot.`);
+    dismissRecoveryNudge();
+  };
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -1618,6 +1681,45 @@ export default function NutritionPage() {
             </div>
 
             <div className="hud-divider" />
+
+            {recoveryNudge ? (
+              <div className="fuel-recovery-nudge">
+                <div className="fuel-recovery-nudge-kicker">RECOVERY WINDOW OPEN</div>
+                <div className="fuel-recovery-nudge-title">
+                  {recoveryNudge.label} finished{recoveryNudge.minutes > 0 ? ` (${recoveryNudge.minutes} min)` : ""}
+                </div>
+                <div className="fuel-recovery-nudge-sub">
+                  Add a recovery meal to your Build My Day board while momentum is high.
+                </div>
+                {recoveryNudgeMeal ? (
+                  <div className="fuel-recovery-nudge-meal">
+                    <div className="fuel-recovery-nudge-name">{recoveryNudgeMeal.strMeal}</div>
+                    <div className="fuel-recovery-nudge-meta">
+                      {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.calories))} kcal | P {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.protein))} | C {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.carbs))} | F {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.fat))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="fuel-recovery-nudge-meta">Generate meals to load a recovery recommendation.</div>
+                )}
+                <div className="fuel-recovery-nudge-actions">
+                  <button
+                    type="button"
+                    className="studio-back fuel-compact-btn"
+                    onClick={handleApplyRecoveryNudge}
+                    disabled={!recoveryNudgeMeal}
+                  >
+                    Fill Recovery Slot
+                  </button>
+                  <button
+                    type="button"
+                    className="studio-back fuel-compact-btn"
+                    onClick={dismissRecoveryNudge}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="hud-card-title">TODAY'S INTAKE</div>
             <div className="hud-dim" style={{ marginBottom: 10 }}>

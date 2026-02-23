@@ -746,6 +746,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // attaches plan info + intention to notes,
   // resets form state and refreshes user stats
   const handleLogSession = async () => {
+    const pushRecoveryNudge = (label, minutes) => {
+      const key = `exervia_recovery_nudge_${userId || "guest"}`;
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          type: "training_session",
+          label: String(label || "Session"),
+          minutes: Number(minutes || 0),
+          at: Date.now(),
+        })
+      );
+    };
+
     const typedDuration = parseInt(session.duration, 10);
     const timerDerivedDuration = timerSeconds > 0 ? Math.max(1, Math.round(timerSeconds / 60)) : 0;
     const planDurationTarget = Number(selectedPlan?.durationTarget || 0);
@@ -850,6 +863,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setLastLoggedSessionId(data?.id || null);
       setLastLoggedNotes(combinedNotes);
       setCompletedSessionLabel(loggedLabel);
+      pushRecoveryNudge(loggedLabel, resolvedDuration);
       setSessionFocus('Base');
       setSelectedPlan(null);
       setCongratsOpen(false);

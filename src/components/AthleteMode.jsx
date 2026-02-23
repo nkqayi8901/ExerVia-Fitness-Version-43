@@ -11,6 +11,7 @@ import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
 import PublicProfilePage from "./PublicProfilePage";
 import MessagesPage from "./MessagesPage";
+import GymProfilePage from "./GymProfilePage";
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -357,6 +358,7 @@ export default function AthleteMode() {
           path="community/thread/:threadId"
           element={<CommunityHub userId={id} forceThreadPage />}
         />
+        <Route path="community/gym/:placeId" element={<GymProfilePage mode="athlete" viewerId={id} />} />
         <Route path="messages" element={<MessagesPage mode="athlete" userId={id} />} />
       </Routes>
     </div>

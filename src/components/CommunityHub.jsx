@@ -156,6 +156,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     navigate(`/${routePrefix}/${userId}/profile/${resolvedTarget}`);
   };
+  const openGymProfile = (placeId) => {
+    const resolvedPlaceId = String(placeId || "").trim();
+    if (!resolvedPlaceId || !userId) return;
+    navigate(`/${routePrefix}/${userId}/community/gym/${encodeURIComponent(resolvedPlaceId)}`);
+  };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
   const [activeTab, setActiveTab] = useState("forums");
@@ -250,9 +255,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
   const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
   const [groupLeaderboard, setGroupLeaderboard] = useState([]);
+  const [gymLeaderboard, setGymLeaderboard] = useState([]);
   const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
+  const [gymLeaderboardContext, setGymLeaderboardContext] = useState({ placeId: "", name: "" });
   const [activityFeedItems, setActivityFeedItems] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
@@ -446,6 +454,65 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setGroupLeaderboard(rows || []);
     loadProfiles(memberIds);
   }, [userId]);
+
+  const loadGymLeaderboard = useCallback(async () => {
+    if (!userId) return;
+    setGymLeaderboardLoading(true);
+    const { data: profileRow } = await supabase
+      .from("user_profiles")
+      .select("primary_gym_place_id, primary_gym_name")
+      .eq("id", Number(userId))
+      .maybeSingle();
+
+    const placeId = String(profileRow?.primary_gym_place_id || "").trim();
+    const gymName = String(profileRow?.primary_gym_name || "").trim();
+    setGymLeaderboardContext({ placeId, name: gymName });
+
+    if (!placeId) {
+      setGymLeaderboard([]);
+      setGymLeaderboardLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc("get_weekly_gym_leaderboard", {
+      p_viewer_profile_id: Number(userId),
+      p_limit: 30,
+    });
+
+    if (error) {
+      console.error("Could not load gym leaderboard:", error);
+      setGymLeaderboard([]);
+      setGymLeaderboardLoading(false);
+      return;
+    }
+
+    const rows = data || [];
+    setGymLeaderboard(rows);
+    loadProfiles(rows.map((row) => row.user_id));
+    setGymLeaderboardLoading(false);
+  }, [userId]);
+
+  const handleReportLeaderboardEntry = async (row) => {
+    if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
+    if (Number(row.user_id) === Number(userId)) return;
+    const payload = {
+      reporter_user_id: Number(userId),
+      reported_user_id: Number(row.user_id),
+      gym_place_id: gymLeaderboardContext.placeId,
+      reason: "suspicious_activity",
+    };
+    const { error } = await supabase.from("gym_leaderboard_reports").insert([payload]);
+    if (error?.code === "23505") {
+      setBanner("Already reported for this week.");
+      return;
+    }
+    if (error) {
+      setBanner("Could not submit report right now.");
+      return;
+    }
+    setBanner("Leaderboard report submitted.");
+    loadGymLeaderboard();
+  };
 
   const loadActivityFeed = useCallback(async () => {
     if (!userId) return;
@@ -937,7 +1004,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   useEffect(() => {
     if (activeTab !== "leaderboard") return;
     loadGlobalLeaderboard();
-  }, [activeTab, loadGlobalLeaderboard]);
+    loadGymLeaderboard();
+  }, [activeTab, loadGlobalLeaderboard, loadGymLeaderboard]);
 
   useEffect(() => {
     if (activeTab !== "leaderboard" || !leaderboardGroupId) return;
@@ -3334,6 +3402,64 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                     ))}
                   {!!leaderboardGroupId && !groupLeaderboard.length && (
                     <div className="community-empty">No ranked members yet.</div>
+                  )}
+                </div>
+                <div className="community-feed-card">
+                  <div className="community-panel-title">Gym Top (This Week)</div>
+                  {!gymLeaderboardContext.placeId && (
+                    <div className="community-empty">Link a gym in Profile Settings to unlock this leaderboard.</div>
+                  )}
+                  {!!gymLeaderboardContext.placeId && (
+                    <div className="community-feed-title-row">
+                      <div className="community-feed-sub">
+                        {gymLeaderboardContext.name || "Linked Gym"}
+                      </div>
+                      <button
+                        type="button"
+                        className="community-cta-btn"
+                        onClick={() => openGymProfile(gymLeaderboardContext.placeId)}
+                      >
+                        Open gym page
+                      </button>
+                    </div>
+                  )}
+                  {gymLeaderboardLoading && <div className="community-empty">Loading gym leaderboard...</div>}
+                  {!gymLeaderboardLoading &&
+                    gymLeaderboard.slice(0, 15).map((row, index) => (
+                      <div key={`gym-${row.user_id}`} className="community-leaderboard-row">
+                        <span className="community-meta-pill">#{index + 1}</span>
+                        <button
+                          type="button"
+                          className="community-profile-link community-leaderboard-name"
+                          onClick={() => openUserProfile(row.user_id)}
+                        >
+                          {profiles[row.user_id] || `User ${row.user_id}`}
+                        </button>
+                        <div className="community-leaderboard-meta-stack">
+                          <span className="community-meta-pill">{Number(row.weekly_tonnage || 0).toLocaleString()} kg</span>
+                          {Number(row.delta_to_next || 0) > 0 ? (
+                            <span className="community-meta-pill">+{Number(row.delta_to_next || 0).toLocaleString()} to next</span>
+                          ) : null}
+                          {row.suspicious ? <span className="community-meta-pill danger">Flagged</span> : null}
+                          {Number(row.reports_count || 0) > 0 ? (
+                            <span className="community-meta-pill">{Number(row.reports_count)} report{Number(row.reports_count) === 1 ? "" : "s"}</span>
+                          ) : null}
+                        </div>
+                        {Number(row.user_id) !== Number(userId) ? (
+                          <button
+                            type="button"
+                            className="community-cta-btn"
+                            onClick={() => handleReportLeaderboardEntry(row)}
+                          >
+                            Report
+                          </button>
+                        ) : (
+                          <span className="community-meta-pill">You</span>
+                        )}
+                      </div>
+                    ))}
+                  {!!gymLeaderboardContext.placeId && !gymLeaderboardLoading && !gymLeaderboard.length && (
+                    <div className="community-empty">No gym lifts logged yet this week.</div>
                   )}
                 </div>
               </div>

@@ -925,6 +925,16 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         },
       });
 
+      localStorage.setItem(
+        `exervia_recovery_nudge_${resolvedUserId || "guest"}`,
+        JSON.stringify({
+          type: "program_completion",
+          label: String(planName || "Program"),
+          minutes: Number(minutes || 0),
+          at: Date.now(),
+        })
+      );
+
       setTimeout(() => {
         setSessionLoggedPulseOpen(false);
         navigate(logsPath, { state: location.state });

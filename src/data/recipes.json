@@ -1,207 +1,5 @@
 [
   {
-    "id": "local-chicken-01",
-    "title": "Lemon Chicken Rice Bowl",
-    "preference": "chicken",
-    "mealType": "Dinner",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 610,
-      "protein": 52,
-      "carbs": 58,
-      "fat": 18
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chicken breast",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Broccoli",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Lemon juice",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Season chicken and sear until cooked.",
-      "Steam broccoli.",
-      "Serve over rice with lemon and oil."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Session-day move: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around chicken breast with cooked rice for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chicken-02",
-    "title": "Chicken Yogurt Wrap",
-    "preference": "chicken",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 480,
-      "protein": 43,
-      "carbs": 41,
-      "fat": 16
-    },
-    "ingredients": [
-      {
-        "ingredient": "Cooked chicken",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Wholewheat wrap",
-        "measure": "1 large"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Lettuce",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Tomato",
-        "measure": "80g"
-      }
-    ],
-    "instructions": [
-      "Warm wrap.",
-      "Mix chicken with yogurt and seasoning.",
-      "Fill wrap with veg and roll."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Execution tip: Warm the wrap first so it folds tight and holds structure. Good pre-training option: enough carbs to perform without feeling heavy. Build around cooked chicken with wholewheat wrap for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chicken-03",
-    "title": "Chicken Pasta Recovery Bowl",
-    "preference": "chicken",
-    "mealType": "Dinner",
-    "area": "Italian",
-    "minutes": 45,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 730,
-      "protein": 56,
-      "carbs": 79,
-      "fat": 19
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chicken breast",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Wholewheat pasta",
-        "measure": "95g dry"
-      },
-      {
-        "ingredient": "Passata",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Parmesan",
-        "measure": "12g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "80g"
-      }
-    ],
-    "instructions": [
-      "Cook pasta.",
-      "Pan-cook chicken and slice.",
-      "Simmer passata and spinach, combine all."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Quick win: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around chicken breast with wholewheat pasta for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-chicken-04",
-    "title": "Chicken Egg Fried Rice Lite",
-    "preference": "chicken",
-    "mealType": "Dinner",
-    "area": "Asian",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 640,
-      "protein": 49,
-      "carbs": 62,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Cooked chicken",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Eggs",
-        "measure": "2"
-      },
-      {
-        "ingredient": "Peas",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Scramble eggs in pan.",
-      "Add chicken, rice and peas.",
-      "Stir-fry with soy."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Make this work harder: Pull from heat just before fully set; carryover heat finishes it perfectly. Best used post-session when you need protein plus carbs to recover well. Build around cooked chicken with cooked rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
     "id": "local-beef-01",
     "title": "Lean Beef Potato Hash",
     "preference": "beef",
@@ -248,7 +46,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Make this work harder: Simmer gently at the end so protein stays tender and the sauce stays glossy. Best used post-session when you need protein plus carbs to recover well. Build around lean beef mince 5% with potatoes for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Session support: Season in layers rather than all at once to keep flavor even. Post-session use works well here because protein and carbs land together. Build this around beef plus potato to keep fueling predictable. If appetite is low, halve volume but keep the protein anchor intact."
   },
   {
     "id": "local-beef-02",
@@ -298,7 +96,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef mince 5% with cooked rice for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Prep smarter: Cook core carbs just shy of done so reheats stay firm. Use pre-training when you want stable energy without heavy digestion. Build this around beef plus rice to keep fueling predictable. Pair this with water and keep your hydration trend aligned."
   },
   {
     "id": "local-beef-03",
@@ -349,7 +147,7 @@
       "recovery",
       "pre_training"
     ],
-    "tip": "Coach note: Use high heat and avoid overcrowding so you sear instead of steam. Best used post-session when you need protein plus carbs to recover well. Build around beef strips with egg noodles for a predictable training-day fuel profile. Batch one extra portion for the next training day."
+    "tip": "Fuel strategy: Avoid overcrowding the pan so ingredients sear instead of steam. Post-session use works well here because protein and carbs land together. Build this around beef plus noodle to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
   },
   {
     "id": "local-beef-04",
@@ -399,1200 +197,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Session-day move: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around lean beef mince 5% and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-turkey-01",
-    "title": "Turkey Quinoa Power Bowl",
-    "preference": "turkey",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "cut",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 590,
-      "protein": 53,
-      "carbs": 46,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Cooked quinoa",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Tomato",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Cook turkey mince with seasoning.",
-      "Build bowl with quinoa and veg.",
-      "Top with turkey and oil."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Coach note: Layer hot base first, then add fresh toppings for better texture. Good pre-training option: enough carbs to perform without feeling heavy. Build around turkey mince 7% with cooked quinoa for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-turkey-02",
-    "title": "Turkey Taco Lettuce Boats",
-    "preference": "turkey",
-    "mealType": "Dinner",
-    "area": "Mexican",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 500,
-      "protein": 46,
-      "carbs": 28,
-      "fat": 24
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Romaine lettuce",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Salsa",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Taco seasoning",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Cook turkey with taco seasoning.",
-      "Fill lettuce leaves.",
-      "Top with salsa and yogurt."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Session-day move: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-turkey-03",
-    "title": "Turkey Sweet Potato Skillet",
-    "preference": "turkey",
-    "mealType": "Dinner",
-    "area": "Global",
-    "minutes": 45,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 660,
-      "protein": 50,
-      "carbs": 62,
-      "fat": 23
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Sweet potato",
-        "measure": "260g"
-      },
-      {
-        "ingredient": "Onion",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Pan-cook sweet potato cubes until tender.",
-      "Cook turkey and onion.",
-      "Fold in spinach and combine."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Execution tip: Use high heat and avoid overcrowding so you sear instead of steam. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% with sweet potato for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-turkey-04",
-    "title": "Turkey Pesto Pasta",
-    "preference": "turkey",
-    "mealType": "Dinner",
-    "area": "Italian",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 700,
-      "protein": 54,
-      "carbs": 65,
-      "fat": 25
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey breast strips",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Wholewheat pasta",
-        "measure": "90g dry"
-      },
-      {
-        "ingredient": "Pesto",
-        "measure": "20g"
-      },
-      {
-        "ingredient": "Cherry tomatoes",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Parmesan",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Cook pasta.",
-      "Sear turkey strips.",
-      "Toss with pesto, tomatoes, and parmesan."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Quick win: Cook to just al dente so reheats stay firm, not soft. Best used post-session when you need protein plus carbs to recover well. Build around turkey breast strips with wholewheat pasta for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-seafood-01",
-    "title": "Salmon Rice Recovery Plate",
-    "preference": "seafood",
-    "mealType": "Dinner",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 710,
-      "protein": 47,
-      "carbs": 62,
-      "fat": 30
-    },
-    "ingredients": [
-      {
-        "ingredient": "Salmon fillet",
-        "measure": "200g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Broccoli",
-        "measure": "130g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "8g"
-      },
-      {
-        "ingredient": "Lemon",
-        "measure": "1/2"
-      }
-    ],
-    "instructions": [
-      "Bake salmon 12-14 min.",
-      "Steam broccoli.",
-      "Serve with rice and lemon."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Quick win: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around salmon fillet with cooked rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-seafood-02",
-    "title": "Tuna Chickpea Salad Jar",
-    "preference": "seafood",
-    "mealType": "Lunch",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 490,
-      "protein": 42,
-      "carbs": 33,
-      "fat": 21
-    },
-    "ingredients": [
-      {
-        "ingredient": "Tuna in water",
-        "measure": "1 can (120g drained)"
-      },
-      {
-        "ingredient": "Chickpeas",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Red onion",
-        "measure": "40g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Drain tuna and chickpeas.",
-      "Mix with chopped veg and oil.",
-      "Season and serve cold."
-    ],
-    "slot_tags": [
-      "midday"
-    ],
-    "tip": "Make this work harder: Keep wet dressing separate until serving to protect texture. Great midday pick to keep energy even through the afternoon block. Build around tuna in water and keep seasoning consistent so repeat prep stays easy. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-seafood-03",
-    "title": "Prawn Garlic Noodle Bowl",
-    "preference": "seafood",
-    "mealType": "Dinner",
-    "area": "Asian",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 590,
-      "protein": 44,
-      "carbs": 66,
-      "fat": 16
-    },
-    "ingredients": [
-      {
-        "ingredient": "Prawns",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Rice noodles",
-        "measure": "85g dry"
-      },
-      {
-        "ingredient": "Garlic",
-        "measure": "2 cloves"
-      },
-      {
-        "ingredient": "Pak choi",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Cook noodles.",
-      "Sear prawns with garlic.",
-      "Add greens, sauce, and toss with noodles."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around prawns with rice noodles for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-seafood-04",
-    "title": "Cod Potato Tray Bake",
-    "preference": "seafood",
-    "mealType": "Dinner",
-    "area": "European",
-    "minutes": 45,
-    "goals": [
-      "cut",
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 560,
-      "protein": 49,
-      "carbs": 55,
-      "fat": 15
-    },
-    "ingredients": [
-      {
-        "ingredient": "Cod fillet",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Baby potatoes",
-        "measure": "260g"
-      },
-      {
-        "ingredient": "Green beans",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Paprika",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Roast potatoes first.",
-      "Add cod and beans for final 12 min.",
-      "Finish with paprika and lemon."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Coach note: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around cod fillet with baby potatoes for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-veg-01",
-    "title": "Tofu Peanut Stir Fry",
-    "preference": "vegetarian",
-    "mealType": "Dinner",
-    "area": "Asian",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 620,
-      "protein": 34,
-      "carbs": 57,
-      "fat": 30
-    },
-    "ingredients": [
-      {
-        "ingredient": "Firm tofu",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Rice",
-        "measure": "160g cooked"
-      },
-      {
-        "ingredient": "Stir-fry vegetables",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Peanut butter",
-        "measure": "16g"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Crisp tofu in pan.",
-      "Cook vegetables.",
-      "Stir in peanut-soy sauce and serve with rice."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Execution tip: Use high heat and avoid overcrowding so you sear instead of steam. Best used post-session when you need protein plus carbs to recover well. Build around firm tofu with rice for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-veg-02",
-    "title": "High Protein Lentil Pasta",
-    "preference": "vegetarian",
-    "mealType": "Dinner",
-    "area": "Italian",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 580,
-      "protein": 36,
-      "carbs": 76,
-      "fat": 12
-    },
-    "ingredients": [
-      {
-        "ingredient": "Red lentil pasta",
-        "measure": "90g dry"
-      },
-      {
-        "ingredient": "Passata",
-        "measure": "200g"
-      },
-      {
-        "ingredient": "Mushrooms",
-        "measure": "140g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Parmesan",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Cook pasta.",
-      "Simmer passata with mushrooms.",
-      "Fold in spinach and combine."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Performance tip: Cook lentil pasta just shy of done, then finish in sauce so texture stays firm. Best used post-session when you need protein plus carbs to recover well. Build around red lentil pasta with mushrooms and spinach for a complete recovery plate. Prep a second container while the sauce is hot for tomorrow's lunch block."
-  },
-  {
-    "id": "local-veg-03",
-    "title": "Egg White Veg Omelette Wrap",
-    "preference": "vegetarian",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 390,
-      "protein": 33,
-      "carbs": 27,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Egg whites",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Whole egg",
-        "measure": "1"
-      },
-      {
-        "ingredient": "Wholewheat wrap",
-        "measure": "1 medium"
-      },
-      {
-        "ingredient": "Peppers",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Onion",
-        "measure": "50g"
-      }
-    ],
-    "instructions": [
-      "Cook egg mixture with veg.",
-      "Warm wrap.",
-      "Fill and roll."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Coach note: Warm the wrap first so it folds tight and holds structure. Strong morning anchor: stable protein first helps appetite and focus later. Build around egg whites with wholewheat wrap for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-veg-04",
-    "title": "Paneer Rice Bowl",
-    "preference": "vegetarian",
-    "mealType": "Dinner",
-    "area": "Indian",
-    "minutes": 45,
-    "goals": [
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 740,
-      "protein": 33,
-      "carbs": 66,
-      "fat": 37
-    },
-    "ingredients": [
-      {
-        "ingredient": "Paneer",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Tomato puree",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Onion",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Spices",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Cook onion and spices.",
-      "Add tomato and paneer.",
-      "Serve over rice."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around paneer with cooked rice for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chickpea-01",
-    "title": "Chickpea Tuna Hybrid Bowl",
-    "preference": "chickpeas",
-    "mealType": "Lunch",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 520,
-      "protein": 40,
-      "carbs": 41,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chickpeas",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Tuna in water",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Tomatoes",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Drain chickpeas and tuna.",
-      "Chop veg.",
-      "Mix all ingredients and season."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Execution tip: Layer hot base first, then add fresh toppings for better texture. Good pre-training option: enough carbs to perform without feeling heavy. Build around tuna in water and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chickpea-02",
-    "title": "Chickpea Spinach Curry",
-    "preference": "chickpeas",
-    "mealType": "Dinner",
-    "area": "Indian",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 540,
-      "protein": 24,
-      "carbs": 68,
-      "fat": 18
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chickpeas",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Light coconut milk",
-        "measure": "120ml"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Onion",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Curry paste",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Cook onion and curry paste.",
-      "Add chickpeas and coconut milk.",
-      "Finish with spinach."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Quick win: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around chickpeas and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-chickpea-03",
-    "title": "Roasted Chickpea Grain Bowl",
-    "preference": "chickpeas",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 45,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 560,
-      "protein": 22,
-      "carbs": 73,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chickpeas",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Cooked bulgur",
-        "measure": "160g"
-      },
-      {
-        "ingredient": "Carrot",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Kale",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Tahini",
-        "measure": "15g"
-      }
-    ],
-    "instructions": [
-      "Roast chickpeas with spice.",
-      "Cook bulgur.",
-      "Assemble with veg and tahini."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Make this work harder: Layer hot base first, then add fresh toppings for better texture. Good pre-training option: enough carbs to perform without feeling heavy. Build around chickpeas with cooked bulgur for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-chickpea-04",
-    "title": "Chickpea Scramble Toast",
-    "preference": "chickpeas",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 430,
-      "protein": 19,
-      "carbs": 52,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Mashed chickpeas",
-        "measure": "160g"
-      },
-      {
-        "ingredient": "Wholegrain bread",
-        "measure": "2 slices"
-      },
-      {
-        "ingredient": "Turmeric",
-        "measure": "1 tsp"
-      },
-      {
-        "ingredient": "Tomato",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "5g"
-      }
-    ],
-    "instructions": [
-      "Heat chickpeas with spices.",
-      "Toast bread.",
-      "Serve scramble on toast with tomato."
-    ],
-    "slot_tags": [
-      "morning"
-    ],
-    "tip": "Performance tip: Toast right before serving so the base stays crisp under toppings. Strong morning anchor: stable protein first helps appetite and focus later. Build around mashed chickpeas with wholegrain bread for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-pork-01",
-    "title": "Lean Pork Rice Stir Fry",
-    "preference": "pork",
-    "mealType": "Dinner",
-    "area": "Asian",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 680,
-      "protein": 47,
-      "carbs": 63,
-      "fat": 24
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork strips",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Mixed vegetables",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tbsp"
-      },
-      {
-        "ingredient": "Sesame oil",
-        "measure": "6g"
-      }
-    ],
-    "instructions": [
-      "Sear pork strips.",
-      "Add veg and sauce.",
-      "Finish with rice."
-    ],
-    "slot_tags": [
-      "recovery",
-      "pre_training"
-    ],
-    "tip": "Make this work harder: Use high heat and avoid overcrowding so you sear instead of steam. Best used post-session when you need protein plus carbs to recover well. Build around lean pork strips with cooked rice for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-pork-02",
-    "title": "Pork Tenderloin Potato Plate",
-    "preference": "pork",
-    "mealType": "Dinner",
-    "area": "European",
-    "minutes": 45,
-    "goals": [
-      "balanced",
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 610,
-      "protein": 49,
-      "carbs": 52,
-      "fat": 21
-    },
-    "ingredients": [
-      {
-        "ingredient": "Pork tenderloin",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Potatoes",
-        "measure": "240g"
-      },
-      {
-        "ingredient": "Green beans",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Mustard",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Roast potatoes.",
-      "Pan-sear pork and finish in oven.",
-      "Serve with beans and mustard."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Performance tip: Simmer gently at the end so protein stays tender and the sauce stays glossy. Best used post-session when you need protein plus carbs to recover well. Build around pork tenderloin with potatoes for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-pork-03",
-    "title": "Pork Egg Noodle Bowl",
-    "preference": "pork",
-    "mealType": "Lunch",
-    "area": "Asian",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 640,
-      "protein": 45,
-      "carbs": 61,
-      "fat": 22
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork mince",
-        "measure": "200g"
-      },
-      {
-        "ingredient": "Egg noodles",
-        "measure": "85g dry"
-      },
-      {
-        "ingredient": "Pak choi",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Garlic",
-        "measure": "2 cloves"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tbsp"
-      }
-    ],
-    "instructions": [
-      "Cook noodles.",
-      "Brown pork with garlic.",
-      "Add greens and toss with noodles."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Coach note: Keep pork mince on high heat for the first minute to build flavor before adding noodles. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork mince with egg noodles for stable training fuel. Split one extra bowl now so your next session meal is already handled."
-  },
-  {
-    "id": "local-pork-04",
-    "title": "Pork Burrito Meal Prep",
-    "preference": "pork",
-    "mealType": "Dinner",
-    "area": "Mexican",
-    "minutes": 30,
-    "goals": [
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 730,
-      "protein": 46,
-      "carbs": 71,
-      "fat": 27
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork mince",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Black beans",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Sweetcorn",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Salsa",
-        "measure": "90g"
-      }
-    ],
-    "instructions": [
-      "Cook pork with spice blend.",
-      "Warm rice and beans.",
-      "Combine all and top with salsa."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Session-day move: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around lean pork mince with cooked rice for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chicken-05",
-    "title": "Chicken Egg Muffin Cups",
-    "preference": "chicken",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 420,
-      "protein": 44,
-      "carbs": 18,
-      "fat": 19
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chicken breast cooked diced",
-        "measure": "140g"
-      },
-      {
-        "ingredient": "Whole eggs",
-        "measure": "3"
-      },
-      {
-        "ingredient": "Egg whites",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Red pepper",
-        "measure": "60g"
-      }
-    ],
-    "instructions": [
-      "Mix eggs, whites, chicken, and veg.",
-      "Pour into muffin tray.",
-      "Bake 18-20 minutes at 190C."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Performance tip: Pull from heat just before fully set; carryover heat finishes it perfectly. Strong morning anchor: stable protein first helps appetite and focus later. Build around chicken breast cooked diced and keep seasoning consistent so repeat prep stays easy. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-chicken-06",
-    "title": "Chicken Oat Savory Bowl",
-    "preference": "chicken",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 510,
-      "protein": 43,
-      "carbs": 46,
-      "fat": 16
-    },
-    "ingredients": [
-      {
-        "ingredient": "Rolled oats",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Chicken breast cooked shredded",
-        "measure": "130g"
-      },
-      {
-        "ingredient": "Egg",
-        "measure": "1"
-      },
-      {
-        "ingredient": "Spring onion",
-        "measure": "20g"
-      },
-      {
-        "ingredient": "Soy sauce",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Cook oats with water to thick texture.",
-      "Stir in chicken and egg until set.",
-      "Top with spring onion and soy."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Coach note: Layer hot base first, then add fresh toppings for better texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around chicken breast cooked shredded with rolled oats for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chicken-07",
-    "title": "Chicken Pita Snack Pocket",
-    "preference": "chicken",
-    "mealType": "Snack",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 360,
-      "protein": 34,
-      "carbs": 31,
-      "fat": 11
-    },
-    "ingredients": [
-      {
-        "ingredient": "Wholewheat pita",
-        "measure": "1 small"
-      },
-      {
-        "ingredient": "Chicken breast cooked",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Lettuce",
-        "measure": "30g"
-      }
-    ],
-    "instructions": [
-      "Warm pita.",
-      "Mix yogurt and chicken.",
-      "Fill with veg and serve."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Session-day move: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around chicken breast cooked and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chicken-08",
-    "title": "Chicken Rice Cake Stack",
-    "preference": "chicken",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 330,
-      "protein": 32,
-      "carbs": 28,
-      "fat": 9
-    },
-    "ingredients": [
-      {
-        "ingredient": "Rice cakes",
-        "measure": "3"
-      },
-      {
-        "ingredient": "Chicken breast cooked",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Light cream cheese",
-        "measure": "25g"
-      },
-      {
-        "ingredient": "Tomato slices",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Black pepper",
-        "measure": "1 pinch"
-      }
-    ],
-    "instructions": [
-      "Spread cream cheese on rice cakes.",
-      "Top with chicken and tomato.",
-      "Season and serve."
-    ],
-    "slot_tags": [
-      "pre_training"
-    ],
-    "tip": "Session-day move: Keep rice cakes dry and add toppings right before eating so crunch stays intact. Good pre-training option: enough carbs to perform without feeling heavy. Build around shredded chicken and rice cakes for fast fuel when time is tight. Pack topping mix and rice cakes separately if you're bringing this to work or class."
+    "tip": "Quick win: Use high heat early, then lower late to keep texture and moisture balanced. Recovery slot fit: prioritize this after training for better turnaround. Build this around beef and keep portions measured for repeat accuracy. Treat this as a repeat meal and keep your process identical next time."
   },
   {
     "id": "local-beef-05",
@@ -1642,7 +247,7 @@
       "morning",
       "recovery"
     ],
-    "tip": "Execution tip: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around lean beef mince 5% with potato diced for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Consistency move: Keep cuts uniform so everything finishes together and macros stay repeatable. Morning slot fit: protein-first here helps reduce random snacking later. Build this around beef plus potato to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
   },
   {
     "id": "local-beef-06",
@@ -1692,7 +297,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Quick win: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef strips cooked with mini wholewheat flatbread for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Practical edge: Preheat cookware fully so color develops without extra fat. Use pre-training when you want stable energy without heavy digestion. Build this around beef plus bread to keep fueling predictable. Store one backup serving to protect consistency on busy days."
   },
   {
     "id": "local-beef-07",
@@ -1742,7 +347,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Make this work harder: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around lean beef mince 5% with cooked rice for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Execution focus: Rest protein briefly before serving to hold juices and improve bite. Post-session use works well here because protein and carbs land together. Build this around beef plus rice to keep fueling predictable. Portion one extra while everything is out and keep tomorrow friction-free."
   },
   {
     "id": "local-beef-08",
@@ -1791,1200 +396,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Performance tip: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef mince cooked and keep seasoning consistent so repeat prep stays easy. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-turkey-05",
-    "title": "Turkey Breakfast Scramble",
-    "preference": "turkey",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 370,
-      "protein": 41,
-      "carbs": 12,
-      "fat": 17
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Whole eggs",
-        "measure": "2"
-      },
-      {
-        "ingredient": "Egg whites",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Mushrooms sliced",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "60g"
-      }
-    ],
-    "instructions": [
-      "Cook turkey and mushrooms.",
-      "Add eggs and whites.",
-      "Fold in spinach until wilted."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Make this work harder: Pull from heat just before fully set; carryover heat finishes it perfectly. Strong morning anchor: stable protein first helps appetite and focus later. Build around turkey mince 7% and keep seasoning consistent so repeat prep stays easy. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-turkey-06",
-    "title": "Turkey Bagel Recovery",
-    "preference": "turkey",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 520,
-      "protein": 39,
-      "carbs": 54,
-      "fat": 16
-    },
-    "ingredients": [
-      {
-        "ingredient": "Wholegrain bagel thin",
-        "measure": "1"
-      },
-      {
-        "ingredient": "Turkey breast slices",
-        "measure": "130g"
-      },
-      {
-        "ingredient": "Light cream cheese",
-        "measure": "25g"
-      },
-      {
-        "ingredient": "Tomato slices",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Rocket",
-        "measure": "25g"
-      }
-    ],
-    "instructions": [
-      "Toast bagel.",
-      "Spread cream cheese.",
-      "Add turkey and veg."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Performance tip: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around turkey breast slices and keep seasoning consistent so repeat prep stays easy. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-turkey-07",
-    "title": "Turkey Hummus Snack Box",
-    "preference": "turkey",
-    "mealType": "Snack",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 340,
-      "protein": 29,
-      "carbs": 23,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey breast slices",
-        "measure": "110g"
-      },
-      {
-        "ingredient": "Hummus",
-        "measure": "45g"
-      },
-      {
-        "ingredient": "Carrot sticks",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Cucumber sticks",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Wholegrain crackers",
-        "measure": "20g"
-      }
-    ],
-    "instructions": [
-      "Arrange turkey, hummus, and veg in box.",
-      "Add crackers on side.",
-      "Serve chilled."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around turkey breast slices with wholegrain crackers for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-turkey-08",
-    "title": "Turkey Couscous Bowl",
-    "preference": "turkey",
-    "mealType": "Lunch",
-    "area": "Mediterranean",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 600,
-      "protein": 44,
-      "carbs": 55,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Wholewheat couscous cooked",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Courgette diced",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Red pepper diced",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "8g"
-      }
-    ],
-    "instructions": [
-      "Cook turkey mince with seasoning.",
-      "Saute courgette and pepper.",
-      "Serve over couscous."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Session-day move: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% with wholewheat couscous cooked for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-seafood-05",
-    "title": "Salmon Avocado Toast",
-    "preference": "seafood",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 480,
-      "protein": 31,
-      "carbs": 29,
-      "fat": 27
-    },
-    "ingredients": [
-      {
-        "ingredient": "Wholegrain bread",
-        "measure": "2 slices"
-      },
-      {
-        "ingredient": "Smoked salmon",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Avocado mashed",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Lemon juice",
-        "measure": "1 tsp"
-      },
-      {
-        "ingredient": "Black pepper",
-        "measure": "1 pinch"
-      }
-    ],
-    "instructions": [
-      "Toast bread.",
-      "Mash avocado with lemon.",
-      "Top with salmon and pepper."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Session-day move: Toast right before serving so the base stays crisp under toppings. Strong morning anchor: stable protein first helps appetite and focus later. Build around smoked salmon with wholegrain bread for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-seafood-06",
-    "title": "Tuna Egg Protein Pot",
-    "preference": "seafood",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 290,
-      "protein": 34,
-      "carbs": 4,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Tuna in water drained",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Boiled eggs",
-        "measure": "2"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "30g"
-      },
-      {
-        "ingredient": "Celery diced",
-        "measure": "40g"
-      },
-      {
-        "ingredient": "Mustard",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Chop eggs and tuna.",
-      "Mix with yogurt, celery, mustard.",
-      "Serve chilled."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training"
-    ],
-    "tip": "Quick win: Keep this fully chilled and fold gently so egg and tuna keep structure. Strong morning anchor: stable protein first helps appetite and focus later. Build around tuna and egg for a compact high-protein pot you can eat straight from the fridge. Portion two containers at once so tomorrow's snack is already sorted."
-  },
-  {
-    "id": "local-seafood-07",
-    "title": "Prawn Rice Paper Rolls",
-    "preference": "seafood",
-    "mealType": "Snack",
-    "area": "Asian",
-    "minutes": 30,
-    "goals": [
-      "cut",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 350,
-      "protein": 28,
-      "carbs": 42,
-      "fat": 7
-    },
-    "ingredients": [
-      {
-        "ingredient": "Prawns cooked",
-        "measure": "140g"
-      },
-      {
-        "ingredient": "Rice paper sheets",
-        "measure": "4"
-      },
-      {
-        "ingredient": "Rice noodles cooked",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Lettuce",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Carrot julienne",
-        "measure": "60g"
-      }
-    ],
-    "instructions": [
-      "Soak rice paper sheets briefly.",
-      "Fill with prawns, noodles, and veg.",
-      "Roll tightly and serve."
-    ],
-    "slot_tags": [
-      "pre_training"
-    ],
-    "tip": "Quick win: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around prawns cooked with rice paper sheets for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-seafood-08",
-    "title": "Mackerel Potato Salad",
-    "preference": "seafood",
-    "mealType": "Lunch",
-    "area": "European",
-    "minutes": 30,
-    "goals": [
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 620,
-      "protein": 38,
-      "carbs": 45,
-      "fat": 31
-    },
-    "ingredients": [
-      {
-        "ingredient": "Mackerel fillet",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Baby potatoes boiled",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Green beans",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Dill chopped",
-        "measure": "5g"
-      }
-    ],
-    "instructions": [
-      "Boil potatoes and beans.",
-      "Flake mackerel.",
-      "Mix yogurt and dill dressing, combine all."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Make this work harder: Keep wet dressing separate until serving to protect texture. Best used post-session when you need protein plus carbs to recover well. Build around seafood protein with baby potatoes boiled for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-veg-05",
-    "title": "Greek Yogurt Berry Oats",
-    "preference": "vegetarian",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 430,
-      "protein": 28,
-      "carbs": 56,
-      "fat": 10
-    },
-    "ingredients": [
-      {
-        "ingredient": "Rolled oats",
-        "measure": "55g"
-      },
-      {
-        "ingredient": "Greek yogurt 0%",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Mixed berries",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Chia seeds",
-        "measure": "8g"
-      },
-      {
-        "ingredient": "Honey",
-        "measure": "8g"
-      }
-    ],
-    "instructions": [
-      "Mix oats and yogurt.",
-      "Top with berries, chia, and honey.",
-      "Serve immediately or chilled."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Make this work harder: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around vegetarian protein with rolled oats for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-veg-06",
-    "title": "Cottage Cheese Toast Stack",
-    "preference": "vegetarian",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 320,
-      "protein": 27,
-      "carbs": 24,
-      "fat": 12
-    },
-    "ingredients": [
-      {
-        "ingredient": "Wholegrain toast",
-        "measure": "1 slice"
-      },
-      {
-        "ingredient": "Cottage cheese",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Cherry tomatoes",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Pumpkin seeds",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Black pepper",
-        "measure": "1 pinch"
-      }
-    ],
-    "instructions": [
-      "Toast bread.",
-      "Top with cottage cheese and tomatoes.",
-      "Finish with seeds and pepper."
-    ],
-    "slot_tags": [
-      "midday"
-    ],
-    "tip": "Quick win: Toast right before serving so the base stays crisp under toppings. Great midday pick to keep energy even through the afternoon block. Build around vegetarian protein with wholegrain toast for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-veg-07",
-    "title": "Tofu Wrap Snack",
-    "preference": "vegetarian",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 410,
-      "protein": 28,
-      "carbs": 31,
-      "fat": 17
-    },
-    "ingredients": [
-      {
-        "ingredient": "Firm tofu",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Wholegrain wrap",
-        "measure": "1 medium"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Lettuce",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Tomato",
-        "measure": "80g"
-      }
-    ],
-    "instructions": [
-      "Warm wrap.",
-      "Add tofu and veg.",
-      "Drizzle sauce and roll."
-    ],
-    "slot_tags": [
-      "pre_training"
-    ],
-    "tip": "Execution tip: Warm the wrap first so it folds tight and holds structure. Good pre-training option: enough carbs to perform without feeling heavy. Build around firm tofu grilled with wholewheat wrap for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-veg-08",
-    "title": "Lentil Soup Recovery Cup",
-    "preference": "vegetarian",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 45,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 480,
-      "protein": 26,
-      "carbs": 66,
-      "fat": 13
-    },
-    "ingredients": [
-      {
-        "ingredient": "Red lentils dry",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Vegetable stock",
-        "measure": "500ml"
-      },
-      {
-        "ingredient": "Carrot diced",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Celery diced",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Onion diced",
-        "measure": "70g"
-      }
-    ],
-    "instructions": [
-      "Saute onion, carrot, celery.",
-      "Add lentils and stock.",
-      "Simmer 25-30 min and blend lightly."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Session-day move: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around red lentils dry and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-chickpea-05",
-    "title": "Chickpea Protein Pancakes",
-    "preference": "chickpeas",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 410,
-      "protein": 22,
-      "carbs": 49,
-      "fat": 13
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chickpea flour",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Egg whites",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Baking powder",
-        "measure": "1 tsp"
-      },
-      {
-        "ingredient": "Blueberries",
-        "measure": "60g"
-      }
-    ],
-    "instructions": [
-      "Whisk batter ingredients.",
-      "Cook pancakes in non-stick pan.",
-      "Serve with yogurt and berries."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around egg whites and keep seasoning consistent so repeat prep stays easy. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chickpea-06",
-    "title": "Chickpea Hummus Toast",
-    "preference": "chickpeas",
-    "mealType": "Snack",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 300,
-      "protein": 12,
-      "carbs": 35,
-      "fat": 12
-    },
-    "ingredients": [
-      {
-        "ingredient": "Wholegrain toast",
-        "measure": "1 slice"
-      },
-      {
-        "ingredient": "Hummus",
-        "measure": "55g"
-      },
-      {
-        "ingredient": "Cherry tomatoes",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Paprika",
-        "measure": "1 pinch"
-      }
-    ],
-    "instructions": [
-      "Toast bread.",
-      "Spread hummus.",
-      "Top with tomato, cucumber, paprika."
-    ],
-    "slot_tags": [
-      "midday"
-    ],
-    "tip": "Session-day move: Toast right before serving so the base stays crisp under toppings. Great midday pick to keep energy even through the afternoon block. Build around chickpeas with wholegrain toast for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chickpea-07",
-    "title": "Chickpea Pasta Pot",
-    "preference": "chickpeas",
-    "mealType": "Lunch",
-    "area": "Italian",
-    "minutes": 30,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 560,
-      "protein": 30,
-      "carbs": 73,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chickpea pasta dry",
-        "measure": "85g"
-      },
-      {
-        "ingredient": "Passata",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Mushrooms sliced",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Parmesan",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Cook pasta.",
-      "Simmer passata with mushrooms.",
-      "Add spinach and combine with pasta."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Execution tip: Boil chickpea pasta to al dente and rinse quickly to stop overcooking. Best used post-session when you need protein plus carbs to recover well. Build around chickpea pasta with passata and greens for a fiber-rich recovery meal. Batch one extra portion and reheat with a splash of water to keep it glossy."
-  },
-  {
-    "id": "local-chickpea-08",
-    "title": "Chickpea Crunch Snack Mix",
-    "preference": "chickpeas",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "cut",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 280,
-      "protein": 11,
-      "carbs": 26,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Roasted chickpeas",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Almonds",
-        "measure": "15g"
-      },
-      {
-        "ingredient": "Pumpkin seeds",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Raisins",
-        "measure": "15g"
-      },
-      {
-        "ingredient": "Smoked paprika",
-        "measure": "1 pinch"
-      }
-    ],
-    "instructions": [
-      "Combine all ingredients in container.",
-      "Shake and portion.",
-      "Store dry for 2-3 days."
-    ],
-    "slot_tags": [
-      "pre_training"
-    ],
-    "tip": "Quick win: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around roasted chickpeas and keep seasoning consistent so repeat prep stays easy. Cook once, split into two boxes, and keep the second for the next session window."
-  },
-  {
-    "id": "local-pork-05",
-    "title": "Pork Egg White Breakfast Bowl",
-    "preference": "pork",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 410,
-      "protein": 40,
-      "carbs": 16,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork mince",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Egg whites",
-        "measure": "160g"
-      },
-      {
-        "ingredient": "Whole egg",
-        "measure": "1"
-      },
-      {
-        "ingredient": "Mushrooms",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "60g"
-      }
-    ],
-    "instructions": [
-      "Cook pork mince until browned.",
-      "Add mushrooms and spinach.",
-      "Pour in eggs and stir to scramble."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Execution tip: Layer hot base first, then add fresh toppings for better texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around egg whites and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-pork-06",
-    "title": "Pork Apple Rice Bowl",
-    "preference": "pork",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 30,
-    "goals": [
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 610,
-      "protein": 39,
-      "carbs": 58,
-      "fat": 22
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork strips",
-        "measure": "180g"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Apple diced",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Red cabbage shredded",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "8g"
-      }
-    ],
-    "instructions": [
-      "Sear pork strips.",
-      "Cook apple and cabbage briefly.",
-      "Serve over rice with pork."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Quick win: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around lean pork strips with cooked rice for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-pork-07",
-    "title": "Pork Protein Snack Pot",
-    "preference": "pork",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 330,
-      "protein": 30,
-      "carbs": 14,
-      "fat": 17
-    },
-    "ingredients": [
-      {
-        "ingredient": "Pork tenderloin cooked sliced",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Cucumber diced",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Dill chopped",
-        "measure": "4g"
-      },
-      {
-        "ingredient": "Lemon juice",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Slice pork into bite pieces.",
-      "Mix yogurt, dill, lemon.",
-      "Serve with cucumber."
-    ],
-    "slot_tags": [
-      "midday"
-    ],
-    "tip": "Coach note: This is a cold assembly snack, so slice pork thin and keep yogurt separate until serving. Great midday pick to keep energy even through the afternoon block. Build around lean pork with cucumber for a crisp high-protein bowl with minimal prep. Prep a second cup while ingredients are out and store it sealed for next day."
-  },
-  {
-    "id": "local-pork-08",
-    "title": "Pork Sweetcorn Wrap",
-    "preference": "pork",
-    "mealType": "Snack",
-    "area": "Mexican",
-    "minutes": 15,
-    "goals": [
-      "balanced",
-      "high_protein"
-    ],
-    "nutrition": {
-      "calories": 400,
-      "protein": 31,
-      "carbs": 33,
-      "fat": 16
-    },
-    "ingredients": [
-      {
-        "ingredient": "Lean pork mince cooked",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Wholewheat wrap",
-        "measure": "1 medium"
-      },
-      {
-        "ingredient": "Sweetcorn",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Tomato salsa",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Lettuce",
-        "measure": "35g"
-      }
-    ],
-    "instructions": [
-      "Warm wrap.",
-      "Add pork, corn, salsa, lettuce.",
-      "Roll and slice."
-    ],
-    "slot_tags": [
-      "pre_training"
-    ],
-    "tip": "Performance tip: Warm the wrap first so it folds tight and holds structure. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork mince cooked with wholewheat wrap for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-chicken-09",
-    "title": "Smoked Chicken Breakfast Skillet",
-    "preference": "chicken",
-    "mealType": "Breakfast",
-    "area": "Global",
-    "minutes": 20,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 520,
-      "protein": 48,
-      "carbs": 34,
-      "fat": 20
-    },
-    "ingredients": [
-      {
-        "ingredient": "Smoked chicken breast",
-        "measure": "170g"
-      },
-      {
-        "ingredient": "Eggs",
-        "measure": "2"
-      },
-      {
-        "ingredient": "Baby potatoes",
-        "measure": "160g"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "70g"
-      },
-      {
-        "ingredient": "Olive oil",
-        "measure": "8g"
-      }
-    ],
-    "instructions": [
-      "Pan-fry diced potatoes until crisp.",
-      "Add smoked chicken and spinach to warm through.",
-      "Crack in eggs and stir until softly set."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Performance tip: Use high heat and avoid overcrowding so you sear instead of steam. Strong morning anchor: stable protein first helps appetite and focus later. Build around smoked chicken breast with baby potatoes for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chicken-10",
-    "title": "Chicken Pesto Protein Toast",
-    "preference": "chicken",
-    "mealType": "Snack",
-    "area": "Italian",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 415,
-      "protein": 40,
-      "carbs": 26,
-      "fat": 17
-    },
-    "ingredients": [
-      {
-        "ingredient": "Cooked chicken breast",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Wholegrain sourdough",
-        "measure": "2 slices"
-      },
-      {
-        "ingredient": "Pesto",
-        "measure": "18g"
-      },
-      {
-        "ingredient": "Cherry tomatoes",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Low-fat mozzarella",
-        "measure": "35g"
-      }
-    ],
-    "instructions": [
-      "Toast the sourdough slices.",
-      "Mix shredded chicken with pesto.",
-      "Top toast with chicken mix, tomatoes, and mozzarella."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training",
-      "morning"
-    ],
-    "tip": "Session-day move: Toast right before serving so the base stays crisp under toppings. Strong morning anchor: stable protein first helps appetite and focus later. Build around cooked chicken breast and keep seasoning consistent so repeat prep stays easy. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-chicken-11",
-    "title": "Chicken Couscous Crunch Bowl",
-    "preference": "chicken",
-    "mealType": "Lunch",
-    "area": "Mediterranean",
-    "minutes": 25,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 610,
-      "protein": 50,
-      "carbs": 57,
-      "fat": 19
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chicken breast",
-        "measure": "200g"
-      },
-      {
-        "ingredient": "Wholewheat couscous",
-        "measure": "85g dry"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Red onion",
-        "measure": "40g"
-      },
-      {
-        "ingredient": "Lemon tahini dressing",
-        "measure": "20g"
-      }
-    ],
-    "instructions": [
-      "Cook couscous and fluff with a fork.",
-      "Grill chicken and slice thinly.",
-      "Build bowl with veg and finish with dressing."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Execution tip: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around chicken breast with wholewheat couscous for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-chicken-12",
-    "title": "Garlic Chicken Veg Tray Bake",
-    "preference": "chicken",
-    "mealType": "Dinner",
-    "area": "Global",
-    "minutes": 40,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 560,
-      "protein": 53,
-      "carbs": 31,
-      "fat": 24
-    },
-    "ingredients": [
-      {
-        "ingredient": "Chicken thighs (skinless)",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Courgette",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Red pepper",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Red onion",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Garlic yogurt sauce",
-        "measure": "70g"
-      }
-    ],
-    "instructions": [
-      "Roast chopped vegetables on a tray for 15 minutes.",
-      "Add seasoned chicken thighs and roast until cooked.",
-      "Serve with garlic yogurt sauce over the top."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Quick win: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around chicken thighs (skinless) and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Performance cue: Season in layers rather than all at once to keep flavor even. Use pre-training when you want stable energy without heavy digestion. Build this around beef and keep portions measured for repeat accuracy. Make a second serving now so your next meal decision is already solved."
   },
   {
     "id": "local-beef-09",
@@ -3035,7 +447,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Make this work harder: Pull from heat just before fully set; carryover heat finishes it perfectly. Strong morning anchor: stable protein first helps appetite and focus later. Build around lean beef mince 5% and keep seasoning consistent so repeat prep stays easy. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Coach note: Cook core carbs just shy of done so reheats stay firm. Morning slot fit: protein-first here helps reduce random snacking later. Build this around beef and keep portions measured for repeat accuracy. Use the same bowl and measurements each time to keep macros stable."
   },
   {
     "id": "local-beef-10",
@@ -3086,7 +498,7 @@
       "pre_training",
       "midday"
     ],
-    "tip": "Session-day move: Keep mince fairly dry in the pan so lettuce cups stay crisp. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef with crunchy veg for a lighter handheld snack. Prep the filling once and assemble fresh cups in under 2 minutes."
+    "tip": "Execution focus: Stir gently instead of mashing so structure stays crisp and fresh. Strong pre-session option when timing is tight but output still matters. Build this around beef and keep portions measured for repeat accuracy. If appetite is low, halve volume but keep the protein anchor intact."
   },
   {
     "id": "local-beef-11",
@@ -3136,7 +548,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Performance tip: Simmer gently at the end so protein stays tender and the sauce stays glossy. Best used post-session when you need protein plus carbs to recover well. Build around lean beef strips with cooked basmati rice for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Performance cue: Use high heat early, then lower late to keep texture and moisture balanced. Recovery slot fit: prioritize this after training for better turnaround. Build this around beef plus rice to keep fueling predictable. Pair this with water and keep your hydration trend aligned."
   },
   {
     "id": "local-beef-12",
@@ -3186,367 +598,13 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around lean beef sirloin with baby potatoes for a predictable training-day fuel profile. Batch one extra portion for the next training day."
+    "tip": "Coach note: Keep cuts uniform so everything finishes together and macros stay repeatable. Post-session use works well here because protein and carbs land together. Build this around beef plus potato to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
   },
   {
-    "id": "local-turkey-09",
-    "title": "Turkey Meatball Marinara Bowl",
-    "preference": "turkey",
-    "mealType": "Dinner",
-    "area": "Italian",
-    "minutes": 40,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 640,
-      "protein": 54,
-      "carbs": 50,
-      "fat": 23
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Wholewheat spaghetti",
-        "measure": "75g dry"
-      },
-      {
-        "ingredient": "Passata",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Parmesan",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Basil",
-        "measure": "10g"
-      }
-    ],
-    "instructions": [
-      "Form turkey mince into small meatballs and bake.",
-      "Simmer passata with basil.",
-      "Cook spaghetti and top with meatballs and sauce."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Execution tip: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-turkey-10",
-    "title": "Smoked Turkey Apple Snack Wrap",
-    "preference": "turkey",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 10,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 350,
-      "protein": 31,
-      "carbs": 32,
-      "fat": 11
-    },
-    "ingredients": [
-      {
-        "ingredient": "Smoked turkey slices",
-        "measure": "130g"
-      },
-      {
-        "ingredient": "Wholegrain wrap",
-        "measure": "1 medium"
-      },
-      {
-        "ingredient": "Apple",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Low-fat cream cheese",
-        "measure": "25g"
-      },
-      {
-        "ingredient": "Rocket leaves",
-        "measure": "25g"
-      }
-    ],
-    "instructions": [
-      "Spread cream cheese on the wrap.",
-      "Layer turkey, thin apple slices, and rocket.",
-      "Roll tightly and slice into halves."
-    ],
-    "slot_tags": [
-      "pre_training",
-      "midday",
-      "morning"
-    ],
-    "tip": "Coach note: Warm the wrap first so it folds tight and holds structure. Strong morning anchor: stable protein first helps appetite and focus later. Build around smoked turkey slices with wholegrain wrap for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-turkey-11",
-    "title": "Turkey Black Bean Power Skillet",
-    "preference": "turkey",
-    "mealType": "Lunch",
-    "area": "Mexican",
-    "minutes": 30,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 620,
-      "protein": 50,
-      "carbs": 55,
-      "fat": 21
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "210g"
-      },
-      {
-        "ingredient": "Black beans",
-        "measure": "140g drained"
-      },
-      {
-        "ingredient": "Cooked rice",
-        "measure": "150g"
-      },
-      {
-        "ingredient": "Sweetcorn",
-        "measure": "90g"
-      },
-      {
-        "ingredient": "Taco seasoning",
-        "measure": "12g"
-      }
-    ],
-    "instructions": [
-      "Brown turkey mince with taco seasoning.",
-      "Add black beans and sweetcorn and cook through.",
-      "Serve over cooked rice in one skillet."
-    ],
-    "slot_tags": [
-      "midday",
-      "recovery"
-    ],
-    "tip": "Session-day move: Use high heat and avoid overcrowding so you sear instead of steam. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% with cooked rice for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
-  },
-  {
-    "id": "local-turkey-12",
-    "title": "Turkey Spinach Stuffed Peppers",
-    "preference": "turkey",
-    "mealType": "Dinner",
-    "area": "Mediterranean",
-    "minutes": 45,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 540,
-      "protein": 47,
-      "carbs": 36,
-      "fat": 22
-    },
-    "ingredients": [
-      {
-        "ingredient": "Turkey mince 7%",
-        "measure": "200g"
-      },
-      {
-        "ingredient": "Bell peppers",
-        "measure": "2 large"
-      },
-      {
-        "ingredient": "Spinach",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Cooked quinoa",
-        "measure": "110g"
-      },
-      {
-        "ingredient": "Feta",
-        "measure": "35g"
-      }
-    ],
-    "instructions": [
-      "Halve peppers and roast for 10 minutes.",
-      "Cook turkey with spinach and fold in quinoa.",
-      "Stuff peppers, top with feta, and bake until set."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Execution tip: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% with cooked quinoa for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
-  },
-  {
-    "id": "local-seafood-09",
-    "title": "Sardine Lemon Rye Plate",
-    "preference": "seafood",
+    "id": "local-beef-13",
+    "title": "Beef Egg Muffin Bites",
+    "preference": "beef",
     "mealType": "Breakfast",
-    "area": "Nordic",
-    "minutes": 12,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 410,
-      "protein": 34,
-      "carbs": 24,
-      "fat": 19
-    },
-    "ingredients": [
-      {
-        "ingredient": "Sardines in water",
-        "measure": "120g drained"
-      },
-      {
-        "ingredient": "Rye bread",
-        "measure": "2 slices"
-      },
-      {
-        "ingredient": "Cucumber ribbons",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Greek yogurt",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Lemon zest",
-        "measure": "1 tsp"
-      }
-    ],
-    "instructions": [
-      "Toast rye bread lightly.",
-      "Mix yogurt with lemon zest.",
-      "Top toast with sardines and cucumber ribbons."
-    ],
-    "slot_tags": [
-      "morning",
-      "midday"
-    ],
-    "tip": "Session-day move: Toast right before serving so the base stays crisp under toppings. Strong morning anchor: stable protein first helps appetite and focus later. Build around sardines in water with rye bread for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-seafood-10",
-    "title": "Tuna Cottage Cheese Snack Pot",
-    "preference": "seafood",
-    "mealType": "Snack",
-    "area": "Global",
-    "minutes": 10,
-    "goals": [
-      "high_protein",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 290,
-      "protein": 39,
-      "carbs": 9,
-      "fat": 10
-    },
-    "ingredients": [
-      {
-        "ingredient": "Tuna in spring water",
-        "measure": "120g drained"
-      },
-      {
-        "ingredient": "Low-fat cottage cheese",
-        "measure": "140g"
-      },
-      {
-        "ingredient": "Celery",
-        "measure": "60g"
-      },
-      {
-        "ingredient": "Capers",
-        "measure": "12g"
-      },
-      {
-        "ingredient": "Black pepper",
-        "measure": "1/2 tsp"
-      }
-    ],
-    "instructions": [
-      "Mix tuna and cottage cheese in a bowl.",
-      "Fold in chopped celery and capers.",
-      "Season with black pepper and chill."
-    ],
-    "slot_tags": [
-      "pre_training",
-      "midday",
-      "morning"
-    ],
-    "tip": "Quick win: This is a no-cook mix, so keep everything chilled and fold gently to keep texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around tuna and cottage cheese for a very high-protein snack without extra prep time. Make a second pot at the same time and hold it for your next midday slot."
-  },
-  {
-    "id": "local-seafood-11",
-    "title": "Seafood Bulgur Midday Bowl",
-    "preference": "seafood",
-    "mealType": "Lunch",
-    "area": "Mediterranean",
-    "minutes": 25,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 560,
-      "protein": 46,
-      "carbs": 56,
-      "fat": 14
-    },
-    "ingredients": [
-      {
-        "ingredient": "Prawns",
-        "measure": "160g"
-      },
-      {
-        "ingredient": "Bulgur wheat",
-        "measure": "80g dry"
-      },
-      {
-        "ingredient": "Cherry tomatoes",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Olive oil + lemon dressing",
-        "measure": "12g"
-      }
-    ],
-    "instructions": [
-      "Cook bulgur and let it steam dry.",
-      "Pan-sear prawns until pink.",
-      "Combine with chopped vegetables and dressing."
-    ],
-    "slot_tags": [
-      "midday",
-      "pre_training",
-      "morning"
-    ],
-    "tip": "Make this work harder: Layer hot base first, then add fresh toppings for better texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around prawns with bulgur wheat for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
-  },
-  {
-    "id": "local-seafood-12",
-    "title": "White Fish Herb Rice Tray",
-    "preference": "seafood",
-    "mealType": "Dinner",
     "area": "Global",
     "minutes": 35,
     "goals": [
@@ -3555,27 +613,732 @@
       "cut"
     ],
     "nutrition": {
-      "calories": 520,
-      "protein": 45,
-      "carbs": 49,
-      "fat": 15
+      "calories": 390,
+      "protein": 36,
+      "carbs": 10,
+      "fat": 22
     },
     "ingredients": [
       {
-        "ingredient": "Cod fillet",
+        "ingredient": "Lean beef mince 5%",
+        "measure": "140g"
+      },
+      {
+        "ingredient": "Eggs",
+        "measure": "3"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Red pepper",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Brown beef mince and let it cool slightly.",
+      "Whisk eggs and whites, then fold in beef and vegetables.",
+      "Bake in muffin tray until set."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Kitchen detail: Preheat cookware fully so color develops without extra fat. Best used in the morning to anchor appetite and focus for the day. Build this around beef and keep portions measured for repeat accuracy. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-chicken-01",
+    "title": "Lemon Chicken Rice Bowl",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 610,
+      "protein": 52,
+      "carbs": 58,
+      "fat": 18
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chicken breast",
         "measure": "220g"
       },
       {
         "ingredient": "Cooked rice",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Broccoli",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Lemon juice",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Season chicken and sear until cooked.",
+      "Steam broccoli.",
+      "Serve over rice with lemon and oil."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Quick win: Cook core carbs just shy of done so reheats stay firm. Recovery slot fit: prioritize this after training for better turnaround. Build this around chicken plus rice to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-chicken-02",
+    "title": "Chicken Yogurt Wrap",
+    "preference": "chicken",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 480,
+      "protein": 43,
+      "carbs": 41,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cooked chicken",
         "measure": "170g"
       },
       {
-        "ingredient": "Green beans",
+        "ingredient": "Wholewheat wrap",
+        "measure": "1 large"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Lettuce",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Tomato",
+        "measure": "80g"
+      }
+    ],
+    "instructions": [
+      "Warm wrap.",
+      "Mix chicken with yogurt and seasoning.",
+      "Fill wrap with veg and roll."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Quick win: Assemble this cold and add yogurt at the end so the wrap stays tight and clean. Use pre-training when you want stable energy without heavy digestion. Build this around chicken plus wrap to keep fueling predictable. Pack one extra wrap filling box so tomorrow is faster."
+  },
+  {
+    "id": "local-chicken-03",
+    "title": "Chicken Pasta Recovery Bowl",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 45,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 730,
+      "protein": 56,
+      "carbs": 79,
+      "fat": 19
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chicken breast",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Wholewheat pasta",
+        "measure": "95g dry"
+      },
+      {
+        "ingredient": "Passata",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Parmesan",
+        "measure": "12g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "80g"
+      }
+    ],
+    "instructions": [
+      "Cook pasta.",
+      "Pan-cook chicken and slice.",
+      "Simmer passata and spinach, combine all."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Practical edge: Use high heat early, then lower late to keep texture and moisture balanced. Recovery slot fit: prioritize this after training for better turnaround. Build this around chicken plus pasta to keep fueling predictable. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-chicken-04",
+    "title": "Chicken Egg Fried Rice Lite",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 640,
+      "protein": 49,
+      "carbs": 62,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cooked chicken",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Peas",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Scramble eggs in pan.",
+      "Add chicken, rice and peas.",
+      "Stir-fry with soy."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Execution focus: Keep cuts uniform so everything finishes together and macros stay repeatable. Post-session use works well here because protein and carbs land together. Build this around chicken plus rice to keep fueling predictable. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-chicken-05",
+    "title": "Chicken Egg Muffin Cups",
+    "preference": "chicken",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 420,
+      "protein": 44,
+      "carbs": 18,
+      "fat": 19
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chicken breast cooked diced",
+        "measure": "140g"
+      },
+      {
+        "ingredient": "Whole eggs",
+        "measure": "3"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Red pepper",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Mix eggs, whites, chicken, and veg.",
+      "Pour into muffin tray.",
+      "Bake 18-20 minutes at 190C."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Performance cue: Preheat cookware fully so color develops without extra fat. Best used in the morning to anchor appetite and focus for the day. Build this around chicken and keep portions measured for repeat accuracy. Pair this with water and keep your hydration trend aligned."
+  },
+  {
+    "id": "local-chicken-06",
+    "title": "Chicken Oat Savory Bowl",
+    "preference": "chicken",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 510,
+      "protein": 43,
+      "carbs": 46,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Rolled oats",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Chicken breast cooked shredded",
         "measure": "130g"
       },
       {
-        "ingredient": "Parsley",
-        "measure": "12g"
+        "ingredient": "Egg",
+        "measure": "1"
+      },
+      {
+        "ingredient": "Spring onion",
+        "measure": "20g"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Cook oats with water to thick texture.",
+      "Stir in chicken and egg until set.",
+      "Top with spring onion and soy."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Coach note: Rest protein briefly before serving to hold juices and improve bite. Morning slot fit: protein-first here helps reduce random snacking later. Build this around chicken plus oat to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-chicken-07",
+    "title": "Chicken Pita Snack Pocket",
+    "preference": "chicken",
+    "mealType": "Snack",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 360,
+      "protein": 34,
+      "carbs": 31,
+      "fat": 11
+    },
+    "ingredients": [
+      {
+        "ingredient": "Wholewheat pita",
+        "measure": "1 small"
+      },
+      {
+        "ingredient": "Chicken breast cooked",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Lettuce",
+        "measure": "30g"
+      }
+    ],
+    "instructions": [
+      "Warm pita.",
+      "Mix yogurt and chicken.",
+      "Fill with veg and serve."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Kitchen detail: Season in layers rather than all at once to keep flavor even. Use pre-training when you want stable energy without heavy digestion. Build this around chicken and keep portions measured for repeat accuracy. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-chicken-08",
+    "title": "Chicken Rice Cake Stack",
+    "preference": "chicken",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 330,
+      "protein": 32,
+      "carbs": 28,
+      "fat": 9
+    },
+    "ingredients": [
+      {
+        "ingredient": "Rice cakes",
+        "measure": "3"
+      },
+      {
+        "ingredient": "Chicken breast cooked",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Light cream cheese",
+        "measure": "25g"
+      },
+      {
+        "ingredient": "Tomato slices",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Black pepper",
+        "measure": "1 pinch"
+      }
+    ],
+    "instructions": [
+      "Spread cream cheese on rice cakes.",
+      "Top with chicken and tomato.",
+      "Season and serve."
+    ],
+    "slot_tags": [
+      "pre_training"
+    ],
+    "tip": "Athlete tip: Keep components chilled and combine just before eating for cleaner texture. Strong pre-session option when timing is tight but output still matters. Build this around chicken plus rice to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-chicken-09",
+    "title": "Smoked Chicken Breakfast Skillet",
+    "preference": "chicken",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 20,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 520,
+      "protein": 48,
+      "carbs": 34,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Smoked chicken breast",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Baby potatoes",
+        "measure": "160g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "8g"
+      }
+    ],
+    "instructions": [
+      "Pan-fry diced potatoes until crisp.",
+      "Add smoked chicken and spinach to warm through.",
+      "Crack in eggs and stir until softly set."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Recovery angle: Avoid overcrowding the pan so ingredients sear instead of steam. Best used in the morning to anchor appetite and focus for the day. Build this around chicken plus potato to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-chicken-10",
+    "title": "Chicken Pesto Protein Toast",
+    "preference": "chicken",
+    "mealType": "Snack",
+    "area": "Italian",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 415,
+      "protein": 40,
+      "carbs": 26,
+      "fat": 17
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cooked chicken breast",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Wholegrain sourdough",
+        "measure": "2 slices"
+      },
+      {
+        "ingredient": "Pesto",
+        "measure": "18g"
+      },
+      {
+        "ingredient": "Cherry tomatoes",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Low-fat mozzarella",
+        "measure": "35g"
+      }
+    ],
+    "instructions": [
+      "Toast the sourdough slices.",
+      "Mix shredded chicken with pesto.",
+      "Top toast with chicken mix, tomatoes, and mozzarella."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training",
+      "morning"
+    ],
+    "tip": "Kitchen detail: Layer wet ingredients under dry toppings so crunch lasts to the final bite. Best used in the morning to anchor appetite and focus for the day. Build this around chicken and keep portions measured for repeat accuracy. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-chicken-11",
+    "title": "Chicken Couscous Crunch Bowl",
+    "preference": "chicken",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 25,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 610,
+      "protein": 50,
+      "carbs": 57,
+      "fat": 19
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chicken breast",
+        "measure": "200g"
+      },
+      {
+        "ingredient": "Wholewheat couscous",
+        "measure": "85g dry"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Red onion",
+        "measure": "40g"
+      },
+      {
+        "ingredient": "Lemon tahini dressing",
+        "measure": "20g"
+      }
+    ],
+    "instructions": [
+      "Cook couscous and fluff with a fork.",
+      "Grill chicken and slice thinly.",
+      "Build bowl with veg and finish with dressing."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Athlete tip: Keep cuts uniform so everything finishes together and macros stay repeatable. Post-session use works well here because protein and carbs land together. Build this around chicken plus couscous to keep fueling predictable. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-chicken-12",
+    "title": "Garlic Chicken Veg Tray Bake",
+    "preference": "chicken",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 40,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 560,
+      "protein": 53,
+      "carbs": 31,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chicken thighs (skinless)",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Courgette",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Red pepper",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Red onion",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Garlic yogurt sauce",
+        "measure": "70g"
+      }
+    ],
+    "instructions": [
+      "Roast chopped vegetables on a tray for 15 minutes.",
+      "Add seasoned chicken thighs and roast until cooked.",
+      "Serve with garlic yogurt sauce over the top."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Recovery angle: Preheat cookware fully so color develops without extra fat. Recovery slot fit: prioritize this after training for better turnaround. Build this around chicken and keep portions measured for repeat accuracy. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-chicken-13",
+    "title": "Chicken Overnight Oat Jar",
+    "preference": "chicken",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 10,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 420,
+      "protein": 35,
+      "carbs": 40,
+      "fat": 13
+    },
+    "ingredients": [
+      {
+        "ingredient": "Shredded chicken breast",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Rolled oats",
+        "measure": "45g"
+      },
+      {
+        "ingredient": "Skyr",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Lemon pepper seasoning",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Mix oats with skyr and a splash of water in a jar.",
+      "Fold in shredded chicken, cucumber, and lemon pepper.",
+      "Chill overnight and stir before eating."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Session support: Stir gently instead of mashing so structure stays crisp and fresh. Morning slot fit: protein-first here helps reduce random snacking later. Build this around chicken plus oat to keep fueling predictable. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-chickpea-01",
+    "title": "Chickpea Tuna Hybrid Bowl",
+    "preference": "chickpeas",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 520,
+      "protein": 40,
+      "carbs": 41,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chickpeas",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Tuna in water",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Tomatoes",
+        "measure": "100g"
       },
       {
         "ingredient": "Olive oil",
@@ -3583,217 +1346,361 @@
       }
     ],
     "instructions": [
-      "Place fish and beans on a tray, drizzle with oil.",
-      "Bake until fish flakes easily.",
-      "Serve with rice and fresh parsley."
-    ],
-    "slot_tags": [
-      "recovery"
-    ],
-    "tip": "Performance tip: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around cod fillet with cooked rice for a predictable training-day fuel profile. Batch one extra portion for the next training day."
-  },
-  {
-    "id": "local-veg-09",
-    "title": "Skyr Berry Protein Pot",
-    "preference": "vegetarian",
-    "mealType": "Breakfast",
-    "area": "Nordic",
-    "minutes": 8,
-    "goals": [
-      "high_protein",
-      "balanced",
-      "cut"
-    ],
-    "nutrition": {
-      "calories": 320,
-      "protein": 31,
-      "carbs": 32,
-      "fat": 7
-    },
-    "ingredients": [
-      {
-        "ingredient": "Skyr",
-        "measure": "220g"
-      },
-      {
-        "ingredient": "Mixed berries",
-        "measure": "110g"
-      },
-      {
-        "ingredient": "Chia seeds",
-        "measure": "10g"
-      },
-      {
-        "ingredient": "Pumpkin seeds",
-        "measure": "12g"
-      },
-      {
-        "ingredient": "Cinnamon",
-        "measure": "1/2 tsp"
-      }
-    ],
-    "instructions": [
-      "Layer skyr and berries in a pot.",
-      "Top with chia and pumpkin seeds.",
-      "Dust with cinnamon before serving."
-    ],
-    "slot_tags": [
-      "morning",
-      "pre_training"
-    ],
-    "tip": "Coach note: Keep this cold and layered; add seeds just before eating to preserve crunch. Strong morning anchor: stable protein first helps appetite and focus later. Build around skyr with berries and chia for a high-protein breakfast that digests cleanly. Portion two jars at once so the next morning is already covered."
-  },
-  {
-    "id": "local-veg-10",
-    "title": "Halloumi Pepper Snack Bites",
-    "preference": "vegetarian",
-    "mealType": "Snack",
-    "area": "Mediterranean",
-    "minutes": 15,
-    "goals": [
-      "high_protein",
-      "balanced"
-    ],
-    "nutrition": {
-      "calories": 390,
-      "protein": 28,
-      "carbs": 16,
-      "fat": 23
-    },
-    "ingredients": [
-      {
-        "ingredient": "Halloumi",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Skyr dip",
-        "measure": "80g"
-      },
-      {
-        "ingredient": "Red pepper",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Cucumber",
-        "measure": "100g"
-      },
-      {
-        "ingredient": "Wholegrain crackers",
-        "measure": "20g"
-      }
-    ],
-    "instructions": [
-      "Pan-sear halloumi cubes until golden.",
-      "Slice pepper and cucumber into bite-size pieces.",
-      "Serve with crackers and skyr dip for a high-protein snack board."
+      "Drain chickpeas and tuna.",
+      "Chop veg.",
+      "Mix all ingredients and season."
     ],
     "slot_tags": [
       "midday",
-      "pre_training",
-      "morning"
+      "pre_training"
     ],
-    "tip": "Make this work harder: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around halloumi with wholegrain crackers for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
+    "tip": "Consistency move: Keep components chilled and combine just before eating for cleaner texture. Strong pre-session option when timing is tight but output still matters. Build this around tuna and keep portions measured for repeat accuracy. Use the same bowl and measurements each time to keep macros stable."
   },
   {
-    "id": "local-veg-11",
-    "title": "Tofu Quinoa Midday Bowl",
-    "preference": "vegetarian",
-    "mealType": "Lunch",
-    "area": "Global",
-    "minutes": 25,
+    "id": "local-chickpea-02",
+    "title": "Chickpea Spinach Curry",
+    "preference": "chickpeas",
+    "mealType": "Dinner",
+    "area": "Indian",
+    "minutes": 30,
     "goals": [
-      "high_protein",
       "balanced",
       "cut"
     ],
     "nutrition": {
       "calories": 540,
-      "protein": 35,
-      "carbs": 49,
-      "fat": 24
+      "protein": 24,
+      "carbs": 68,
+      "fat": 18
     },
     "ingredients": [
       {
-        "ingredient": "Firm tofu",
-        "measure": "190g"
+        "ingredient": "Chickpeas",
+        "measure": "220g"
       },
       {
-        "ingredient": "Cooked quinoa",
-        "measure": "170g"
+        "ingredient": "Light coconut milk",
+        "measure": "120ml"
       },
       {
-        "ingredient": "Edamame",
-        "measure": "90g"
+        "ingredient": "Spinach",
+        "measure": "120g"
       },
       {
-        "ingredient": "Carrot",
+        "ingredient": "Onion",
         "measure": "80g"
       },
       {
-        "ingredient": "Sesame soy dressing",
+        "ingredient": "Curry paste",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Cook onion and curry paste.",
+      "Add chickpeas and coconut milk.",
+      "Finish with spinach."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Practical edge: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around chickpea and keep portions measured for repeat accuracy. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-chickpea-03",
+    "title": "Roasted Chickpea Grain Bowl",
+    "preference": "chickpeas",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 45,
+    "goals": [
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 560,
+      "protein": 22,
+      "carbs": 73,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chickpeas",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Cooked bulgur",
+        "measure": "160g"
+      },
+      {
+        "ingredient": "Carrot",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Kale",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Tahini",
         "measure": "15g"
       }
     ],
     "instructions": [
-      "Press tofu and pan-sear until crisp.",
-      "Warm quinoa and edamame.",
-      "Assemble bowl with carrot and dressing."
+      "Roast chickpeas with spice.",
+      "Cook bulgur.",
+      "Assemble with veg and tahini."
     ],
     "slot_tags": [
       "midday",
-      "recovery"
+      "pre_training"
     ],
-    "tip": "Quick win: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around firm tofu with cooked quinoa for a predictable training-day fuel profile. Batch one extra portion for the next training day."
+    "tip": "Execution focus: Preheat cookware fully so color develops without extra fat. Strong pre-session option when timing is tight but output still matters. Build this around chickpea plus bulgur to keep fueling predictable. If appetite is low, halve volume but keep the protein anchor intact."
   },
   {
-    "id": "local-veg-12",
-    "title": "Lentil Mushroom Shepherd Tray",
-    "preference": "vegetarian",
-    "mealType": "Dinner",
-    "area": "British",
-    "minutes": 45,
+    "id": "local-chickpea-04",
+    "title": "Chickpea Scramble Toast",
+    "preference": "chickpeas",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 430,
+      "protein": 19,
+      "carbs": 52,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Mashed chickpeas",
+        "measure": "160g"
+      },
+      {
+        "ingredient": "Wholegrain bread",
+        "measure": "2 slices"
+      },
+      {
+        "ingredient": "Turmeric",
+        "measure": "1 tsp"
+      },
+      {
+        "ingredient": "Tomato",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "5g"
+      }
+    ],
+    "instructions": [
+      "Heat chickpeas with spices.",
+      "Toast bread.",
+      "Serve scramble on toast with tomato."
+    ],
+    "slot_tags": [
+      "morning"
+    ],
+    "tip": "Performance cue: Use sealed containers and add final garnish at the point of eating. Best used in the morning to anchor appetite and focus for the day. Build this around chickpea plus bread to keep fueling predictable. Pair this with water and keep your hydration trend aligned."
+  },
+  {
+    "id": "local-chickpea-05",
+    "title": "Chickpea Protein Pancakes",
+    "preference": "chickpeas",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 410,
+      "protein": 22,
+      "carbs": 49,
+      "fat": 13
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chickpea flour",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Baking powder",
+        "measure": "1 tsp"
+      },
+      {
+        "ingredient": "Blueberries",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Whisk batter ingredients.",
+      "Cook pancakes in non-stick pan.",
+      "Serve with yogurt and berries."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Coach note: Season in layers rather than all at once to keep flavor even. Morning slot fit: protein-first here helps reduce random snacking later. Build this around egg and keep portions measured for repeat accuracy. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-chickpea-06",
+    "title": "Chickpea Hummus Toast",
+    "preference": "chickpeas",
+    "mealType": "Snack",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 300,
+      "protein": 12,
+      "carbs": 35,
+      "fat": 12
+    },
+    "ingredients": [
+      {
+        "ingredient": "Wholegrain toast",
+        "measure": "1 slice"
+      },
+      {
+        "ingredient": "Hummus",
+        "measure": "55g"
+      },
+      {
+        "ingredient": "Cherry tomatoes",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Paprika",
+        "measure": "1 pinch"
+      }
+    ],
+    "instructions": [
+      "Toast bread.",
+      "Spread hummus.",
+      "Top with tomato, cucumber, paprika."
+    ],
+    "slot_tags": [
+      "midday"
+    ],
+    "tip": "Kitchen detail: Layer wet ingredients under dry toppings so crunch lasts to the final bite. Midday fit: keeps afternoon output stable without a hard crash. Build this around chickpeas plus toast to keep fueling predictable. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-chickpea-07",
+    "title": "Chickpea Pasta Pot",
+    "preference": "chickpeas",
+    "mealType": "Lunch",
+    "area": "Italian",
+    "minutes": 30,
     "goals": [
       "balanced",
       "high_protein"
     ],
     "nutrition": {
-      "calories": 600,
+      "calories": 560,
       "protein": 30,
-      "carbs": 72,
-      "fat": 20
+      "carbs": 73,
+      "fat": 14
     },
     "ingredients": [
       {
-        "ingredient": "Cooked lentils",
-        "measure": "220g"
+        "ingredient": "Chickpea pasta dry",
+        "measure": "85g"
       },
       {
-        "ingredient": "Mushrooms",
+        "ingredient": "Passata",
         "measure": "180g"
       },
       {
-        "ingredient": "Mashed potatoes",
-        "measure": "260g"
+        "ingredient": "Spinach",
+        "measure": "70g"
       },
       {
-        "ingredient": "Peas",
+        "ingredient": "Mushrooms sliced",
         "measure": "90g"
       },
       {
-        "ingredient": "Vegetable stock",
-        "measure": "120ml"
+        "ingredient": "Parmesan",
+        "measure": "10g"
       }
     ],
     "instructions": [
-      "Cook mushrooms with lentils and stock to form filling.",
-      "Spread into a baking dish and top with mash.",
-      "Bake until the top is browned and crisp."
+      "Cook pasta.",
+      "Simmer passata with mushrooms.",
+      "Add spinach and combine with pasta."
     ],
     "slot_tags": [
-      "recovery",
-      "midday"
+      "midday",
+      "recovery"
     ],
-    "tip": "Execution tip: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around cooked lentils with mashed potatoes for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Athlete tip: Avoid overcrowding the pan so ingredients sear instead of steam. Post-session use works well here because protein and carbs land together. Build this around chickpea plus pasta to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-chickpea-08",
+    "title": "Chickpea Crunch Snack Mix",
+    "preference": "chickpeas",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 280,
+      "protein": 11,
+      "carbs": 26,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Roasted chickpeas",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Almonds",
+        "measure": "15g"
+      },
+      {
+        "ingredient": "Pumpkin seeds",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Raisins",
+        "measure": "15g"
+      },
+      {
+        "ingredient": "Smoked paprika",
+        "measure": "1 pinch"
+      }
+    ],
+    "instructions": [
+      "Combine all ingredients in container.",
+      "Shake and portion.",
+      "Store dry for 2-3 days."
+    ],
+    "slot_tags": [
+      "pre_training"
+    ],
+    "tip": "Recovery angle: Chill for at least 20 minutes to tighten texture before serving. Use pre-training when you want stable energy without heavy digestion. Build this around chickpea and keep portions measured for repeat accuracy. Store one backup serving to protect consistency on busy days."
   },
   {
     "id": "local-chickpea-09",
@@ -3843,7 +1750,7 @@
       "morning",
       "midday"
     ],
-    "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around chickpeas and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
+    "tip": "Session support: Keep cuts uniform so everything finishes together and macros stay repeatable. Morning slot fit: protein-first here helps reduce random snacking later. Build this around skyr and keep portions measured for repeat accuracy. Portion one extra while everything is out and keep tomorrow friction-free."
   },
   {
     "id": "local-chickpea-10",
@@ -3895,7 +1802,7 @@
       "midday",
       "morning"
     ],
-    "tip": "Execution tip: Add roasted chickpeas last so they stay crunchy against the skyr base. Good pre-training option: enough carbs to perform without feeling heavy. Build around roasted chickpeas and skyr for a snack that carries both crunch and protein. Pack veg and drizzle separately if you are taking it to work."
+    "tip": "Athlete tip: Preheat cookware fully so color develops without extra fat. Morning slot fit: protein-first here helps reduce random snacking later. Build this around skyr and keep portions measured for repeat accuracy. Use the same bowl and measurements each time to keep macros stable."
   },
   {
     "id": "local-chickpea-11",
@@ -3946,7 +1853,7 @@
       "pre_training",
       "morning"
     ],
-    "tip": "Performance tip: Pat chickpeas dry and toss dressing at the end so the mix stays bright and not soggy. Great midday pick to keep energy even through the afternoon block. Build around chickpeas and feta for a balanced bowl with steady carbs and protein. Make two jars in one go and keep one for tomorrow's lunch window."
+    "tip": "Recovery angle: Chill for at least 20 minutes to tighten texture before serving. Best used in the morning to anchor appetite and focus for the day. Build this around chickpea and keep portions measured for repeat accuracy. Pre-portion ingredients once and this becomes a fast repeat all week."
   },
   {
     "id": "local-chickpea-12",
@@ -3995,7 +1902,452 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Session-day move: Simmer gently at the end so protein stays tender and the sauce stays glossy. Best used post-session when you need protein plus carbs to recover well. Build around chickpeas with brown rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Session support: Season in layers rather than all at once to keep flavor even. Post-session use works well here because protein and carbs land together. Build this around chickpea plus rice to keep fueling predictable. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-chickpea-13",
+    "title": "Chickpea Shakshuka Breakfast",
+    "preference": "chickpeas",
+    "mealType": "Breakfast",
+    "area": "Middle Eastern",
+    "minutes": 25,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 510,
+      "protein": 29,
+      "carbs": 45,
+      "fat": 22
+    },
+    "ingredients": [
+      {
+        "ingredient": "Chickpeas",
+        "measure": "150g drained"
+      },
+      {
+        "ingredient": "Eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Passata",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Onion",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Paprika",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Saute onion with paprika and add passata.",
+      "Stir in chickpeas and simmer briefly.",
+      "Crack in eggs and cook until set to preference."
+    ],
+    "slot_tags": [
+      "morning",
+      "recovery"
+    ],
+    "tip": "Prep smarter: Cook core carbs just shy of done so reheats stay firm. Best used in the morning to anchor appetite and focus for the day. Build this around egg and keep portions measured for repeat accuracy. Pair this with water and keep your hydration trend aligned."
+  },
+  {
+    "id": "local-pork-01",
+    "title": "Lean Pork Rice Stir Fry",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 680,
+      "protein": 47,
+      "carbs": 63,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork strips",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Mixed vegetables",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tbsp"
+      },
+      {
+        "ingredient": "Sesame oil",
+        "measure": "6g"
+      }
+    ],
+    "instructions": [
+      "Sear pork strips.",
+      "Add veg and sauce.",
+      "Finish with rice."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Session support: Cook core carbs just shy of done so reheats stay firm. Post-session use works well here because protein and carbs land together. Build this around pork plus rice to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-pork-02",
+    "title": "Pork Tenderloin Potato Plate",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "European",
+    "minutes": 45,
+    "goals": [
+      "balanced",
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 610,
+      "protein": 49,
+      "carbs": 52,
+      "fat": 21
+    },
+    "ingredients": [
+      {
+        "ingredient": "Pork tenderloin",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Potatoes",
+        "measure": "240g"
+      },
+      {
+        "ingredient": "Green beans",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Mustard",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Roast potatoes.",
+      "Pan-sear pork and finish in oven.",
+      "Serve with beans and mustard."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Prep smarter: Avoid overcrowding the pan so ingredients sear instead of steam. Recovery slot fit: prioritize this after training for better turnaround. Build this around pork plus potato to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-pork-03",
+    "title": "Pork Egg Noodle Bowl",
+    "preference": "pork",
+    "mealType": "Lunch",
+    "area": "Asian",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 640,
+      "protein": 45,
+      "carbs": 61,
+      "fat": 22
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork mince",
+        "measure": "200g"
+      },
+      {
+        "ingredient": "Egg noodles",
+        "measure": "85g dry"
+      },
+      {
+        "ingredient": "Pak choi",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Garlic",
+        "measure": "2 cloves"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Cook noodles.",
+      "Brown pork with garlic.",
+      "Add greens and toss with noodles."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Fuel strategy: Use high heat early, then lower late to keep texture and moisture balanced. Strong pre-session option when timing is tight but output still matters. Build this around pork plus noodle to keep fueling predictable. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-pork-04",
+    "title": "Pork Burrito Meal Prep",
+    "preference": "pork",
+    "mealType": "Dinner",
+    "area": "Mexican",
+    "minutes": 30,
+    "goals": [
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 730,
+      "protein": 46,
+      "carbs": 71,
+      "fat": 27
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork mince",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Black beans",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Sweetcorn",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Salsa",
+        "measure": "90g"
+      }
+    ],
+    "instructions": [
+      "Cook pork with spice blend.",
+      "Warm rice and beans.",
+      "Combine all and top with salsa."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Quick win: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around pork plus rice to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-pork-05",
+    "title": "Pork Egg White Breakfast Bowl",
+    "preference": "pork",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 410,
+      "protein": 40,
+      "carbs": 16,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork mince",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "160g"
+      },
+      {
+        "ingredient": "Whole egg",
+        "measure": "1"
+      },
+      {
+        "ingredient": "Mushrooms",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Cook pork mince until browned.",
+      "Add mushrooms and spinach.",
+      "Pour in eggs and stir to scramble."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Consistency move: Preheat cookware fully so color develops without extra fat. Morning slot fit: protein-first here helps reduce random snacking later. Build this around pork and keep portions measured for repeat accuracy. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-pork-06",
+    "title": "Pork Apple Rice Bowl",
+    "preference": "pork",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 610,
+      "protein": 39,
+      "carbs": 58,
+      "fat": 22
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork strips",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Apple diced",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Red cabbage shredded",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "8g"
+      }
+    ],
+    "instructions": [
+      "Sear pork strips.",
+      "Cook apple and cabbage briefly.",
+      "Serve over rice with pork."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Practical edge: Rest protein briefly before serving to hold juices and improve bite. Recovery slot fit: prioritize this after training for better turnaround. Build this around pork plus rice to keep fueling predictable. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-pork-07",
+    "title": "Pork Protein Snack Pot",
+    "preference": "pork",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 330,
+      "protein": 30,
+      "carbs": 14,
+      "fat": 17
+    },
+    "ingredients": [
+      {
+        "ingredient": "Pork tenderloin cooked sliced",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Cucumber diced",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Dill chopped",
+        "measure": "4g"
+      },
+      {
+        "ingredient": "Lemon juice",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Slice pork into bite pieces.",
+      "Mix yogurt, dill, lemon.",
+      "Serve with cucumber."
+    ],
+    "slot_tags": [
+      "midday"
+    ],
+    "tip": "Execution focus: Stir gently instead of mashing so structure stays crisp and fresh. Use this at midday when you need satiety plus clear energy. Build this around pork and keep portions measured for repeat accuracy. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-pork-08",
+    "title": "Pork Sweetcorn Wrap",
+    "preference": "pork",
+    "mealType": "Snack",
+    "area": "Mexican",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 400,
+      "protein": 31,
+      "carbs": 33,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork mince cooked",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Wholewheat wrap",
+        "measure": "1 medium"
+      },
+      {
+        "ingredient": "Sweetcorn",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Tomato salsa",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Lettuce",
+        "measure": "35g"
+      }
+    ],
+    "instructions": [
+      "Warm wrap.",
+      "Add pork, corn, salsa, lettuce.",
+      "Roll and slice."
+    ],
+    "slot_tags": [
+      "pre_training"
+    ],
+    "tip": "Prep smarter: Keep this fully chilled and add crunchy toppings just before eating. Midday fit: keeps afternoon output stable without a hard crash. Build this around lean pork and measured carbs to keep fueling predictable. Portion a second jar now and keep your next meal friction-free."
   },
   {
     "id": "local-pork-09",
@@ -4046,7 +2398,7 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Make this work harder: Use high heat and avoid overcrowding so you sear instead of steam. Strong morning anchor: stable protein first helps appetite and focus later. Build around eggs with rice noodles for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Coach note: Avoid overcrowding the pan so ingredients sear instead of steam. Morning slot fit: protein-first here helps reduce random snacking later. Build this around pork plus rice to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
   },
   {
     "id": "local-pork-10",
@@ -4097,7 +2449,7 @@
       "pre_training",
       "midday"
     ],
-    "tip": "Performance tip: Cool the mince for 2 minutes before filling cups so cucumber stays crisp. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork with cucumber cups for a high-protein low-carb snack. Keep cucumber cups pre-cut in a container for rapid assembly."
+    "tip": "Execution focus: Use high heat early, then lower late to keep texture and moisture balanced. Strong pre-session option when timing is tight but output still matters. Build this around pork and keep portions measured for repeat accuracy. Split this into two containers and lock in tomorrow's fuel early."
   },
   {
     "id": "local-pork-11",
@@ -4148,7 +2500,7 @@
       "recovery",
       "morning"
     ],
-    "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around lean pork mince with cooked rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Performance cue: Keep cuts uniform so everything finishes together and macros stay repeatable. Best used in the morning to anchor appetite and focus for the day. Build this around pork plus rice to keep fueling predictable. Store one backup serving to protect consistency on busy days."
   },
   {
     "id": "local-pork-12",
@@ -4199,6 +2551,2006 @@
       "recovery",
       "midday"
     ],
-    "tip": "Coach note: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around lean pork loin and keep seasoning consistent so repeat prep stays easy. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Coach note: Preheat cookware fully so color develops without extra fat. Post-session use works well here because protein and carbs land together. Build this around pork and keep portions measured for repeat accuracy. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-pork-13",
+    "title": "Pork Apple Oat Breakfast Bowl",
+    "preference": "pork",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 20,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 37,
+      "carbs": 46,
+      "fat": 19
+    },
+    "ingredients": [
+      {
+        "ingredient": "Lean pork mince",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Rolled oats",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Apple",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Cinnamon",
+        "measure": "1 tsp"
+      },
+      {
+        "ingredient": "Skyr",
+        "measure": "80g"
+      }
+    ],
+    "instructions": [
+      "Cook oats with water and cinnamon until thick.",
+      "Brown pork mince and season lightly.",
+      "Serve pork over oats with diced apple and skyr."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Kitchen detail: Rest protein briefly before serving to hold juices and improve bite. Best used in the morning to anchor appetite and focus for the day. Build this around pork plus oat to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-seafood-01",
+    "title": "Salmon Rice Recovery Plate",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 710,
+      "protein": 47,
+      "carbs": 62,
+      "fat": 30
+    },
+    "ingredients": [
+      {
+        "ingredient": "Salmon fillet",
+        "measure": "200g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Broccoli",
+        "measure": "130g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "8g"
+      },
+      {
+        "ingredient": "Lemon",
+        "measure": "1/2"
+      }
+    ],
+    "instructions": [
+      "Bake salmon 12-14 min.",
+      "Steam broccoli.",
+      "Serve with rice and lemon."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Recovery angle: Avoid overcrowding the pan so ingredients sear instead of steam. Recovery slot fit: prioritize this after training for better turnaround. Build this around salmon plus rice to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-seafood-02",
+    "title": "Tuna Chickpea Salad Jar",
+    "preference": "seafood",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 490,
+      "protein": 42,
+      "carbs": 33,
+      "fat": 21
+    },
+    "ingredients": [
+      {
+        "ingredient": "Tuna in water",
+        "measure": "1 can (120g drained)"
+      },
+      {
+        "ingredient": "Chickpeas",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Red onion",
+        "measure": "40g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Drain tuna and chickpeas.",
+      "Mix with chopped veg and oil.",
+      "Season and serve cold."
+    ],
+    "slot_tags": [
+      "midday"
+    ],
+    "tip": "Session support: Stir gently instead of mashing so structure stays crisp and fresh. Use this at midday when you need satiety plus clear energy. Build this around tuna and keep portions measured for repeat accuracy. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-seafood-03",
+    "title": "Prawn Garlic Noodle Bowl",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 590,
+      "protein": 44,
+      "carbs": 66,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Prawns",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Rice noodles",
+        "measure": "85g dry"
+      },
+      {
+        "ingredient": "Garlic",
+        "measure": "2 cloves"
+      },
+      {
+        "ingredient": "Pak choi",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Cook noodles.",
+      "Sear prawns with garlic.",
+      "Add greens, sauce, and toss with noodles."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Prep smarter: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around prawn plus rice to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-seafood-04",
+    "title": "Cod Potato Tray Bake",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "European",
+    "minutes": 45,
+    "goals": [
+      "cut",
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 560,
+      "protein": 49,
+      "carbs": 55,
+      "fat": 15
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cod fillet",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Baby potatoes",
+        "measure": "260g"
+      },
+      {
+        "ingredient": "Green beans",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Paprika",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Roast potatoes first.",
+      "Add cod and beans for final 12 min.",
+      "Finish with paprika and lemon."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Fuel strategy: Preheat cookware fully so color develops without extra fat. Post-session use works well here because protein and carbs land together. Build this around cod plus potato to keep fueling predictable. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-seafood-05",
+    "title": "Salmon Avocado Toast",
+    "preference": "seafood",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 480,
+      "protein": 31,
+      "carbs": 29,
+      "fat": 27
+    },
+    "ingredients": [
+      {
+        "ingredient": "Wholegrain bread",
+        "measure": "2 slices"
+      },
+      {
+        "ingredient": "Smoked salmon",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Avocado mashed",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Lemon juice",
+        "measure": "1 tsp"
+      },
+      {
+        "ingredient": "Black pepper",
+        "measure": "1 pinch"
+      }
+    ],
+    "instructions": [
+      "Toast bread.",
+      "Mash avocado with lemon.",
+      "Top with salmon and pepper."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Quick win: Layer wet ingredients under dry toppings so crunch lasts to the final bite. Best used in the morning to anchor appetite and focus for the day. Build this around salmon plus bread to keep fueling predictable. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-seafood-06",
+    "title": "Tuna Egg Protein Pot",
+    "preference": "seafood",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 290,
+      "protein": 34,
+      "carbs": 4,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Tuna in water drained",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Boiled eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "30g"
+      },
+      {
+        "ingredient": "Celery diced",
+        "measure": "40g"
+      },
+      {
+        "ingredient": "Mustard",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Chop eggs and tuna.",
+      "Mix with yogurt, celery, mustard.",
+      "Serve chilled."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Consistency move: Keep components chilled and combine just before eating for cleaner texture. Strong pre-session option when timing is tight but output still matters. Build this around tuna and keep portions measured for repeat accuracy. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-seafood-07",
+    "title": "Prawn Rice Paper Rolls",
+    "preference": "seafood",
+    "mealType": "Snack",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": [
+      "cut",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 28,
+      "carbs": 42,
+      "fat": 7
+    },
+    "ingredients": [
+      {
+        "ingredient": "Prawns cooked",
+        "measure": "140g"
+      },
+      {
+        "ingredient": "Rice paper sheets",
+        "measure": "4"
+      },
+      {
+        "ingredient": "Rice noodles cooked",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Lettuce",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Carrot julienne",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Soak rice paper sheets briefly.",
+      "Fill with prawns, noodles, and veg.",
+      "Roll tightly and serve."
+    ],
+    "slot_tags": [
+      "pre_training"
+    ],
+    "tip": "Practical edge: Chill for at least 20 minutes to tighten texture before serving. Use pre-training when you want stable energy without heavy digestion. Build this around prawn plus rice to keep fueling predictable. Pair this with water and keep your hydration trend aligned."
+  },
+  {
+    "id": "local-seafood-08",
+    "title": "Mackerel Potato Salad",
+    "preference": "seafood",
+    "mealType": "Lunch",
+    "area": "European",
+    "minutes": 30,
+    "goals": [
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 620,
+      "protein": 38,
+      "carbs": 45,
+      "fat": 31
+    },
+    "ingredients": [
+      {
+        "ingredient": "Mackerel fillet",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Baby potatoes boiled",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Green beans",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Dill chopped",
+        "measure": "5g"
+      }
+    ],
+    "instructions": [
+      "Boil potatoes and beans.",
+      "Flake mackerel.",
+      "Mix yogurt and dill dressing, combine all."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Execution focus: Avoid overcrowding the pan so ingredients sear instead of steam. Post-session use works well here because protein and carbs land together. Build this around seafood plus potato to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-seafood-09",
+    "title": "Sardine Lemon Rye Plate",
+    "preference": "seafood",
+    "mealType": "Breakfast",
+    "area": "Nordic",
+    "minutes": 12,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 410,
+      "protein": 34,
+      "carbs": 24,
+      "fat": 19
+    },
+    "ingredients": [
+      {
+        "ingredient": "Sardines in water",
+        "measure": "120g drained"
+      },
+      {
+        "ingredient": "Rye bread",
+        "measure": "2 slices"
+      },
+      {
+        "ingredient": "Cucumber ribbons",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "50g"
+      },
+      {
+        "ingredient": "Lemon zest",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Toast rye bread lightly.",
+      "Mix yogurt with lemon zest.",
+      "Top toast with sardines and cucumber ribbons."
+    ],
+    "slot_tags": [
+      "morning",
+      "midday"
+    ],
+    "tip": "Performance cue: Use sealed containers and add final garnish at the point of eating. Best used in the morning to anchor appetite and focus for the day. Build this around sardine plus bread to keep fueling predictable. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-seafood-10",
+    "title": "Tuna Cottage Cheese Snack Pot",
+    "preference": "seafood",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 10,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 290,
+      "protein": 39,
+      "carbs": 9,
+      "fat": 10
+    },
+    "ingredients": [
+      {
+        "ingredient": "Tuna in spring water",
+        "measure": "120g drained"
+      },
+      {
+        "ingredient": "Low-fat cottage cheese",
+        "measure": "140g"
+      },
+      {
+        "ingredient": "Celery",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Capers",
+        "measure": "12g"
+      },
+      {
+        "ingredient": "Black pepper",
+        "measure": "1/2 tsp"
+      }
+    ],
+    "instructions": [
+      "Mix tuna and cottage cheese in a bowl.",
+      "Fold in chopped celery and capers.",
+      "Season with black pepper and chill."
+    ],
+    "slot_tags": [
+      "pre_training",
+      "midday",
+      "morning"
+    ],
+    "tip": "Practical edge: Chill for at least 20 minutes to tighten texture before serving. Best used in the morning to anchor appetite and focus for the day. Build this around tuna and keep portions measured for repeat accuracy. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-seafood-11",
+    "title": "Seafood Bulgur Midday Bowl",
+    "preference": "seafood",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 25,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 560,
+      "protein": 46,
+      "carbs": 56,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Prawns",
+        "measure": "160g"
+      },
+      {
+        "ingredient": "Bulgur wheat",
+        "measure": "80g dry"
+      },
+      {
+        "ingredient": "Cherry tomatoes",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Olive oil + lemon dressing",
+        "measure": "12g"
+      }
+    ],
+    "instructions": [
+      "Cook bulgur and let it steam dry.",
+      "Pan-sear prawns until pink.",
+      "Combine with chopped vegetables and dressing."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training",
+      "morning"
+    ],
+    "tip": "Execution focus: Preheat cookware fully so color develops without extra fat. Morning slot fit: protein-first here helps reduce random snacking later. Build this around prawn plus bulgur to keep fueling predictable. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-seafood-12",
+    "title": "White Fish Herb Rice Tray",
+    "preference": "seafood",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 35,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 520,
+      "protein": 45,
+      "carbs": 49,
+      "fat": 15
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cod fillet",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Green beans",
+        "measure": "130g"
+      },
+      {
+        "ingredient": "Parsley",
+        "measure": "12g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Place fish and beans on a tray, drizzle with oil.",
+      "Bake until fish flakes easily.",
+      "Serve with rice and fresh parsley."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Performance cue: Rest protein briefly before serving to hold juices and improve bite. Recovery slot fit: prioritize this after training for better turnaround. Build this around cod plus rice to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-seafood-13",
+    "title": "Salmon Cottage Toast",
+    "preference": "seafood",
+    "mealType": "Breakfast",
+    "area": "Nordic",
+    "minutes": 12,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 390,
+      "protein": 34,
+      "carbs": 26,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Smoked salmon",
+        "measure": "110g"
+      },
+      {
+        "ingredient": "Wholegrain toast",
+        "measure": "2 slices"
+      },
+      {
+        "ingredient": "Low-fat cottage cheese",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Dill",
+        "measure": "6g"
+      }
+    ],
+    "instructions": [
+      "Toast the bread slices.",
+      "Spread cottage cheese over toast.",
+      "Top with salmon, cucumber, and dill."
+    ],
+    "slot_tags": [
+      "morning",
+      "midday"
+    ],
+    "tip": "Coach note: Build this as a cold assembly and keep sauces separate until serving. Morning slot fit: protein-first here helps reduce random snacking later. Build this around salmon plus toast to keep fueling predictable. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-turkey-01",
+    "title": "Turkey Quinoa Power Bowl",
+    "preference": "turkey",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "cut",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 590,
+      "protein": 53,
+      "carbs": 46,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Cooked quinoa",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Tomato",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Cook turkey mince with seasoning.",
+      "Build bowl with quinoa and veg.",
+      "Top with turkey and oil."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Fuel strategy: Use high heat early, then lower late to keep texture and moisture balanced. Strong pre-session option when timing is tight but output still matters. Build this around turkey plus quinoa to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-turkey-02",
+    "title": "Turkey Taco Lettuce Boats",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Mexican",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 46,
+      "carbs": 28,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Romaine lettuce",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Salsa",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Taco seasoning",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Cook turkey with taco seasoning.",
+      "Fill lettuce leaves.",
+      "Top with salsa and yogurt."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Quick win: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around turkey and keep portions measured for repeat accuracy. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-turkey-03",
+    "title": "Turkey Sweet Potato Skillet",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Global",
+    "minutes": 45,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 660,
+      "protein": 50,
+      "carbs": 62,
+      "fat": 23
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Sweet potato",
+        "measure": "260g"
+      },
+      {
+        "ingredient": "Onion",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Pan-cook sweet potato cubes until tender.",
+      "Cook turkey and onion.",
+      "Fold in spinach and combine."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Consistency move: Preheat cookware fully so color develops without extra fat. Post-session use works well here because protein and carbs land together. Build this around turkey plus potato to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-turkey-04",
+    "title": "Turkey Pesto Pasta",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 700,
+      "protein": 54,
+      "carbs": 65,
+      "fat": 25
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey breast strips",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Wholewheat pasta",
+        "measure": "90g dry"
+      },
+      {
+        "ingredient": "Pesto",
+        "measure": "20g"
+      },
+      {
+        "ingredient": "Cherry tomatoes",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Parmesan",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Cook pasta.",
+      "Sear turkey strips.",
+      "Toss with pesto, tomatoes, and parmesan."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Practical edge: Rest protein briefly before serving to hold juices and improve bite. Recovery slot fit: prioritize this after training for better turnaround. Build this around turkey plus pasta to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-turkey-05",
+    "title": "Turkey Breakfast Scramble",
+    "preference": "turkey",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 370,
+      "protein": 41,
+      "carbs": 12,
+      "fat": 17
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Whole eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Mushrooms sliced",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "60g"
+      }
+    ],
+    "instructions": [
+      "Cook turkey and mushrooms.",
+      "Add eggs and whites.",
+      "Fold in spinach until wilted."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Execution focus: Season in layers rather than all at once to keep flavor even. Morning slot fit: protein-first here helps reduce random snacking later. Build this around turkey and keep portions measured for repeat accuracy. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-turkey-06",
+    "title": "Turkey Bagel Recovery",
+    "preference": "turkey",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 520,
+      "protein": 39,
+      "carbs": 54,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Wholegrain bagel thin",
+        "measure": "1"
+      },
+      {
+        "ingredient": "Turkey breast slices",
+        "measure": "130g"
+      },
+      {
+        "ingredient": "Light cream cheese",
+        "measure": "25g"
+      },
+      {
+        "ingredient": "Tomato slices",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Rocket",
+        "measure": "25g"
+      }
+    ],
+    "instructions": [
+      "Toast bagel.",
+      "Spread cream cheese.",
+      "Add turkey and veg."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Performance cue: Use sealed containers and add final garnish at the point of eating. Recovery slot fit: prioritize this after training for better turnaround. Build this around turkey plus bagel to keep fueling predictable. Make a second serving now so your next meal decision is already solved."
+  },
+  {
+    "id": "local-turkey-07",
+    "title": "Turkey Hummus Snack Box",
+    "preference": "turkey",
+    "mealType": "Snack",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 340,
+      "protein": 29,
+      "carbs": 23,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey breast slices",
+        "measure": "110g"
+      },
+      {
+        "ingredient": "Hummus",
+        "measure": "45g"
+      },
+      {
+        "ingredient": "Carrot sticks",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Cucumber sticks",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Wholegrain crackers",
+        "measure": "20g"
+      }
+    ],
+    "instructions": [
+      "Arrange turkey, hummus, and veg in box.",
+      "Add crackers on side.",
+      "Serve chilled."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training"
+    ],
+    "tip": "Coach note: Build this as a cold assembly and keep sauces separate until serving. Strong pre-session option when timing is tight but output still matters. Build this around turkey plus cracker to keep fueling predictable. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-turkey-08",
+    "title": "Turkey Couscous Bowl",
+    "preference": "turkey",
+    "mealType": "Lunch",
+    "area": "Mediterranean",
+    "minutes": 30,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 600,
+      "protein": 44,
+      "carbs": 55,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Wholewheat couscous cooked",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Courgette diced",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Red pepper diced",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Olive oil",
+        "measure": "8g"
+      }
+    ],
+    "instructions": [
+      "Cook turkey mince with seasoning.",
+      "Saute courgette and pepper.",
+      "Serve over couscous."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Kitchen detail: Use high heat early, then lower late to keep texture and moisture balanced. Recovery slot fit: prioritize this after training for better turnaround. Build this around turkey plus couscous to keep fueling predictable. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-turkey-09",
+    "title": "Turkey Meatball Marinara Bowl",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 40,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 640,
+      "protein": 54,
+      "carbs": 50,
+      "fat": 23
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Wholewheat spaghetti",
+        "measure": "75g dry"
+      },
+      {
+        "ingredient": "Passata",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Parmesan",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Basil",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Form turkey mince into small meatballs and bake.",
+      "Simmer passata with basil.",
+      "Cook spaghetti and top with meatballs and sauce."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Athlete tip: Keep cuts uniform so everything finishes together and macros stay repeatable. Post-session use works well here because protein and carbs land together. Build this around turkey and keep portions measured for repeat accuracy. If appetite is low, halve volume but keep the protein anchor intact."
+  },
+  {
+    "id": "local-turkey-10",
+    "title": "Smoked Turkey Apple Snack Wrap",
+    "preference": "turkey",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 10,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 350,
+      "protein": 31,
+      "carbs": 32,
+      "fat": 11
+    },
+    "ingredients": [
+      {
+        "ingredient": "Smoked turkey slices",
+        "measure": "130g"
+      },
+      {
+        "ingredient": "Wholegrain wrap",
+        "measure": "1 medium"
+      },
+      {
+        "ingredient": "Apple",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Low-fat cream cheese",
+        "measure": "25g"
+      },
+      {
+        "ingredient": "Rocket leaves",
+        "measure": "25g"
+      }
+    ],
+    "instructions": [
+      "Spread cream cheese on the wrap.",
+      "Layer turkey, thin apple slices, and rocket.",
+      "Roll tightly and slice into halves."
+    ],
+    "slot_tags": [
+      "pre_training",
+      "midday",
+      "morning"
+    ],
+    "tip": "Coach note: Build this as a cold assembly and keep sauces separate until serving. Morning slot fit: protein-first here helps reduce random snacking later. Build this around turkey plus wrap to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-turkey-11",
+    "title": "Turkey Black Bean Power Skillet",
+    "preference": "turkey",
+    "mealType": "Lunch",
+    "area": "Mexican",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 620,
+      "protein": 50,
+      "carbs": 55,
+      "fat": 21
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "210g"
+      },
+      {
+        "ingredient": "Black beans",
+        "measure": "140g drained"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "150g"
+      },
+      {
+        "ingredient": "Sweetcorn",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Taco seasoning",
+        "measure": "12g"
+      }
+    ],
+    "instructions": [
+      "Brown turkey mince with taco seasoning.",
+      "Add black beans and sweetcorn and cook through.",
+      "Serve over cooked rice in one skillet."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Kitchen detail: Rest protein briefly before serving to hold juices and improve bite. Recovery slot fit: prioritize this after training for better turnaround. Build this around turkey plus rice to keep fueling predictable. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-turkey-12",
+    "title": "Turkey Spinach Stuffed Peppers",
+    "preference": "turkey",
+    "mealType": "Dinner",
+    "area": "Mediterranean",
+    "minutes": 45,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 540,
+      "protein": 47,
+      "carbs": 36,
+      "fat": 22
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "200g"
+      },
+      {
+        "ingredient": "Bell peppers",
+        "measure": "2 large"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Cooked quinoa",
+        "measure": "110g"
+      },
+      {
+        "ingredient": "Feta",
+        "measure": "35g"
+      }
+    ],
+    "instructions": [
+      "Halve peppers and roast for 10 minutes.",
+      "Cook turkey with spinach and fold in quinoa.",
+      "Stuff peppers, top with feta, and bake until set."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Athlete tip: Season in layers rather than all at once to keep flavor even. Post-session use works well here because protein and carbs land together. Build this around turkey plus quinoa to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-turkey-13",
+    "title": "Turkey Breakfast Burrito Bowl",
+    "preference": "turkey",
+    "mealType": "Breakfast",
+    "area": "Mexican",
+    "minutes": 20,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 500,
+      "protein": 42,
+      "carbs": 44,
+      "fat": 18
+    },
+    "ingredients": [
+      {
+        "ingredient": "Turkey mince 7%",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "130g"
+      },
+      {
+        "ingredient": "Eggs",
+        "measure": "2"
+      },
+      {
+        "ingredient": "Black beans",
+        "measure": "80g drained"
+      },
+      {
+        "ingredient": "Salsa",
+        "measure": "70g"
+      }
+    ],
+    "instructions": [
+      "Cook turkey mince with light seasoning.",
+      "Scramble eggs in a separate pan.",
+      "Serve turkey and eggs over rice with beans and salsa."
+    ],
+    "slot_tags": [
+      "morning",
+      "recovery"
+    ],
+    "tip": "Recovery angle: Cook core carbs just shy of done so reheats stay firm. Best used in the morning to anchor appetite and focus for the day. Build this around turkey plus rice to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-veg-01",
+    "title": "Tofu Peanut Stir Fry",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Asian",
+    "minutes": 30,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 620,
+      "protein": 34,
+      "carbs": 57,
+      "fat": 30
+    },
+    "ingredients": [
+      {
+        "ingredient": "Firm tofu",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Rice",
+        "measure": "160g cooked"
+      },
+      {
+        "ingredient": "Stir-fry vegetables",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Peanut butter",
+        "measure": "16g"
+      },
+      {
+        "ingredient": "Soy sauce",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Crisp tofu in pan.",
+      "Cook vegetables.",
+      "Stir in peanut-soy sauce and serve with rice."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Consistency move: Season in layers rather than all at once to keep flavor even. Post-session use works well here because protein and carbs land together. Build this around tofu plus rice to keep fueling predictable. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-veg-02",
+    "title": "High Protein Lentil Pasta",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Italian",
+    "minutes": 30,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 580,
+      "protein": 36,
+      "carbs": 76,
+      "fat": 12
+    },
+    "ingredients": [
+      {
+        "ingredient": "Red lentil pasta",
+        "measure": "90g dry"
+      },
+      {
+        "ingredient": "Passata",
+        "measure": "200g"
+      },
+      {
+        "ingredient": "Mushrooms",
+        "measure": "140g"
+      },
+      {
+        "ingredient": "Spinach",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Parmesan",
+        "measure": "10g"
+      }
+    ],
+    "instructions": [
+      "Cook pasta.",
+      "Simmer passata with mushrooms.",
+      "Fold in spinach and combine."
+    ],
+    "slot_tags": [
+      "recovery"
+    ],
+    "tip": "Quick win: Rest protein briefly before serving to hold juices and improve bite. Recovery slot fit: prioritize this after training for better turnaround. Build this around lentil plus pasta to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-veg-03",
+    "title": "Egg White Veg Omelette Wrap",
+    "preference": "vegetarian",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "cut",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 390,
+      "protein": 33,
+      "carbs": 27,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "ingredient": "Egg whites",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Whole egg",
+        "measure": "1"
+      },
+      {
+        "ingredient": "Wholewheat wrap",
+        "measure": "1 medium"
+      },
+      {
+        "ingredient": "Peppers",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Onion",
+        "measure": "50g"
+      }
+    ],
+    "instructions": [
+      "Cook egg mixture with veg.",
+      "Warm wrap.",
+      "Fill and roll."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Fuel strategy: Preheat cookware fully so color develops without extra fat. Morning slot fit: protein-first here helps reduce random snacking later. Build this around egg plus wrap to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-veg-04",
+    "title": "Paneer Rice Bowl",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "Indian",
+    "minutes": 45,
+    "goals": [
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 740,
+      "protein": 33,
+      "carbs": 66,
+      "fat": 37
+    },
+    "ingredients": [
+      {
+        "ingredient": "Paneer",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Cooked rice",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Tomato puree",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Onion",
+        "measure": "70g"
+      },
+      {
+        "ingredient": "Spices",
+        "measure": "1 tbsp"
+      }
+    ],
+    "instructions": [
+      "Cook onion and spices.",
+      "Add tomato and paneer.",
+      "Serve over rice."
+    ],
+    "slot_tags": [
+      "recovery",
+      "pre_training"
+    ],
+    "tip": "Prep smarter: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around paneer plus rice to keep fueling predictable. Treat this as a repeat meal and keep your process identical next time."
+  },
+  {
+    "id": "local-veg-05",
+    "title": "Greek Yogurt Berry Oats",
+    "preference": "vegetarian",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 430,
+      "protein": 28,
+      "carbs": 56,
+      "fat": 10
+    },
+    "ingredients": [
+      {
+        "ingredient": "Rolled oats",
+        "measure": "55g"
+      },
+      {
+        "ingredient": "Greek yogurt 0%",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Mixed berries",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Chia seeds",
+        "measure": "8g"
+      },
+      {
+        "ingredient": "Honey",
+        "measure": "8g"
+      }
+    ],
+    "instructions": [
+      "Mix oats and yogurt.",
+      "Top with berries, chia, and honey.",
+      "Serve immediately or chilled."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Session support: Stir gently instead of mashing so structure stays crisp and fresh. Morning slot fit: protein-first here helps reduce random snacking later. Build this around vegetarian plus oat to keep fueling predictable. Log it right after eating so your fuel board stays accurate."
+  },
+  {
+    "id": "local-veg-06",
+    "title": "Cottage Cheese Toast Stack",
+    "preference": "vegetarian",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 320,
+      "protein": 27,
+      "carbs": 24,
+      "fat": 12
+    },
+    "ingredients": [
+      {
+        "ingredient": "Wholegrain toast",
+        "measure": "1 slice"
+      },
+      {
+        "ingredient": "Cottage cheese",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Cherry tomatoes",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Pumpkin seeds",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Black pepper",
+        "measure": "1 pinch"
+      }
+    ],
+    "instructions": [
+      "Toast bread.",
+      "Top with cottage cheese and tomatoes.",
+      "Finish with seeds and pepper."
+    ],
+    "slot_tags": [
+      "midday"
+    ],
+    "tip": "Recovery angle: Chill for at least 20 minutes to tighten texture before serving. Midday fit: keeps afternoon output stable without a hard crash. Build this around vegetarian plus toast to keep fueling predictable. Pair this with water and keep your hydration trend aligned."
+  },
+  {
+    "id": "local-veg-07",
+    "title": "Tofu Wrap Snack",
+    "preference": "vegetarian",
+    "mealType": "Snack",
+    "area": "Global",
+    "minutes": 15,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 410,
+      "protein": 28,
+      "carbs": 31,
+      "fat": 17
+    },
+    "ingredients": [
+      {
+        "ingredient": "Firm tofu",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Wholegrain wrap",
+        "measure": "1 medium"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Lettuce",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Tomato",
+        "measure": "80g"
+      }
+    ],
+    "instructions": [
+      "Warm wrap.",
+      "Add tofu and veg.",
+      "Drizzle sauce and roll."
+    ],
+    "slot_tags": [
+      "pre_training"
+    ],
+    "tip": "Consistency move: Assemble this cold and keep sauces separate until the final minute. Strong pre-session option when timing is tight but output still matters. Build this around tofu plus wrap to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-veg-08",
+    "title": "Lentil Soup Recovery Cup",
+    "preference": "vegetarian",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 45,
+    "goals": [
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 480,
+      "protein": 26,
+      "carbs": 66,
+      "fat": 13
+    },
+    "ingredients": [
+      {
+        "ingredient": "Red lentils dry",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Vegetable stock",
+        "measure": "500ml"
+      },
+      {
+        "ingredient": "Carrot diced",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Celery diced",
+        "measure": "60g"
+      },
+      {
+        "ingredient": "Onion diced",
+        "measure": "70g"
+      }
+    ],
+    "instructions": [
+      "Saute onion, carrot, celery.",
+      "Add lentils and stock.",
+      "Simmer 25-30 min and blend lightly."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Kitchen detail: Season in layers rather than all at once to keep flavor even. Recovery slot fit: prioritize this after training for better turnaround. Build this around lentil and keep portions measured for repeat accuracy. Pre-portion ingredients once and this becomes a fast repeat all week."
+  },
+  {
+    "id": "local-veg-09",
+    "title": "Skyr Berry Protein Pot",
+    "preference": "vegetarian",
+    "mealType": "Breakfast",
+    "area": "Nordic",
+    "minutes": 8,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 320,
+      "protein": 31,
+      "carbs": 32,
+      "fat": 7
+    },
+    "ingredients": [
+      {
+        "ingredient": "Skyr",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Mixed berries",
+        "measure": "110g"
+      },
+      {
+        "ingredient": "Chia seeds",
+        "measure": "10g"
+      },
+      {
+        "ingredient": "Pumpkin seeds",
+        "measure": "12g"
+      },
+      {
+        "ingredient": "Cinnamon",
+        "measure": "1/2 tsp"
+      }
+    ],
+    "instructions": [
+      "Layer skyr and berries in a pot.",
+      "Top with chia and pumpkin seeds.",
+      "Dust with cinnamon before serving."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Coach note: Build this as a cold assembly and keep sauces separate until serving. Morning slot fit: protein-first here helps reduce random snacking later. Build this around skyr and keep portions measured for repeat accuracy. Use the same bowl and measurements each time to keep macros stable."
+  },
+  {
+    "id": "local-veg-10",
+    "title": "Halloumi Pepper Snack Bites",
+    "preference": "vegetarian",
+    "mealType": "Snack",
+    "area": "Mediterranean",
+    "minutes": 15,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 390,
+      "protein": 28,
+      "carbs": 16,
+      "fat": 23
+    },
+    "ingredients": [
+      {
+        "ingredient": "Halloumi",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Skyr dip",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Red pepper",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Cucumber",
+        "measure": "100g"
+      },
+      {
+        "ingredient": "Wholegrain crackers",
+        "measure": "20g"
+      }
+    ],
+    "instructions": [
+      "Pan-sear halloumi cubes until golden.",
+      "Slice pepper and cucumber into bite-size pieces.",
+      "Serve with crackers and skyr dip for a high-protein snack board."
+    ],
+    "slot_tags": [
+      "midday",
+      "pre_training",
+      "morning"
+    ],
+    "tip": "Athlete tip: Preheat cookware fully so color develops without extra fat. Morning slot fit: protein-first here helps reduce random snacking later. Build this around halloumi plus cracker to keep fueling predictable. Portion one extra while everything is out and keep tomorrow friction-free."
+  },
+  {
+    "id": "local-veg-11",
+    "title": "Tofu Quinoa Midday Bowl",
+    "preference": "vegetarian",
+    "mealType": "Lunch",
+    "area": "Global",
+    "minutes": 25,
+    "goals": [
+      "high_protein",
+      "balanced",
+      "cut"
+    ],
+    "nutrition": {
+      "calories": 540,
+      "protein": 35,
+      "carbs": 49,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "ingredient": "Firm tofu",
+        "measure": "190g"
+      },
+      {
+        "ingredient": "Cooked quinoa",
+        "measure": "170g"
+      },
+      {
+        "ingredient": "Edamame",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Carrot",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Sesame soy dressing",
+        "measure": "15g"
+      }
+    ],
+    "instructions": [
+      "Press tofu and pan-sear until crisp.",
+      "Warm quinoa and edamame.",
+      "Assemble bowl with carrot and dressing."
+    ],
+    "slot_tags": [
+      "midday",
+      "recovery"
+    ],
+    "tip": "Kitchen detail: Keep cuts uniform so everything finishes together and macros stay repeatable. Recovery slot fit: prioritize this after training for better turnaround. Build this around tofu plus quinoa to keep fueling predictable. Store one backup serving to protect consistency on busy days."
+  },
+  {
+    "id": "local-veg-12",
+    "title": "Lentil Mushroom Shepherd Tray",
+    "preference": "vegetarian",
+    "mealType": "Dinner",
+    "area": "British",
+    "minutes": 45,
+    "goals": [
+      "balanced",
+      "high_protein"
+    ],
+    "nutrition": {
+      "calories": 600,
+      "protein": 30,
+      "carbs": 72,
+      "fat": 20
+    },
+    "ingredients": [
+      {
+        "ingredient": "Cooked lentils",
+        "measure": "220g"
+      },
+      {
+        "ingredient": "Mushrooms",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Mashed potatoes",
+        "measure": "260g"
+      },
+      {
+        "ingredient": "Peas",
+        "measure": "90g"
+      },
+      {
+        "ingredient": "Vegetable stock",
+        "measure": "120ml"
+      }
+    ],
+    "instructions": [
+      "Cook mushrooms with lentils and stock to form filling.",
+      "Spread into a baking dish and top with mash.",
+      "Bake until the top is browned and crisp."
+    ],
+    "slot_tags": [
+      "recovery",
+      "midday"
+    ],
+    "tip": "Coach note: Use high heat early, then lower late to keep texture and moisture balanced. Post-session use works well here because protein and carbs land together. Build this around lentil plus potato to keep fueling predictable. Split this into two containers and lock in tomorrow's fuel early."
+  },
+  {
+    "id": "local-veg-13",
+    "title": "Protein Pancake Stack",
+    "preference": "vegetarian",
+    "mealType": "Breakfast",
+    "area": "Global",
+    "minutes": 20,
+    "goals": [
+      "high_protein",
+      "balanced"
+    ],
+    "nutrition": {
+      "calories": 470,
+      "protein": 31,
+      "carbs": 49,
+      "fat": 16
+    },
+    "ingredients": [
+      {
+        "ingredient": "Oat flour",
+        "measure": "55g"
+      },
+      {
+        "ingredient": "Egg whites",
+        "measure": "180g"
+      },
+      {
+        "ingredient": "Skyr",
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Blueberries",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Baking powder",
+        "measure": "1 tsp"
+      }
+    ],
+    "instructions": [
+      "Whisk oat flour, egg whites, and baking powder into batter.",
+      "Cook pancakes on non-stick pan until golden both sides.",
+      "Stack with skyr and blueberries."
+    ],
+    "slot_tags": [
+      "morning",
+      "pre_training"
+    ],
+    "tip": "Performance cue: Avoid overcrowding the pan so ingredients sear instead of steam. Best used in the morning to anchor appetite and focus for the day. Build this around skyr plus oat to keep fueling predictable. Treat this as a repeat meal and keep your process identical next time."
   }
 ]

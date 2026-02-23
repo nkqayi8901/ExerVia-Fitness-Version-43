@@ -33,10 +33,15 @@ const parseAuthError = (error, fallback) => {
   return fallback;
 };
 
+const MAPS_KEY = String(process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
+
 export default function FitnessProfileForm({ settingsOnly = false }) {
   const navigate = useNavigate();
   const hasAutoRedirectedRef = useRef(false);
   const settingsSnapshotRef = useRef(null);
+  const placesServiceRef = useRef(null);
+  const placesSessionRef = useRef(null);
+  const placesDebounceRef = useRef(null);
 
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
@@ -53,6 +58,15 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [gymName, setGymName] = useState("");
+  const [gymPlaceId, setGymPlaceId] = useState("");
+  const [gymAddress, setGymAddress] = useState("");
+  const [gymLat, setGymLat] = useState("");
+  const [gymLng, setGymLng] = useState("");
+  const [gymQuery, setGymQuery] = useState("");
+  const [gymSuggestions, setGymSuggestions] = useState([]);
+  const [gymSearchLoading, setGymSearchLoading] = useState(false);
+  const [mapsReady, setMapsReady] = useState(false);
 
   const [profile, setProfile] = useState(null);
   const heroBackgroundStyle = { "--exervia-hero-bg": `url(${heroImage})` };
@@ -67,9 +81,14 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       String(fullName || "").trim() !== snapshot.fullName ||
       String(username || "").trim() !== snapshot.username ||
       String(fitnessLevel || "").trim() !== snapshot.fitnessLevel ||
-      String(primaryGoal || "").trim() !== snapshot.primaryGoal
+      String(primaryGoal || "").trim() !== snapshot.primaryGoal ||
+      String(gymName || "").trim() !== snapshot.gymName ||
+      String(gymPlaceId || "").trim() !== snapshot.gymPlaceId ||
+      String(gymAddress || "").trim() !== snapshot.gymAddress ||
+      String(gymLat || "").trim() !== snapshot.gymLat ||
+      String(gymLng || "").trim() !== snapshot.gymLng
     );
-  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal]);
+  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal, gymName, gymPlaceId, gymAddress, gymLat, gymLng]);
 
   const setUserStorage = (profileRow, authUser) => {
     localStorage.setItem("exervia_user_id", String(profileRow.id));
@@ -157,12 +176,23 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         setUsername(row.username || "");
         setFitnessLevel(row.fitness_level || "Beginner");
         setPrimaryGoal(row.primary_goal || "Build Muscle");
+        setGymName(row.primary_gym_name || "");
+        setGymPlaceId(row.primary_gym_place_id || "");
+        setGymAddress(row.primary_gym_address || "");
+        setGymLat(row.primary_gym_lat == null ? "" : String(row.primary_gym_lat));
+        setGymLng(row.primary_gym_lng == null ? "" : String(row.primary_gym_lng));
+        setGymQuery(row.primary_gym_name || row.primary_gym_address || "");
         setUserStorage(row, nextSession.user);
         settingsSnapshotRef.current = {
           fullName: String(row.full_name || "").trim(),
           username: String(row.username || "").trim(),
           fitnessLevel: String(row.fitness_level || "Beginner").trim(),
-          primaryGoal: String(row.primary_goal || "Build Muscle").trim()
+          primaryGoal: String(row.primary_goal || "Build Muscle").trim(),
+          gymName: String(row.primary_gym_name || "").trim(),
+          gymPlaceId: String(row.primary_gym_place_id || "").trim(),
+          gymAddress: String(row.primary_gym_address || "").trim(),
+          gymLat: row.primary_gym_lat == null ? "" : String(row.primary_gym_lat).trim(),
+          gymLng: row.primary_gym_lng == null ? "" : String(row.primary_gym_lng).trim(),
         };
       }
     } catch (error) {
@@ -259,6 +289,81 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     return () => window.removeEventListener("beforeunload", beforeUnloadHandler);
   }, [settingsOnly, session, isSettingsDirty]);
 
+  useEffect(() => {
+    if (!settingsOnly || !MAPS_KEY) return undefined;
+    if (window.google?.maps?.places?.AutocompleteService) {
+      setMapsReady(true);
+      placesServiceRef.current = new window.google.maps.places.AutocompleteService();
+      placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
+      return undefined;
+    }
+    const existing = document.getElementById("exervia-google-maps-script");
+    if (existing) {
+      const onLoad = () => {
+        if (window.google?.maps?.places?.AutocompleteService) {
+          setMapsReady(true);
+          placesServiceRef.current = new window.google.maps.places.AutocompleteService();
+          placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        }
+      };
+      existing.addEventListener("load", onLoad);
+      return () => existing.removeEventListener("load", onLoad);
+    }
+    const script = document.createElement("script");
+    script.id = "exervia-google-maps-script";
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(MAPS_KEY)}&libraries=places`;
+    script.onload = () => {
+      if (window.google?.maps?.places?.AutocompleteService) {
+        setMapsReady(true);
+        placesServiceRef.current = new window.google.maps.places.AutocompleteService();
+        placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
+      }
+    };
+    script.onerror = () => setMapsReady(false);
+    document.body.appendChild(script);
+    return undefined;
+  }, [settingsOnly]);
+
+  useEffect(() => {
+    if (!settingsOnly || !mapsReady || !placesServiceRef.current) return undefined;
+    const query = String(gymQuery || "").trim();
+    if (query.length < 2) {
+      setGymSuggestions([]);
+      setGymSearchLoading(false);
+      return undefined;
+    }
+    if (placesDebounceRef.current) clearTimeout(placesDebounceRef.current);
+    placesDebounceRef.current = setTimeout(() => {
+      setGymSearchLoading(true);
+      placesServiceRef.current.getPlacePredictions(
+        {
+          input: query,
+          sessionToken: placesSessionRef.current,
+          types: ["gym"],
+        },
+        (predictions, status) => {
+          setGymSearchLoading(false);
+          if (status !== "OK" || !Array.isArray(predictions)) {
+            setGymSuggestions([]);
+            return;
+          }
+          setGymSuggestions(
+            predictions.slice(0, 6).map((row) => ({
+              placeId: String(row.place_id || ""),
+              name: String(row.structured_formatting?.main_text || row.description || ""),
+              address: String(row.description || ""),
+            }))
+          );
+        }
+      );
+    }, 250);
+    return () => {
+      if (placesDebounceRef.current) clearTimeout(placesDebounceRef.current);
+    };
+  }, [gymQuery, mapsReady, settingsOnly]);
+
   const confirmDiscardIfDirty = () => {
     if (!isSettingsDirty) return true;
     return window.confirm("You have unsaved profile changes. Leave without saving?");
@@ -269,6 +374,25 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     if (!profile?.id) return;
     const destination = await resolveHomePath(profile.id);
     navigate(destination);
+  };
+
+  const pickGymSuggestion = (item) => {
+    if (!item) return;
+    setGymName(String(item.name || ""));
+    setGymAddress(String(item.address || ""));
+    setGymPlaceId(String(item.placeId || ""));
+    setGymQuery(String(item.address || item.name || ""));
+    setGymSuggestions([]);
+  };
+
+  const clearGymLink = () => {
+    setGymName("");
+    setGymPlaceId("");
+    setGymAddress("");
+    setGymLat("");
+    setGymLng("");
+    setGymQuery("");
+    setGymSuggestions([]);
   };
 
   const handleLogin = async () => {
@@ -434,7 +558,13 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         display_name: fullName.trim(),
         username: cleanUsername,
         fitness_level: fitnessLevel,
-        primary_goal: primaryGoal
+        primary_goal: primaryGoal,
+        primary_gym_name: gymName.trim() || null,
+        primary_gym_place_id: gymPlaceId.trim() || null,
+        primary_gym_address: gymAddress.trim() || null,
+        primary_gym_lat: Number.isFinite(Number(gymLat)) ? Number(gymLat) : null,
+        primary_gym_lng: Number.isFinite(Number(gymLng)) ? Number(gymLng) : null,
+        primary_gym_linked_at: gymPlaceId.trim() ? new Date().toISOString() : null,
       })
       .eq("id", profile.id)
       .select("*")
@@ -452,7 +582,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       fullName: String(data.full_name || "").trim(),
       username: String(data.username || "").trim(),
       fitnessLevel: String(data.fitness_level || "Beginner").trim(),
-      primaryGoal: String(data.primary_goal || "Build Muscle").trim()
+      primaryGoal: String(data.primary_goal || "Build Muscle").trim(),
+      gymName: String(data.primary_gym_name || "").trim(),
+      gymPlaceId: String(data.primary_gym_place_id || "").trim(),
+      gymAddress: String(data.primary_gym_address || "").trim(),
+      gymLat: data.primary_gym_lat == null ? "" : String(data.primary_gym_lat).trim(),
+      gymLng: data.primary_gym_lng == null ? "" : String(data.primary_gym_lng).trim(),
     };
     setBanner("Profile updated.");
   };
@@ -682,6 +817,65 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                     <option key={goal} value={goal}>{goal}</option>
                   ))}
                 </select>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="hud-divider" />
+                <label className="block text-white mb-2">Link Your Gym</label>
+                <input
+                  className="profile-input"
+                  value={gymQuery}
+                  onChange={(e) => setGymQuery(e.target.value)}
+                  placeholder={MAPS_KEY ? "Search gym via Google Places" : "Gym name"}
+                />
+                <p className="text-xs text-gray-400 mt-2 mb-0">
+                  {MAPS_KEY
+                    ? "Pick a suggestion or fill fields manually."
+                    : "Manual mode active. Add REACT_APP_GOOGLE_MAPS_API_KEY for autocomplete."}
+                </p>
+                {mapsReady && gymSearchLoading ? (
+                  <div className="text-xs text-gray-300 mt-2">Searching gyms...</div>
+                ) : null}
+                {gymSuggestions.length > 0 ? (
+                  <div className="grid gap-2 mt-2">
+                    {gymSuggestions.map((item) => (
+                      <button
+                        key={`gym-${item.placeId || item.address}`}
+                        type="button"
+                        className="profile-button-secondary"
+                        onClick={() => pickGymSuggestion(item)}
+                        style={{ textAlign: "left" }}
+                      >
+                        {item.name}
+                        <div className="text-xs text-gray-300">{item.address}</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div>
+                <label className="block text-white mb-2">Gym Name</label>
+                <input className="profile-input" value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Mardyke Arena" />
+              </div>
+              <div>
+                <label className="block text-white mb-2">Google Place ID</label>
+                <input className="profile-input" value={gymPlaceId} onChange={(e) => setGymPlaceId(e.target.value)} placeholder="ChIJ..." />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="block text-white mb-2">Address</label>
+                <input className="profile-input" value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" />
+              </div>
+              <div>
+                <label className="block text-white mb-2">Latitude (optional)</label>
+                <input className="profile-input" value={gymLat} onChange={(e) => setGymLat(e.target.value)} placeholder="51.8985" />
+              </div>
+              <div>
+                <label className="block text-white mb-2">Longitude (optional)</label>
+                <input className="profile-input" value={gymLng} onChange={(e) => setGymLng(e.target.value)} placeholder="-8.4756" />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <button className="profile-button-secondary" type="button" onClick={clearGymLink}>
+                  Clear Gym Link
+                </button>
               </div>
             </div>
 
