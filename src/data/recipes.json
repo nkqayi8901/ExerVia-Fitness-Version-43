@@ -1592,7 +1592,7 @@
     "slot_tags": [
       "pre_training"
     ],
-    "tip": "Execution tip: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around chicken breast cooked with rice cakes for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Session-day move: Keep rice cakes dry and add toppings right before eating so crunch stays intact. Good pre-training option: enough carbs to perform without feeling heavy. Build around shredded chicken and rice cakes for fast fuel when time is tight. Pack topping mix and rice cakes separately if you're bringing this to work or class."
   },
   {
     "id": "local-beef-05",
@@ -2091,7 +2091,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Execution tip: Pull from heat just before fully set; carryover heat finishes it perfectly. Good pre-training option: enough carbs to perform without feeling heavy. Build around tuna in water drained and keep seasoning consistent so repeat prep stays easy. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Quick win: Keep this fully chilled and fold gently so egg and tuna keep structure. Strong morning anchor: stable protein first helps appetite and focus later. Build around tuna and egg for a compact high-protein pot you can eat straight from the fridge. Portion two containers at once so tomorrow's snack is already sorted."
   },
   {
     "id": "local-seafood-07",
@@ -2733,7 +2733,7 @@
     "slot_tags": [
       "midday"
     ],
-    "tip": "Make this work harder: Simmer gently at the end so protein stays tender and the sauce stays glossy. Great midday pick to keep energy even through the afternoon block. Build around pork tenderloin cooked sliced and keep seasoning consistent so repeat prep stays easy. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Coach note: This is a cold assembly snack, so slice pork thin and keep yogurt separate until serving. Great midday pick to keep energy even through the afternoon block. Build around lean pork with cucumber for a crisp high-protein bowl with minimal prep. Prep a second cup while ingredients are out and store it sealed for next day."
   },
   {
     "id": "local-pork-08",
@@ -2785,7 +2785,7 @@
     "tip": "Performance tip: Warm the wrap first so it folds tight and holds structure. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork mince cooked with wholewheat wrap for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
   },
   {
-    "id": "local-chicken-9",
+    "id": "local-chicken-09",
     "title": "Smoked Chicken Breakfast Skillet",
     "preference": "chicken",
     "mealType": "Breakfast",
@@ -2987,7 +2987,7 @@
     "tip": "Quick win: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around chicken thighs (skinless) and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
   },
   {
-    "id": "local-beef-9",
+    "id": "local-beef-09",
     "title": "Lean Beef Egg White Scramble",
     "preference": "beef",
     "mealType": "Breakfast",
@@ -3189,7 +3189,7 @@
     "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around lean beef sirloin with baby potatoes for a predictable training-day fuel profile. Batch one extra portion for the next training day."
   },
   {
-    "id": "local-turkey-9",
+    "id": "local-turkey-09",
     "title": "Turkey Meatball Marinara Bowl",
     "preference": "turkey",
     "mealType": "Dinner",
@@ -3390,7 +3390,7 @@
     "tip": "Execution tip: Keep portions weighed once, then repeat the same setup each week. Best used post-session when you need protein plus carbs to recover well. Build around turkey mince 7% with cooked quinoa for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
   },
   {
-    "id": "local-seafood-9",
+    "id": "local-seafood-09",
     "title": "Sardine Lemon Rye Plate",
     "preference": "seafood",
     "mealType": "Breakfast",
@@ -3946,7 +3946,7 @@
       "pre_training",
       "morning"
     ],
-    "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around chickpeas and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Performance tip: Pat chickpeas dry and toss dressing at the end so the mix stays bright and not soggy. Great midday pick to keep energy even through the afternoon block. Build around chickpeas and feta for a balanced bowl with steady carbs and protein. Make two jars in one go and keep one for tomorrow's lunch window."
   },
   {
     "id": "local-chickpea-12",
@@ -3998,7 +3998,7 @@
     "tip": "Session-day move: Simmer gently at the end so protein stays tender and the sauce stays glossy. Best used post-session when you need protein plus carbs to recover well. Build around chickpeas with brown rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
   },
   {
-    "id": "local-pork-9",
+    "id": "local-pork-09",
     "title": "Lean Pork Breakfast Stir",
     "preference": "pork",
     "mealType": "Breakfast",
