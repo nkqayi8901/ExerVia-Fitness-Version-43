@@ -1383,6 +1383,37 @@ const StrengthProgressTab = ({ userId }) => {
     setSwapResults([]);
   };
 
+  const closeCreateProgramModal = () => {
+    setShowCreateProgram(false);
+    setCreatorSearch('');
+    setCreatorResults([]);
+  };
+
+  const closeGuideModal = () => {
+    setGuideOpen(false);
+    setGuideDetails(null);
+  };
+
+  useEffect(() => {
+    if (!showCreateProgram && !swapOpen && !guideOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      if (showCreateProgram) {
+        closeCreateProgramModal();
+        return;
+      }
+      if (swapOpen) {
+        closeSwap();
+        return;
+      }
+      if (guideOpen) {
+        closeGuideModal();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [guideOpen, showCreateProgram, swapOpen]);
+
 // fetchExerciseSearch manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -2570,8 +2601,8 @@ const StrengthProgressTab = ({ userId }) => {
 feature if they think they'll benefit from it. as various user's have differeent needs
 the createPRogram helps resolve this problem  */}
       {showCreateProgram && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel studio-create-program-panel">
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closeCreateProgramModal()}>
+          <div className="studio-swap-panel studio-create-program-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Create Program</div>
@@ -2579,11 +2610,7 @@ the createPRogram helps resolve this problem  */}
               </div>
               <button
                 className="studio-swap-close"
-                onClick={() => {
-                  setShowCreateProgram(false);
-                  setCreatorSearch('');
-                  setCreatorResults([]);
-                }}
+                onClick={closeCreateProgramModal}
                 type="button"
               >
                 Close
@@ -2837,8 +2864,8 @@ the createPRogram helps resolve this problem  */}
       )}
 
       {swapOpen && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closeSwap()}>
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">
@@ -2973,8 +3000,8 @@ the createPRogram helps resolve this problem  */}
       {/* shows a short description without leaving the page, */}
       {/* closes with the standard modal close button */}
       {guideOpen && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closeGuideModal()}>
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Exercise Guide</div>
@@ -2982,10 +3009,7 @@ the createPRogram helps resolve this problem  */}
               </div>
               <button
                 className="studio-swap-close"
-                onClick={() => {
-                  setGuideOpen(false);
-                  setGuideDetails(null);
-                }}
+                onClick={closeGuideModal}
                 type="button"
               >
                 Close

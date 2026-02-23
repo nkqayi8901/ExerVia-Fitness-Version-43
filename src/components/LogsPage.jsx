@@ -122,6 +122,17 @@ export default function LogsPage({ mode = "gym" }) {
   }, [banner]);
 
   useEffect(() => {
+    if (!activeTrainingReport) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setActiveTrainingReport(null);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [activeTrainingReport]);
+
+  useEffect(() => {
     if (!id) return;
     const raw = localStorage.getItem(`exervia_logs_goals_${id}`);
     if (!raw) return;

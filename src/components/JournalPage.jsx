@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
+import Navbar from "./Navbar";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -120,6 +121,11 @@ async function fetchJsonWithTimeout(url, timeoutMs = 6000) {
 export default function JournalPage({ mode = "gym" }) {
   const navigate = useNavigate();
   const userId = useMemo(() => localStorage.getItem("exervia_user_id"), []);
+  const pageMode = useMemo(() => {
+    const storedMode = localStorage.getItem("exervia_active_mode");
+    if (storedMode === "athlete" || storedMode === "gym") return storedMode;
+    return mode === "athlete" ? "athlete" : "gym";
+  }, [mode]);
 
   const [quote, setQuote] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -433,40 +439,42 @@ export default function JournalPage({ mode = "gym" }) {
   };
 
   return (
-    <div className="page-shell journal-shell">
-      <div className="page-header">
-        <div>
-          <button
-            className="studio-back"
-            onClick={() => navigate(mode === "athlete" ? `/athlete/${userId}` : `/gym/${userId}`)}
-            type="button"
-          >
-            {'Back'}
-          </button>
-          <h2 className="page-title">Journal</h2>
-          <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
-        </div>
-      </div>
-      {banner ? <div className="hud-card">{banner}</div> : null}
-
-      <div className="grid-2 journal-meta-grid">
-        <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>
-          <div className="hud-card-title">YOUR DAY IN ONE GLANCE</div>
-          {isDayComplete && <div className="journal-complete-pill">Day complete</div>}
-          <div className="journal-summary-text">{dayInOneGlance}</div>
-          <div className="journal-summary-foot">{thisMonthEntries} entries this month</div>
-        </div>
-
-        <div className="hud-card journal-quote-card">
-          <div className="hud-card-title">QUOTE OF THE DAY</div>
-          <div className="quote-box">
-            <div className="quote-text">"{quote?.content || "..."}"</div>
-            <div className="quote-author">- {quote?.author || "ExerVia"}</div>
+    <div className={`hud-bg mode-${pageMode}`}>
+      <Navbar modeLabel="JOURNAL" mode={pageMode} userId={userId} />
+      <div className="page-shell journal-shell">
+        <div className="page-header">
+          <div>
+            <button
+              className="studio-back"
+              onClick={() => navigate(pageMode === "athlete" ? `/athlete/${userId}` : `/gym/${userId}`)}
+              type="button"
+            >
+              {"Back"}
+            </button>
+            <h2 className="page-title">Journal</h2>
+            <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
           </div>
         </div>
-      </div>
+        {banner ? <div className="hud-card">{banner}</div> : null}
 
-      <div className="hud-card journal-mood-card">
+        <div className="grid-2 journal-meta-grid">
+          <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>
+            <div className="hud-card-title">YOUR DAY IN ONE GLANCE</div>
+            {isDayComplete && <div className="journal-complete-pill">Day complete</div>}
+            <div className="journal-summary-text">{dayInOneGlance}</div>
+            <div className="journal-summary-foot">{thisMonthEntries} entries this month</div>
+          </div>
+
+          <div className="hud-card journal-quote-card">
+            <div className="hud-card-title">QUOTE OF THE DAY</div>
+            <div className="quote-box">
+              <div className="quote-text">"{quote?.content || "..."}"</div>
+              <div className="quote-author">- {quote?.author || "ExerVia"}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="hud-card journal-mood-card">
         <div className="journal-mood-top">
           <div className="hud-card-title">MOOD TREND</div>
           <div className="journal-mood-actions">
@@ -725,6 +733,7 @@ export default function JournalPage({ mode = "gym" }) {
             </div>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

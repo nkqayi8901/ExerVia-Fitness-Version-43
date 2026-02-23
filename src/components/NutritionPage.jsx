@@ -553,6 +553,24 @@ export default function NutritionPage() {
   }, [saveBanner]);
 
   useEffect(() => {
+    if (!activeMeal && !customRecipeOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key !== "Escape") return;
+      if (customRecipeOpen) {
+        setCustomRecipeOpen(false);
+        return;
+      }
+      if (activeMeal) {
+        setActiveMeal(null);
+        setOffResults([]);
+        setOffQuery("");
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [activeMeal, customRecipeOpen]);
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(favoriteStorageKey);
       const parsed = raw ? JSON.parse(raw) : [];
@@ -2179,15 +2197,14 @@ export default function NutritionPage() {
           <div
             className="fuel-modal-backdrop"
             onMouseDown={(e) => {
-              // click outside closes
-              if (e.target.classList.contains("fuel-modal-backdrop")) {
+              if (e.target === e.currentTarget) {
                 setActiveMeal(null);
                 setOffResults([]);
                 setOffQuery("");
               }
             }}
           >
-            <div className="fuel-modal" role="dialog" aria-modal="true">
+            <div className="fuel-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
               <div className="fuel-modal-top">
                 <div>
                   <div className="fuel-modal-title">{activeMeal.strMeal}</div>
@@ -2359,12 +2376,12 @@ export default function NutritionPage() {
           <div
             className="community-modal-backdrop"
             onMouseDown={(event) => {
-              if (event.target.classList.contains("community-modal-backdrop")) {
+              if (event.target === event.currentTarget) {
                 setCustomRecipeOpen(false);
               }
             }}
           >
-            <div className="community-modal" role="dialog" aria-modal="true">
+            <div className="community-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
               <div className="community-modal-title">Create custom recipe</div>
               <input
                 className="community-modal-input"

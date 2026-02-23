@@ -67,10 +67,22 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [gymSuggestions, setGymSuggestions] = useState([]);
   const [gymSearchLoading, setGymSearchLoading] = useState(false);
   const [mapsReady, setMapsReady] = useState(false);
+  const [showGymAdvanced, setShowGymAdvanced] = useState(false);
 
   const [profile, setProfile] = useState(null);
   const heroBackgroundStyle = { "--exervia-hero-bg": `url(${heroImage})` };
   const hasSessionUser = Boolean(session?.user);
+  const bannerVariant = useMemo(() => {
+    const text = String(banner || "").toLowerCase();
+    if (!text) return "info";
+    if (text.includes("failed") || text.includes("could not") || text.includes("required") || text.includes("invalid") || text.includes("taken") || text.includes("already")) {
+      return "error";
+    }
+    if (text.includes("updated") || text.includes("saved") || text.includes("sent") || text.includes("created") || text.includes("linked") || text.includes("logged")) {
+      return "success";
+    }
+    return "info";
+  }, [banner]);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
   const isSettingsDirty = useMemo(() => {
@@ -383,6 +395,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setGymPlaceId(String(item.placeId || ""));
     setGymQuery(String(item.address || item.name || ""));
     setGymSuggestions([]);
+    setBanner(`Gym linked: ${String(item.name || "Selected gym")}`);
   };
 
   const clearGymLink = () => {
@@ -533,6 +546,10 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
     if (!cleanUsername || cleanUsername.length < 3) {
       setBanner("Username must be at least 3 characters.");
+      return;
+    }
+    if (gymName.trim() && !gymPlaceId.trim()) {
+      setBanner("Pick a gym suggestion so Place ID is linked for leaderboard matching.");
       return;
     }
 
@@ -693,8 +710,8 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         </header>
 
         {banner ? (
-          <div className="profile-section" style={{ padding: 16 }}>
-            <p className="text-white m-0">{banner}</p>
+          <div className={`profile-feedback ${bannerVariant}`}>
+            <p className="m-0">{banner}</p>
           </div>
         ) : null}
 
@@ -856,21 +873,39 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                 <label className="block text-white mb-2">Gym Name</label>
                 <input className="profile-input" value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Mardyke Arena" />
               </div>
-              <div>
-                <label className="block text-white mb-2">Google Place ID</label>
-                <input className="profile-input" value={gymPlaceId} onChange={(e) => setGymPlaceId(e.target.value)} placeholder="ChIJ..." />
-              </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label className="block text-white mb-2">Address</label>
                 <input className="profile-input" value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" />
               </div>
-              <div>
-                <label className="block text-white mb-2">Latitude (optional)</label>
-                <input className="profile-input" value={gymLat} onChange={(e) => setGymLat(e.target.value)} placeholder="51.8985" />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <button
+                  className="profile-button-secondary"
+                  type="button"
+                  onClick={() => setShowGymAdvanced((prev) => !prev)}
+                >
+                  {showGymAdvanced ? "Hide advanced gym fields" : "Advanced gym fields"}
+                </button>
               </div>
-              <div>
-                <label className="block text-white mb-2">Longitude (optional)</label>
-                <input className="profile-input" value={gymLng} onChange={(e) => setGymLng(e.target.value)} placeholder="-8.4756" />
+              {showGymAdvanced ? (
+                <>
+                  <div>
+                    <label className="block text-white mb-2">Google Place ID</label>
+                    <input className="profile-input" value={gymPlaceId} onChange={(e) => setGymPlaceId(e.target.value)} placeholder="ChIJ..." />
+                  </div>
+                  <div>
+                    <label className="block text-white mb-2">Latitude (optional)</label>
+                    <input className="profile-input" value={gymLat} onChange={(e) => setGymLat(e.target.value)} placeholder="51.8985" />
+                  </div>
+                  <div>
+                    <label className="block text-white mb-2">Longitude (optional)</label>
+                    <input className="profile-input" value={gymLng} onChange={(e) => setGymLng(e.target.value)} placeholder="-8.4756" />
+                  </div>
+                </>
+              ) : null}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <p className="text-xs text-gray-300 m-0">
+                  Leaderboards use Place ID. Use suggestion pick for reliable gym matching.
+                </p>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <button className="profile-button-secondary" type="button" onClick={clearGymLink}>

@@ -216,6 +216,18 @@ function ProgramPreview({ backPath, backLabel }) {
     );
   }, [program]);
 
+  useEffect(() => {
+    if (!guideOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setGuideOpen(false);
+        setGuideDetails(null);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [guideOpen]);
+
   if (!program) {
     return (
       <div className="page-shell program-shell">
@@ -320,8 +332,15 @@ function ProgramPreview({ backPath, backLabel }) {
       </div>
 
       {guideOpen && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+        <div
+          className="studio-swap-backdrop"
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setGuideOpen(false);
+            setGuideDetails(null);
+          }}
+        >
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Exercise Guide</div>

@@ -742,6 +742,32 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => clearTimeout(timer);
   }, [countdownOpen, countdown]);
 
+  const closePlanModal = () => {
+    setPlanOpen(false);
+  };
+
+  const closeCreatePlanModal = () => {
+    setShowCreatePlan(false);
+    setEditingPlanId(null);
+    setNewPlan({ ...emptyPlan });
+  };
+
+  useEffect(() => {
+    if (!planOpen && !showCreatePlan) return undefined;
+    const handleEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      if (showCreatePlan) {
+        closeCreatePlanModal();
+        return;
+      }
+      if (planOpen) {
+        closePlanModal();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [planOpen, showCreatePlan]);
+
   // handleLogSession writes the session to Supabase,
   // computes efficiency metrics when available,
   // attaches plan info + intention to notes,
@@ -1453,8 +1479,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       {/* includes actions to start, pin, remix, delete, */}
       {/* closes to return to the main layout */}
       {planOpen && selectedPlan && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closePlanModal()}>
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Plan Details</div>
@@ -1462,7 +1488,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               </div>
               <button
                 className="studio-swap-close"
-                onClick={() => setPlanOpen(false)}
+                onClick={closePlanModal}
                 type="button"
               >
                 Close
@@ -1578,8 +1604,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       {/* supports auto-fill and week management, */}
       {/* saves to Supabase on submit */}
       {showCreatePlan && (
-        <div className="studio-swap-backdrop">
-          <div className="studio-swap-panel">
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closeCreatePlanModal()}>
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Create Plan</div>
@@ -1587,11 +1613,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               </div>
               <button
                 className="studio-swap-close"
-                onClick={() => {
-                  setShowCreatePlan(false);
-                  setEditingPlanId(null);
-                  setNewPlan({ ...emptyPlan });
-                }}
+                onClick={closeCreatePlanModal}
                 type="button"
               >
                 Close

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from '../supabaseClient';
 import ModeNav from "./ModeNav";
@@ -20,6 +20,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
   const [userState, setUserState] = useState(null);
   const [account, setAccount] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const accountRef = useRef(null);
   const xp = userState?.xp ?? 0;
   const level = userState?.level ?? 1;
   const rank = userState?.rank ?? "E";
@@ -128,6 +129,18 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     setMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (!accountRef.current) return;
+      if (!accountRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [menuOpen]);
+
 
   return (
     <nav className="hud-topbar">
@@ -167,7 +180,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
         </div>
       </div>
 
-      <div className="hud-account">
+      <div className="hud-account" ref={accountRef}>
         {resolvedUserId ? (
           <>
             <button
