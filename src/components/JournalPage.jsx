@@ -779,7 +779,7 @@ export default function JournalPage({ mode = "gym" }) {
             <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
           </div>
         </div>
-        {banner ? <div className={`studio-banner ${bannerVariant}`}>{banner}</div> : null}
+        {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
 
         <JournalMetaCards
           isDayComplete={isDayComplete}

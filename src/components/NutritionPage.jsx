@@ -1674,7 +1674,7 @@ export default function NutritionPage() {
           </div>
         </div>
         {logsSyncError ? (
-          <div className="studio-banner error" style={{ marginBottom: 12 }}>
+          <div className="exervia-banner studio-banner error" style={{ marginBottom: 12 }}>
             {logsSyncError}{" "}
             <button className="studio-back" type="button" onClick={loadTodayMeals} style={{ marginLeft: 8 }}>
               Retry sync
@@ -2534,7 +2534,7 @@ export default function NutritionPage() {
           Data sources: Curated local recipe library + TheMealDB + OpenFoodFacts.
         </div>
         {saveBanner ? (
-          <div className="studio-banner success" style={{ marginTop: 12 }}>
+          <div className="exervia-banner studio-banner success" style={{ marginTop: 12 }}>
             {saveBanner}
           </div>
         ) : null}

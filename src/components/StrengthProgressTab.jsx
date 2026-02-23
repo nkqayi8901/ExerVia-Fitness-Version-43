@@ -2070,7 +2070,7 @@ const StrengthProgressTab = ({ userId }) => {
         </header>
 
         {banner && (
-          <div className={`studio-banner ${banner.type}`}>
+          <div className={`exervia-banner studio-banner ${banner.type}`}>
             {banner.message}
           </div>
         )}

@@ -3171,9 +3171,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       )}
       {!forceGroupRoom && !forceThreadPage && (
         <>
-      {banner && <div className="community-banner info">{banner}</div>}
+      {banner && <div className="exervia-banner community-banner info">{banner}</div>}
       {communityLoadError && (
-        <div className="community-banner error">
+        <div className="exervia-banner community-banner error">
           <span>{communityLoadError}</span>
           <button className="studio-back community-cta-btn" type="button" onClick={retryCommunityLoad}>
             Retry

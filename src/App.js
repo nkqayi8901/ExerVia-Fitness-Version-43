@@ -12,61 +12,63 @@ import RequireAuth from "./components/RequireAuth";
 import NotFoundPage from "./components/NotFoundPage";
 
 function App() {
+  const withRouteBoundary = (element) => <ErrorBoundary>{element}</ErrorBoundary>;
+
   return (
     <Router>
       <ErrorBoundary>
         <div className="min-h-screen">
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<FitnessProfileForm />} />
+            <Route path="/" element={withRouteBoundary(<LandingPage />)} />
+            <Route path="/auth" element={withRouteBoundary(<FitnessProfileForm />)} />
             <Route
               path="/settings"
-              element={
+              element={withRouteBoundary(
                 <RequireAuth>
                   <FitnessProfileForm settingsOnly />
                 </RequireAuth>
-              }
+              )}
             />
-            <Route path="/create-profile" element={<FitnessProfileForm />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/create-profile" element={withRouteBoundary(<FitnessProfileForm />)} />
+            <Route path="/reset-password" element={withRouteBoundary(<ResetPasswordPage />)} />
 
             {/* IMPORTANT: allow nested pages */}
             <Route
               path="/gym/:id/*"
-              element={
+              element={withRouteBoundary(
                 <RequireAuth>
                   <GymMode />
                 </RequireAuth>
-              }
+              )}
             />
             <Route
               path="/athlete/:id/*"
-              element={
+              element={withRouteBoundary(
                 <RequireAuth>
                   <AthleteMode />
                 </RequireAuth>
-              }
+              )}
             />
 
             <Route
               path="/nutrition"
-              element={
+              element={withRouteBoundary(
                 <RequireAuth>
                   <NutritionPage />
                 </RequireAuth>
-              }
+              )}
             />
 
             {/* optional standalone journal route */}
             <Route
               path="/journal"
-              element={
+              element={withRouteBoundary(
                 <RequireAuth>
                   <JournalPage />
                 </RequireAuth>
-              }
+              )}
             />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="*" element={withRouteBoundary(<NotFoundPage />)} />
           </Routes>
         </div>
       </ErrorBoundary>

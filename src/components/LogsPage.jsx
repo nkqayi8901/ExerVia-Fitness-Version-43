@@ -800,7 +800,7 @@ export default function LogsPage({ mode = "gym" }) {
         </div>
       </div>
 
-      {banner ? <div className="studio-banner success">{banner}</div> : null}
+      {banner ? <div className="exervia-banner studio-banner success">{banner}</div> : null}
 
       <div className="hud-card logs-top-card">
         <div className="logs-top-row">

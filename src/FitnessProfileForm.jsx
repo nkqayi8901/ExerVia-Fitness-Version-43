@@ -704,7 +704,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         </header>
 
         {banner ? (
-          <div className={`profile-feedback ${bannerVariant}`}>
+          <div className={`exervia-banner profile-feedback ${bannerVariant}`}>
             <p className="m-0">{banner}</p>
           </div>
         ) : null}

@@ -1,4 +1,4 @@
-ï»¿// src/components/AthleteTrainingTab.jsx
+// src/components/AthleteTrainingTab.jsx
 // this component powers the Athlete Training area,
 // it manages plans, sessions, timers, and reflections,
 // and coordinates UI state with Supabase data,
@@ -375,7 +375,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   // savePinnedOrder stores the custom ordering of pinned plans,
-  // ensures the pinned list renders in the userâ€™s order,
+  // ensures the pinned list renders in the user’s order,
   // persists the ordering in local storage,
   // used when dragging or reordering pins
   const savePinnedOrder = (items) => {
@@ -408,7 +408,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const buildOutline = (sport, focus, duration, distance) => {
     const durationTag = duration ? `${duration} min` : null;
     const distanceTag = distance ? `${distance} km` : null;
-    const tag = [durationTag, distanceTag].filter(Boolean).join(' Â· ');
+    const tag = [durationTag, distanceTag].filter(Boolean).join(' · ');
     const weekFocus = [
       focus,
       focus === 'Base' ? 'Tempo' : 'Base',
@@ -421,7 +421,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       const baseSessions = template || ['Session 1', 'Session 2', 'Session 3'];
       const sessions = baseSessions.map((item, index) => {
         if (!tag) return item;
-        if (index === 0) return `${item} Â· ${tag}`;
+        if (index === 0) return `${item} · ${tag}`;
         return item;
       });
       return {
@@ -1106,7 +1106,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // only active while timer is open
   const isBreathPhase = timerSeconds <= 60 && timerOpen;
   const breathLabel = timerSeconds <= 30 ? 'Inhale' : 'Exhale';
-  const breathHint = timerSeconds <= 30 ? '4 seconds in Â· 4 seconds hold' : '6 seconds out Â· reset';
+  const breathHint = timerSeconds <= 30 ? '4 seconds in · 4 seconds hold' : '6 seconds out · reset';
   const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
 
   // handleBack returns to the parent view,
@@ -1131,7 +1131,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     if (!plan) return;
     setEditingPlanId(null);
     setNewPlan({
-      name: `Remix Â· ${plan.name}`,
+      name: `Remix · ${plan.name}`,
       sport: plan.sport || 'running',
       goal: plan.goal || '',
       summary: plan.summary || '',
@@ -1203,7 +1203,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         {/* auto-dismisses via effect above, */}
         {/* kept near the top for visibility */}
         {banner && (
-          <div className={`studio-banner ${banner.type}`}>
+          <div className={`exervia-banner studio-banner ${banner.type}`}>
             {banner.message}
           </div>
         )}
@@ -1821,7 +1821,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 {timelinePlan ? timelinePlan.name : 'Focused Session'}
               </div>
               <div className="studio-floor-sub">
-                {sessionFocus} Â· {session.sport.toUpperCase()}
+                {sessionFocus} · {session.sport.toUpperCase()}
               </div>
             </div>
             <button
