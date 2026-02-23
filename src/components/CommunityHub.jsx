@@ -272,14 +272,39 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => clearTimeout(timeout);
   }, [banner]);
 
-  const closeAllModals = useCallback(() => {
-    setCreateRecipeTemplateOpen(false);
-    setCreateGroupOpen(false);
-    setCreateChallengeOpen(false);
-    setCreatePostOpen(false);
-    setCreateReplyOpen(false);
-    setAddFriendOpen(false);
-  }, []);
+  const closeTopModal = useCallback(() => {
+    if (addFriendOpen) {
+      setAddFriendOpen(false);
+      return;
+    }
+    if (createReplyOpen && !forceThreadPage) {
+      setCreateReplyOpen(false);
+      return;
+    }
+    if (createPostOpen) {
+      setCreatePostOpen(false);
+      return;
+    }
+    if (createChallengeOpen) {
+      setCreateChallengeOpen(false);
+      return;
+    }
+    if (createGroupOpen) {
+      setCreateGroupOpen(false);
+      return;
+    }
+    if (createRecipeTemplateOpen) {
+      setCreateRecipeTemplateOpen(false);
+    }
+  }, [
+    addFriendOpen,
+    createChallengeOpen,
+    createGroupOpen,
+    createPostOpen,
+    createRecipeTemplateOpen,
+    createReplyOpen,
+    forceThreadPage,
+  ]);
 
   useEffect(() => {
     const anyModalOpen =
@@ -293,14 +318,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
-        closeAllModals();
+        closeTopModal();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     addFriendOpen,
-    closeAllModals,
+    closeTopModal,
     createChallengeOpen,
     createGroupOpen,
     createPostOpen,
@@ -4305,8 +4330,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       )}
 
       {createRecipeTemplateOpen && (
-        <div className="community-modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeAllModals()}>
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCreateRecipeTemplateOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Create recipe template</div>
             <input
               className="community-modal-input"
@@ -4379,8 +4404,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {/* writes a new group and auto-joins the user, */}
       {/* closes on cancel or successful submit */}
       {createGroupOpen && (
-        <div className="community-modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeAllModals()}>
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCreateGroupOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Create accountability group</div>
             <input
               className="community-modal-input"
@@ -4420,8 +4445,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {/* inserts a new challenge and refreshes the list, */}
       {/* closes on cancel or submit */}
       {createChallengeOpen && (
-        <div className="community-modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeAllModals()}>
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCreateChallengeOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Create challenge</div>
             <input
               className="community-modal-input"
@@ -4467,8 +4492,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {/* inserts a new post and reloads the active forum, */}
       {/* closes on cancel or successful post */}
       {createPostOpen && (
-        <div className="community-modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeAllModals()}>
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCreatePostOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Create forum post</div>
             <select
               className="community-modal-input"
@@ -4515,9 +4540,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {createReplyOpen && !forceThreadPage && (
         <div
           className="community-modal-backdrop community-modal-backdrop-top"
-          onClick={(event) => event.target === event.currentTarget && closeAllModals()}
+          onMouseDown={(event) => event.target === event.currentTarget && setCreateReplyOpen(false)}
         >
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Reply</div>
             <textarea
               className="community-modal-textarea"
@@ -4542,8 +4567,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {/* refreshes the friends list after send, */}
       {/* closes on cancel or submit */}
       {addFriendOpen && (
-        <div className="community-modal-backdrop" onClick={(event) => event.target === event.currentTarget && closeAllModals()}>
-          <div className="community-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setAddFriendOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
             <div className="community-modal-title">Send friend request</div>
             <input
               className="community-modal-input"

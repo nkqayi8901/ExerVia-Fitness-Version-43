@@ -47,7 +47,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [banner, setBanner] = useState("");
+  const [bannerState, setBannerState] = useState({ message: "", type: "info" });
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,17 +72,11 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [profile, setProfile] = useState(null);
   const heroBackgroundStyle = { "--exervia-hero-bg": `url(${heroImage})` };
   const hasSessionUser = Boolean(session?.user);
-  const bannerVariant = useMemo(() => {
-    const text = String(banner || "").toLowerCase();
-    if (!text) return "info";
-    if (text.includes("failed") || text.includes("could not") || text.includes("required") || text.includes("invalid") || text.includes("taken") || text.includes("already")) {
-      return "error";
-    }
-    if (text.includes("updated") || text.includes("saved") || text.includes("sent") || text.includes("created") || text.includes("linked") || text.includes("logged")) {
-      return "success";
-    }
-    return "info";
-  }, [banner]);
+  const banner = bannerState.message;
+  const bannerVariant = bannerState.type || "info";
+  const setBanner = useCallback((message, type = "info") => {
+    setBannerState({ message: String(message || ""), type });
+  }, []);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
   const isSettingsDirty = useMemo(() => {
@@ -128,7 +122,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       .maybeSingle();
 
     if (existingError) {
-      setBanner("Could not load your profile.");
+      setBanner("Could not load your profile.", "error");
       return null;
     }
     if (existing) return existing;
@@ -166,7 +160,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       .single();
 
     if (createError) {
-      setBanner("Could not create your profile yet. Try again.");
+      setBanner("Could not create your profile yet. Try again.", "error");
       return null;
     }
     return created;
@@ -209,7 +203,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       }
     } catch (error) {
       console.error("syncSession failed:", error);
-      setBanner("Could not load account right now.");
+      setBanner("Could not load account right now.", "error");
       setProfile(null);
       clearUserStorage();
     } finally {
@@ -244,7 +238,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         console.error("auth boot failed:", error);
         if (mounted) {
           setLoading(false);
-          setBanner("Could not initialize auth session.");
+          setBanner("Could not initialize auth session.", "error");
         }
       }
     };
@@ -395,7 +389,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setGymPlaceId(String(item.placeId || ""));
     setGymQuery(String(item.address || item.name || ""));
     setGymSuggestions([]);
-    setBanner(`Gym linked: ${String(item.name || "Selected gym")}`);
+    setBanner(`Gym linked: ${String(item.name || "Selected gym")}`, "success");
   };
 
   const clearGymLink = () => {
@@ -410,7 +404,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      setBanner("Enter your email and password.");
+      setBanner("Enter your email and password.", "error");
       return;
     }
     setSaving(true);
@@ -420,7 +414,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     });
     setSaving(false);
     if (error) {
-      setBanner(parseAuthError(error, "Login failed."));
+      setBanner(parseAuthError(error, "Login failed."), "error");
       return;
     }
     const { data: sessionData } = await supabase.auth.getSession();
@@ -435,7 +429,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         return;
       }
     }
-    setBanner("Logged in. Profile loading...");
+    setBanner("Logged in. Profile loading...", "success");
   };
 
   const handleSignup = async () => {
@@ -443,15 +437,15 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     const cleanUsername = resolvedUsername;
 
     if (!fullName.trim()) {
-      setBanner("Add your full name.");
+      setBanner("Add your full name.", "error");
       return;
     }
     if (!cleanUsername || cleanUsername.length < 3) {
-      setBanner("Username must be at least 3 characters.");
+      setBanner("Username must be at least 3 characters.", "error");
       return;
     }
     if (!cleanEmail || !password) {
-      setBanner("Enter email and password.");
+      setBanner("Enter email and password.", "error");
       return;
     }
 
@@ -465,7 +459,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     if (usernameCollision) {
       setSaving(false);
-      setBanner("That username is taken. Try another one.");
+      setBanner("That username is taken. Try another one.", "error");
       return;
     }
 
@@ -482,7 +476,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     if (error) {
       setSaving(false);
-      setBanner(parseAuthError(error, "Sign up failed."));
+      setBanner(parseAuthError(error, "Sign up failed."), "error");
       return;
     }
 
@@ -503,7 +497,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     setSaving(false);
     if (!data?.session) {
-      setBanner("Account created. Check your email to confirm, then log in.");
+      setBanner("Account created. Check your email to confirm, then log in.", "success");
       setMode("login");
       return;
     }
@@ -516,13 +510,13 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       navigate(destination);
       return;
     }
-    setBanner("Account created.");
+    setBanner("Account created.", "success");
   };
 
   const handleForgotPassword = async () => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setBanner("Enter your account email first.");
+      setBanner("Enter your account email first.", "error");
       return;
     }
     setSaving(true);
@@ -531,25 +525,25 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     });
     setSaving(false);
     if (error) {
-      setBanner("Could not send reset email right now.");
+      setBanner("Could not send reset email right now.", "error");
       return;
     }
-    setBanner("Password reset email sent.");
+    setBanner("Password reset email sent.", "success");
   };
 
   const handleProfileSave = async () => {
     if (!profile?.id) return;
     const cleanUsername = slugifyUsername(username);
     if (!fullName.trim()) {
-      setBanner("Full name is required.");
+      setBanner("Full name is required.", "error");
       return;
     }
     if (!cleanUsername || cleanUsername.length < 3) {
-      setBanner("Username must be at least 3 characters.");
+      setBanner("Username must be at least 3 characters.", "error");
       return;
     }
     if (gymName.trim() && !gymPlaceId.trim()) {
-      setBanner("Pick a gym suggestion so Place ID is linked for leaderboard matching.");
+      setBanner("Pick a gym suggestion so Place ID is linked for leaderboard matching.", "error");
       return;
     }
 
@@ -564,7 +558,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     if (collision) {
       setSaving(false);
-      setBanner("Username already in use.");
+      setBanner("Username already in use.", "error");
       return;
     }
 
@@ -589,7 +583,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     setSaving(false);
     if (error || !data) {
-      setBanner("Could not update profile.");
+      setBanner("Could not update profile.", "error");
       return;
     }
 
@@ -606,7 +600,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       gymLat: data.primary_gym_lat == null ? "" : String(data.primary_gym_lat).trim(),
       gymLng: data.primary_gym_lng == null ? "" : String(data.primary_gym_lng).trim(),
     };
-    setBanner("Profile updated.");
+    setBanner("Profile updated.", "success");
   };
 
   const handleLogout = async () => {
@@ -620,21 +614,21 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       console.error("Logout failed:", error.message);
     }
     setMode("login");
-    setBanner("Logged out.");
+    setBanner("Logged out.", "info");
     navigate("/auth", { replace: true });
   };
 
   const handleDeleteAccount = async () => {
     if (!session?.user?.email) {
-      setBanner("Missing account email. Please re-login and try again.");
+      setBanner("Missing account email. Please re-login and try again.", "error");
       return;
     }
     if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
-      setBanner("Type DELETE to confirm account deletion.");
+      setBanner("Type DELETE to confirm account deletion.", "error");
       return;
     }
     if (!deletePassword) {
-      setBanner("Enter your password to confirm account deletion.");
+      setBanner("Enter your password to confirm account deletion.", "error");
       return;
     }
     if (!window.confirm("Delete your account permanently? This cannot be undone.")) {
@@ -642,7 +636,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
 
     setDeletingAccount(true);
-    setBanner("");
+    setBanner("", "info");
 
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email: String(session.user.email).trim().toLowerCase(),
@@ -651,14 +645,14 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     if (reauthError) {
       setDeletingAccount(false);
-      setBanner(parseAuthError(reauthError, "Password check failed."));
+      setBanner(parseAuthError(reauthError, "Password check failed."), "error");
       return;
     }
 
     const { error: deleteError } = await supabase.functions.invoke("delete-account");
     if (deleteError) {
       setDeletingAccount(false);
-      setBanner("Could not delete account right now. Please try again.");
+      setBanner("Could not delete account right now. Please try again.", "error");
       return;
     }
 
@@ -668,7 +662,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setLoading(false);
     setDeletingAccount(false);
     setMode("login");
-    setBanner("Account deleted.");
+    setBanner("Account deleted.", "success");
     navigate("/", { replace: true });
   };
 

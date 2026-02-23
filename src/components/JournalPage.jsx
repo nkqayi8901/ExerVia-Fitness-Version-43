@@ -118,6 +118,325 @@ async function fetchJsonWithTimeout(url, timeoutMs = 6000) {
   }
 }
 
+function JournalMetaCards({ isDayComplete, dayInOneGlance, thisMonthEntries, quote }) {
+  return (
+    <div className="grid-2 journal-meta-grid">
+      <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>
+        <div className="hud-card-title">YOUR DAY IN ONE GLANCE</div>
+        {isDayComplete && <div className="journal-complete-pill">Day complete</div>}
+        <div className="journal-summary-text">{dayInOneGlance}</div>
+        <div className="journal-summary-foot">{thisMonthEntries} entries this month</div>
+      </div>
+
+      <div className="hud-card journal-quote-card">
+        <div className="hud-card-title">QUOTE OF THE DAY</div>
+        <div className="quote-box">
+          <div className="quote-text">"{quote?.content || "..."}"</div>
+          <div className="quote-author">- {quote?.author || "ExerVia"}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JournalMoodCard({ averageMood, selectedMoodDay, setSelectedMoodDay, moodTrend }) {
+  return (
+    <div className="hud-card journal-mood-card">
+      <div className="journal-mood-top">
+        <div className="hud-card-title">MOOD TREND</div>
+        <div className="journal-mood-actions">
+          <div className="journal-mood-average">{averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}</div>
+          {selectedMoodDay && (
+            <button className="studio-back journal-action-btn" type="button" onClick={() => setSelectedMoodDay("")}>
+              Clear day filter
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="journal-mood-bars">
+        {moodTrend.length ? (
+          moodTrend.map((item) => (
+            <button
+              type="button"
+              key={item.dayKey}
+              className={`journal-mood-col journal-mood-col-btn${selectedMoodDay === item.dayKey ? " active" : ""}`}
+              onClick={() => setSelectedMoodDay(item.dayKey)}
+            >
+              <div className="journal-mood-track">
+                <div className="journal-mood-fill" style={{ height: `${(item.mood / 5) * 100}%` }} />
+              </div>
+              <div className="journal-mood-score">{item.mood}</div>
+              <div className="journal-mood-label">{item.label}</div>
+            </button>
+          ))
+        ) : (
+          <div className="hud-dim">Log evening mood to unlock your trend.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JournalDailyCheckinCard({
+  activeSlot,
+  setActiveSlot,
+  editingTarget,
+  cancelHistoryEdit,
+  morning,
+  setMorning,
+  evening,
+  setEvening,
+  saveSlot,
+  savingSlot,
+  todayMorningEntry,
+  todayEveningEntry,
+}) {
+  return (
+    <div className="journal-premium-grid">
+      <div className="hud-card journal-slot-card">
+        <div className="journal-slot-top">
+          <div className="hud-card-title">DAILY CHECK-IN</div>
+          <div className="journal-slot-pill">
+            {editingTarget?.slot === activeSlot
+              ? `Editing ${new Date(editingTarget.dayKey).toLocaleDateString()}`
+              : activeSlot === "morning"
+                ? todayMorningEntry
+                  ? "Updated today"
+                  : "Open"
+                : todayEveningEntry
+                  ? "Updated today"
+                  : "Open"}
+          </div>
+        </div>
+
+        {editingTarget && (
+          <div className="journal-editing-row">
+            <div className="hud-dim">Editing history entry</div>
+            <button className="studio-back journal-action-btn" type="button" onClick={cancelHistoryEdit}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="journal-switch" role="tablist" aria-label="Daily check-in sections">
+          <button
+            className={`journal-switch-btn${activeSlot === "morning" ? " active" : ""}`}
+            onClick={() => setActiveSlot("morning")}
+            type="button"
+          >
+            Morning Prep
+          </button>
+          <button
+            className={`journal-switch-btn${activeSlot === "evening" ? " active" : ""}`}
+            onClick={() => setActiveSlot("evening")}
+            type="button"
+          >
+            Evening Reflection
+          </button>
+        </div>
+
+        {activeSlot === "morning" ? (
+          <>
+            <div className="journal-field-block">
+              <label className="journal-field-label">Today&apos;s intention</label>
+              <input
+                className="journal-input"
+                placeholder="What matters most today?"
+                value={morning.intention}
+                onChange={(e) => setMorning((prev) => ({ ...prev, intention: e.target.value }))}
+              />
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">Session focus</label>
+              <input
+                className="journal-input"
+                placeholder="Main training or health focus"
+                value={morning.sessionFocus}
+                onChange={(e) => setMorning((prev) => ({ ...prev, sessionFocus: e.target.value }))}
+              />
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">One non-negotiable</label>
+              <input
+                className="journal-input"
+                placeholder="One thing you will complete"
+                value={morning.nonNegotiable}
+                onChange={(e) => setMorning((prev) => ({ ...prev, nonNegotiable: e.target.value }))}
+              />
+            </div>
+
+            <button className="hud-primary-btn" onClick={() => saveSlot("morning")} disabled={savingSlot === "morning"}>
+              {savingSlot === "morning" ? "Saving..." : todayMorningEntry ? "Update Morning Prep" : "Save Morning Prep"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="journal-field-block">
+              <label className="journal-field-label">What went well</label>
+              <textarea
+                className="journal-textarea"
+                placeholder="Highlight one win from today"
+                value={evening.wentWell}
+                onChange={(e) => setEvening((prev) => ({ ...prev, wentWell: e.target.value }))}
+              />
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">What felt hard</label>
+              <textarea
+                className="journal-textarea"
+                placeholder="Name the friction honestly"
+                value={evening.feltHard}
+                onChange={(e) => setEvening((prev) => ({ ...prev, feltHard: e.target.value }))}
+              />
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">Adjust for tomorrow</label>
+              <textarea
+                className="journal-textarea"
+                placeholder="One change for tomorrow"
+                value={evening.adjustTomorrow}
+                onChange={(e) => setEvening((prev) => ({ ...prev, adjustTomorrow: e.target.value }))}
+              />
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">Mood score (1-5)</label>
+              <select
+                className="journal-input"
+                value={evening.mood || ""}
+                onChange={(e) => setEvening((prev) => ({ ...prev, mood: e.target.value }))}
+              >
+                <option value="">Select mood</option>
+                <option value="1">1 - rough day</option>
+                <option value="2">2 - off</option>
+                <option value="3">3 - neutral</option>
+                <option value="4">4 - good</option>
+                <option value="5">5 - locked in</option>
+              </select>
+            </div>
+
+            <div className="journal-field-block">
+              <label className="journal-field-label">Tags (comma separated)</label>
+              <input
+                className="journal-input"
+                placeholder="legs day, recovery, sleep"
+                value={evening.tags || ""}
+                onChange={(e) => setEvening((prev) => ({ ...prev, tags: e.target.value }))}
+              />
+            </div>
+
+            <button className="hud-primary-btn" onClick={() => saveSlot("evening")} disabled={savingSlot === "evening"}>
+              {savingSlot === "evening" ? "Saving..." : todayEveningEntry ? "Update Evening Reflection" : "Save Evening Reflection"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JournalHistoryCard({
+  historySearch,
+  setHistorySearch,
+  availableTags,
+  selectedTag,
+  setSelectedTag,
+  filteredHistoryDays,
+  startEditFromHistory,
+}) {
+  return (
+    <div className="hud-card journal-entries">
+      <div className="journal-history-top">
+        <div className="hud-card-title">ENTRY HISTORY</div>
+        <input
+          className="studio-form-input journal-history-search"
+          value={historySearch}
+          onChange={(event) => setHistorySearch(event.target.value)}
+          placeholder="Search entries, focus, wins, tags..."
+        />
+      </div>
+      {availableTags.length > 0 && (
+        <div className="journal-tags-row">
+          <button
+            type="button"
+            className={`journal-tag-pill${selectedTag === "all" ? " active" : ""}`}
+            onClick={() => setSelectedTag("all")}
+          >
+            All tags
+          </button>
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={`journal-tag-pill${selectedTag === tag ? " active" : ""}`}
+              onClick={() => setSelectedTag(tag)}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+      {filteredHistoryDays.length === 0 && <div className="hud-dim">No entries match this filter yet.</div>}
+
+      {filteredHistoryDays.map((day) => (
+        <div key={day.dayKey} className="journal-history-day">
+          <div className="journal-history-date">{new Date(day.dayKey).toLocaleDateString()}</div>
+
+          <div className="journal-history-slot">
+            <div className="journal-history-slot-title">Morning Prep</div>
+            {day.morning ? (
+              <>
+                <div className="journal-history-line"><span>Intention:</span> {day.morning.data?.intention || "-"}</div>
+                <div className="journal-history-line"><span>Focus:</span> {day.morning.data?.sessionFocus || "-"}</div>
+                <div className="journal-history-line"><span>Non-negotiable:</span> {day.morning.data?.nonNegotiable || "-"}</div>
+                <div className="journal-history-actions">
+                  <button
+                    className="studio-back journal-action-btn"
+                    type="button"
+                    onClick={() => startEditFromHistory("morning", day.morning.entry, day.morning.data)}
+                  >
+                    Edit
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="journal-history-empty">No morning entry</div>
+            )}
+          </div>
+
+          <div className="journal-history-slot">
+            <div className="journal-history-slot-title">Evening Reflection</div>
+            {day.evening ? (
+              <>
+                <div className="journal-history-line"><span>Went well:</span> {day.evening.data?.wentWell || "-"}</div>
+                <div className="journal-history-line"><span>Felt hard:</span> {day.evening.data?.feltHard || "-"}</div>
+                <div className="journal-history-line"><span>Adjust:</span> {day.evening.data?.adjustTomorrow || "-"}</div>
+                <div className="journal-history-line"><span>Mood:</span> {day.evening.data?.mood || "-"}</div>
+                <div className="journal-history-line"><span>Tags:</span> {day.evening.data?.tags || "-"}</div>
+                <div className="journal-history-actions">
+                  <button
+                    className="studio-back journal-action-btn"
+                    type="button"
+                    onClick={() => startEditFromHistory("evening", day.evening.entry, day.evening.data)}
+                  >
+                    Edit
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="journal-history-empty">No evening entry</div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function JournalPage({ mode = "gym" }) {
   const navigate = useNavigate();
   const userId = useMemo(() => localStorage.getItem("exervia_user_id"), []);
@@ -457,283 +776,44 @@ export default function JournalPage({ mode = "gym" }) {
         </div>
         {banner ? <div className="hud-card">{banner}</div> : null}
 
-        <div className="grid-2 journal-meta-grid">
-          <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>
-            <div className="hud-card-title">YOUR DAY IN ONE GLANCE</div>
-            {isDayComplete && <div className="journal-complete-pill">Day complete</div>}
-            <div className="journal-summary-text">{dayInOneGlance}</div>
-            <div className="journal-summary-foot">{thisMonthEntries} entries this month</div>
-          </div>
+        <JournalMetaCards
+          isDayComplete={isDayComplete}
+          dayInOneGlance={dayInOneGlance}
+          thisMonthEntries={thisMonthEntries}
+          quote={quote}
+        />
 
-          <div className="hud-card journal-quote-card">
-            <div className="hud-card-title">QUOTE OF THE DAY</div>
-            <div className="quote-box">
-              <div className="quote-text">"{quote?.content || "..."}"</div>
-              <div className="quote-author">- {quote?.author || "ExerVia"}</div>
-            </div>
-          </div>
-        </div>
+        <JournalMoodCard
+          averageMood={averageMood}
+          selectedMoodDay={selectedMoodDay}
+          setSelectedMoodDay={setSelectedMoodDay}
+          moodTrend={moodTrend}
+        />
 
-        <div className="hud-card journal-mood-card">
-        <div className="journal-mood-top">
-          <div className="hud-card-title">MOOD TREND</div>
-          <div className="journal-mood-actions">
-            <div className="journal-mood-average">{averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}</div>
-            {selectedMoodDay && (
-              <button className="studio-back journal-action-btn" type="button" onClick={() => setSelectedMoodDay("")}>
-                Clear day filter
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="journal-mood-bars">
-          {moodTrend.length ? (
-            moodTrend.map((item) => (
-              <button
-                type="button"
-                key={item.dayKey}
-                className={`journal-mood-col journal-mood-col-btn${selectedMoodDay === item.dayKey ? " active" : ""}`}
-                onClick={() => setSelectedMoodDay(item.dayKey)}
-              >
-                <div className="journal-mood-track">
-                  <div className="journal-mood-fill" style={{ height: `${(item.mood / 5) * 100}%` }} />
-                </div>
-                <div className="journal-mood-score">{item.mood}</div>
-                <div className="journal-mood-label">{item.label}</div>
-              </button>
-            ))
-          ) : (
-            <div className="hud-dim">Log evening mood to unlock your trend.</div>
-          )}
-        </div>
-      </div>
+        <JournalDailyCheckinCard
+          activeSlot={activeSlot}
+          setActiveSlot={setActiveSlot}
+          editingTarget={editingTarget}
+          cancelHistoryEdit={cancelHistoryEdit}
+          morning={morning}
+          setMorning={setMorning}
+          evening={evening}
+          setEvening={setEvening}
+          saveSlot={saveSlot}
+          savingSlot={savingSlot}
+          todayMorningEntry={todayMorningEntry}
+          todayEveningEntry={todayEveningEntry}
+        />
 
-      <div className="journal-premium-grid">
-        <div className="hud-card journal-slot-card">
-          <div className="journal-slot-top">
-            <div className="hud-card-title">DAILY CHECK-IN</div>
-            <div className="journal-slot-pill">
-              {editingTarget?.slot === activeSlot
-                ? `Editing ${new Date(editingTarget.dayKey).toLocaleDateString()}`
-                : (activeSlot === "morning"
-                ? (todayMorningEntry ? "Updated today" : "Open")
-                : (todayEveningEntry ? "Updated today" : "Open"))}
-            </div>
-          </div>
-
-          {editingTarget && (
-            <div className="journal-editing-row">
-              <div className="hud-dim">Editing history entry</div>
-              <button className="studio-back journal-action-btn" type="button" onClick={cancelHistoryEdit}>
-                Cancel
-              </button>
-            </div>
-          )}
-
-          <div className="journal-switch" role="tablist" aria-label="Daily check-in sections">
-            <button
-              className={`journal-switch-btn${activeSlot === "morning" ? " active" : ""}`}
-              onClick={() => setActiveSlot("morning")}
-              type="button"
-            >
-              Morning Prep
-            </button>
-            <button
-              className={`journal-switch-btn${activeSlot === "evening" ? " active" : ""}`}
-              onClick={() => setActiveSlot("evening")}
-              type="button"
-            >
-              Evening Reflection
-            </button>
-          </div>
-
-          {activeSlot === "morning" ? (
-            <>
-              <div className="journal-field-block">
-                <label className="journal-field-label">Today&apos;s intention</label>
-                <input
-                  className="journal-input"
-                  placeholder="What matters most today?"
-                  value={morning.intention}
-                  onChange={(e) => setMorning((prev) => ({ ...prev, intention: e.target.value }))}
-                />
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">Session focus</label>
-                <input
-                  className="journal-input"
-                  placeholder="Main training or health focus"
-                  value={morning.sessionFocus}
-                  onChange={(e) => setMorning((prev) => ({ ...prev, sessionFocus: e.target.value }))}
-                />
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">One non-negotiable</label>
-                <input
-                  className="journal-input"
-                  placeholder="One thing you will complete"
-                  value={morning.nonNegotiable}
-                  onChange={(e) => setMorning((prev) => ({ ...prev, nonNegotiable: e.target.value }))}
-                />
-              </div>
-
-              <button className="hud-primary-btn" onClick={() => saveSlot("morning")} disabled={savingSlot === "morning"}>
-                {savingSlot === "morning" ? "Saving..." : todayMorningEntry ? "Update Morning Prep" : "Save Morning Prep"}
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="journal-field-block">
-                <label className="journal-field-label">What went well</label>
-                <textarea
-                  className="journal-textarea"
-                  placeholder="Highlight one win from today"
-                  value={evening.wentWell}
-                  onChange={(e) => setEvening((prev) => ({ ...prev, wentWell: e.target.value }))}
-                />
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">What felt hard</label>
-                <textarea
-                  className="journal-textarea"
-                  placeholder="Name the friction honestly"
-                  value={evening.feltHard}
-                  onChange={(e) => setEvening((prev) => ({ ...prev, feltHard: e.target.value }))}
-                />
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">Adjust for tomorrow</label>
-                <textarea
-                  className="journal-textarea"
-                  placeholder="One change for tomorrow"
-                  value={evening.adjustTomorrow}
-                  onChange={(e) => setEvening((prev) => ({ ...prev, adjustTomorrow: e.target.value }))}
-                />
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">Mood score (1-5)</label>
-                <select
-                  className="journal-input"
-                  value={evening.mood || ""}
-                  onChange={(e) => setEvening((prev) => ({ ...prev, mood: e.target.value }))}
-                >
-                  <option value="">Select mood</option>
-                  <option value="1">1 - rough day</option>
-                  <option value="2">2 - off</option>
-                  <option value="3">3 - neutral</option>
-                  <option value="4">4 - good</option>
-                  <option value="5">5 - locked in</option>
-                </select>
-              </div>
-
-              <div className="journal-field-block">
-                <label className="journal-field-label">Tags (comma separated)</label>
-                <input
-                  className="journal-input"
-                  placeholder="legs day, recovery, sleep"
-                  value={evening.tags || ""}
-                  onChange={(e) => setEvening((prev) => ({ ...prev, tags: e.target.value }))}
-                />
-              </div>
-
-              <button className="hud-primary-btn" onClick={() => saveSlot("evening")} disabled={savingSlot === "evening"}>
-                {savingSlot === "evening" ? "Saving..." : todayEveningEntry ? "Update Evening Reflection" : "Save Evening Reflection"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="hud-card journal-entries">
-        <div className="journal-history-top">
-          <div className="hud-card-title">ENTRY HISTORY</div>
-          <input
-            className="studio-form-input journal-history-search"
-            value={historySearch}
-            onChange={(event) => setHistorySearch(event.target.value)}
-            placeholder="Search entries, focus, wins, tags..."
-          />
-        </div>
-        {availableTags.length > 0 && (
-          <div className="journal-tags-row">
-            <button
-              type="button"
-              className={`journal-tag-pill${selectedTag === "all" ? " active" : ""}`}
-              onClick={() => setSelectedTag("all")}
-            >
-              All tags
-            </button>
-            {availableTags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                className={`journal-tag-pill${selectedTag === tag ? " active" : ""}`}
-                onClick={() => setSelectedTag(tag)}
-              >
-                #{tag}
-              </button>
-            ))}
-          </div>
-        )}
-        {filteredHistoryDays.length === 0 && <div className="hud-dim">No entries match this filter yet.</div>}
-
-        {filteredHistoryDays.map((day) => (
-          <div key={day.dayKey} className="journal-history-day">
-            <div className="journal-history-date">{new Date(day.dayKey).toLocaleDateString()}</div>
-
-            <div className="journal-history-slot">
-              <div className="journal-history-slot-title">Morning Prep</div>
-              {day.morning ? (
-                <>
-                  <div className="journal-history-line"><span>Intention:</span> {day.morning.data?.intention || "-"}</div>
-                  <div className="journal-history-line"><span>Focus:</span> {day.morning.data?.sessionFocus || "-"}</div>
-                  <div className="journal-history-line"><span>Non-negotiable:</span> {day.morning.data?.nonNegotiable || "-"}</div>
-                  <div className="journal-history-actions">
-                    <button
-                      className="studio-back journal-action-btn"
-                      type="button"
-                      onClick={() => startEditFromHistory("morning", day.morning.entry, day.morning.data)}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="journal-history-empty">No morning entry</div>
-              )}
-            </div>
-
-            <div className="journal-history-slot">
-              <div className="journal-history-slot-title">Evening Reflection</div>
-              {day.evening ? (
-                <>
-                  <div className="journal-history-line"><span>Went well:</span> {day.evening.data?.wentWell || "-"}</div>
-                  <div className="journal-history-line"><span>Felt hard:</span> {day.evening.data?.feltHard || "-"}</div>
-                  <div className="journal-history-line"><span>Adjust:</span> {day.evening.data?.adjustTomorrow || "-"}</div>
-                  <div className="journal-history-line"><span>Mood:</span> {day.evening.data?.mood || "-"}</div>
-                  <div className="journal-history-line"><span>Tags:</span> {day.evening.data?.tags || "-"}</div>
-                  <div className="journal-history-actions">
-                    <button
-                      className="studio-back journal-action-btn"
-                      type="button"
-                      onClick={() => startEditFromHistory("evening", day.evening.entry, day.evening.data)}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="journal-history-empty">No evening entry</div>
-              )}
-            </div>
-          </div>
-        ))}
-        </div>
+        <JournalHistoryCard
+          historySearch={historySearch}
+          setHistorySearch={setHistorySearch}
+          availableTags={availableTags}
+          selectedTag={selectedTag}
+          setSelectedTag={setSelectedTag}
+          filteredHistoryDays={filteredHistoryDays}
+          startEditFromHistory={startEditFromHistory}
+        />
       </div>
     </div>
   );

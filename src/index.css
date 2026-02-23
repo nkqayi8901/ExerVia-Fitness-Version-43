@@ -18,7 +18,9 @@ body {
   --z-modal: 140;
   --z-modal-high: 150;
   --z-modal-top: 160;
+  --z-overlay-thread: 168;
   --z-overlay: 170;
+  --z-overlay-flow: 172;
   --z-overlay-toast: 188;
   --z-overlay-top: 190;
 }
@@ -5101,7 +5103,7 @@ code {
   background: radial-gradient(1200px 600px at 10% 10%, rgba(56, 189, 248, 0.18), transparent 60%),
     rgba(2, 6, 23, 0.88);
   backdrop-filter: blur(16px);
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-flow);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -5113,7 +5115,7 @@ code {
   background: radial-gradient(1200px 600px at 50% 10%, rgba(56, 189, 248, 0.2), transparent 60%),
     rgba(2, 6, 23, 0.96);
   backdrop-filter: blur(18px);
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-flow);
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: 28px;
@@ -5313,7 +5315,7 @@ code {
   background: radial-gradient(1200px 600px at 80% 10%, rgba(14, 165, 233, 0.18), transparent 60%),
     rgba(2, 6, 23, 0.92);
   backdrop-filter: blur(18px);
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-flow);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -5425,7 +5427,7 @@ code {
   background: radial-gradient(1000px 500px at 20% 10%, rgba(56, 189, 248, 0.16), transparent 60%),
     rgba(2, 6, 23, 0.88);
   backdrop-filter: blur(18px);
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-flow);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -5502,7 +5504,7 @@ code {
   background: radial-gradient(900px 500px at 50% 10%, rgba(56, 189, 248, 0.2), transparent 60%),
     rgba(2, 6, 23, 0.9);
   backdrop-filter: blur(16px);
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-flow);
   display: grid;
   place-items: center;
   animation: studioFadeIn 0.3s ease;
@@ -6609,7 +6611,7 @@ code {
 .community-thread-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: var(--z-overlay);
+  z-index: var(--z-overlay-thread);
   background: rgba(2, 6, 23, 0.9);
   backdrop-filter: blur(8px);
   display: block;
