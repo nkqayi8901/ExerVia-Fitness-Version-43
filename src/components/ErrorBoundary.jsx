@@ -1,4 +1,5 @@
 import React from "react";
+import { captureAppError } from "../services/errorMonitoring";
 // Component: ErrorBoundary - UI layout and interactions.
 // This component renders the errorboundary experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -23,6 +24,7 @@ export default class ErrorBoundary extends React.Component {
     // Keep logging simple so crashes are visible in dev tools.
     // eslint-disable-next-line no-console
     console.error("App crash caught by ErrorBoundary:", error, info);
+    captureAppError(error, { componentStack: info?.componentStack || "" });
   }
 
   render() {
@@ -51,4 +53,3 @@ export default class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-

@@ -12,19 +12,38 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import NotFoundPage from "./components/NotFoundPage";
 import ToastHost from "./components/ToastHost";
+import { captureAppError, initErrorMonitoring } from "./services/errorMonitoring";
 
 function App() {
   const withRouteBoundary = (element) => <ErrorBoundary>{element}</ErrorBoundary>;
   const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
 
   useEffect(() => {
+    initErrorMonitoring();
+  }, []);
+
+  useEffect(() => {
     const onOffline = () => setIsOffline(true);
     const onOnline = () => setIsOffline(false);
+    const onUnhandledRejection = (event) => {
+      captureAppError(event?.reason || new Error("Unhandled promise rejection"), {
+        type: "unhandledrejection",
+      });
+    };
+    const onWindowError = (event) => {
+      captureAppError(event?.error || new Error(event?.message || "Window error"), {
+        type: "error",
+      });
+    };
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    window.addEventListener("error", onWindowError);
     return () => {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+      window.removeEventListener("error", onWindowError);
     };
   }, []);
 
