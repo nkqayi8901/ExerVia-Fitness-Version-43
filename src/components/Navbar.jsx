@@ -32,6 +32,9 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     Math.min(100, Math.round(((xp - levelStartXp) / levelSpan) * 100))
   );
   const resolvedUserId = userId || localStorage.getItem('exervia_user_id');
+  const messagesPath = mode === "gym"
+    ? `/gym/${resolvedUserId || ""}/messages`
+    : `/athlete/${resolvedUserId || ""}/messages`;
   const initials = useMemo(() => {
     const source = account?.display_name || account?.username || "Athlete";
     return String(source)
@@ -200,6 +203,25 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
           </button>
         )}
       </div>
+      {mode && resolvedUserId ? (
+        <button
+          type="button"
+          className="hud-message-fab"
+          onClick={() => navigate(messagesPath)}
+          aria-label="Open messages"
+          title="Messages"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H9l-4 4v-4.2A2.5 2.5 0 0 1 4 13.5z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      ) : null}
     </nav>
   );
 }

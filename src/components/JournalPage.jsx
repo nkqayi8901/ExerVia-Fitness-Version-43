@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
+import { grantXpEventSafe } from "../services/xpEvents";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -132,8 +133,15 @@ export default function JournalPage({ mode = "gym" }) {
   const [selectedMoodDay, setSelectedMoodDay] = useState("");
 
   const [savingSlot, setSavingSlot] = useState("");
+  const [banner, setBanner] = useState("");
 
   const todayKey = formatDayKey(new Date());
+
+  useEffect(() => {
+    if (!banner) return;
+    const timeout = setTimeout(() => setBanner(""), 2800);
+    return () => clearTimeout(timeout);
+  }, [banner]);
 
   const structuredEntries = useMemo(
     () => entries.map((entry) => ({ entry, structured: parseStructuredEntry(entry) })),
@@ -392,11 +400,29 @@ export default function JournalPage({ mode = "gym" }) {
       }
 
       if (!error) {
+        const entryDayKey =
+          formatDayKey(existingEntry?.created_at || editingTarget?.dayKey || todayKey) || todayKey;
+        const xpResult = await grantXpEventSafe({
+          userId,
+          eventType: "streak_bonus",
+          baseXp: 20,
+          idempotencyKey: `journal_entry:${entryDayKey}:${slot}`,
+          sourceTable: "journal_entries",
+          sourceId: String(existingEntry?.id || `${entryDayKey}:${slot}`),
+          meta: { slot, day: entryDayKey, mode },
+        });
         await trackDailyActivity(userId, "journal_entry");
         await recalcUserState(userId);
         window.dispatchEvent(new Event("user_state_updated"));
         window.dispatchEvent(new Event("journal_updated"));
         await loadEntries();
+        if (xpResult.error) {
+          setBanner("Journal saved. XP sync pending.");
+        } else if (Number(xpResult.awardedXp || 0) > 0) {
+          setBanner(`Journal saved. +${Number(xpResult.awardedXp)} XP earned.`);
+        } else {
+          setBanner("Journal saved.");
+        }
         if (editingTarget?.slot === slot) {
           setEditingTarget(null);
         }
@@ -421,6 +447,7 @@ export default function JournalPage({ mode = "gym" }) {
           <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
         </div>
       </div>
+      {banner ? <div className="hud-card">{banner}</div> : null}
 
       <div className="grid-2 journal-meta-grid">
         <div className={`hud-card journal-summary-card${isDayComplete ? " day-complete" : ""}`}>

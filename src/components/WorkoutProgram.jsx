@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { queueLogsTrainingPrefill } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
+import { grantXpEventSafe } from "../services/xpEvents";
 // Component: WorkoutProgram - UI layout and interactions.
 // This component renders the workoutprogram experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -827,6 +828,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const { programId } = useParams();
   const persistedRef = useRef(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(true);
+  const [sessionAwardedXp, setSessionAwardedXp] = useState(0);
   const injectedProgram = location.state?.program;
   const program = injectedProgram || findProgram(programId);
   const sessionPerformance = useMemo(
@@ -868,6 +870,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     const totalSets = reportExercises.reduce((sum, item) => sum + (Number(item.sets) || 0), 0);
     const totalTonnage = reportExercises.reduce((sum, item) => sum + (Number(item.tonnage) || 0), 0);
     const persistCompletion = async () => {
+      let awardedXp = 0;
       const validStrengthRows = reportExercises
         .filter((exercise) => exercise?.name && Number(exercise.sets || 0) > 0)
         .map((exercise) => ({
@@ -890,9 +893,28 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         if (insertError) {
           console.error("Could not persist program lifts to strength_logs:", insertError);
         } else {
+          const baseXp = Math.min(90, Math.max(20, Number(totalSets || 0) * 3));
+          if (insertedRows?.[0]?.id && baseXp > 0) {
+            const strengthXp = await grantXpEventSafe({
+              userId: Number(resolvedUserId),
+              eventType: "strength_log",
+              baseXp,
+              idempotencyKey: `strength_session:${insertedRows[0].id}`,
+              sourceTable: "strength_logs",
+              sourceId: String(insertedRows[0].id),
+              meta: {
+                session_type: mode === "athlete" ? "training_program" : "workout_program",
+                program_name: planName,
+                total_sets: totalSets,
+                total_tonnage: totalTonnage,
+              },
+            });
+            awardedXp += Number(strengthXp.awardedXp || 0);
+          }
+
           for (const row of insertedRows || []) {
             const idempotencyKey = `pr:${row.id}:user:${Number(resolvedUserId)}`;
-            const { error: prError } = await supabase.rpc("verify_pr_and_award_xp", {
+            const { data: prAwarded, error: prError } = await supabase.rpc("verify_pr_and_award_xp", {
               p_log_id: String(row.id),
               p_user_id: Number(resolvedUserId),
               p_exercise_name: String(row.exercise_name || ""),
@@ -903,10 +925,14 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
             });
             if (prError) {
               console.error("verify_pr_and_award_xp failed:", prError);
+            } else {
+              awardedXp += Number(prAwarded || 0);
             }
           }
         }
       }
+      setSessionAwardedXp(awardedXp);
+      window.dispatchEvent(new Event("user_state_updated"));
 
       queueLogsTrainingPrefill(resolvedUserId, {
         source: "session_completion",
@@ -963,7 +989,9 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
           <div className="studio-log-pulse-card">
             <div className="studio-log-pulse-check" aria-hidden="true">&#10003;</div>
             <div className="studio-log-pulse-title">Session logged</div>
-            <div className="studio-log-pulse-sub">Opening your logs...</div>
+            <div className="studio-log-pulse-sub">
+              {sessionAwardedXp > 0 ? `+${sessionAwardedXp} XP earned · Opening your logs...` : "Opening your logs..."}
+            </div>
           </div>
         </div>
       )}

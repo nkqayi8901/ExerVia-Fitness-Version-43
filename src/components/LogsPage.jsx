@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
+import { grantXpEventSafe } from "../services/xpEvents";
 import {
   addSavedMeal,
   consumeLogsTrainingPrefill,
@@ -541,11 +542,25 @@ export default function LogsPage({ mode = "gym" }) {
     return null;
   }, [activeTrainingReport, trainingRows, allSessionCompletions]);
 
-  const markActivity = async () => {
+  const markActivity = async (actionKey = "logs_activity", baseXp = 10, sourceId = "") => {
     if (!id) return;
+    const dayKey = selectedDay || todayKey;
+    const xpResult = await grantXpEventSafe({
+      userId: id,
+      eventType: "streak_bonus",
+      baseXp,
+      idempotencyKey: `logs:${dayKey}:${actionKey}`,
+      sourceTable: "daily_logs",
+      sourceId: String(sourceId || dayKey),
+      meta: { day: dayKey, action: actionKey },
+    });
     await trackDailyActivity(id, "logs_entry");
     await recalcUserState(id);
     window.dispatchEvent(new Event("user_state_updated"));
+    return {
+      awardedXp: Number(xpResult.awardedXp || 0),
+      xpError: Boolean(xpResult.error),
+    };
   };
 
   const patchDayLogLocal = useCallback((dayKey, updater) => {
@@ -617,8 +632,8 @@ export default function LogsPage({ mode = "gym" }) {
       return;
     }
     await saveDayLog(selectedDay, selectedLog);
-    await markActivity();
-    setBanner("Weight logged.");
+    const xp = await markActivity("weight", 10, selectedDay);
+    setBanner(xp.awardedXp > 0 ? `Weight logged. +${xp.awardedXp} XP earned.` : "Weight logged.");
   };
 
   const applyWater = async () => {
@@ -628,8 +643,8 @@ export default function LogsPage({ mode = "gym" }) {
       return;
     }
     await saveDayLog(selectedDay, selectedLog);
-    await markActivity();
-    setBanner("Water logged.");
+    const xp = await markActivity("water", 10, selectedDay);
+    setBanner(xp.awardedXp > 0 ? `Water logged. +${xp.awardedXp} XP earned.` : "Water logged.");
   };
 
   const addMealEntry = async () => {
@@ -667,8 +682,8 @@ export default function LogsPage({ mode = "gym" }) {
     }
 
     setMealInput("");
-    await markActivity();
-    setBanner("Meal logged.");
+    const xp = await markActivity("meal", 12, selectedDay);
+    setBanner(xp.awardedXp > 0 ? `Meal logged. +${xp.awardedXp} XP earned.` : "Meal logged.");
   };
 
   const toggleSupplement = async (name) => {
@@ -680,7 +695,7 @@ export default function LogsPage({ mode = "gym" }) {
     });
     setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
     await saveDayLog(selectedDay, next);
-    await markActivity();
+    await markActivity("supplement", 8, selectedDay);
   };
 
   const addSupplement = async () => {
@@ -721,8 +736,8 @@ export default function LogsPage({ mode = "gym" }) {
     await saveDayLog(selectedDay, next);
     setExtraMinutes("");
     setExtraNotes("");
-    await markActivity();
-    setBanner("Extra activity logged.");
+    const xp = await markActivity("extra_activity", 12, selectedDay);
+    setBanner(xp.awardedXp > 0 ? `Extra activity logged. +${xp.awardedXp} XP earned.` : "Extra activity logged.");
   };
 
   const removeMealEntry = async (mealId) => {

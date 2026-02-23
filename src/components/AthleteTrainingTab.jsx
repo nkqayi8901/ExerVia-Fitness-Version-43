@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
 import { trackDailyActivity } from '../services/activityTracker';
+import { grantXpEventSafe } from '../services/xpEvents';
 // Component: AthleteTrainingTab - UI layout and interactions.
 // This component renders the athletetrainingtab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -812,15 +813,17 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 
     if (!error) {
       const durationBaseXp = resolvedDuration || 0;
+      let awardedXp = 0;
+      let xpRelinked = false;
       if (data?.id && durationBaseXp > 0) {
-        const { error: xpError } = await supabase.rpc('grant_xp_event', {
-          p_user_id: Number(userId),
-          p_event_type: 'training_session',
-          p_base_xp: durationBaseXp,
-          p_idempotency_key: `training_session:${data.id}`,
-          p_source_table: 'training_sessions',
-          p_source_id: String(data.id),
-          p_meta: {
+        const xpResult = await grantXpEventSafe({
+          userId,
+          eventType: 'training_session',
+          baseXp: durationBaseXp,
+          idempotencyKey: `training_session:${data.id}`,
+          sourceTable: 'training_sessions',
+          sourceId: String(data.id),
+          meta: {
             sport: session.sport,
             focus: sessionFocus,
             duration_minutes: durationBaseXp,
@@ -828,8 +831,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             plan_name: selectedPlan ? selectedPlan.name : null,
           },
         });
-        if (xpError) {
-          console.error('grant_xp_event failed:', xpError);
+        awardedXp = Number(xpResult.awardedXp || 0);
+        xpRelinked = Boolean(xpResult.relinked);
+        if (xpResult.error) {
+          console.error('grant_xp_event failed:', xpResult.error);
         }
       }
       try {
@@ -844,10 +849,21 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       }
       window.dispatchEvent(new Event('user_state_updated'));
 
-      if (efficiencyData && parseFloat(efficiencyData.value) < 0.03) {
-        setBanner({ type: 'success', message: 'Great efficiency score. Cardiovascular fitness is improving.' });
+      if (awardedXp > 0) {
+        setBanner({
+          type: 'success',
+          message: `Session logged. +${awardedXp} XP earned.${xpRelinked ? ' Profile link repaired.' : ''}`,
+        });
+      } else if (efficiencyData && parseFloat(efficiencyData.value) < 0.03) {
+        setBanner({
+          type: 'success',
+          message: `Great efficiency score. Cardiovascular fitness is improving.${xpRelinked ? ' Profile link repaired.' : ''}`,
+        });
       } else {
-        setBanner({ type: 'info', message: 'Session logged. Keep building.' });
+        setBanner({
+          type: 'info',
+          message: `Session logged. Keep building.${xpRelinked ? ' Profile link repaired.' : ''}`,
+        });
       }
 
       setSession({
