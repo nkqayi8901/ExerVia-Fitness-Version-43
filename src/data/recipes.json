@@ -63,9 +63,9 @@
       "cut"
     ],
     "nutrition": {
-      "calories": 470,
+      "calories": 480,
       "protein": 43,
-      "carbs": 39,
+      "carbs": 41,
       "fat": 16
     },
     "ingredients": [
@@ -262,10 +262,10 @@
       "high_protein"
     ],
     "nutrition": {
-      "calories": 720,
+      "calories": 700,
       "protein": 51,
-      "carbs": 68,
-      "fat": 26
+      "carbs": 67,
+      "fat": 25
     },
     "ingredients": [
       {
@@ -464,10 +464,10 @@
       "high_protein"
     ],
     "nutrition": {
-      "calories": 430,
+      "calories": 500,
       "protein": 46,
-      "carbs": 18,
-      "fat": 19
+      "carbs": 28,
+      "fat": 24
     },
     "ingredients": [
       {
@@ -896,7 +896,7 @@
     "slot_tags": [
       "recovery"
     ],
-    "tip": "Session-day move: Cook to just al dente so reheats stay firm, not soft. Best used post-session when you need protein plus carbs to recover well. Build around red lentil pasta with red lentil pasta for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Performance tip: Cook lentil pasta just shy of done, then finish in sauce so texture stays firm. Best used post-session when you need protein plus carbs to recover well. Build around red lentil pasta with mushrooms and spinach for a complete recovery plate. Prep a second container while the sauce is hot for tomorrow's lunch block."
   },
   {
     "id": "local-veg-03",
@@ -959,10 +959,10 @@
       "balanced"
     ],
     "nutrition": {
-      "calories": 760,
+      "calories": 740,
       "protein": 33,
-      "carbs": 68,
-      "fat": 39
+      "carbs": 66,
+      "fat": 37
     },
     "ingredients": [
       {
@@ -1344,7 +1344,7 @@
       "midday",
       "pre_training"
     ],
-    "tip": "Coach note: Layer hot base first, then add fresh toppings for better texture. Good pre-training option: enough carbs to perform without feeling heavy. Build around egg noodles with egg noodles for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
+    "tip": "Coach note: Keep pork mince on high heat for the first minute to build flavor before adding noodles. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork mince with egg noodles for stable training fuel. Split one extra bowl now so your next session meal is already handled."
   },
   {
     "id": "local-pork-04",
@@ -1606,10 +1606,10 @@
       "balanced"
     ],
     "nutrition": {
-      "calories": 560,
+      "calories": 520,
       "protein": 41,
-      "carbs": 39,
-      "fat": 26
+      "carbs": 38,
+      "fat": 22
     },
     "ingredients": [
       {
@@ -2302,31 +2302,31 @@
       "high_protein"
     ],
     "nutrition": {
-      "calories": 360,
-      "protein": 24,
-      "carbs": 30,
-      "fat": 15
+      "calories": 410,
+      "protein": 28,
+      "carbs": 31,
+      "fat": 17
     },
     "ingredients": [
       {
-        "ingredient": "Firm tofu grilled",
-        "measure": "140g"
+        "ingredient": "Firm tofu",
+        "measure": "180g"
       },
       {
-        "ingredient": "Wholewheat wrap",
-        "measure": "1 small"
+        "ingredient": "Wholegrain wrap",
+        "measure": "1 medium"
+      },
+      {
+        "ingredient": "Greek yogurt",
+        "measure": "60g"
       },
       {
         "ingredient": "Lettuce",
-        "measure": "40g"
+        "measure": "60g"
       },
       {
-        "ingredient": "Cucumber",
-        "measure": "50g"
-      },
-      {
-        "ingredient": "Light yogurt sauce",
-        "measure": "35g"
+        "ingredient": "Tomato",
+        "measure": "80g"
       }
     ],
     "instructions": [
@@ -2351,10 +2351,10 @@
       "cut"
     ],
     "nutrition": {
-      "calories": 470,
+      "calories": 480,
       "protein": 26,
-      "carbs": 63,
-      "fat": 11
+      "carbs": 66,
+      "fat": 13
     },
     "ingredients": [
       {
@@ -2536,7 +2536,7 @@
       "midday",
       "recovery"
     ],
-    "tip": "Execution tip: Cook to just al dente so reheats stay firm, not soft. Best used post-session when you need protein plus carbs to recover well. Build around chickpea pasta dry with chickpea pasta dry for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Execution tip: Boil chickpea pasta to al dente and rinse quickly to stop overcooking. Best used post-session when you need protein plus carbs to recover well. Build around chickpea pasta with passata and greens for a fiber-rich recovery meal. Batch one extra portion and reheat with a splash of water to keep it glossy."
   },
   {
     "id": "local-chickpea-08",
@@ -2847,10 +2847,10 @@
       "balanced"
     ],
     "nutrition": {
-      "calories": 430,
-      "protein": 41,
-      "carbs": 28,
-      "fat": 18
+      "calories": 415,
+      "protein": 40,
+      "carbs": 26,
+      "fat": 17
     },
     "ingredients": [
       {
@@ -3045,46 +3045,48 @@
     "area": "Mexican",
     "minutes": 15,
     "goals": [
-      "cut",
-      "high_protein"
+      "high_protein",
+      "balanced",
+      "cut"
     ],
     "nutrition": {
-      "calories": 720,
-      "protein": 51,
-      "carbs": 68,
-      "fat": 26
+      "calories": 390,
+      "protein": 34,
+      "carbs": 16,
+      "fat": 20
     },
     "ingredients": [
       {
-        "ingredient": "Lean beef strips",
-        "measure": "140g"
+        "ingredient": "Lean beef mince 5%",
+        "measure": "130g"
       },
       {
-        "ingredient": "Cooked rice",
-        "measure": "170g"
+        "ingredient": "Romaine lettuce leaves",
+        "measure": "8 large leaves"
       },
       {
-        "ingredient": "Black beans",
-        "measure": "120g"
+        "ingredient": "Carrot",
+        "measure": "60g"
       },
       {
-        "ingredient": "Sweetcorn",
+        "ingredient": "Cucumber",
         "measure": "80g"
       },
       {
-        "ingredient": "Salsa",
-        "measure": "80g"
+        "ingredient": "Light yogurt-lime sauce",
+        "measure": "35g"
       }
     ],
     "instructions": [
-      "Cook beef with seasoning.",
-      "Warm beans and rice.",
-      "Layer all in bowl and top with salsa."
+      "Brown lean beef mince and season lightly.",
+      "Slice carrot and cucumber into fine matchsticks.",
+      "Fill lettuce leaves with beef, top with veg, and finish with yogurt-lime sauce."
     ],
     "slot_tags": [
-      "pre_training"
+      "pre_training",
+      "midday"
     ],
-    "tip": "Make this work harder: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef strips with cooked rice for a predictable training-day fuel profile. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Session-day move: Keep mince fairly dry in the pan so lettuce cups stay crisp. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean beef with crunchy veg for a lighter handheld snack. Prep the filling once and assemble fresh cups in under 2 minutes."
   },
   {
     "id": "local-beef-11",
@@ -3487,7 +3489,7 @@
       "midday",
       "morning"
     ],
-    "tip": "Quick win: Simmer gently at the end so protein stays tender and the sauce stays glossy. Strong morning anchor: stable protein first helps appetite and focus later. Build around tuna in spring water and keep seasoning consistent so repeat prep stays easy. Cook once, split into two boxes, and keep the second for the next session window."
+    "tip": "Quick win: This is a no-cook mix, so keep everything chilled and fold gently to keep texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around tuna and cottage cheese for a very high-protein snack without extra prep time. Make a second pot at the same time and hold it for your next midday slot."
   },
   {
     "id": "local-seafood-11",
@@ -3591,7 +3593,7 @@
     "tip": "Performance tip: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around cod fillet with cooked rice for a predictable training-day fuel profile. Batch one extra portion for the next training day."
   },
   {
-    "id": "local-vegetarian-9",
+    "id": "local-veg-09",
     "title": "Skyr Berry Protein Pot",
     "preference": "vegetarian",
     "mealType": "Breakfast",
@@ -3639,10 +3641,10 @@
       "morning",
       "pre_training"
     ],
-    "tip": "Coach note: Simmer gently at the end so protein stays tender and the sauce stays glossy. Strong morning anchor: stable protein first helps appetite and focus later. Build around skyr and keep seasoning consistent so repeat prep stays easy. Batch one extra portion for the next training day."
+    "tip": "Coach note: Keep this cold and layered; add seeds just before eating to preserve crunch. Strong morning anchor: stable protein first helps appetite and focus later. Build around skyr with berries and chia for a high-protein breakfast that digests cleanly. Portion two jars at once so the next morning is already covered."
   },
   {
-    "id": "local-vegetarian-10",
+    "id": "local-veg-10",
     "title": "Halloumi Pepper Snack Bites",
     "preference": "vegetarian",
     "mealType": "Snack",
@@ -3653,15 +3655,19 @@
       "balanced"
     ],
     "nutrition": {
-      "calories": 360,
-      "protein": 24,
-      "carbs": 14,
-      "fat": 22
+      "calories": 390,
+      "protein": 28,
+      "carbs": 16,
+      "fat": 23
     },
     "ingredients": [
       {
         "ingredient": "Halloumi",
-        "measure": "110g"
+        "measure": "120g"
+      },
+      {
+        "ingredient": "Skyr dip",
+        "measure": "80g"
       },
       {
         "ingredient": "Red pepper",
@@ -3673,17 +3679,13 @@
       },
       {
         "ingredient": "Wholegrain crackers",
-        "measure": "30g"
-      },
-      {
-        "ingredient": "Lemon juice",
-        "measure": "1 tbsp"
+        "measure": "20g"
       }
     ],
     "instructions": [
       "Pan-sear halloumi cubes until golden.",
-      "Chop peppers and cucumber into bite-size pieces.",
-      "Serve with crackers and lemon drizzle."
+      "Slice pepper and cucumber into bite-size pieces.",
+      "Serve with crackers and skyr dip for a high-protein snack board."
     ],
     "slot_tags": [
       "midday",
@@ -3693,7 +3695,7 @@
     "tip": "Make this work harder: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around halloumi with wholegrain crackers for a predictable training-day fuel profile. Make a second portion and chill it straight away for cleaner weekday consistency."
   },
   {
-    "id": "local-vegetarian-11",
+    "id": "local-veg-11",
     "title": "Tofu Quinoa Midday Bowl",
     "preference": "vegetarian",
     "mealType": "Lunch",
@@ -3744,7 +3746,7 @@
     "tip": "Quick win: Layer hot base first, then add fresh toppings for better texture. Best used post-session when you need protein plus carbs to recover well. Build around firm tofu with cooked quinoa for a predictable training-day fuel profile. Batch one extra portion for the next training day."
   },
   {
-    "id": "local-vegetarian-12",
+    "id": "local-veg-12",
     "title": "Lentil Mushroom Shepherd Tray",
     "preference": "vegetarian",
     "mealType": "Dinner",
@@ -3794,7 +3796,7 @@
     "tip": "Execution tip: Preheat the tray before loading ingredients for better color without extra oil. Best used post-session when you need protein plus carbs to recover well. Build around cooked lentils with mashed potatoes for a predictable training-day fuel profile. Prep a second serving now and save tomorrow's decision fatigue."
   },
   {
-    "id": "local-chickpeas-9",
+    "id": "local-chickpea-09",
     "title": "Chickpea Greek Yogurt Breakfast Bowl",
     "preference": "chickpeas",
     "mealType": "Breakfast",
@@ -3805,19 +3807,19 @@
       "high_protein"
     ],
     "nutrition": {
-      "calories": 420,
-      "protein": 24,
-      "carbs": 43,
+      "calories": 430,
+      "protein": 27,
+      "carbs": 41,
       "fat": 16
     },
     "ingredients": [
       {
         "ingredient": "Chickpeas",
-        "measure": "130g drained"
+        "measure": "120g drained"
       },
       {
-        "ingredient": "Greek yogurt",
-        "measure": "160g"
+        "ingredient": "Skyr",
+        "measure": "180g"
       },
       {
         "ingredient": "Cucumber",
@@ -3844,57 +3846,59 @@
     "tip": "Performance tip: Layer hot base first, then add fresh toppings for better texture. Strong morning anchor: stable protein first helps appetite and focus later. Build around chickpeas and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
   },
   {
-    "id": "local-chickpeas-10",
+    "id": "local-chickpea-10",
     "title": "Chickpea Protein Crunch Snack",
     "preference": "chickpeas",
     "mealType": "Snack",
     "area": "Indian",
-    "minutes": 15,
+    "minutes": 10,
     "goals": [
       "high_protein",
       "balanced",
       "cut"
     ],
     "nutrition": {
-      "calories": 540,
-      "protein": 24,
-      "carbs": 68,
-      "fat": 18
+      "calories": 420,
+      "protein": 28,
+      "carbs": 36,
+      "fat": 15
     },
     "ingredients": [
       {
         "ingredient": "Roasted chickpeas",
-        "measure": "120g"
+        "measure": "90g"
       },
       {
-        "ingredient": "Light coconut milk",
-        "measure": "120ml"
+        "ingredient": "Skyr",
+        "measure": "150g"
       },
       {
-        "ingredient": "Spinach",
-        "measure": "120g"
-      },
-      {
-        "ingredient": "Onion",
+        "ingredient": "Red pepper",
         "measure": "80g"
       },
       {
-        "ingredient": "Curry paste",
-        "measure": "1 tbsp"
+        "ingredient": "Cucumber",
+        "measure": "80g"
+      },
+      {
+        "ingredient": "Lemon tahini drizzle",
+        "measure": "15g"
       }
     ],
     "instructions": [
-      "Cook onion and curry paste.",
-      "Add chickpeas and coconut milk.",
-      "Finish with spinach."
+      "Add skyr to a bowl and season with black pepper.",
+      "Top with roasted chickpeas and chopped vegetables.",
+      "Finish with lemon tahini drizzle and serve immediately for crunch."
     ],
     "slot_tags": [
-      "pre_training"
+      "pre_training",
+      "midday",
+      "morning"
     ],
-    "tip": "Performance tip: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around roasted chickpeas and keep seasoning consistent so repeat prep stays easy. Make a second portion and chill it straight away for cleaner weekday consistency."
+    "tip": "Execution tip: Add roasted chickpeas last so they stay crunchy against the skyr base. Good pre-training option: enough carbs to perform without feeling heavy. Build around roasted chickpeas and skyr for a snack that carries both crunch and protein. Pack veg and drizzle separately if you are taking it to work."
   },
   {
-    "id": "local-chickpeas-11",
+    "id": "local-chickpea-11",
     "title": "Chickpea Feta Midday Mix",
     "preference": "chickpeas",
     "mealType": "Lunch",
@@ -3905,9 +3909,9 @@
       "cut"
     ],
     "nutrition": {
-      "calories": 470,
-      "protein": 22,
-      "carbs": 46,
+      "calories": 480,
+      "protein": 24,
+      "carbs": 50,
       "fat": 20
     },
     "ingredients": [
@@ -3945,7 +3949,7 @@
     "tip": "Coach note: Keep portions weighed once, then repeat the same setup each week. Strong morning anchor: stable protein first helps appetite and focus later. Build around chickpeas and keep seasoning consistent so repeat prep stays easy. Double the base while the pan is hot so future you has a ready meal."
   },
   {
-    "id": "local-chickpeas-12",
+    "id": "local-chickpea-12",
     "title": "Chickpea Recovery Pot",
     "preference": "chickpeas",
     "mealType": "Dinner",
@@ -4052,46 +4056,48 @@
     "area": "European",
     "minutes": 15,
     "goals": [
-      "cut",
-      "high_protein"
+      "high_protein",
+      "balanced",
+      "cut"
     ],
     "nutrition": {
-      "calories": 610,
-      "protein": 49,
-      "carbs": 52,
-      "fat": 21
+      "calories": 370,
+      "protein": 35,
+      "carbs": 12,
+      "fat": 19
     },
     "ingredients": [
       {
-        "ingredient": "Lean pork loin slices",
+        "ingredient": "Lean pork mince",
         "measure": "130g"
       },
       {
-        "ingredient": "Potatoes",
-        "measure": "240g"
+        "ingredient": "Cucumber",
+        "measure": "200g"
       },
       {
-        "ingredient": "Green beans",
-        "measure": "120g"
+        "ingredient": "Spring onion",
+        "measure": "25g"
       },
       {
-        "ingredient": "Olive oil",
-        "measure": "10g"
+        "ingredient": "Carrot",
+        "measure": "60g"
       },
       {
-        "ingredient": "Mustard",
-        "measure": "1 tsp"
+        "ingredient": "Chili-lime sauce",
+        "measure": "20g"
       }
     ],
     "instructions": [
-      "Roast potatoes.",
-      "Pan-sear pork and finish in oven.",
-      "Serve with beans and mustard."
+      "Cook pork mince in a hot pan until lightly browned.",
+      "Slice cucumber into thick rounds and scoop to form cups.",
+      "Fill cucumber cups with pork, top with carrot and spring onion, then drizzle chili-lime sauce."
     ],
     "slot_tags": [
-      "pre_training"
+      "pre_training",
+      "midday"
     ],
-    "tip": "Make this work harder: Keep portions weighed once, then repeat the same setup each week. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork loin slices with potatoes for a predictable training-day fuel profile. Double the base while the pan is hot so future you has a ready meal."
+    "tip": "Performance tip: Cool the mince for 2 minutes before filling cups so cucumber stays crisp. Good pre-training option: enough carbs to perform without feeling heavy. Build around lean pork with cucumber cups for a high-protein low-carb snack. Keep cucumber cups pre-cut in a container for rapid assembly."
   },
   {
     "id": "local-pork-11",
