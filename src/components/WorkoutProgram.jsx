@@ -970,8 +970,9 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         },
       });
 
+      const nudgeUserId = localStorage.getItem("exervia_user_id") || resolvedUserId || "guest";
       localStorage.setItem(
-        `exervia_recovery_nudge_${resolvedUserId || "guest"}`,
+        `exervia_recovery_nudge_${nudgeUserId}`,
         JSON.stringify({
           type: "program_completion",
           label: String(planName || "Program"),

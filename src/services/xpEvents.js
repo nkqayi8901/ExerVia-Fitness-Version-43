@@ -1,8 +1,44 @@
 import { supabase } from "../supabaseClient";
 
-const isNotAllowedError = (error) => {
-  const message = String(error?.message || "").toLowerCase();
-  return message.includes("not allowed");
+const getErrorText = (error) =>
+  [
+    String(error?.message || ""),
+    String(error?.details || ""),
+    String(error?.hint || ""),
+    String(error?.code || ""),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+const isNotAllowedError = (error) => getErrorText(error).includes("not allowed");
+
+const shouldAttemptProfileRelink = (error) => {
+  const text = getErrorText(error);
+  if (!text) return false;
+
+  // Only relink when the failure likely comes from auth/profile linkage drift.
+  const relinkSignals = [
+    "auth_user_id",
+    "auth uid",
+    "auth.uid",
+    "profile auth link",
+    "ensure_profile_auth_link",
+    "jwt",
+    "uid mismatch",
+  ];
+
+  // Explicitly skip generic policy/permissions failures.
+  const policySignals = [
+    "row-level security",
+    "rls",
+    "permission denied",
+    "insufficient privilege",
+    "policy",
+    "forbidden",
+  ];
+
+  if (policySignals.some((signal) => text.includes(signal))) return false;
+  return relinkSignals.some((signal) => text.includes(signal));
 };
 
 const ensureProfileAuthLink = async (profileId) => {
@@ -40,7 +76,7 @@ export async function grantXpEventSafe({
     return { awardedXp: Number(data || 0), relinked: false, error: null };
   }
 
-  if (!isNotAllowedError(error)) {
+  if (!isNotAllowedError(error) || !shouldAttemptProfileRelink(error)) {
     return { awardedXp: 0, relinked: false, error };
   }
 
@@ -56,4 +92,3 @@ export async function grantXpEventSafe({
 
   return { awardedXp: Number(data || 0), relinked: true, error: null };
 }
-

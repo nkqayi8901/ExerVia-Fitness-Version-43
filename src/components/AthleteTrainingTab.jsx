@@ -774,7 +774,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // resets form state and refreshes user stats
   const handleLogSession = async () => {
     const pushRecoveryNudge = (label, minutes) => {
-      const key = `exervia_recovery_nudge_${userId || "guest"}`;
+      const nudgeUserId = localStorage.getItem("exervia_user_id") || userId || "guest";
+      const key = `exervia_recovery_nudge_${nudgeUserId}`;
       localStorage.setItem(
         key,
         JSON.stringify({

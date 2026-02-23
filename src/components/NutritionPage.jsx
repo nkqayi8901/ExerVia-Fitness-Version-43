@@ -464,6 +464,17 @@ const sumMacros = (entries) =>
     emptyMacros()
   );
 
+const formatNudgeAge = (timestampMs) => {
+  const ageMs = Math.max(0, Date.now() - Number(timestampMs || 0));
+  const minutes = Math.round(ageMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+};
+
 export default function NutritionPage() {
   const navigate = useNavigate();
   const storedId = localStorage.getItem("exervia_user_id");
@@ -1707,7 +1718,7 @@ export default function NutritionPage() {
                   {recoveryNudge.label} finished{recoveryNudge.minutes > 0 ? ` (${recoveryNudge.minutes} min)` : ""}
                 </div>
                 <div className="fuel-recovery-nudge-sub">
-                  Add a recovery meal to your Build My Day board while momentum is high.
+                  Add a recovery meal to your Build My Day board while momentum is high. Triggered {formatNudgeAge(recoveryNudge.at)}.
                 </div>
                 {recoveryNudgeMeal ? (
                   <div className="fuel-recovery-nudge-meal">

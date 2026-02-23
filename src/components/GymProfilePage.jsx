@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import Navbar from "./Navbar";
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
@@ -129,96 +130,104 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
 
   if (loading) {
     return (
-      <div className="page-shell">
-        <div className="hud-card">Loading gym profile...</div>
+      <div className={`hud-bg mode-${mode}`}>
+        <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+        <div className="page-shell">
+          <div className="hud-card">Loading gym profile...</div>
+        </div>
       </div>
     );
   }
 
   if (!decodedPlaceId) {
     return (
-      <div className="page-shell">
-        <div className="hud-card">
-          <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            Back
-          </button>
-          <div className="page-title mt-3">Gym not found</div>
+      <div className={`hud-bg mode-${mode}`}>
+        <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+        <div className="page-shell">
+          <div className="hud-card">
+            <button className="studio-back" onClick={() => navigate(backPath)} type="button">
+              Back
+            </button>
+            <div className="page-title mt-3">Gym not found</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page-shell gym-profile-shell">
-      <div className="page-header gym-profile-head">
-        <div>
-          <button className="studio-back" onClick={() => navigate(backPath)} type="button">
-            Back
+    <div className={`hud-bg mode-${mode}`}>
+      <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+      <div className="page-shell gym-profile-shell">
+        <div className="page-header gym-profile-head">
+          <div>
+            <button className="studio-back" onClick={() => navigate(backPath)} type="button">
+              Back
+            </button>
+            <h2 className="page-title">{gymMeta.name || "Linked Gym"}</h2>
+            <p className="page-subtitle">{gymMeta.address || "Weekly standings for this gym location."}</p>
+          </div>
+          <button className="studio-back community-cta-btn" type="button" onClick={handleCopyShare}>
+            {copyState ? `${copyState} link` : "Share gym card"}
           </button>
-          <h2 className="page-title">{gymMeta.name || "Linked Gym"}</h2>
-          <p className="page-subtitle">{gymMeta.address || "Weekly standings for this gym location."}</p>
         </div>
-        <button className="studio-back community-cta-btn" type="button" onClick={handleCopyShare}>
-          {copyState ? `${copyState} link` : "Share gym card"}
-        </button>
-      </div>
 
-      <div className="grid-3">
-        <div className="hud-card">
-          <div className="hud-card-title">MEMBERS</div>
-          <div className="hud-big">{memberCount}</div>
-          <div className="hud-dim">Profiles linked to this gym</div>
+        <div className="grid-3">
+          <div className="hud-card">
+            <div className="hud-card-title">MEMBERS</div>
+            <div className="hud-big">{memberCount}</div>
+            <div className="hud-dim">Profiles linked to this gym</div>
+          </div>
+          <div className="hud-card">
+            <div className="hud-card-title">SESSIONS (WEEK)</div>
+            <div className="hud-big">{leaderboardRows.reduce((sum, row) => sum + Number(row.session_count || 0), 0)}</div>
+            <div className="hud-dim">Logged strength entries</div>
+          </div>
+          <div className="hud-card">
+            <div className="hud-card-title">TOTAL TONNAGE</div>
+            <div className="hud-big">{formatNumber(leaderboardRows.reduce((sum, row) => sum + Number(row.weekly_tonnage || 0), 0))} kg</div>
+            <div className="hud-dim">Current week reset cycle</div>
+          </div>
         </div>
-        <div className="hud-card">
-          <div className="hud-card-title">SESSIONS (WEEK)</div>
-          <div className="hud-big">{leaderboardRows.reduce((sum, row) => sum + Number(row.session_count || 0), 0)}</div>
-          <div className="hud-dim">Logged strength entries</div>
-        </div>
-        <div className="hud-card">
-          <div className="hud-card-title">TOTAL TONNAGE</div>
-          <div className="hud-big">{formatNumber(leaderboardRows.reduce((sum, row) => sum + Number(row.weekly_tonnage || 0), 0))} kg</div>
-          <div className="hud-dim">Current week reset cycle</div>
-        </div>
-      </div>
 
-      <div className="gym-profile-grid">
-        <div className="hud-card">
-          <div className="hud-card-title">TOP LIFTERS THIS WEEK</div>
-          {!leaderboardRows.length && <div className="hud-dim mt-2">No lifts logged yet this week.</div>}
-          {leaderboardRows.slice(0, 12).map((row, idx) => {
-            const tonnage = Number(row.weekly_tonnage || 0);
-            const pct = topTonnage > 0 ? Math.max(6, Math.round((tonnage / topTonnage) * 100)) : 0;
-            const label = profileLabels[row.user_id] || `User ${row.user_id}`;
-            return (
-              <div key={`gym-profile-row-${row.user_id}`} className="gym-profile-row">
-                <div className="gym-profile-row-main">
-                  <span className="community-meta-pill">#{idx + 1}</span>
-                  <span className="gym-profile-user">{label}</span>
-                  <span className="community-meta-pill">{formatNumber(tonnage)} kg</span>
-                  {Number(row.delta_to_next || 0) > 0 ? (
-                    <span className="community-meta-pill">+{formatNumber(row.delta_to_next)} to next</span>
-                  ) : null}
+        <div className="gym-profile-grid">
+          <div className="hud-card">
+            <div className="hud-card-title">TOP LIFTERS THIS WEEK</div>
+            {!leaderboardRows.length && <div className="hud-dim mt-2">No lifts logged yet this week.</div>}
+            {leaderboardRows.slice(0, 12).map((row, idx) => {
+              const tonnage = Number(row.weekly_tonnage || 0);
+              const pct = topTonnage > 0 ? Math.max(2, Math.round((tonnage / topTonnage) * 100)) : 0;
+              const label = profileLabels[row.user_id] || `User ${row.user_id}`;
+              return (
+                <div key={`gym-profile-row-${row.user_id}`} className="gym-profile-row">
+                  <div className="gym-profile-row-main">
+                    <span className="community-meta-pill">#{idx + 1}</span>
+                    <span className="gym-profile-user">{label}</span>
+                    <span className="community-meta-pill">{formatNumber(tonnage)} kg</span>
+                    {Number(row.delta_to_next || 0) > 0 ? (
+                      <span className="community-meta-pill">+{formatNumber(row.delta_to_next)} to next</span>
+                    ) : null}
+                  </div>
+                  <div className="gym-profile-bar-track">
+                    <div className="gym-profile-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
                 </div>
-                <div className="gym-profile-bar-track">
-                  <div className="gym-profile-bar-fill" style={{ width: `${pct}%` }} />
-                </div>
+              );
+            })}
+          </div>
+
+          <div className="hud-card">
+            <div className="hud-card-title">ACTIVE CREWS</div>
+            {!activeCrews.length && <div className="hud-dim mt-2">No group overlap yet for this gym.</div>}
+            {activeCrews.map((crew) => (
+              <div key={`gym-crew-${crew.id}`} className="gym-profile-crew-row">
+                <span className="gym-profile-user">{crew.name}</span>
+                <span className="community-meta-pill">{crew.count} member{crew.count === 1 ? "" : "s"}</span>
               </div>
-            );
-          })}
-        </div>
-
-        <div className="hud-card">
-          <div className="hud-card-title">ACTIVE CREWS</div>
-          {!activeCrews.length && <div className="hud-dim mt-2">No group overlap yet for this gym.</div>}
-          {activeCrews.map((crew) => (
-            <div key={`gym-crew-${crew.id}`} className="gym-profile-crew-row">
-              <span className="gym-profile-user">{crew.name}</span>
-              <span className="community-meta-pill">{crew.count} member{crew.count === 1 ? "" : "s"}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

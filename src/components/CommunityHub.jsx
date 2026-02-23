@@ -261,6 +261,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [activityFeedItems, setActivityFeedItems] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
+  const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
@@ -532,13 +533,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const handleReportLeaderboardEntry = async (row) => {
     if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
     if (Number(row.user_id) === Number(userId)) return;
+    const targetId = Number(row.user_id);
+    if (reportingLeaderboardUserIds[targetId]) return;
+    setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: true }));
     const payload = {
       reporter_user_id: Number(userId),
-      reported_user_id: Number(row.user_id),
+      reported_user_id: targetId,
       gym_place_id: gymLeaderboardContext.placeId,
       reason: "suspicious_activity",
     };
     const { error } = await supabase.from("gym_leaderboard_reports").insert([payload]);
+    setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: false }));
     if (error?.code === "23505") {
       setBanner("Already reported for this week.");
       return;
@@ -3453,7 +3458,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                       </div>
                       <button
                         type="button"
-                        className="community-cta-btn"
+                        className="studio-back community-cta-btn"
                         onClick={() => openGymProfile(gymLeaderboardContext.placeId)}
                       >
                         Open gym page
@@ -3485,10 +3490,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         {Number(row.user_id) !== Number(userId) ? (
                           <button
                             type="button"
-                            className="community-cta-btn"
+                            className="studio-back community-cta-btn"
                             onClick={() => handleReportLeaderboardEntry(row)}
+                            disabled={Boolean(reportingLeaderboardUserIds[Number(row.user_id)])}
                           >
-                            Report
+                            {reportingLeaderboardUserIds[Number(row.user_id)] ? "Reporting..." : "Report"}
                           </button>
                         ) : (
                           <span className="community-meta-pill">You</span>

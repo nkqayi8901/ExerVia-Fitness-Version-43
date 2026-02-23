@@ -6556,6 +6556,24 @@ code {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
+@media (max-width: 1280px) {
+  .community-leaderboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .community-leaderboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .community-leaderboard-row {
+    grid-template-columns: auto 1fr;
+    gap: 8px 10px;
+  }
+  .community-leaderboard-meta-stack {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
 
 .community-leaderboard-row {
   display: grid;
