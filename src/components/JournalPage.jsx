@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
@@ -458,13 +458,18 @@ export default function JournalPage({ mode = "gym" }) {
   const [selectedMoodDay, setSelectedMoodDay] = useState("");
 
   const [savingSlot, setSavingSlot] = useState("");
-  const [banner, setBanner] = useState("");
+  const [bannerState, setBannerState] = useState({ message: "", type: "info" });
+  const banner = bannerState.message;
+  const bannerVariant = bannerState.type || "info";
+  const setBanner = useCallback((message, type = "info") => {
+    setBannerState({ message, type });
+  }, []);
 
   const todayKey = formatDayKey(new Date());
 
   useEffect(() => {
     if (!banner) return;
-    const timeout = setTimeout(() => setBanner(""), 2800);
+    const timeout = setTimeout(() => setBanner("", "info"), 2800);
     return () => clearTimeout(timeout);
   }, [banner]);
 
@@ -742,11 +747,11 @@ export default function JournalPage({ mode = "gym" }) {
         window.dispatchEvent(new Event("journal_updated"));
         await loadEntries();
         if (xpResult.error) {
-          setBanner("Journal saved. XP sync pending.");
+          setBanner("Journal saved. XP sync pending.", "warn");
         } else if (Number(xpResult.awardedXp || 0) > 0) {
-          setBanner(`Journal saved. +${Number(xpResult.awardedXp)} XP earned.`);
+          setBanner(`Journal saved. +${Number(xpResult.awardedXp)} XP earned.`, "success");
         } else {
-          setBanner("Journal saved.");
+          setBanner("Journal saved.", "info");
         }
         if (editingTarget?.slot === slot) {
           setEditingTarget(null);
@@ -774,7 +779,7 @@ export default function JournalPage({ mode = "gym" }) {
             <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
           </div>
         </div>
-        {banner ? <div className="hud-card">{banner}</div> : null}
+        {banner ? <div className={`studio-banner ${bannerVariant}`}>{banner}</div> : null}
 
         <JournalMetaCards
           isDayComplete={isDayComplete}
