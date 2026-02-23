@@ -6,6 +6,7 @@ import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
 import localRecipes from "../data/recipes.json";
+import { toUserFacingNetworkMessage } from "../utils/networkError";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -498,6 +499,7 @@ export default function NutritionPage() {
   const [offResults, setOffResults] = useState([]);
   const [offLoading, setOffLoading] = useState(false);
   const [saveBanner, setSaveBanner] = useState("");
+  const [logsSyncError, setLogsSyncError] = useState("");
   const [todayMeals, setTodayMeals] = useState([]);
   const [logMealsByDate, setLogMealsByDate] = useState({});
   const [selectedMacroDay, setSelectedMacroDay] = useState(getTodayLogKey());
@@ -895,33 +897,50 @@ export default function NutritionPage() {
   const loadTodayMeals = async () => {
     if (!storedId) return;
     const dayKey = getTodayLogKey();
-    const local = getLogsStore(storedId);
-    const cloudMap = await fetchDailyLogs(storedId);
-    const mergedByDate = { ...(cloudMap || {}) };
-    Object.entries(local.byDate || {}).forEach(([key, day]) => {
-      const cloudMeals = mergedByDate[key]?.meals || [];
-      const localMeals = day?.meals || [];
-      const merged = [...cloudMeals];
-      localMeals.forEach((meal) => {
-        const mealKey = String(meal?.text || "").trim().toLowerCase();
-        if (!mealKey) return;
-        if (!merged.some((row) => String(row?.text || "").trim().toLowerCase() === mealKey)) {
-          merged.push(meal);
-        }
+    setLogsSyncError("");
+    try {
+      const local = getLogsStore(storedId);
+      const cloudMap = await fetchDailyLogs(storedId);
+      const mergedByDate = { ...(cloudMap || {}) };
+      Object.entries(local.byDate || {}).forEach(([key, day]) => {
+        const cloudMeals = mergedByDate[key]?.meals || [];
+        const localMeals = day?.meals || [];
+        const merged = [...cloudMeals];
+        localMeals.forEach((meal) => {
+          const mealKey = String(meal?.text || "").trim().toLowerCase();
+          if (!mealKey) return;
+          if (!merged.some((row) => String(row?.text || "").trim().toLowerCase() === mealKey)) {
+            merged.push(meal);
+          }
+        });
+        mergedByDate[key] = {
+          ...(mergedByDate[key] || {}),
+          meals: merged,
+        };
       });
-      mergedByDate[key] = {
-        ...(mergedByDate[key] || {}),
-        meals: merged,
-      };
-    });
-    const mealsByDate = {};
-    Object.entries(mergedByDate).forEach(([key, day]) => {
-      mealsByDate[key] = Array.isArray(day?.meals) ? day.meals : [];
-    });
-    setLogMealsByDate(mealsByDate);
-    setTodayMeals(mealsByDate[dayKey] || []);
-    if (!selectedMacroDay || !mealsByDate[selectedMacroDay]) {
-      setSelectedMacroDay(dayKey);
+      const mealsByDate = {};
+      Object.entries(mergedByDate).forEach(([key, day]) => {
+        mealsByDate[key] = Array.isArray(day?.meals) ? day.meals : [];
+      });
+      setLogMealsByDate(mealsByDate);
+      setTodayMeals(mealsByDate[dayKey] || []);
+      if (!selectedMacroDay || !mealsByDate[selectedMacroDay]) {
+        setSelectedMacroDay(dayKey);
+      }
+    } catch (error) {
+      const local = getLogsStore(storedId);
+      const localMealsByDate = {};
+      Object.entries(local.byDate || {}).forEach(([key, day]) => {
+        localMealsByDate[key] = Array.isArray(day?.meals) ? day.meals : [];
+      });
+      setLogMealsByDate(localMealsByDate);
+      setTodayMeals(localMealsByDate[dayKey] || []);
+      if (!selectedMacroDay || !localMealsByDate[selectedMacroDay]) {
+        setSelectedMacroDay(dayKey);
+      }
+      setLogsSyncError(
+        toUserFacingNetworkMessage(error, "Could not sync your fuel logs from cloud. Showing local data.")
+      );
     }
   };
 
@@ -1654,6 +1673,14 @@ export default function NutritionPage() {
             </div>
           </div>
         </div>
+        {logsSyncError ? (
+          <div className="studio-banner error" style={{ marginBottom: 12 }}>
+            {logsSyncError}{" "}
+            <button className="studio-back" type="button" onClick={loadTodayMeals} style={{ marginLeft: 8 }}>
+              Retry sync
+            </button>
+          </div>
+        ) : null}
 
         <div className="grid-2">
           {/* LEFT: Protocol controls + meal of day */}

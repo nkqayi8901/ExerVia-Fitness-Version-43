@@ -11,6 +11,7 @@ import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
+import { toUserFacingNetworkMessage } from "../utils/networkError";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -187,6 +188,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [banner, setBanner] = useState("");
+  const [communityLoadError, setCommunityLoadError] = useState("");
+  const [communityReloadToken, setCommunityReloadToken] = useState(0);
   const [blockedProfileIds, setBlockedProfileIds] = useState([]);
 // below are state variables to manage the open/close state of various modals for 
 // creating groups, challenges, posts, replies, and adding friends
@@ -262,6 +265,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
   const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
+  const retryCommunityLoad = () => setCommunityReloadToken((prev) => prev + 1);
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
@@ -798,100 +802,110 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const fetchCommunity = async () => {
       setLoading(true);
       setBanner("");
-      await Promise.all(
-        forumTracks.map((forum) =>
+      setCommunityLoadError("");
+      try {
+        await Promise.all(
+          forumTracks.map((forum) =>
+            supabase
+              .from("community_forums")
+              .upsert(
+                {
+                  title: forum.title,
+                  subtitle: forum.subtitle,
+                  topic_slug: forum.id,
+                  created_by: userId
+                },
+                { onConflict: "topic_slug" }
+              )
+          )
+        );
+        const [
+          forumRes,
+          groupRes,
+          challengeRes,
+          membershipRes,
+          friendRes,
+          forumPostRes,
+          groupMemberRes,
+          groupPostRes,
+          challengeParticipantRes
+        ] = await Promise.all([
+          supabase.from("community_forums").select("*").order("created_at", { ascending: true }),
+          supabase.from("community_groups").select("*").order("created_at", { ascending: false }),
+          supabase.from("community_challenges").select("*").order("created_at", { ascending: false }),
+          supabase.from("community_group_members").select("*").eq("user_id", Number(userId)),
           supabase
-            .from("community_forums")
-            .upsert(
-              {
-                title: forum.title,
-                subtitle: forum.subtitle,
-                topic_slug: forum.id,
-                created_by: userId
-              },
-              { onConflict: "topic_slug" }
-            )
-        )
-      );
-      const [
-        forumRes,
-        groupRes,
-        challengeRes,
-        membershipRes,
-        friendRes,
-        forumPostRes,
-        groupMemberRes,
-        groupPostRes,
-        challengeParticipantRes
-      ] = await Promise.all([
-        supabase.from("community_forums").select("*").order("created_at", { ascending: true }),
-        supabase.from("community_groups").select("*").order("created_at", { ascending: false }),
-        supabase.from("community_challenges").select("*").order("created_at", { ascending: false }),
-        supabase.from("community_group_members").select("*").eq("user_id", Number(userId)),
-        supabase
-          .from("community_friends")
-          .select("*")
-          .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`),
-        supabase.from("community_posts").select("id,forum_id"),
-        supabase.from("community_group_members").select("group_id,user_id"),
-        supabase.from("community_group_posts").select("group_id,created_at").order("created_at", { ascending: false }),
-        supabase.from("community_challenge_participants").select("challenge_id,user_id,progress")
-      ]);
-      if (!mounted) return;
-      setForums(forumRes.data || []);
-      setGroups(groupRes.data || []);
-      setChallenges(challengeRes.data || []);
-      setMemberships(membershipRes.data || []);
-      const threadCounts = {};
-      (forumPostRes.data || []).forEach((post) => {
-        if (!post.forum_id) return;
-        threadCounts[post.forum_id] = (threadCounts[post.forum_id] || 0) + 1;
-      });
-      setForumThreadCounts(threadCounts);
+            .from("community_friends")
+            .select("*")
+            .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`),
+          supabase.from("community_posts").select("id,forum_id"),
+          supabase.from("community_group_members").select("group_id,user_id"),
+          supabase.from("community_group_posts").select("group_id,created_at").order("created_at", { ascending: false }),
+          supabase.from("community_challenge_participants").select("challenge_id,user_id,progress")
+        ]);
+        if (!mounted) return;
+        setForums(forumRes.data || []);
+        setGroups(groupRes.data || []);
+        setChallenges(challengeRes.data || []);
+        setMemberships(membershipRes.data || []);
+        const threadCounts = {};
+        (forumPostRes.data || []).forEach((post) => {
+          if (!post.forum_id) return;
+          threadCounts[post.forum_id] = (threadCounts[post.forum_id] || 0) + 1;
+        });
+        setForumThreadCounts(threadCounts);
 
-      const groupCounts = {};
-      (groupMemberRes.data || []).forEach((row) => {
-        if (!row.group_id) return;
-        groupCounts[row.group_id] = (groupCounts[row.group_id] || 0) + 1;
-      });
-      setGroupMemberCounts(groupCounts);
-      const groupLatest = {};
-      (groupPostRes.data || []).forEach((row) => {
-        if (!row.group_id || groupLatest[row.group_id]) return;
-        groupLatest[row.group_id] = row.created_at;
-      });
-      setGroupLastActive(groupLatest);
+        const groupCounts = {};
+        (groupMemberRes.data || []).forEach((row) => {
+          if (!row.group_id) return;
+          groupCounts[row.group_id] = (groupCounts[row.group_id] || 0) + 1;
+        });
+        setGroupMemberCounts(groupCounts);
+        const groupLatest = {};
+        (groupPostRes.data || []).forEach((row) => {
+          if (!row.group_id || groupLatest[row.group_id]) return;
+          groupLatest[row.group_id] = row.created_at;
+        });
+        setGroupLastActive(groupLatest);
 
-      const challengeCounts = {};
-      const challengeMine = {};
-      (challengeParticipantRes.data || []).forEach((row) => {
-        if (!row.challenge_id) return;
-        challengeCounts[row.challenge_id] = (challengeCounts[row.challenge_id] || 0) + 1;
-        if (Number(row.user_id) === Number(userId)) {
-          challengeMine[row.challenge_id] = Number(row.progress || 0);
+        const challengeCounts = {};
+        const challengeMine = {};
+        (challengeParticipantRes.data || []).forEach((row) => {
+          if (!row.challenge_id) return;
+          challengeCounts[row.challenge_id] = (challengeCounts[row.challenge_id] || 0) + 1;
+          if (Number(row.user_id) === Number(userId)) {
+            challengeMine[row.challenge_id] = Number(row.progress || 0);
+          }
+        });
+        setChallengeParticipantCounts(challengeCounts);
+        setChallengeMyProgress(challengeMine);
+
+        const friendList = friendRes.data || [];
+        setFriends(friendList);
+        const friendIds = friendList.flatMap((row) => [row.user_id, row.friend_user_id]);
+        loadProfiles(friendIds);
+        loadFriendStats(friendIds);
+        loadFriendMessageSummaries();
+        const defaultForum = forumTracks[0].id;
+        setActiveForum(defaultForum);
+        await loadForumPosts(defaultForum, forumRes.data || []);
+        await loadSharedTemplateData();
+      } catch (error) {
+        if (mounted) {
+          setCommunityLoadError(
+            toUserFacingNetworkMessage(error, "Could not load community right now. Please retry.")
+          );
         }
-      });
-      setChallengeParticipantCounts(challengeCounts);
-      setChallengeMyProgress(challengeMine);
-
-      const friendList = friendRes.data || [];
-      setFriends(friendList);
-      const friendIds = friendList.flatMap((row) => [row.user_id, row.friend_user_id]);
-      loadProfiles(friendIds);
-      loadFriendStats(friendIds);
-      loadFriendMessageSummaries();
-      const defaultForum = forumTracks[0].id;
-      setActiveForum(defaultForum);
-      await loadForumPosts(defaultForum, forumRes.data || []);
-      await loadSharedTemplateData();
-      setLoading(false);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
     fetchCommunity();
     // Render
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [userId, communityReloadToken]);
 
   useEffect(() => {
     if (!userId) return;
@@ -3158,6 +3172,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       {!forceGroupRoom && !forceThreadPage && (
         <>
       {banner && <div className="community-banner info">{banner}</div>}
+      {communityLoadError && (
+        <div className="community-banner error">
+          <span>{communityLoadError}</span>
+          <button className="studio-back community-cta-btn" type="button" onClick={retryCommunityLoad}>
+            Retry
+          </button>
+        </div>
+      )}
       {loading && <div className="community-empty">Loading community...</div>}
 
       {/* main layout grid that pairs sidebar + feed, */}
