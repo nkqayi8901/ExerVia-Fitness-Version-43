@@ -3,6 +3,7 @@ import NutritionPage from "./NutritionPage";
 
 const mockNavigate = jest.fn();
 const mockFetchDailyLogs = jest.fn();
+let mockLocalStore = { byDate: {} };
 
 jest.mock(
   "react-router-dom",
@@ -22,7 +23,7 @@ jest.mock("../services/logsApi", () => ({
 }));
 
 jest.mock("../services/logsStorage", () => ({
-  getLogsStore: () => ({ byDate: {} }),
+  getLogsStore: () => mockLocalStore,
   getTodayLogKey: () => "2026-02-23",
   saveLogsStore: jest.fn(),
 }));
@@ -47,6 +48,7 @@ jest.mock("../supabaseClient", () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockLocalStore = { byDate: {} };
   localStorage.clear();
   localStorage.setItem("exervia_user_id", "1");
   localStorage.setItem("exervia_active_mode", "athlete");
@@ -111,3 +113,42 @@ test("shows logs sync error and retries successfully", async () => {
   });
 });
 
+test("keeps showing fallback error and renders local meals when cloud retry also fails", async () => {
+  mockLocalStore = {
+    byDate: {
+      "2026-02-23": {
+        meals: [
+          {
+            id: "local-1",
+            text: "Local fallback meal",
+            calories: 420,
+            protein: 35,
+            carbs: 40,
+            fat: 12,
+          },
+        ],
+      },
+    },
+  };
+  mockFetchDailyLogs.mockReset();
+  mockFetchDailyLogs
+    .mockRejectedValueOnce(new Error("Failed to fetch"))
+    .mockRejectedValueOnce(new Error("Failed to fetch"));
+
+  render(<NutritionPage />);
+
+  await waitFor(() => {
+    expect(screen.getByText(/network issue detected/i)).toBeInTheDocument();
+  });
+  expect(screen.getByText("Local fallback meal")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: /retry sync/i }));
+
+  await waitFor(() => {
+    expect(mockFetchDailyLogs).toHaveBeenCalledTimes(2);
+  });
+  await waitFor(() => {
+    expect(screen.getByText(/network issue|could not sync/i)).toBeInTheDocument();
+  });
+  expect(screen.getByText("Local fallback meal")).toBeInTheDocument();
+});

@@ -1539,7 +1539,9 @@ code {
 .fuel-board-pick:focus-visible,
 .fuel-board-clear:focus-visible,
 .fuel-heart-btn:focus-visible,
-.fuel-slot-item:focus-visible {
+.fuel-slot-item:focus-visible,
+.fuel-tile:focus-visible,
+.fuel-mealofday:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.24);
 }
