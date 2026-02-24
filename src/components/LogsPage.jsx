@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
@@ -96,6 +96,7 @@ const toMl = (value, unit) => {
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const todayKey = getTodayLogKey();
 
   const [selectedDay, setSelectedDay] = useState(todayKey);
@@ -116,6 +117,12 @@ export default function LogsPage({ mode = "gym" }) {
   const [glanceDetail, setGlanceDetail] = useState("training");
   const [weightGoalKg, setWeightGoalKg] = useState("");
   const [waterGoalMl, setWaterGoalMl] = useState("2000");
+
+  useEffect(() => {
+    const dayParam = String(searchParams.get("day") || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dayParam)) return;
+    setSelectedDay(dayParam);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!banner) return;

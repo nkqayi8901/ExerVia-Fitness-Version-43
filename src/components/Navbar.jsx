@@ -36,6 +36,13 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
   const messagesPath = mode === "gym"
     ? `/gym/${resolvedUserId || ""}/messages`
     : `/athlete/${resolvedUserId || ""}/messages`;
+  const messageFabInlineStyle = {
+    position: "fixed",
+    right: "16px",
+    bottom: "max(4px, env(safe-area-inset-bottom, 0px))",
+    top: "auto",
+    left: "auto",
+  };
   const initials = useMemo(() => {
     const source = account?.display_name || account?.username || "Athlete";
     return String(source)
@@ -46,6 +53,10 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
       .slice(0, 2)
       .toUpperCase();
   }, [account]);
+  const accountUsernameLabel = useMemo(() => {
+    const normalized = String(account?.username || "").trim().replace(/^@+/, "");
+    return normalized ? `@${normalized}` : "@username";
+  }, [account?.username]);
 
 // fetchUserState manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -143,6 +154,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
 
 
   return (
+    <>
     <nav className="hud-topbar">
       <div className="hud-brand">
         <div className="hud-logo">E</div>
@@ -193,7 +205,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
               <span className="hud-account-avatar">{initials || "A"}</span>
               <span className="hud-account-copy">
                 <span className="hud-account-name">{account?.display_name || account?.full_name || "Athlete"}</span>
-                <span className="hud-account-username">@{account?.username || "username"}</span>
+                <span className="hud-account-username">{accountUsernameLabel}</span>
               </span>
             </button>
             {menuOpen && (
@@ -216,25 +228,27 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
           </button>
         )}
       </div>
-      {mode && resolvedUserId ? (
-        <button
-          type="button"
-          className="hud-message-fab"
-          onClick={() => navigate(messagesPath)}
-          aria-label="Open messages"
-          title="Messages"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H9l-4 4v-4.2A2.5 2.5 0 0 1 4 13.5z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      ) : null}
     </nav>
+    {mode && resolvedUserId ? (
+      <button
+        type="button"
+        className="hud-message-fab"
+        style={messageFabInlineStyle}
+        onClick={() => navigate(messagesPath)}
+        aria-label="Open messages"
+        title="Messages"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H9l-4 4v-4.2A2.5 2.5 0 0 1 4 13.5z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    ) : null}
+    </>
   );
 }

@@ -5,7 +5,6 @@ import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
-import Navbar from "./Navbar";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -462,6 +461,7 @@ export default function JournalPage({ mode = "gym" }) {
 
   const [savingSlot, setSavingSlot] = useState("");
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
+  const [pendingConfirm, setPendingConfirm] = useState(null);
   const banner = bannerState.message;
   const bannerVariant = bannerState.type || "info";
   const setBanner = useCallback((message, type = "info") => {
@@ -702,7 +702,7 @@ export default function JournalPage({ mode = "gym" }) {
     resetToTodayState();
   };
 
-  const saveSlot = async (slot) => {
+  const saveSlot = async (slot, skipConfirm = false) => {
     if (!userId) return;
 
     const payload = slot === "morning" ? morning : evening;
@@ -714,15 +714,15 @@ export default function JournalPage({ mode = "gym" }) {
       ? { id: editingTarget.id, created_at: editingTarget.dayKey }
       : (slot === "morning" ? todayMorningEntry : todayEveningEntry);
 
-    if (existingEntry) {
-      const confirmed = window.confirm(
+    if (existingEntry && !skipConfirm) {
+      const confirmMessage =
         editingTarget?.slot === slot
           ? `Update this ${slot === "morning" ? "Morning Prep" : "Evening Reflection"} entry?`
           : (slot === "morning"
             ? "Update today\u2019s Morning Prep?"
-            : "Update today\u2019s Evening Reflection?")
-      );
-      if (!confirmed) return;
+            : "Update today\u2019s Evening Reflection?");
+      setPendingConfirm({ slot, message: confirmMessage });
+      return;
     }
 
     setSavingSlot(slot);
@@ -780,9 +780,15 @@ export default function JournalPage({ mode = "gym" }) {
     }
   };
 
+  const handleConfirmSaveUpdate = async () => {
+    if (!pendingConfirm?.slot) return;
+    const slot = pendingConfirm.slot;
+    setPendingConfirm(null);
+    await saveSlot(slot, true);
+  };
+
   return (
     <div className={`hud-bg mode-${pageMode}`}>
-      <Navbar modeLabel="JOURNAL" mode={pageMode} userId={userId} />
       <div className="page-shell journal-shell">
         <div className="page-header">
           <div>
@@ -798,6 +804,19 @@ export default function JournalPage({ mode = "gym" }) {
           </div>
         </div>
         {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
+        {pendingConfirm ? (
+          <div className="exervia-banner warn">
+            <div>{pendingConfirm.message}</div>
+            <div className="exervia-banner-actions">
+              <button type="button" className="studio-back exervia-banner-btn" onClick={() => setPendingConfirm(null)}>
+                Cancel
+              </button>
+              <button type="button" className="hud-primary-btn exervia-banner-btn" onClick={handleConfirmSaveUpdate}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {isBootLoading ? (
           <div className="journal-loading-skeleton" aria-hidden="true">

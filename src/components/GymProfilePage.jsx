@@ -66,7 +66,7 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
           .in("id", leaderboardIds);
         const nextLabels = {};
         (profileRows || []).forEach((row) => {
-          const username = String(row.username || "").trim();
+          const username = String(row.username || "").trim().replace(/^@+/, "");
           nextLabels[row.id] = username ? `@${username}` : row.display_name || `User ${row.id}`;
         });
         setProfileLabels(nextLabels);

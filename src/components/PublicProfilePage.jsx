@@ -37,7 +37,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
   const isSelf = currentUserId === viewedUserId;
 
   const handleLabel = useMemo(() => {
-    const username = String(profile?.username || "").trim();
+    const username = String(profile?.username || "").trim().replace(/^@+/, "");
     if (username) return `@${username}`;
     if (isSelf) {
       const fullName = String(profile?.full_name || "").trim();

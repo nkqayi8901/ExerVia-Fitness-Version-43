@@ -107,6 +107,28 @@ const buildReplyTree = (replies) => {
   return roots;
 };
 
+const parseQuestionReplyPayload = (body) => {
+  const raw = String(body || "");
+  const match = raw.match(/^\[Q_REPLY:([^\]]+)\]\s*/);
+  if (!match) return null;
+  return {
+    questionId: String(match[1]),
+    text: raw.slice(match[0].length).trim()
+  };
+};
+
+const buildQuestionReplyPayload = (questionId, text) =>
+  `[Q_REPLY:${String(questionId)}] ${String(text || "").trim()}`;
+const STATUS_PREFIX = "[STATUS] ";
+
+const normalizeGroupFeedPreview = (body) => {
+  const raw = String(body || "").trim();
+  if (!raw) return "";
+  const reply = parseQuestionReplyPayload(raw);
+  if (reply?.text) return reply.text;
+  return raw.replace(/^\[Q\]\s*/, "").trim();
+};
+
 const getActivityLabel = (activityType) => {
   const normalized = String(activityType || "").trim().toLowerCase();
   if (normalized === "training_session") return "logged a training session";
@@ -120,6 +142,15 @@ const getActivityLabel = (activityType) => {
   if (normalized === "nutrition_log") return "logged nutrition";
   if (normalized === "daily_log") return "updated daily log";
   return normalized ? normalized.replaceAll("_", " ") : "recorded activity";
+};
+
+const toDayKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 // CommunityHub is the main component for the community section of the app,
 // it manages state for forums, groups, challenges, posts, replies, friends, and more,
@@ -223,16 +254,41 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   });
   const [newPostForum, setNewPostForum] = useState(activeForum);
   const [newReply, setNewReply] = useState({ body: "", parentId: null });
+  const [statusDraft, setStatusDraft] = useState("");
+  const [statusPosting, setStatusPosting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    kind: "",
+    title: "",
+    body: "",
+    payload: null,
+  });
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const openConfirmDialog = useCallback(({ kind, title, body, payload = null }) => {
+    setConfirmDialog({ open: true, kind, title, body, payload });
+  }, []);
+  const closeConfirmDialog = useCallback(() => {
+    if (confirmBusy) return;
+    setConfirmDialog({ open: false, kind: "", title: "", body: "", payload: null });
+  }, [confirmBusy]);
   const [groupRoomId, setGroupRoomId] = useState(null);
   const [groupRoomPosts, setGroupRoomPosts] = useState([]);
   const [groupRoomMembers, setGroupRoomMembers] = useState([]);
-  const [groupRoomDraft, setGroupRoomDraft] = useState("");
+  const [groupRoomGeneralDraft, setGroupRoomGeneralDraft] = useState("");
+  const [groupRoomQuestionDraft, setGroupRoomQuestionDraft] = useState("");
+  const [groupRoomQuestionReplyTargetId, setGroupRoomQuestionReplyTargetId] = useState("");
+  const [groupRoomSending, setGroupRoomSending] = useState(false);
+  const [groupRoomChannel, setGroupRoomChannel] = useState("general");
   const [groupRoomLoading, setGroupRoomLoading] = useState(false);
   const [threadInlineReplyOpen, setThreadInlineReplyOpen] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
   const [newFriendUsername, setNewFriendUsername] = useState("");
+  const [editGroupOpen, setEditGroupOpen] = useState(false);
+  const [editGroupTarget, setEditGroupTarget] = useState(null);
+  const [editGroupForm, setEditGroupForm] = useState({ name: "", goal: "" });
   const groupRoomListRef = useRef(null);
+  const GROUP_QUESTION_PREFIX = "[Q] ";
   const [expandedPostIds, setExpandedPostIds] = useState({});
   const [forumThreadCounts, setForumThreadCounts] = useState({});
   const [pinnedThreadIds, setPinnedThreadIds] = useState({});
@@ -289,6 +345,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   }, [banner]);
 
   const closeTopModal = useCallback(() => {
+    if (confirmDialog.open) {
+      closeConfirmDialog();
+      return;
+    }
+    if (editGroupOpen) {
+      setEditGroupOpen(false);
+      return;
+    }
     if (addFriendOpen) {
       setAddFriendOpen(false);
       return;
@@ -314,18 +378,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
   }, [
     addFriendOpen,
+    confirmDialog.open,
     createChallengeOpen,
     createGroupOpen,
     createPostOpen,
     createRecipeTemplateOpen,
     createReplyOpen,
+    editGroupOpen,
     forceThreadPage,
+    closeConfirmDialog,
   ]);
 
   useEffect(() => {
     const anyModalOpen =
+      confirmDialog.open ||
       createRecipeTemplateOpen ||
       createGroupOpen ||
+      editGroupOpen ||
       createChallengeOpen ||
       createPostOpen ||
       (createReplyOpen && !forceThreadPage) ||
@@ -341,12 +410,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     addFriendOpen,
+    confirmDialog.open,
     closeTopModal,
     createChallengeOpen,
     createGroupOpen,
     createPostOpen,
     createRecipeTemplateOpen,
     createReplyOpen,
+    editGroupOpen,
     forceThreadPage,
   ]);
 
@@ -373,24 +444,26 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const normalized = Number(profileId);
     if (!normalized || Number(normalized) === Number(userId)) return;
     const currentlyBlocked = isBlockedProfile(normalized);
-    setBlockedProfileIds((prev) => toggleBlockedId(prev, normalized));
-    setBanner(currentlyBlocked ? "Profile unblocked." : "Profile blocked.");
+    const profileLabel = profiles?.[normalized] || `User ${normalized}`;
+    openConfirmDialog({
+      kind: "block",
+      title: currentlyBlocked ? "Unblock user?" : "Block user?",
+      body: currentlyBlocked
+        ? `Unblock ${profileLabel}.`
+        : `Block ${profileLabel}. You can reverse this later.`,
+      payload: { profileId: normalized, currentlyBlocked },
+    });
   };
 
   const handleReportContent = async ({ targetType, targetId, targetUserId = null }) => {
     if (!userId || !targetType || !targetId) return;
-    const payload = {
-      reporter_id: Number(userId),
-      target_type: String(targetType),
-      target_id: String(targetId),
-      target_user_id: targetUserId ? Number(targetUserId) : null
-    };
-    const { error } = await supabase.from("community_reports").insert([payload]);
-    if (error) {
-      setBanner("Report captured. Moderation review tools are not enabled yet.");
-      return;
-    }
-    setBanner("Report submitted.");
+    const targetLabel = targetUserId ? profiles?.[Number(targetUserId)] || `User ${targetUserId}` : "this content";
+    openConfirmDialog({
+      kind: "report-content",
+      title: "Report content?",
+      body: `Submit report for ${targetLabel}?`,
+      payload: { targetType, targetId, targetUserId },
+    });
   };
 
   const recordEngagementAction = async (actionType) => {
@@ -398,6 +471,51 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     await trackDailyActivity(userId, actionType);
     await recalcUserState(userId);
     window.dispatchEvent(new Event("user_state_updated"));
+  };
+
+  const handleConfirmDialogAction = async () => {
+    if (confirmBusy || !confirmDialog.open) return;
+    setConfirmBusy(true);
+    try {
+      if (confirmDialog.kind === "block") {
+        const normalized = Number(confirmDialog.payload?.profileId);
+        const currentlyBlocked = Boolean(confirmDialog.payload?.currentlyBlocked);
+        if (normalized) {
+          setBlockedProfileIds((prev) => toggleBlockedId(prev, normalized));
+          setBanner(currentlyBlocked ? "Profile unblocked." : "Profile blocked.");
+        }
+        return;
+      }
+      if (confirmDialog.kind === "report-content") {
+        const targetType = confirmDialog.payload?.targetType;
+        const targetId = confirmDialog.payload?.targetId;
+        const targetUserId = confirmDialog.payload?.targetUserId;
+        if (!userId || !targetType || !targetId) return;
+        const payload = {
+          reporter_id: Number(userId),
+          target_type: String(targetType),
+          target_id: String(targetId),
+          target_user_id: targetUserId ? Number(targetUserId) : null
+        };
+        const { error } = await supabase.from("community_reports").insert([payload]);
+        if (error) {
+          setBanner("Report captured. Moderation review tools are not enabled yet.");
+          return;
+        }
+        setBanner("Report submitted.");
+        return;
+      }
+      if (confirmDialog.kind === "report-leaderboard") {
+        await executeReportLeaderboardEntry(confirmDialog.payload?.row);
+        return;
+      }
+      if (confirmDialog.kind === "delete-group") {
+        await executeDeleteGroup(confirmDialog.payload?.group);
+      }
+    } finally {
+      setConfirmBusy(false);
+      setConfirmDialog({ open: false, kind: "", title: "", body: "", payload: null });
+    }
   };
 // loadProfiles takes a list of user ids and fetches their profiles from the backend,
 // it then maps the profiles into a dictionary for easy lookup when displaying posts, 
@@ -414,7 +532,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (error || !data) return;
     const mapped = {};
     data.forEach((profile) => {
-      const username = String(profile.username || "").trim();
+      const username = String(profile.username || "").trim().replace(/^@+/, "");
       mapped[profile.id] = username ? `@${username}` : profile.display_name || `User ${profile.id}`;
     });
     setProfiles((prev) => ({ ...prev, ...mapped }));
@@ -574,6 +692,18 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const handleReportLeaderboardEntry = async (row) => {
     if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
     if (Number(row.user_id) === Number(userId)) return;
+    const targetLabel = profiles?.[Number(row.user_id)] || `User ${row.user_id}`;
+    openConfirmDialog({
+      kind: "report-leaderboard",
+      title: "Report leaderboard user?",
+      body: `Report ${targetLabel} on this week's gym leaderboard?`,
+      payload: { row },
+    });
+  };
+
+  const executeReportLeaderboardEntry = async (row) => {
+    if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
+    if (Number(row.user_id) === Number(userId)) return;
     const targetId = Number(row.user_id);
     if (reportingLeaderboardUserIds[targetId]) return;
     setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: true }));
@@ -624,7 +754,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         : Promise.resolve({ data: [], error: null }),
       supabase
         .from("community_posts")
-        .select("id,forum_id,title,created_by,created_at")
+        .select("id,forum_id,title,body,created_by,created_at")
         .in("created_by", actorIds)
         .order("created_at", { ascending: false })
         .limit(40),
@@ -652,6 +782,17 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     ];
     loadProfiles(actorProfileIds);
 
+    const forumPostByActorDay = {};
+    forumPostRows.forEach((row) => {
+      const actor = Number(row.created_by);
+      const dayKey = toDayKey(row.created_at);
+      if (!actor || !dayKey) return;
+      const key = `${actor}:${dayKey}`;
+      if (!forumPostByActorDay[key]) {
+        forumPostByActorDay[key] = String(row.id || "");
+      }
+    });
+
     const normalized = [
       ...activityRows.map((row) => ({
         id: `activity-${row.id}`,
@@ -659,6 +800,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         actor_id: row.user_id,
         title: getActivityLabel(row.activity_type),
         sub: row.activity_date ? `on ${row.activity_date}` : "",
+        activityType: String(row.activity_type || ""),
+        activityDate: row.activity_date || "",
+        postId:
+          String(row.activity_type || "").toLowerCase() === "community_post" && row.activity_date
+            ? forumPostByActorDay[`${Number(row.user_id)}:${String(row.activity_date)}`] || ""
+            : "",
         type: "activity",
       })),
       ...groupPostRows.map((row) => ({
@@ -666,15 +813,20 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         created_at: row.created_at,
         actor_id: row.created_by,
         title: `posted in ${groupNameById[row.group_id] || "group chat"}`,
-        sub: row.body ? String(row.body).slice(0, 120) : "",
+        sub: normalizeGroupFeedPreview(row.body).slice(0, 180),
+        groupId: String(row.group_id || ""),
+        groupPostId: String(row.id || ""),
         type: "group_post",
       })),
       ...forumPostRows.map((row) => ({
         id: `forum-post-${row.id}`,
         created_at: row.created_at,
         actor_id: row.created_by,
-        title: "created a forum thread",
-        sub: row.title || "",
+        title: String(row.title || "").startsWith(STATUS_PREFIX) ? "posted a status" : "created a forum thread",
+        sub: String(row.title || "").startsWith(STATUS_PREFIX)
+          ? String(row.body || row.title || "").replace(STATUS_PREFIX, "")
+          : row.title || "",
+        postId: String(row.id || ""),
         type: "forum_post",
       })),
     ]
@@ -686,9 +838,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   }, [friends, memberships, userId]);
 
   const loadForumThreadCounts = async () => {
-    const { data } = await supabase.from("community_posts").select("id,forum_id");
+    const { data } = await supabase.from("community_posts").select("id,forum_id,title");
     const counts = {};
     (data || []).forEach((post) => {
+      if (String(post.title || "").startsWith(STATUS_PREFIX)) return;
       if (!post.forum_id) return;
       counts[post.forum_id] = (counts[post.forum_id] || 0) + 1;
     });
@@ -1000,6 +1153,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           const post = payload.new;
           if (!post || !activeForumId) return;
           if (post.forum_id !== activeForumId) return;
+          if (String(post.title || "").startsWith(STATUS_PREFIX)) return;
           setForumPosts((prev) => [post, ...prev]);
           setForumThreadCounts((prev) => ({
             ...prev,
@@ -1137,6 +1291,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         .order("created_at", { ascending: false });
 
       const filteredPosts = (posts || []).filter((post) => {
+        if (String(post.title || "").startsWith(STATUS_PREFIX)) return false;
         const title = (post.title || "").toLowerCase();
         const body = (post.body || "").toLowerCase();
         return title.includes(query) || body.includes(query);
@@ -1387,30 +1542,92 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     setActiveGroupId(groupId);
     setGroupRoomId(groupId);
+    setGroupRoomChannel("general");
+    setGroupRoomQuestionReplyTargetId("");
     await loadGroupRoom(groupId);
   };
 
+  const handleReplyToQuestion = (post) => {
+    const authorName = profiles?.[post?.created_by] || "athlete";
+    const authorHandle = String(authorName || "").startsWith("@")
+      ? String(authorName || "")
+      : `@${String(authorName || "").replace(/^@+/, "")}`;
+    setGroupRoomChannel("questions");
+    setGroupRoomQuestionReplyTargetId(String(post?.id || ""));
+    setGroupRoomQuestionDraft(`${authorHandle} `);
+  };
+
+  const handleDeleteGroupRoomPost = async (postId) => {
+    const resolvedPostId = String(postId || "").trim();
+    if (!resolvedPostId) return;
+    const { error } = await supabase
+      .from("community_group_posts")
+      .delete()
+      .eq("id", resolvedPostId);
+    if (error) {
+      setBanner(error.message || "Could not delete message.");
+      return;
+    }
+    setGroupRoomPosts((prev) => prev.filter((row) => String(row.id) !== resolvedPostId));
+    setBanner("Deleted.");
+  };
+
   const handleSendGroupRoomPost = async () => {
-    if (!groupRoomDraft.trim() || !groupRoomId) return;
+    if (groupRoomSending) return;
+    const trimmedDraft = String(groupRoomDraft || "").trim();
+    if (!trimmedDraft || !groupRoomId) return;
     if (!userId) {
       setBanner("Sign in to post in group room.");
       return;
     }
-    const { error } = await supabase.from("community_group_posts").insert([
-      {
-        group_id: groupRoomId,
-        body: groupRoomDraft.trim(),
-        created_by: userId
+    let payloadBody = trimmedDraft;
+    if (groupRoomChannel === "questions") {
+      if (groupRoomQuestionReplyTargetId) {
+        if (trimmedDraft.length < 2) {
+          setBanner("Reply must be at least 2 characters.");
+          return;
+        }
+        payloadBody = buildQuestionReplyPayload(groupRoomQuestionReplyTargetId, trimmedDraft);
+      } else {
+        const parts = trimmedDraft
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const title = String(parts[0] || "").slice(0, 140).trim();
+        const details = parts.slice(1).join("\n").trim();
+        if (!title) {
+          setBanner("Add a short question title.");
+          return;
+        }
+        payloadBody = details
+          ? `${GROUP_QUESTION_PREFIX}${title}\n\n${details}`
+          : `${GROUP_QUESTION_PREFIX}${title}`;
       }
-    ]);
-    if (error) {
-      setBanner(error.message || "Could not post in room.");
-      return;
     }
-    setGroupRoomDraft("");
-    await loadGroupRoom(groupRoomId);
-    await loadGroupStats();
-    await recordEngagementAction("community_post");
+    setGroupRoomSending(true);
+    try {
+      const { error } = await supabase.from("community_group_posts").insert([
+        {
+          group_id: groupRoomId,
+          body: payloadBody,
+          created_by: userId
+        }
+      ]);
+      if (error) {
+        setBanner(error.message || "Could not post in room.");
+        return;
+      }
+      if (groupRoomChannel === "questions") {
+        setGroupRoomQuestionDraft("");
+        setGroupRoomQuestionReplyTargetId("");
+      } else {
+        setGroupRoomGeneralDraft("");
+      }
+      await loadGroupStats();
+      await recordEngagementAction("community_post");
+    } finally {
+      setGroupRoomSending(false);
+    }
   };
 
 // send a friend request by username,
@@ -1527,7 +1744,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
   };
 
-  const handleDeleteGroup = async (group) => {
+  const executeDeleteGroup = async (group) => {
     if (!userId || !group?.id) return;
     const createdBy = group.created_by;
     const userNumeric = Number(userId);
@@ -1538,8 +1755,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setBanner("Only the group owner can delete this group.");
       return;
     }
-    const confirmed = window.confirm(`Delete "${group.name || "this group"}"? This cannot be undone.`);
-    if (!confirmed) return;
 
     const { error } = await supabase
       .from("community_groups")
@@ -1558,6 +1773,87 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setGroupRoomId(null);
       setActiveGroupId(null);
       navigate(communityBasePath);
+    }
+  };
+
+  const handleDeleteGroup = (group) => {
+    if (!group?.id) return;
+    openConfirmDialog({
+      kind: "delete-group",
+      title: "Delete group?",
+      body: `Delete "${group.name || "this group"}"? This cannot be undone.`,
+      payload: { group },
+    });
+  };
+
+  const isGroupOwner = (group) => {
+    const createdBy = group?.created_by;
+    const userNumeric = Number(userId);
+    return (
+      (Number.isFinite(Number(createdBy)) && Number(createdBy) === userNumeric) ||
+      String(createdBy) === String(userId)
+    );
+  };
+
+  const handleOpenEditGroup = (group) => {
+    if (!group || !isGroupOwner(group)) return;
+    setEditGroupTarget(group);
+    setEditGroupForm({ name: String(group.name || ""), goal: String(group.goal || "") });
+    setEditGroupOpen(true);
+  };
+
+  const handleUpdateGroup = async () => {
+    if (!editGroupTarget?.id || !userId) return;
+    const nextName = String(editGroupForm.name || "").trim();
+    const nextGoal = String(editGroupForm.goal || "").trim();
+    if (!nextName) {
+      setBanner("Group name is required.");
+      return;
+    }
+    const { error } = await supabase
+      .from("community_groups")
+      .update({ name: nextName, goal: nextGoal })
+      .eq("id", String(editGroupTarget.id))
+      .eq("created_by", editGroupTarget.created_by);
+    if (error) {
+      setBanner(error.message || "Could not update group.");
+      return;
+    }
+    setEditGroupOpen(false);
+    setEditGroupTarget(null);
+    setBanner("Group updated.");
+    await refreshGroupsAndMemberships();
+    await loadGroupStats();
+  };
+
+  const handleCreateStatusPost = async () => {
+    const body = String(statusDraft || "").trim();
+    if (!body || !userId || statusPosting) return;
+    const statusForumId = forums.find((forum) => forum.topic_slug === "mindset")?.id || forums[0]?.id;
+    if (!statusForumId) {
+      setBanner("Status posting is unavailable right now.");
+      return;
+    }
+    setStatusPosting(true);
+    try {
+      const { error } = await supabase.from("community_posts").insert([
+        {
+          forum_id: statusForumId,
+          title: `${STATUS_PREFIX}${body.slice(0, 120)}`,
+          body,
+          created_by: Number(userId)
+        }
+      ]);
+      if (error) {
+        setBanner(error.message || "Could not post status.");
+        return;
+      }
+      setStatusDraft("");
+      setBanner("Status posted.");
+      await recordEngagementAction("community_post");
+      await loadActivityFeed();
+    } finally {
+      setStatusPosting(false);
     }
   };
 
@@ -1934,14 +2230,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       .select("*")
       .eq("forum_id", forumId)
       .order("created_at", { ascending: false });
-    setForumPosts(data || []);
-    if (!data?.length) {
+    const visiblePosts = (data || []).filter((post) => !String(post.title || "").startsWith(STATUS_PREFIX));
+    setForumPosts(visiblePosts);
+    if (!visiblePosts.length) {
       setPostReplies({});
       setReactionCounts({});
       setUserReactions({});
       return;
     }
-    const postIds = data.map((post) => post.id);
+    const postIds = visiblePosts.map((post) => post.id);
     const { data: replyData } = await supabase
       .from("community_post_replies")
       .select("*")
@@ -1954,7 +2251,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     });
     setPostReplies(grouped);
     const authorIds = [
-      ...data.map((post) => post.created_by),
+      ...visiblePosts.map((post) => post.created_by),
       ...(replyData || []).map((reply) => reply.created_by)
     ];
     loadProfiles(authorIds);
@@ -2276,6 +2573,42 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // keeps the main render logic clean,
 // recalculates when groups or memberships update
   const activeGroup = groups.find((group) => String(group.id) === String(groupRoomId || activeGroupId)) || null;
+  const groupRoomGeneralPosts = useMemo(
+    () =>
+      groupRoomPosts.filter((post) => {
+        const body = String(post.body || "");
+        return !body.startsWith(GROUP_QUESTION_PREFIX) && !parseQuestionReplyPayload(body);
+      }),
+    [groupRoomPosts]
+  );
+  const groupRoomQuestionPosts = useMemo(
+    () => groupRoomPosts.filter((post) => String(post.body || "").startsWith(GROUP_QUESTION_PREFIX)),
+    [groupRoomPosts]
+  );
+  const groupRoomQuestionReplyPosts = useMemo(
+    () => groupRoomPosts.filter((post) => Boolean(parseQuestionReplyPayload(post.body))),
+    [groupRoomPosts]
+  );
+  const groupRoomQuestionRepliesByQuestionId = useMemo(() => {
+    const next = {};
+    groupRoomQuestionReplyPosts.forEach((reply) => {
+      const parsed = parseQuestionReplyPayload(reply.body);
+      const qid = String(parsed?.questionId || "").trim();
+      if (!qid) return;
+      if (!next[qid]) next[qid] = [];
+      next[qid].push(reply);
+    });
+    return next;
+  }, [groupRoomQuestionReplyPosts]);
+  const groupRoomQuestionPostById = useMemo(() => {
+    const next = {};
+    groupRoomQuestionPosts.forEach((post) => {
+      next[Number(post.id)] = post;
+    });
+    return next;
+  }, [groupRoomQuestionPosts]);
+  const groupRoomVisiblePosts = groupRoomChannel === "questions" ? groupRoomQuestionPosts : groupRoomGeneralPosts;
+  const groupRoomDraft = groupRoomChannel === "questions" ? groupRoomQuestionDraft : groupRoomGeneralDraft;
   const isGroupMember = useCallback((groupId) =>
     memberships.some((membership) => String(membership.group_id) === String(groupId)), [memberships]);
   const groupPrivacyLabel = (privacy) => {
@@ -2801,69 +3134,215 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       <div className="community-group-room-layout">
         <aside className="community-group-room-left">
           <div className="community-panel-title">Channels</div>
-          <div className="community-room-channel active"># general</div>
-          <div className="community-room-note">More channels unlock as your group grows.</div>
+          <button
+            type="button"
+            className={`community-room-channel ${groupRoomChannel === "general" ? "active" : ""}`}
+            onClick={() => {
+              setGroupRoomChannel("general");
+              setGroupRoomQuestionReplyTargetId("");
+            }}
+          >
+            General Chat
+          </button>
+          <button
+            type="button"
+            className={`community-room-channel ${groupRoomChannel === "questions" ? "active" : ""}`}
+            onClick={() => setGroupRoomChannel("questions")}
+          >
+            Questions
+          </button>
+          <div className="community-room-note">
+            General Chat is for live discussion. Questions is a mini forum lane for focused Q&amp;A.
+          </div>
         </aside>
-        <section className="community-group-room-center">
-          <div className="community-group-room-messages" ref={groupRoomListRef}>
+        <section className={`community-group-room-center ${groupRoomChannel === "general" ? "general-chat" : ""}`}>
+          <div className={`community-group-room-messages ${groupRoomChannel === "general" ? "general-chat" : ""}`} ref={groupRoomListRef}>
             {groupRoomLoading && renderEmptyState({ icon: "...", title: "Loading room", sub: "Syncing latest messages." })}
-            {!groupRoomLoading && !groupRoomPosts.length && (
-              renderEmptyState({ icon: "💬", title: "No messages yet", sub: "Start the room with your first message." })
+            {!groupRoomLoading && !groupRoomVisiblePosts.length && (
+              renderEmptyState({
+                icon: groupRoomChannel === "questions" ? "?" : "...",
+                title: groupRoomChannel === "questions" ? "No questions yet" : "No messages yet",
+                sub:
+                  groupRoomChannel === "questions"
+                    ? "Ask the first question for this group."
+                    : "Start the room with your first message."
+              })
             )}
             {!groupRoomLoading &&
-              groupRoomPosts
+              groupRoomVisiblePosts
                 .filter((post) => !isBlockedProfile(post.created_by))
                 .map((post) => {
                 const authorName = profiles[post.created_by] || "Athlete";
-                const initial = String(authorName).charAt(0).toUpperCase();
+                const initial = String(authorName).replace(/^@+/, "").charAt(0).toUpperCase();
                 const isSelf = Number(post.created_by) === Number(userId);
+                const isQuestionMessage = String(post.body || "").startsWith(GROUP_QUESTION_PREFIX);
+                const bodyText = isQuestionMessage
+                  ? String(post.body || "").slice(GROUP_QUESTION_PREFIX.length).trim()
+                  : post.body;
+                const [questionTitleRaw, ...questionRest] = String(bodyText || "").split("\n\n");
+                const questionTitle = String(questionTitleRaw || "").trim();
+                const questionDetails = String(questionRest.join("\n\n") || "").trim();
+                const questionReplies = groupRoomQuestionRepliesByQuestionId[String(post.id)] || [];
                 return (
                   <div key={post.id} className={`community-group-room-msg-row ${isSelf ? "self" : ""}`}>
-                    <div className={`community-group-room-msg ${isSelf ? "self" : ""}`}>
+                    <div className={`community-group-room-msg ${isSelf ? "self" : ""} ${isQuestionMessage ? "question" : ""}`}>
                       <div className="community-group-room-msg-head">
-                        <span className="community-group-room-avatar" aria-hidden="true">{initial}</span>
-                        <button type="button" className="community-profile-link community-group-room-author" onClick={() => openUserProfile(post.created_by)}>{authorName}</button>
+                        {isQuestionMessage ? (
+                          <span className="community-group-room-avatar" aria-hidden="true">{initial}</span>
+                        ) : null}
+                        <button type="button" className="community-profile-link community-group-room-author" onClick={() => openUserProfile(post.created_by)}>
+                          {authorName}
+                        </button>
                         <span className="community-group-room-time">{formatTime(post.created_at)}</span>
                       </div>
-                      <div className="community-group-room-body">{post.body}</div>
-                      <div className="community-reply-actions">
-                        <button
-                          className="community-reply-btn"
-                          type="button"
-                          onClick={() =>
-                            handleReportContent({
-                              targetType: "group_post",
-                              targetId: post.id,
-                              targetUserId: post.created_by
-                            })
-                          }
-                        >
-                          Report
-                        </button>
-                        {!isSelf && (
+                      {isQuestionMessage ? <div className="community-group-room-question-tag">Question</div> : null}
+                      {isQuestionMessage ? (
+                        <div className="community-group-room-question-wrap">
+                          <div className="community-group-room-question-title">{questionTitle || bodyText}</div>
+                          {questionDetails ? (
+                            <div className="community-group-room-question-details">{questionDetails}</div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="community-group-room-body">{bodyText}</div>
+                      )}
+                      {isQuestionMessage ? (
+                        <div className="community-reply-actions">
                           <button
                             className="community-reply-btn"
                             type="button"
-                            onClick={() => handleToggleBlockProfile(post.created_by)}
+                            onClick={() => handleReplyToQuestion(post)}
                           >
-                            {isBlockedProfile(post.created_by) ? "Unblock" : "Block"}
+                            Reply
                           </button>
-                        )}
-                      </div>
+                          <span className="community-reply-meta">
+                            {questionReplies.length} {questionReplies.length === 1 ? "reply" : "replies"}
+                          </span>
+                          <button
+                            className="community-reply-btn"
+                            type="button"
+                            onClick={() =>
+                              handleReportContent({
+                                targetType: "group_post",
+                                targetId: post.id,
+                                targetUserId: post.created_by
+                              })
+                            }
+                          >
+                            Report
+                          </button>
+                          {isSelf && (
+                            <button
+                              className="community-reply-btn"
+                              type="button"
+                              onClick={() => handleDeleteGroupRoomPost(post.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                          {!isSelf && (
+                            <button
+                              className="community-reply-btn"
+                              type="button"
+                              onClick={() => handleToggleBlockProfile(post.created_by)}
+                            >
+                              {isBlockedProfile(post.created_by) ? "Unblock" : "Block"}
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                      {isQuestionMessage && questionReplies.length > 0 ? (
+                        <div className="community-question-replies">
+                          {questionReplies.map((reply) => {
+                            const parsedReply = parseQuestionReplyPayload(reply.body);
+                            const replyBody = String(parsedReply?.text || "").trim();
+                            const replyAuthor = profiles[reply.created_by] || "Athlete";
+                            const replyIsSelf = Number(reply.created_by) === Number(userId);
+                            return (
+                              <div key={reply.id} className={`community-question-reply ${replyIsSelf ? "self" : ""}`}>
+                                <div className="community-question-reply-head">
+                                  <button
+                                    type="button"
+                                    className="community-profile-link community-group-room-author"
+                                    onClick={() => openUserProfile(reply.created_by)}
+                                  >
+                                    {replyAuthor}
+                                  </button>
+                                  <span className="community-group-room-time">{formatTime(reply.created_at)}</span>
+                                  {replyIsSelf ? (
+                                    <button
+                                      type="button"
+                                      className="community-reply-btn"
+                                      onClick={() => handleDeleteGroupRoomPost(reply.id)}
+                                    >
+                                      Delete
+                                    </button>
+                                  ) : null}
+                                </div>
+                                <div className="community-question-reply-body">{replyBody}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
               })}
           </div>
-          <div className="community-group-room-inputbar">
-            <input
-              className="community-modal-input community-group-room-input"
-              placeholder="Message #general"
-              value={groupRoomDraft}
-              onChange={(event) => setGroupRoomDraft(event.target.value)}
-            />
-            <button className="studio-back community-cta-btn community-primary-btn community-chat-send-btn" onClick={handleSendGroupRoomPost}>
-              Send
+          <div className="community-group-room-inputbar community-friend-chat-input">
+            {groupRoomChannel === "questions" ? (
+              <>
+                {groupRoomQuestionReplyTargetId ? (
+                  <div className="community-question-compose-meta">
+                    <span>
+                      Replying to: {String(
+                        groupRoomQuestionPostById[String(groupRoomQuestionReplyTargetId)]?.body || ""
+                      )
+                        .replace(GROUP_QUESTION_PREFIX, "")
+                        .split("\n\n")[0]
+                        .trim()
+                        .slice(0, 90)}
+                    </span>
+                    <button
+                      type="button"
+                      className="community-reply-btn"
+                      onClick={() => {
+                        setGroupRoomQuestionReplyTargetId("");
+                        setGroupRoomQuestionDraft("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
+                <textarea
+                  className="community-modal-input community-group-room-input community-group-room-question-input"
+                  placeholder={
+                    groupRoomQuestionReplyTargetId
+                      ? "Write your reply"
+                      : "Question title on first line, optional details below"
+                  }
+                  value={groupRoomDraft}
+                  disabled={groupRoomSending}
+                  onChange={(event) => setGroupRoomQuestionDraft(event.target.value)}
+                />
+              </>
+            ) : (
+              <input
+                className="community-modal-input community-group-room-input"
+                placeholder={"Write a message"}
+                value={groupRoomDraft}
+                disabled={groupRoomSending}
+                onChange={(event) => setGroupRoomGeneralDraft(event.target.value)}
+              />
+            )}
+            <button
+              className={`studio-back community-cta-btn community-chat-send-btn ${groupRoomChannel === "questions" ? "community-primary-btn" : ""}`}
+              onClick={handleSendGroupRoomPost}
+              disabled={groupRoomSending || !groupRoomDraft.trim()}
+            >
+              {groupRoomSending ? "Sending..." : groupRoomChannel === "questions" ? (groupRoomQuestionReplyTargetId ? "Reply" : "Post") : "Send"}
             </button>
           </div>
         </section>
@@ -3422,27 +3901,185 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {activeTab === "feed" && (
             <div className="community-panel">
               <div className="community-panel-title">Activity Feed</div>
+              <div className="community-inline-reply">
+                <div className="community-inline-reply-head">
+                  <span className="community-section-label">Status</span>
+                  <span className="community-inline-reply-parent">Post to your feed</span>
+                </div>
+                <textarea
+                  className="community-modal-textarea community-inline-reply-input"
+                  placeholder="Share a status with your friends and groups..."
+                  value={statusDraft}
+                  onChange={(event) => setStatusDraft(event.target.value)}
+                />
+                <div className="community-modal-actions">
+                  <button
+                    className="studio-back community-cta-btn community-primary-btn"
+                    type="button"
+                    onClick={handleCreateStatusPost}
+                    disabled={statusPosting || !statusDraft.trim()}
+                  >
+                    {statusPosting ? "Posting..." : "Post status"}
+                  </button>
+                </div>
+              </div>
               <div className="community-feed-list">
                 {activityFeedLoading && <div className="community-empty">Loading feed...</div>}
                 {!activityFeedLoading &&
-                  activityFeedItems.map((item) => (
-                    <div key={item.id} className="community-feed-card community-activity-card">
+                  activityFeedItems.map((item) => {
+                    const openTraining = () =>
+                      navigate(
+                        `/${routePrefix}/${userId}/logs?day=${encodeURIComponent(item.activityDate)}`
+                      );
+                    const openForumPost = () => openThreadPage(item.postId);
+                    const openForums = () => setActiveTab("forums");
+                    const openGroupChat = () => {
+                      setGroupRoomId(item.groupId);
+                      setActiveGroupId(item.groupId);
+                      navigate(groupRoomPath(item.groupId));
+                    };
+
+                    let primaryAction = null;
+                    let primaryLabel = "";
+                    let primaryIcon = "";
+                    if (item.type === "activity" && item.activityType === "training_session" && item.activityDate) {
+                      primaryAction = openTraining;
+                      primaryLabel = "Training Log";
+                      primaryIcon = "LOG";
+                    } else if (item.type === "activity" && item.activityType === "community_post" && item.postId) {
+                      primaryAction = openForumPost;
+                      primaryLabel = "Forum Post";
+                      primaryIcon = "FORUM";
+                    } else if (item.type === "activity" && item.activityType === "community_post" && !item.postId) {
+                      primaryAction = openForums;
+                      primaryLabel = "Forums";
+                      primaryIcon = "FORUM";
+                    } else if (item.type === "forum_post" && item.postId) {
+                      primaryAction = openForumPost;
+                      primaryLabel = "Forum Post";
+                      primaryIcon = "FORUM";
+                    } else if (item.type === "group_post" && item.groupId) {
+                      primaryAction = openGroupChat;
+                      primaryLabel = "Group Chat";
+                      primaryIcon = "GROUP";
+                    }
+
+                    return (
+                    <div
+                      key={item.id}
+                      className={`community-feed-card community-activity-card${primaryAction ? " clickable" : ""}`}
+                      role={primaryAction ? "button" : undefined}
+                      tabIndex={primaryAction ? 0 : undefined}
+                      aria-label={
+                        primaryAction
+                          ? `${item.title}${item.sub ? `. ${item.sub}` : ""}. Opens ${primaryLabel || "details"}.`
+                          : undefined
+                      }
+                      onClick={primaryAction || undefined}
+                      onKeyDown={
+                        primaryAction
+                          ? (event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                primaryAction();
+                              }
+                            }
+                          : undefined
+                      }
+                    >
                       <div className="community-feed-head">
                         <div className="community-feed-title-row">
                           <button
                             type="button"
-                            className="community-profile-link community-feed-title"
-                            onClick={() => openUserProfile(item.actor_id)}
+                            className="community-profile-link community-feed-title community-activity-actor"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openUserProfile(item.actor_id);
+                            }}
                           >
                             {profiles[item.actor_id] || `User ${item.actor_id}`}
                           </button>
-                          <span className="community-feed-sub">{formatTime(item.created_at)}</span>
+                          <span className="community-feed-sub community-activity-time">{formatTime(item.created_at)}</span>
                         </div>
+                        {primaryAction ? (
+                          <div className="community-activity-destination" aria-hidden="true">
+                            <span className="community-activity-destination-icon">{primaryIcon}</span>
+                            <span>{primaryLabel}</span>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="community-feed-sub">{item.title}</div>
-                      {item.sub ? <div className="community-feed-sub">{item.sub}</div> : null}
+                      <div className="community-feed-sub community-activity-title">{item.title}</div>
+                      {item.sub ? <div className="community-feed-sub community-activity-detail">{item.sub}</div> : null}
+                      <div className="community-thread-actions">
+                        {item.type === "activity" &&
+                        item.activityType === "training_session" &&
+                        item.activityDate ? (
+                          <button
+                            type="button"
+                            className="studio-back community-action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openTraining();
+                            }}
+                          >
+                            Open training log
+                          </button>
+                        ) : null}
+                        {item.type === "activity" &&
+                        item.activityType === "community_post" &&
+                        item.postId ? (
+                          <button
+                            type="button"
+                            className="studio-back community-action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openForumPost();
+                            }}
+                          >
+                            Open forum post
+                          </button>
+                        ) : null}
+                        {item.type === "activity" &&
+                        item.activityType === "community_post" &&
+                        !item.postId ? (
+                          <button
+                            type="button"
+                            className="studio-back community-action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openForums();
+                            }}
+                          >
+                            Open forums
+                          </button>
+                        ) : null}
+                        {item.type === "forum_post" && item.postId ? (
+                          <button
+                            type="button"
+                            className="studio-back community-action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openForumPost();
+                            }}
+                          >
+                            Open forum post
+                          </button>
+                        ) : null}
+                        {item.type === "group_post" && item.groupId ? (
+                          <button
+                            type="button"
+                            className="studio-back community-action-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openGroupChat();
+                            }}
+                          >
+                            Open group chat
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  ))}
+                  )})}
                 {!activityFeedLoading &&
                   !activityFeedItems.length &&
                   renderEmptyState({
@@ -4150,7 +4787,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                   return (
                     <div
                       key={group.id}
-                      className={`community-forum-item community-group-square ${activeGroupId === group.id ? "active" : ""}`}
+                      className={`community-forum-item community-group-square ${String(groupRoomId) === String(group.id) ? "active" : ""}`}
                     >
                       <div className="community-forum-title">{group.name}</div>
                       <div className="community-group-meta-line">
@@ -4180,14 +4817,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                         >
                           Leave
                         </button>
-                        {(() => {
-                          const createdBy = group.created_by;
-                          const userNumeric = Number(userId);
-                          return (
-                            (Number.isFinite(Number(createdBy)) && Number(createdBy) === userNumeric) ||
-                            String(createdBy) === String(userId)
-                          );
-                        })() && (
+                        {isGroupOwner(group) && (
+                          <button
+                            type="button"
+                            className="studio-back community-cta-btn community-group-open-btn"
+                            onClick={() => handleOpenEditGroup(group)}
+                          >
+                            Edit group
+                          </button>
+                        )}
+                        {isGroupOwner(group) && (
                           <button
                             type="button"
                             className="studio-back community-cta-btn community-group-open-btn"
@@ -4489,6 +5128,51 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         </div>
       )}
 
+      {confirmDialog.open && (
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeConfirmDialog()}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="community-modal-title">{confirmDialog.title || "Please confirm"}</div>
+            <div className="community-feed-sub">{confirmDialog.body || "Are you sure?"}</div>
+            <div className="community-modal-actions">
+              <button className="studio-back community-cta-btn" type="button" onClick={closeConfirmDialog} disabled={confirmBusy}>
+                No
+              </button>
+              <button className="studio-back community-cta-btn community-primary-btn" type="button" onClick={handleConfirmDialogAction} disabled={confirmBusy}>
+                {confirmBusy ? "Working..." : "Yes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editGroupOpen && (
+        <div className="community-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setEditGroupOpen(false)}>
+          <div className="community-modal" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="community-modal-title">Edit group</div>
+            <input
+              className="community-modal-input"
+              placeholder="Group name"
+              value={editGroupForm.name}
+              onChange={(event) => setEditGroupForm((prev) => ({ ...prev, name: event.target.value }))}
+            />
+            <input
+              className="community-modal-input"
+              placeholder="Group goal"
+              value={editGroupForm.goal}
+              onChange={(event) => setEditGroupForm((prev) => ({ ...prev, goal: event.target.value }))}
+            />
+            <div className="community-modal-actions">
+              <button className="studio-back community-cta-btn" onClick={() => setEditGroupOpen(false)}>
+                Cancel
+              </button>
+              <button className="studio-back community-cta-btn" onClick={handleUpdateGroup}>
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* create challenge modal for weekly goals, */}
       {/* collects type/target/duration inputs, */}
       {/* inserts a new challenge and refreshes the list, */}
@@ -4639,5 +5323,3 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     </div>
   );
 }
-
-

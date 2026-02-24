@@ -68,6 +68,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [gymSearchLoading, setGymSearchLoading] = useState(false);
   const [mapsReady, setMapsReady] = useState(false);
   const [showGymAdvanced, setShowGymAdvanced] = useState(false);
+  const [confirmBanner, setConfirmBanner] = useState(null);
 
   const [profile, setProfile] = useState(null);
   const heroBackgroundStyle = { "--exervia-hero-bg": `url(${heroImage})` };
@@ -370,16 +371,24 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     };
   }, [gymQuery, mapsReady, settingsOnly]);
 
-  const confirmDiscardIfDirty = () => {
+  const confirmDiscardIfDirty = (nextAction = "") => {
     if (!isSettingsDirty) return true;
-    return window.confirm("You have unsaved profile changes. Leave without saving?");
+    setConfirmBanner({
+      kind: "discard_changes",
+      message: "You have unsaved profile changes. Leave without saving?",
+      action: String(nextAction || ""),
+    });
+    return false;
   };
 
-  const goToApp = async () => {
-    if (!confirmDiscardIfDirty()) return;
+  const executeGoToApp = async () => {
     if (!profile?.id) return;
     const destination = await resolveHomePath(profile.id);
     navigate(destination);
+  };
+  const goToApp = async () => {
+    if (!confirmDiscardIfDirty("go_to_app")) return;
+    await executeGoToApp();
   };
 
   const pickGymSuggestion = (item) => {
@@ -603,8 +612,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setBanner("Profile updated.", "success");
   };
 
-  const handleLogout = async () => {
-    if (!confirmDiscardIfDirty()) return;
+  const executeLogout = async () => {
     setSession(null);
     setProfile(null);
     setLoading(false);
@@ -617,8 +625,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setBanner("Logged out.", "info");
     navigate("/auth", { replace: true });
   };
+  const handleLogout = async () => {
+    if (!confirmDiscardIfDirty("logout")) return;
+    await executeLogout();
+  };
 
-  const handleDeleteAccount = async () => {
+  const executeDeleteAccount = async () => {
     if (!session?.user?.email) {
       setBanner("Missing account email. Please re-login and try again.", "error");
       return;
@@ -629,9 +641,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
     if (!deletePassword) {
       setBanner("Enter your password to confirm account deletion.", "error");
-      return;
-    }
-    if (!window.confirm("Delete your account permanently? This cannot be undone.")) {
       return;
     }
 
@@ -665,15 +674,55 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setBanner("Account deleted.", "success");
     navigate("/", { replace: true });
   };
+  const handleDeleteAccount = async () => {
+    if (!session?.user?.email) {
+      setBanner("Missing account email. Please re-login and try again.", "error");
+      return;
+    }
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      setBanner("Type DELETE to confirm account deletion.", "error");
+      return;
+    }
+    if (!deletePassword) {
+      setBanner("Enter your password to confirm account deletion.", "error");
+      return;
+    }
+    setConfirmBanner({
+      kind: "delete_account",
+      message: "Delete your account permanently? This cannot be undone.",
+    });
+  };
 
-  const handleBack = async () => {
-    if (!confirmDiscardIfDirty()) return;
+  const executeBack = async () => {
     if (settingsOnly && profile?.id) {
       const destination = await resolveHomePath(profile.id);
       navigate(destination);
       return;
     }
     navigate("/");
+  };
+  const handleBack = async () => {
+    if (!confirmDiscardIfDirty("back")) return;
+    await executeBack();
+  };
+
+  const handleConfirmBannerAction = async () => {
+    const pending = confirmBanner;
+    if (!pending) return;
+    setConfirmBanner(null);
+    if (pending.kind === "delete_account") {
+      await executeDeleteAccount();
+      return;
+    }
+    if (pending.kind === "discard_changes") {
+      if (pending.action === "go_to_app") {
+        await executeGoToApp();
+      } else if (pending.action === "logout") {
+        await executeLogout();
+      } else if (pending.action === "back") {
+        await executeBack();
+      }
+    }
   };
 
   if (loading) {
@@ -706,6 +755,27 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         {banner ? (
           <div className={`exervia-banner profile-feedback ${bannerVariant}`}>
             <p className="m-0">{banner}</p>
+          </div>
+        ) : null}
+        {confirmBanner ? (
+          <div className="exervia-banner warn">
+            <p className="m-0">{confirmBanner.message}</p>
+            <div className="exervia-banner-actions">
+              <button
+                className="studio-back exervia-banner-btn"
+                onClick={() => setConfirmBanner(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="profile-button-primary exervia-banner-btn"
+                onClick={handleConfirmBannerAction}
+                type="button"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         ) : null}
 

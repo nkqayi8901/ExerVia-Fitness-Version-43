@@ -249,6 +249,16 @@ code {
   border-color: rgba(248, 113, 113, 0.56);
   background: linear-gradient(145deg, rgba(127, 29, 29, 0.8), rgba(153, 27, 27, 0.72));
 }
+.exervia-banner-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.exervia-banner-btn {
+  min-height: 38px;
+}
 
 .profile-input {
   width: 100%;
@@ -691,7 +701,7 @@ code {
 .hud-message-fab {
   position: fixed;
   right: 18px;
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(0px + env(safe-area-inset-bottom, 0px));
   width: 52px;
   height: 52px;
   border-radius: 16px;
@@ -1240,7 +1250,7 @@ code {
 @media (max-width: 980px) {
   .hud-message-fab {
     right: 12px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(44px + env(safe-area-inset-bottom, 0px));
     width: 48px;
     height: 48px;
     border-radius: 14px;
@@ -1249,7 +1259,7 @@ code {
 
 @media (max-width: 768px) {
   .hud-message-fab {
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 }
 .mode-gym .hud-account-trigger:hover {
@@ -6377,6 +6387,21 @@ code {
   gap: 14px;
 }
 
+.community-group-room-center.general-chat {
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+}
+
+.community-group-room-messages.general-chat {
+  max-height: 320px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(var(--community-room-msg-rgb), 0.3);
+}
+
 .community-group-room-msg-row,
 .community-friend-msg-row {
   display: flex;
@@ -6404,6 +6429,100 @@ code {
 .community-friend-chat-bubble.me {
   border-color: rgba(var(--community-accent-rgb), 0.45);
   background: linear-gradient(135deg, rgba(var(--community-accent-rgb), 0.14), rgba(var(--community-room-msg-rgb), 0.6));
+}
+
+.community-group-room-msg.question {
+  border-color: rgba(250, 204, 21, 0.4);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.14), rgba(var(--community-room-msg-rgb), 0.6));
+}
+
+.community-group-room-question-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(254, 243, 199, 0.94);
+  background: rgba(120, 53, 15, 0.45);
+  padding: 2px 8px;
+  margin: 2px 0 8px;
+}
+
+.community-group-room-question-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.community-group-room-question-title {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.community-group-room-question-details {
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(226, 232, 240, 0.9);
+  white-space: pre-wrap;
+}
+
+.community-reply-meta {
+  font-size: 11px;
+  color: rgba(148, 163, 184, 0.85);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.community-question-replies {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  display: grid;
+  gap: 8px;
+}
+
+.community-question-reply {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(var(--community-room-msg-rgb), 0.38);
+  padding: 10px 11px;
+}
+
+.community-question-reply.self {
+  border-color: rgba(var(--community-accent-rgb), 0.34);
+  background: linear-gradient(135deg, rgba(var(--community-accent-rgb), 0.12), rgba(var(--community-room-msg-rgb), 0.48));
+}
+
+.community-question-reply-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.community-question-reply-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.92);
+  white-space: pre-wrap;
+}
+
+.community-question-compose-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 10px;
+  background: rgba(var(--community-room-msg-rgb), 0.28);
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .community-group-room-msg::after,
@@ -6498,6 +6617,11 @@ code {
   border-color: rgba(var(--community-border-rgb), 0.26);
 }
 
+.community-group-room-question-input {
+  min-height: 86px;
+  resize: vertical;
+}
+
 .community-chat-send-btn {
   min-width: 96px;
   border-radius: 12px !important;
@@ -6579,6 +6703,35 @@ code {
 
 .community-activity-card {
   padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.community-activity-card.clickable {
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.community-activity-card.clickable:hover {
+  border-color: rgba(var(--community-accent-rgb), 0.42);
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.32);
+  transform: translateY(-1px);
+}
+
+.community-activity-card.clickable:focus-visible {
+  outline: 2px solid rgba(var(--community-accent-rgb), 0.58);
+  outline-offset: 2px;
+}
+
+.community-feed-list {
+  display: grid;
+  gap: 12px;
+}
+
+.community-feed-head {
+  margin-bottom: 2px;
+  display: grid;
+  gap: 8px;
 }
 
 .community-feed-title-row {
@@ -6586,6 +6739,64 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.community-activity-actor {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.community-activity-time {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.76;
+  white-space: nowrap;
+}
+
+.community-activity-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: 0.88;
+}
+
+.community-activity-detail {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  opacity: 0.95;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.community-activity-destination {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid rgba(var(--community-accent-rgb), 0.32);
+  border-radius: 999px;
+  background: rgba(var(--community-accent-rgb), 0.12);
+  color: rgba(224, 242, 254, 0.92);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+}
+
+.community-activity-destination-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--community-accent-rgb), 0.4);
+  background: rgba(2, 6, 23, 0.5);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 
 .community-leaderboard-grid {
@@ -8975,6 +9186,56 @@ code {
   border-color: rgba(16, 185, 129, 0.4);
   color: #0f172a;
 }
+
+.mode-gym .community-group-room-msg.question {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(255, 255, 255, 0.98));
+  border-color: rgba(217, 119, 6, 0.34);
+}
+
+.mode-gym .community-group-room-question-tag {
+  border-color: rgba(217, 119, 6, 0.36);
+  color: #7c2d12;
+  background: rgba(254, 243, 199, 0.9);
+}
+
+.mode-gym .community-group-room-question-title {
+  color: #0f172a;
+}
+
+.mode-gym .community-group-room-question-details {
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.mode-gym .community-reply-meta {
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.mode-gym .community-question-reply {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.mode-gym .community-question-reply.self {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(255, 255, 255, 0.96));
+}
+
+.mode-gym .community-question-reply-body,
+.mode-gym .community-question-compose-meta {
+  color: rgba(15, 23, 42, 0.86);
+}
+
+.mode-gym .community-activity-destination {
+  border-color: rgba(14, 116, 144, 0.3);
+  background: rgba(224, 242, 254, 0.86);
+  color: rgba(15, 23, 42, 0.82);
+}
+
+.mode-gym .community-activity-destination-icon {
+  border-color: rgba(14, 116, 144, 0.34);
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(15, 23, 42, 0.78);
+}
 .mode-gym .community-friend-chat-bubble::after {
   border-left-color: rgba(15, 23, 42, 0.14);
   border-bottom-color: rgba(15, 23, 42, 0.14);
@@ -9523,7 +9784,8 @@ code {
   }
 
   .community-group-room-inputbar .community-chat-send-btn {
-    width: 100%;
+    width: auto;
+    min-width: 96px;
   }
 
   .community-friend-chat {

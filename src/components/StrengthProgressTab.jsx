@@ -902,6 +902,7 @@ const StrengthProgressTab = ({ userId }) => {
   const [showCreateProgram, setShowCreateProgram] = useState(false);
   const [isProgramSaving, setIsProgramSaving] = useState(false);
   const [deletingProgramId, setDeletingProgramId] = useState(null);
+  const [pendingProgramDelete, setPendingProgramDelete] = useState(null);
   const [newProgram, setNewProgram] = useState({
     name: '',
     level: 'Beginner',
@@ -1947,8 +1948,13 @@ const StrengthProgressTab = ({ userId }) => {
       event.stopPropagation();
     }
     if (!program || program.source !== 'user' || !program.id) return;
-    const confirmed = window.confirm(`Delete "${program.name}" from your library?`);
-    if (!confirmed) return;
+    if (!pendingProgramDelete || pendingProgramDelete.id !== program.id) {
+      setPendingProgramDelete({
+        id: program.id,
+        name: program.name || 'this program',
+      });
+      return;
+    }
 
     setDeletingProgramId(program.id);
     const { error } = await supabase
@@ -1971,7 +1977,18 @@ const StrengthProgressTab = ({ userId }) => {
       setShowProgramLibrary(true);
     }
     setBanner({ type: 'success', message: 'Program removed.' });
+    setPendingProgramDelete(null);
     setDeletingProgramId(null);
+  };
+
+  const handleConfirmProgramDelete = async () => {
+    if (!pendingProgramDelete?.id) return;
+    const match = programs.find((item) => item.id === pendingProgramDelete.id);
+    if (!match) {
+      setPendingProgramDelete(null);
+      return;
+    }
+    await deleteUserProgram(match);
   };
 
 // lifecycle hook for side effects,
@@ -2072,6 +2089,28 @@ const StrengthProgressTab = ({ userId }) => {
         {banner && (
           <div className={`exervia-banner studio-banner ${banner.type}`}>
             {banner.message}
+          </div>
+        )}
+        {pendingProgramDelete && (
+          <div className="exervia-banner warn">
+            <div>Delete "{pendingProgramDelete.name}" from your library?</div>
+            <div className="exervia-banner-actions">
+              <button
+                type="button"
+                className="studio-back exervia-banner-btn"
+                onClick={() => setPendingProgramDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="hud-primary-btn exervia-banner-btn"
+                onClick={handleConfirmProgramDelete}
+                disabled={deletingProgramId === pendingProgramDelete.id}
+              >
+                {deletingProgramId === pendingProgramDelete.id ? 'Deleting...' : 'Confirm'}
+              </button>
+            </div>
           </div>
         )}
 
