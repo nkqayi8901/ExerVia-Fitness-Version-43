@@ -129,6 +129,14 @@ const normalizeGroupFeedPreview = (body) => {
   return raw.replace(/^\[Q\]\s*/, "").trim();
 };
 
+const normalizeGroupPostChannel = (post) => {
+  const explicit = String(post?.channel || "").trim().toLowerCase();
+  if (explicit === "questions" || explicit === "general") return explicit;
+  const body = String(post?.body || "");
+  if (body.startsWith("[Q]") || body.startsWith("[Q_REPLY:")) return "questions";
+  return "general";
+};
+
 const getActivityLabel = (activityType) => {
   const normalized = String(activityType || "").trim().toLowerCase();
   if (normalized === "training_session") return "logged a training session";
@@ -747,7 +755,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       joinedGroupIds.length
         ? supabase
             .from("community_group_posts")
-            .select("id,group_id,created_by,created_at,body")
+            .select("id,group_id,created_by,created_at,body,channel")
             .in("group_id", joinedGroupIds)
             .order("created_at", { ascending: false })
             .limit(60)
@@ -1609,6 +1617,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       const { error } = await supabase.from("community_group_posts").insert([
         {
           group_id: groupRoomId,
+          channel: groupRoomChannel === "questions" ? "questions" : "general",
           body: payloadBody,
           created_by: userId
         }
@@ -2577,16 +2586,25 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     () =>
       groupRoomPosts.filter((post) => {
         const body = String(post.body || "");
-        return !body.startsWith(GROUP_QUESTION_PREFIX) && !parseQuestionReplyPayload(body);
+        const channel = normalizeGroupPostChannel(post);
+        return channel === "general" && !body.startsWith(GROUP_QUESTION_PREFIX) && !parseQuestionReplyPayload(body);
       }),
     [groupRoomPosts]
   );
   const groupRoomQuestionPosts = useMemo(
-    () => groupRoomPosts.filter((post) => String(post.body || "").startsWith(GROUP_QUESTION_PREFIX)),
+    () =>
+      groupRoomPosts.filter((post) => {
+        const channel = normalizeGroupPostChannel(post);
+        return channel === "questions" && !parseQuestionReplyPayload(post.body);
+      }),
     [groupRoomPosts]
   );
   const groupRoomQuestionReplyPosts = useMemo(
-    () => groupRoomPosts.filter((post) => Boolean(parseQuestionReplyPayload(post.body))),
+    () =>
+      groupRoomPosts.filter((post) => {
+        const channel = normalizeGroupPostChannel(post);
+        return channel === "questions" && Boolean(parseQuestionReplyPayload(post.body));
+      }),
     [groupRoomPosts]
   );
   const groupRoomQuestionRepliesByQuestionId = useMemo(() => {
@@ -2965,7 +2983,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           const post = payload.new;
           if (!post) return;
           setGroupRoomPosts((prev) => {
-            if (prev.some((row) => Number(row.id) === Number(post.id))) return prev;
+            if (prev.some((row) => String(row.id) === String(post.id))) return prev;
             return [...prev, post];
           });
           setGroupLastActive((prev) => ({ ...prev, [groupRoomId]: post.created_at }));
@@ -3175,10 +3193,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
                 const authorName = profiles[post.created_by] || "Athlete";
                 const initial = String(authorName).replace(/^@+/, "").charAt(0).toUpperCase();
                 const isSelf = Number(post.created_by) === Number(userId);
-                const isQuestionMessage = String(post.body || "").startsWith(GROUP_QUESTION_PREFIX);
+                const isQuestionMessage = normalizeGroupPostChannel(post) === "questions";
+                const rawBody = String(post.body || "");
                 const bodyText = isQuestionMessage
-                  ? String(post.body || "").slice(GROUP_QUESTION_PREFIX.length).trim()
-                  : post.body;
+                  ? (rawBody.startsWith(GROUP_QUESTION_PREFIX)
+                      ? rawBody.slice(GROUP_QUESTION_PREFIX.length).trim()
+                      : rawBody.trim())
+                  : rawBody;
                 const [questionTitleRaw, ...questionRest] = String(bodyText || "").split("\n\n");
                 const questionTitle = String(questionTitleRaw || "").trim();
                 const questionDetails = String(questionRest.join("\n\n") || "").trim();

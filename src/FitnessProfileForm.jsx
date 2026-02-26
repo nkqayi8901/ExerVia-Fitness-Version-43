@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 import heroImage from "./assets/exervia-hero.webp";
+import { emitToast } from "./utils/toast";
 
 const FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const PRIMARY_GOALS = ["Build Muscle", "Lose Weight", "Improve Endurance", "General Fitness"];
@@ -78,6 +79,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const setBanner = useCallback((message, type = "info") => {
     setBannerState({ message: String(message || ""), type });
   }, []);
+
+  useEffect(() => {
+    if (!banner) return;
+    if (bannerVariant === "error") return;
+    emitToast(banner, bannerVariant, 3000);
+  }, [banner, bannerVariant]);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
   const isSettingsDirty = useMemo(() => {

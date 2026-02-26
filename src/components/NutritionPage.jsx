@@ -7,6 +7,7 @@ import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsSto
 import { supabase } from "../supabaseClient";
 import localRecipes from "../data/recipes.json";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
+import { emitToast } from "../utils/toast";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -563,6 +564,13 @@ export default function NutritionPage() {
     if (!saveBanner) return;
     const timeout = setTimeout(() => setSaveBanner(""), 2800);
     return () => clearTimeout(timeout);
+  }, [saveBanner]);
+
+  useEffect(() => {
+    if (!saveBanner) return;
+    const isErrorLike = /(could not|error|failed|invalid|missing|offline|try again)/i.test(String(saveBanner));
+    if (isErrorLike) return;
+    emitToast(String(saveBanner), "info", 3000);
   }, [saveBanner]);
 
   useEffect(() => {

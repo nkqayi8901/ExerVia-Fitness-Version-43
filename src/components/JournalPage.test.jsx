@@ -11,7 +11,9 @@ jest.mock(
   { virtual: true }
 );
 
-jest.mock("./Navbar", () => () => <div>Navbar</div>);
+jest.mock("../utils/toast", () => ({
+  emitToast: jest.fn(),
+}));
 
 const mockFrom = jest.fn();
 

@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { emitToast } from '../utils/toast';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
 import { supabase } from '../supabaseClient';
@@ -1118,6 +1119,12 @@ const StrengthProgressTab = ({ userId }) => {
     const timeout = setTimeout(() => setBanner(null), 3200);
     // Render
     return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
+    if (!banner?.message) return;
+    if (banner.type === 'error') return;
+    emitToast(String(banner.message), banner.type || 'info', 3200);
   }, [banner]);
 
 // lifecycle hook for side effects,

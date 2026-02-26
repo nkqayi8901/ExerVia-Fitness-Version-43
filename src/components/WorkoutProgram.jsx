@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useParams, useLocation } from "react-router
 import { queueLogsTrainingPrefill } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
 import { grantXpEventSafe } from "../services/xpEvents";
+import { emitToast } from "../utils/toast";
 // Component: WorkoutProgram - UI layout and interactions.
 // This component renders the workoutprogram experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -168,6 +169,7 @@ function ProgramPreview({ backPath, backLabel }) {
   const [guideExercise, setGuideExercise] = useState(null);
   const [guideDetails, setGuideDetails] = useState(null);
   const [guideLoading, setGuideLoading] = useState(false);
+  const [guideError, setGuideError] = useState("");
 
 
   const handleExerciseGuide = async (exercise) => {
@@ -176,6 +178,7 @@ function ProgramPreview({ backPath, backLabel }) {
     setGuideOpen(true);
     setGuideLoading(true);
     setGuideDetails(null);
+    setGuideError("");
     try {
       const response = await fetch(
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&name=${encodeURIComponent(exercise.name)}`
@@ -191,6 +194,7 @@ function ProgramPreview({ backPath, backLabel }) {
       setGuideDetails({ description, steps });
     } catch (error) {
       console.error('Guide fetch failed:', error);
+      setGuideError("Could not load guide details right now.");
     } finally {
       setGuideLoading(false);
     }
@@ -368,6 +372,20 @@ function ProgramPreview({ backPath, backLabel }) {
                     <div className="studio-empty">Loading guide...</div>
                   ) : (
                     <>
+                      {guideError ? (
+                        <div className="exervia-banner warn">
+                          {guideError}
+                          <div className="exervia-banner-actions">
+                            <button
+                              type="button"
+                              className="studio-back exervia-banner-btn"
+                              onClick={() => handleExerciseGuide(guideExercise)}
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="studio-guide-text">
                         {guideDetails?.description || 'No guide yet. Focus on control and form.'}
                       </div>
@@ -848,6 +866,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const persistedRef = useRef(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(true);
   const [sessionAwardedXp, setSessionAwardedXp] = useState(0);
+  const [syncWarning, setSyncWarning] = useState("");
   const injectedProgram = location.state?.program;
   const program = injectedProgram || findProgram(programId);
   const sessionPerformance = useMemo(
@@ -890,6 +909,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     const totalTonnage = reportExercises.reduce((sum, item) => sum + (Number(item.tonnage) || 0), 0);
     const persistCompletion = async () => {
       let awardedXp = 0;
+      let hadSyncIssue = false;
       const validStrengthRows = reportExercises
         .filter((exercise) => exercise?.name && Number(exercise.sets || 0) > 0)
         .map((exercise) => ({
@@ -911,6 +931,8 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
 
         if (insertError) {
           console.error("Could not persist program lifts to strength_logs:", insertError);
+          hadSyncIssue = true;
+          setSyncWarning("Session saved locally. Strength sync will retry shortly.");
         } else {
           const baseXp = Math.min(90, Math.max(20, Number(totalSets || 0) * 3));
           if (insertedRows?.[0]?.id && baseXp > 0) {
@@ -951,6 +973,14 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         }
       }
       setSessionAwardedXp(awardedXp);
+      if (awardedXp > 0) {
+        emitToast(`Session logged. +${awardedXp} XP earned.`, "success", 3200);
+      } else {
+        emitToast("Session logged.", "info", 2800);
+      }
+      if (hadSyncIssue) {
+        emitToast("Session saved locally. Strength sync will retry shortly.", "warn", 3600);
+      }
       window.dispatchEvent(new Event("user_state_updated"));
 
       queueLogsTrainingPrefill(resolvedUserId, {
@@ -1024,6 +1054,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
       </div>
 
       <div className="hud-card program-complete">
+        {syncWarning ? <div className="exervia-banner warn">{syncWarning}</div> : null}
         <div className="program-celebration" aria-hidden="true">
           {[...Array(10)].map((_, index) => (
             <span key={`program-spark-${index}`} className={`program-spark spark-${index + 1}`} />

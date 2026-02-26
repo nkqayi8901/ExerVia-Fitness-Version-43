@@ -482,6 +482,17 @@ export default function JournalPage({ mode = "gym" }) {
     emitToast(banner, bannerVariant, 3200);
   }, [banner, bannerVariant]);
 
+  useEffect(() => {
+    if (!pendingConfirm) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setPendingConfirm(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [pendingConfirm]);
+
   const structuredEntries = useMemo(
     () => entries.map((entry) => ({ entry, structured: parseStructuredEntry(entry) })),
     [entries]
@@ -805,7 +816,7 @@ export default function JournalPage({ mode = "gym" }) {
         </div>
         {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
         {pendingConfirm ? (
-          <div className="exervia-banner warn">
+          <div className="exervia-banner warn" role="dialog" aria-label="Confirm journal update" aria-modal="false">
             <div>{pendingConfirm.message}</div>
             <div className="exervia-banner-actions">
               <button type="button" className="studio-back exervia-banner-btn" onClick={() => setPendingConfirm(null)}>

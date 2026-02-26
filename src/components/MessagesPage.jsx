@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
+import { emitToast } from "../utils/toast";
 
 // adapted from https://reactrouter.com/en/main/hooks/use-navigate
 // this is used for navigating between various pages  
@@ -64,6 +65,13 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
     if (!banner) return;
     const timeout = setTimeout(() => setBanner(""), 2400);
     return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
+    if (!banner) return;
+    const isErrorLike = /(could not|error|failed|not found|cannot|can't)/i.test(String(banner));
+    if (isErrorLike) return;
+    emitToast(String(banner), "info", 2600);
   }, [banner]);
 
   useEffect(() => {

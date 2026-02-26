@@ -26,13 +26,18 @@ App now includes monitoring hooks:
 - global `window.unhandledrejection`
 
 If using Sentry:
-1. Add Sentry browser SDK script globally in hosting template or bootstrap entry.
+1. Choose one integration path:
+   - Script tag path: load browser SDK globally so `window.Sentry` exists.
+   - Bundled path: install `@sentry/browser` (or `@sentry/react`) and initialize it in app bootstrap.
 2. Set `REACT_APP_SENTRY_DSN` in deployment env vars.
 3. Verify a test error appears in your monitoring dashboard.
+
+Note:
+- Current `src/services/errorMonitoring.js` uses `window.Sentry` when present.
+- If you use the bundled npm path, either expose `window.Sentry` or update `errorMonitoring.js` to import and use the SDK directly.
 
 ## 4) Auth and Abuse Controls
 
 In Supabase dashboard:
 - Verify email rate limits and sign-in protections.
 - Confirm session timeout settings are appropriate.
-
