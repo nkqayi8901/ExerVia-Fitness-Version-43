@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
+import useModalA11y from "../hooks/useModalA11y";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -462,6 +463,7 @@ export default function JournalPage({ mode = "gym" }) {
   const [savingSlot, setSavingSlot] = useState("");
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const confirmRef = useRef(null);
   const banner = bannerState.message;
   const bannerVariant = bannerState.type || "info";
   const setBanner = useCallback((message, type = "info") => {
@@ -482,16 +484,11 @@ export default function JournalPage({ mode = "gym" }) {
     emitToast(banner, bannerVariant, 3200);
   }, [banner, bannerVariant]);
 
-  useEffect(() => {
-    if (!pendingConfirm) return undefined;
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") {
-        setPendingConfirm(null);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingConfirm]);
+  useModalA11y({
+    open: Boolean(pendingConfirm),
+    onClose: () => setPendingConfirm(null),
+    modalRef: confirmRef,
+  });
 
   const structuredEntries = useMemo(
     () => entries.map((entry) => ({ entry, structured: parseStructuredEntry(entry) })),
@@ -816,7 +813,13 @@ export default function JournalPage({ mode = "gym" }) {
         </div>
         {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
         {pendingConfirm ? (
-          <div className="exervia-banner warn" role="dialog" aria-label="Confirm journal update" aria-modal="false">
+          <div
+            ref={confirmRef}
+            className="exervia-banner warn"
+            role="dialog"
+            aria-label="Confirm journal update"
+            aria-modal="true"
+          >
             <div>{pendingConfirm.message}</div>
             <div className="exervia-banner-actions">
               <button type="button" className="studio-back exervia-banner-btn" onClick={() => setPendingConfirm(null)}>
