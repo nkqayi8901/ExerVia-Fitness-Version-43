@@ -8,6 +8,7 @@ import { supabase } from "../supabaseClient";
 import localRecipes from "../data/recipes.json";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
 import { emitToast } from "../utils/toast";
+import { isErrorBanner } from "../utils/banner";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -568,7 +569,7 @@ export default function NutritionPage() {
 
   useEffect(() => {
     if (!saveBanner) return;
-    const isErrorLike = /(could not|error|failed|invalid|missing|offline|try again)/i.test(String(saveBanner));
+    const isErrorLike = isErrorBanner(saveBanner);
     if (isErrorLike) return;
     emitToast(String(saveBanner), "info", 3000);
   }, [saveBanner]);

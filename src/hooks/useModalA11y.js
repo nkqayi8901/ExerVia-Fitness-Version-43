@@ -3,13 +3,23 @@ import { useEffect, useRef } from "react";
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+let modalStack = [];
+let modalIdCounter = 0;
+
 export default function useModalA11y({ open, onClose, modalRef }) {
   const lastFocusedRef = useRef(null);
+  const modalIdRef = useRef(null);
+
+  if (modalIdRef.current == null) {
+    modalIdRef.current = ++modalIdCounter;
+  }
 
   useEffect(() => {
     if (!open || !modalRef?.current) return undefined;
 
     const modalEl = modalRef.current;
+    const currentId = modalIdRef.current;
+    modalStack = [...modalStack.filter((id) => id !== currentId), currentId];
     lastFocusedRef.current = document.activeElement;
 
     const focusables = modalEl.querySelectorAll(FOCUSABLE_SELECTOR);
@@ -21,8 +31,12 @@ export default function useModalA11y({ open, onClose, modalRef }) {
     }
 
     const onKeyDown = (event) => {
+      const isTopmost = modalStack[modalStack.length - 1] === currentId;
+      if (!isTopmost) return;
+
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         onClose?.();
         return;
       }
@@ -49,6 +63,7 @@ export default function useModalA11y({ open, onClose, modalRef }) {
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      modalStack = modalStack.filter((id) => id !== currentId);
       const toRestore = lastFocusedRef.current;
       if (toRestore && typeof toRestore.focus === "function") {
         toRestore.focus();
@@ -56,4 +71,3 @@ export default function useModalA11y({ open, onClose, modalRef }) {
     };
   }, [open, onClose, modalRef]);
 }
-

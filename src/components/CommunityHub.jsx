@@ -13,9 +13,29 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
 import { emitToast } from "../utils/toast";
+import { isErrorBanner } from "../utils/banner";
 import GroupRoomPanel from "./community/GroupRoomPanel";
 import ActivityFeedPanel from "./community/ActivityFeedPanel";
+import LeaderboardPanel from "./community/LeaderboardPanel";
+import ChallengesPanel from "./community/ChallengesPanel";
 import CommunityModal from "./community/CommunityModal";
+import useCommunityModalState from "../hooks/useCommunityModalState";
+import {
+  GROUP_QUESTION_PREFIX,
+  STATUS_PREFIX,
+  buildQuestionReplyPayload,
+  buildReplyTree,
+  forumTracks,
+  formatTime,
+  getActivityLabel,
+  normalizeGroupFeedPreview,
+  normalizeGroupPostChannel,
+  parseQuestionReplyPayload,
+  reactionOptions,
+  templateFocusOptions,
+  templateTypeOptions,
+  toDayKey,
+} from "./community/communityHelpers";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -29,140 +49,6 @@ import CommunityModal from "./community/CommunityModal";
 
 // This is the main Community Hub component 
 // which serves as the central place for all community interactions
-const forumTracks = [
-  { id: "hyrox", title: "Hyrox", subtitle: "Race prep, stations, engine" },
-  { id: "running", title: "Running", subtitle: "Tempo, pacing, endurance" },
-  { id: "nutrition", title: "Nutrition", subtitle: "Fueling, recovery, habits" },
-  { id: "strength", title: "Strength", subtitle: "Progressions, form, PRs" },
-  { id: "mindset", title: "Mindset", subtitle: "Consistency, discipline, recovery" }
-];
-// reactionOptions defines the different reactions users can give to posts and replies
-const reactionOptions = [
-  { id: "like", label: "Like", emoji: "👍" },
-  { id: "fire", label: "Fire", emoji: "🔥" },
-  { id: "insight", label: "Insight", emoji: "💡" }
-];
-
-const templateTypeOptions = [
-  { id: "all", label: "All" },
-  { id: "training_plan", label: "Plans" },
-  { id: "workout_program", label: "Programs" },
-  { id: "recipe", label: "Recipes" }
-];
-
-const templateFocusOptions = [
-  { id: "all", label: "All Focus" },
-  { id: "upper body", label: "Upper" },
-  { id: "lower body", label: "Lower" },
-  { id: "full body", label: "Full Body" },
-  { id: "push", label: "Push" },
-  { id: "pull", label: "Pull" },
-  { id: "glutes", label: "Glutes" },
-  { id: "bodyweight", label: "Bodyweight" },
-  { id: "conditioning", label: "Conditioning" }
-];
-
-// formatTime manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-const formatTime = (value) => {
-  if (!value) return "";
-  try {
-    const now = Date.now();
-    const ts = new Date(value).getTime();
-    if (Number.isNaN(ts)) return "";
-    const diffMs = now - ts;
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins} min ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} hr ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-    return new Date(value).toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-};
-// buildReplyTree takes a flat list of replies and organizes 
-// them into a nested tree structure based on parent-child relationships
-const buildReplyTree = (replies) => {
-  if (!replies?.length) return [];
-  const map = {};
-  replies.forEach((reply) => {
-    map[reply.id] = { ...reply, children: [] };
-  });
-  const roots = [];
-  replies.forEach((reply) => {
-    const node = map[reply.id];
-    if (reply.parent_id && map[reply.parent_id]) {
-      map[reply.parent_id].children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-};
-
-const parseQuestionReplyPayload = (body) => {
-  const raw = String(body || "");
-  const match = raw.match(/^\[Q_REPLY:([^\]]+)\]\s*/);
-  if (!match) return null;
-  return {
-    questionId: String(match[1]),
-    text: raw.slice(match[0].length).trim()
-  };
-};
-
-const buildQuestionReplyPayload = (questionId, text) =>
-  `[Q_REPLY:${String(questionId)}] ${String(text || "").trim()}`;
-const STATUS_PREFIX = "[STATUS] ";
-
-const normalizeGroupFeedPreview = (body) => {
-  const raw = String(body || "").trim();
-  if (!raw) return "";
-  const reply = parseQuestionReplyPayload(raw);
-  if (reply?.text) return reply.text;
-  return raw.replace(/^\[Q\]\s*/, "").trim();
-};
-
-const normalizeGroupPostChannel = (post) => {
-  const explicit = String(post?.channel || "").trim().toLowerCase();
-  if (explicit === "questions" || explicit === "general") return explicit;
-  const body = String(post?.body || "");
-  if (body.startsWith("[Q]") || body.startsWith("[Q_REPLY:")) return "questions";
-  return "general";
-};
-
-const getActivityLabel = (activityType) => {
-  const normalized = String(activityType || "").trim().toLowerCase();
-  if (normalized === "training_session") return "logged a training session";
-  if (normalized === "strength_log") return "logged a strength session";
-  if (normalized === "journal_entry") return "wrote a journal entry";
-  if (normalized === "community_post") return "created a forum post";
-  if (normalized === "community_reply") return "replied in forum";
-  if (normalized === "community_reaction") return "reacted to a post";
-  if (normalized === "community_template_rate") return "rated a template";
-  if (normalized === "community_template_try") return "tried a template";
-  if (normalized === "nutrition_log") return "logged nutrition";
-  if (normalized === "daily_log") return "updated daily log";
-  return normalized ? normalized.replaceAll("_", " ") : "recorded activity";
-};
-
-const toDayKey = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 // CommunityHub is the main component for the community section of the app,
 // it manages state for forums, groups, challenges, posts, replies, friends, and more,
 // it also handles all interactions like creating posts, joining groups, adding friends, etc.
@@ -234,54 +120,50 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [communityLoadError, setCommunityLoadError] = useState("");
   const [communityReloadToken, setCommunityReloadToken] = useState(0);
   const [blockedProfileIds, setBlockedProfileIds] = useState([]);
-// below are state variables to manage the open/close state of various modals for 
-// creating groups, challenges, posts, replies, and adding friends
-// there are also state variables to hold the form data for these modals, as well as
-// state for reaction counts and user reactions on posts and replies
-  const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [createChallengeOpen, setCreateChallengeOpen] = useState(false);
-  const [createPostOpen, setCreatePostOpen] = useState(false);
-  const [createReplyOpen, setCreateReplyOpen] = useState(false);
-  const [addFriendOpen, setAddFriendOpen] = useState(false);
-  const [createRecipeTemplateOpen, setCreateRecipeTemplateOpen] = useState(false);
-
-  const [newGroup, setNewGroup] = useState({ name: "", goal: "", privacy: "invite" });
-  const [newChallenge, setNewChallenge] = useState({
-    title: "",
-    type: "distance",
-    target: "",
-    durationDays: "7"
-  });
-  const [newPost, setNewPost] = useState({ title: "", body: "" });
-  const [newRecipeTemplate, setNewRecipeTemplate] = useState({
-    title: "",
-    mealType: "Dinner",
-    ingredients: "",
-    steps: "",
-    prepMinutes: "",
-    cookMinutes: "",
-    servings: "",
-    tags: ""
-  });
-  const [newPostForum, setNewPostForum] = useState(activeForum);
-  const [newReply, setNewReply] = useState({ body: "", parentId: null });
-  const [statusDraft, setStatusDraft] = useState("");
-  const [statusPosting, setStatusPosting] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({
-    open: false,
-    kind: "",
-    title: "",
-    body: "",
-    payload: null,
-  });
-  const [confirmBusy, setConfirmBusy] = useState(false);
-  const openConfirmDialog = useCallback(({ kind, title, body, payload = null }) => {
-    setConfirmDialog({ open: true, kind, title, body, payload });
-  }, []);
-  const closeConfirmDialog = useCallback(() => {
-    if (confirmBusy) return;
-    setConfirmDialog({ open: false, kind: "", title: "", body: "", payload: null });
-  }, [confirmBusy]);
+  const {
+    createGroupOpen,
+    setCreateGroupOpen,
+    createChallengeOpen,
+    setCreateChallengeOpen,
+    createPostOpen,
+    setCreatePostOpen,
+    createReplyOpen,
+    setCreateReplyOpen,
+    addFriendOpen,
+    setAddFriendOpen,
+    createRecipeTemplateOpen,
+    setCreateRecipeTemplateOpen,
+    newGroup,
+    setNewGroup,
+    newChallenge,
+    setNewChallenge,
+    newPost,
+    setNewPost,
+    newRecipeTemplate,
+    setNewRecipeTemplate,
+    newPostForum,
+    setNewPostForum,
+    newReply,
+    setNewReply,
+    statusDraft,
+    setStatusDraft,
+    statusPosting,
+    setStatusPosting,
+    newFriendUsername,
+    setNewFriendUsername,
+    editGroupOpen,
+    setEditGroupOpen,
+    editGroupTarget,
+    setEditGroupTarget,
+    editGroupForm,
+    setEditGroupForm,
+    confirmDialog,
+    setConfirmDialog,
+    confirmBusy,
+    setConfirmBusy,
+    openConfirmDialog,
+    closeConfirmDialog,
+  } = useCommunityModalState(activeForum);
   const [groupRoomId, setGroupRoomId] = useState(null);
   const [groupRoomPosts, setGroupRoomPosts] = useState([]);
   const [groupRoomMembers, setGroupRoomMembers] = useState([]);
@@ -294,12 +176,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [threadInlineReplyOpen, setThreadInlineReplyOpen] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
-  const [newFriendUsername, setNewFriendUsername] = useState("");
-  const [editGroupOpen, setEditGroupOpen] = useState(false);
-  const [editGroupTarget, setEditGroupTarget] = useState(null);
-  const [editGroupForm, setEditGroupForm] = useState({ name: "", goal: "" });
   const groupRoomListRef = useRef(null);
-  const GROUP_QUESTION_PREFIX = "[Q] ";
   const [expandedPostIds, setExpandedPostIds] = useState({});
   const [forumThreadCounts, setForumThreadCounts] = useState({});
   const [pinnedThreadIds, setPinnedThreadIds] = useState({});
@@ -346,10 +223,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   useEffect(() => {
     if (!banner) return;
-    const errorLike =
-      /(could not|error|failed|not found|permission|sign in|join group first|thread not found|missing)/i.test(
-        banner
-      );
+    const errorLike = isErrorBanner(banner);
     if (!errorLike) {
       emitToast(banner, "info", 3000);
     }
@@ -3646,132 +3520,24 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           )}
 
           {activeTab === "leaderboard" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Leaderboards</div>
-              <div className="community-thread-toolbar">
-                <div className="community-thread-toolbar-left">
-                  <div className="community-thread-label">Group leaderboard</div>
-                  <select
-                    className="community-thread-select"
-                    value={leaderboardGroupId}
-                    onChange={(event) => setLeaderboardGroupId(event.target.value)}
-                  >
-                    <option value="">Select group</option>
-                    {memberships.map((membership) => {
-                      const id = String(membership.group_id || "");
-                      const group = groups.find((item) => String(item.id) === id);
-                      return (
-                        <option key={`lb-group-${id}`} value={id}>
-                          {group?.name || "Group"}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              </div>
-              <div className="community-leaderboard-grid">
-                <div className="community-feed-card">
-                  <div className="community-panel-title">Global Top</div>
-                  {leaderboardLoading && <div className="community-empty">Loading leaderboard...</div>}
-                  {!leaderboardLoading &&
-                    globalLeaderboard.slice(0, 15).map((row, index) => (
-                      <div key={`global-${row.user_id}`} className="community-leaderboard-row">
-                        <span className="community-meta-pill">#{index + 1}</span>
-                        <button
-                          type="button"
-                          className="community-profile-link community-leaderboard-name"
-                          onClick={() => openUserProfile(row.user_id)}
-                        >
-                          {profiles[row.user_id] || `User ${row.user_id}`}
-                        </button>
-                        <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
-                        <span className="community-meta-pill">{row.rank || "-"}</span>
-                      </div>
-                    ))}
-                </div>
-                <div className="community-feed-card">
-                  <div className="community-panel-title">Group Top</div>
-                  {!leaderboardGroupId && <div className="community-empty">Join a group to view rankings.</div>}
-                  {!!leaderboardGroupId &&
-                    groupLeaderboard.slice(0, 15).map((row, index) => (
-                      <div key={`group-${row.user_id}`} className="community-leaderboard-row">
-                        <span className="community-meta-pill">#{index + 1}</span>
-                        <button
-                          type="button"
-                          className="community-profile-link community-leaderboard-name"
-                          onClick={() => openUserProfile(row.user_id)}
-                        >
-                          {profiles[row.user_id] || `User ${row.user_id}`}
-                        </button>
-                        <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
-                        <span className="community-meta-pill">{row.rank || "-"}</span>
-                      </div>
-                    ))}
-                  {!!leaderboardGroupId && !groupLeaderboard.length && (
-                    <div className="community-empty">No ranked members yet.</div>
-                  )}
-                </div>
-                <div className="community-feed-card">
-                  <div className="community-panel-title">Gym Top (This Week)</div>
-                  {!gymLeaderboardContext.placeId && (
-                    <div className="community-empty">Link a gym in Profile Settings to unlock this leaderboard.</div>
-                  )}
-                  {!!gymLeaderboardContext.placeId && (
-                    <div className="community-feed-title-row">
-                      <div className="community-feed-sub">
-                        {gymLeaderboardContext.name || "Linked Gym"}
-                      </div>
-                      <button
-                        type="button"
-                        className="studio-back community-cta-btn"
-                        onClick={() => openGymProfile(gymLeaderboardContext.placeId)}
-                      >
-                        Open gym page
-                      </button>
-                    </div>
-                  )}
-                  {gymLeaderboardLoading && <div className="community-empty">Loading gym leaderboard...</div>}
-                  {!gymLeaderboardLoading &&
-                    gymLeaderboard.slice(0, 15).map((row, index) => (
-                      <div key={`gym-${row.user_id}`} className="community-leaderboard-row">
-                        <span className="community-meta-pill">#{index + 1}</span>
-                        <button
-                          type="button"
-                          className="community-profile-link community-leaderboard-name"
-                          onClick={() => openUserProfile(row.user_id)}
-                        >
-                          {profiles[row.user_id] || `User ${row.user_id}`}
-                        </button>
-                        <div className="community-leaderboard-meta-stack">
-                          <span className="community-meta-pill">{Number(row.weekly_tonnage || 0).toLocaleString()} kg</span>
-                          {Number(row.delta_to_next || 0) > 0 ? (
-                            <span className="community-meta-pill">+{Number(row.delta_to_next || 0).toLocaleString()} to next</span>
-                          ) : null}
-                          {row.suspicious ? <span className="community-meta-pill danger">Flagged</span> : null}
-                          {Number(row.reports_count || 0) > 0 ? (
-                            <span className="community-meta-pill">{Number(row.reports_count)} report{Number(row.reports_count) === 1 ? "" : "s"}</span>
-                          ) : null}
-                        </div>
-                        {Number(row.user_id) !== Number(userId) ? (
-                          <button
-                            type="button"
-                            className="studio-back community-cta-btn"
-                            onClick={() => handleReportLeaderboardEntry(row)}
-                            disabled={Boolean(reportingLeaderboardUserIds[Number(row.user_id)])}
-                          >
-                            {reportingLeaderboardUserIds[Number(row.user_id)] ? "Reporting..." : "Report"}
-                          </button>
-                        ) : (
-                          <span className="community-meta-pill">You</span>
-                        )}
-                      </div>
-                    ))}
-                  {!!gymLeaderboardContext.placeId && !gymLeaderboardLoading && !gymLeaderboard.length && (
-                    <div className="community-empty">No gym lifts logged yet this week.</div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <LeaderboardPanel
+              leaderboardGroupId={leaderboardGroupId}
+              setLeaderboardGroupId={setLeaderboardGroupId}
+              memberships={memberships}
+              groups={groups}
+              leaderboardLoading={leaderboardLoading}
+              globalLeaderboard={globalLeaderboard}
+              groupLeaderboard={groupLeaderboard}
+              gymLeaderboardContext={gymLeaderboardContext}
+              gymLeaderboardLoading={gymLeaderboardLoading}
+              gymLeaderboard={gymLeaderboard}
+              reportingLeaderboardUserIds={reportingLeaderboardUserIds}
+              profiles={profiles}
+              userId={userId}
+              openUserProfile={openUserProfile}
+              openGymProfile={openGymProfile}
+              handleReportLeaderboardEntry={handleReportLeaderboardEntry}
+            />
           )}
 
           {activeTab === "templates" && (
@@ -4407,63 +4173,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {/* encourages participation via simple buttons, */}
           {/* and displays an empty state if none exist */}
           {activeTab === "challenges" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Weekly Challenges</div>
-              {challenges.map((challenge) => {
-                const type = String(challenge.type || "distance").toLowerCase();
-                const typeMeta = challengeTypeMeta[type] || { label: "Challenge", icon: "GO" };
-                const participants = challengeParticipantCounts[challenge.id] || 0;
-                const targetValue = Number(challenge.target_value || 0);
-                const myProgress = Number(challengeMyProgress[challenge.id] || 0);
-                const completion = targetValue > 0 ? Math.min((myProgress / targetValue) * 100, 100) : 0;
-                const joined = joinedChallengeIds.has(String(challenge.id));
-                const createdAtMs = Date.parse(challenge.created_at || "");
-                const durationDays = Number(challenge.duration_days || 7);
-                const elapsedDays =
-                  Number.isNaN(createdAtMs) ? 0 : Math.floor((Date.now() - createdAtMs) / 86400000);
-                const daysRemaining = Math.max(durationDays - elapsedDays, 0);
-                return (
-                  <div key={challenge.id} className="community-feed-card community-challenge-card">
-                    <div className="community-challenge-head">
-                      <div className="community-challenge-type-icon" aria-hidden="true">{typeMeta.icon}</div>
-                      <div>
-                        <div className="community-feed-title">{challenge.title}</div>
-                        <div className="community-feed-sub">
-                          {typeMeta.label} challenge - target {challenge.target_value || "--"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="community-challenge-stats">
-                      <span className="community-meta-pill">{participants} joined</span>
-                      <span className="community-meta-pill">{daysRemaining} days left</span>
-                      <span className="community-meta-pill">You: {myProgress || 0}</span>
-                    </div>
-                    <div className="community-challenge-progress">
-                      <div className="community-challenge-progress-fill" style={{ width: `${completion}%` }} />
-                    </div>
-                    <div className="community-tags">
-                      <span>{typeMeta.label}</span>
-                      <span>{durationDays} days</span>
-                    </div>
-                    <button
-                      className="studio-back community-cta-btn"
-                      onClick={() => handleJoinChallenge(challenge.id)}
-                      disabled={joined}
-                    >
-                      {joined ? "Joined" : "Join challenge"}
-                    </button>
-                  </div>
-                );
-              })}
-              {!challenges.length &&
-                renderEmptyState({
-                  icon: "🏁",
-                  title: "No challenges yet",
-                  sub: "Create the first challenge and get people moving."
-                })}
-            </div>
+            <ChallengesPanel
+              challenges={challenges}
+              challengeTypeMeta={challengeTypeMeta}
+              challengeParticipantCounts={challengeParticipantCounts}
+              challengeMyProgress={challengeMyProgress}
+              joinedChallengeIds={joinedChallengeIds}
+              handleJoinChallenge={handleJoinChallenge}
+              renderEmptyState={renderEmptyState}
+            />
           )}
-
           {/* your circle summary panel for social status, */}
           {/* highlights group + friend counts at a glance, */}
           {/* provides quick CTAs to create or add, */}
@@ -4858,3 +4577,5 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     </div>
   );
 }
+
+

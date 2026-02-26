@@ -5,6 +5,7 @@ import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
+import { isErrorBanner } from "../utils/banner";
 import {
   addSavedMeal,
   consumeLogsTrainingPrefill,
@@ -133,7 +134,7 @@ export default function LogsPage({ mode = "gym" }) {
 
   useEffect(() => {
     if (!banner) return;
-    const isErrorLike = /(could not|error|failed|invalid|missing)/i.test(String(banner));
+    const isErrorLike = isErrorBanner(banner);
     if (isErrorLike) return;
     emitToast(String(banner), "info", 2800);
   }, [banner]);
