@@ -81,7 +81,13 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
     if (!viewedUserId) return;
     setLoading(true);
 
-    const [{ data: profileData }, { data: stateData }, { data: memberships }, { data: sessions }] =
+    const [
+      { data: profileData },
+      { data: stateData },
+      { data: memberships },
+      { data: sessions },
+      { data: strengthRows },
+    ] =
       await Promise.all([
         supabase
           .from("user_profiles")
@@ -96,10 +102,16 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
           .limit(12),
         supabase
           .from("training_sessions")
-          .select("id, sport, duration, created_at")
+          .select("id, sport, duration_minutes, created_at")
           .eq("user_id", viewedUserId)
           .order("created_at", { ascending: false })
-          .limit(4),
+          .limit(12),
+        supabase
+          .from("strength_logs")
+          .select("id, exercise_name, sets, reps, weight, created_at")
+          .eq("user_id", viewedUserId)
+          .order("created_at", { ascending: false })
+          .limit(12),
       ]);
 
     const mappedGroups = (memberships || []).map((row) => ({
@@ -111,7 +123,27 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
     setProfile(profileData || null);
     setUserState(stateData || null);
     setGroups(mappedGroups);
-    setRecentSessions(sessions || []);
+    const combinedRecent = [
+      ...(sessions || []).map((row) => ({
+        id: String(row.id),
+        sourceType: "training",
+        title: String(row.sport || "Training").toUpperCase(),
+        subtitle: `${Number(row.duration_minutes || 0)} min`,
+        created_at: row.created_at,
+      })),
+      ...(strengthRows || []).map((row) => ({
+        id: String(row.id),
+        sourceType: "strength",
+        title: String(row.exercise_name || "Strength").toUpperCase(),
+        subtitle: `${Number(row.sets || 0)} sets · ${row.reps || 0} reps${
+          Number(row.weight || 0) > 0 ? ` · ${row.weight} kg` : ""
+        }`,
+        created_at: row.created_at,
+      })),
+    ]
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .slice(0, 3);
+    setRecentSessions(combinedRecent);
     await fetchFriendStatus();
     setLoading(false);
   };
@@ -177,6 +209,12 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
     if (!currentUserId || !viewedUserId) return;
     const path = mode === "gym" ? `/gym/${id}/messages?friend=${viewedUserId}` : `/athlete/${id}/messages?friend=${viewedUserId}`;
     navigate(path);
+  };
+
+  const handleOpenSession = (session) => {
+    if (!currentUserId || !viewedUserId || !session?.id || !session?.sourceType) return;
+    const base = mode === "gym" ? `/gym/${id}` : `/athlete/${id}`;
+    navigate(`${base}/profile/${viewedUserId}/session/${session.sourceType}/${session.id}`);
   };
 
   if (loading) {
@@ -273,15 +311,24 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
         <div className="hud-card-title">RECENT TRAINING</div>
         {!recentSessions.length && <div className="hud-dim mt-2">No recent sessions logged.</div>}
         {recentSessions.map((session) => (
-          <div key={session.id} className="flex items-center justify-between mt-2">
-            <span>{String(session.sport || "session").toUpperCase()}</span>
-            <span className="hud-dim">
-              {session.duration ? `${session.duration} min` : "No duration"} · {formatDate(session.created_at)}
+          <button
+            key={`${session.sourceType}-${session.id}`}
+            type="button"
+            className="public-session-row mt-2"
+            onClick={() => handleOpenSession(session)}
+          >
+            <span className="public-session-main">
+              <span className="public-session-title">{session.title || "SESSION"}</span>
+              <span className="public-session-subtitle">
+                {session.subtitle || "No detail"} | {formatDate(session.created_at)}
+              </span>
             </span>
-          </div>
+            <span className="public-session-action">View session</span>
+          </button>
         ))}
       </div>
     </div>
   );
 }
+
 

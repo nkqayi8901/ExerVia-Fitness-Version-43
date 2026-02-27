@@ -901,6 +901,7 @@ const StrengthProgressTab = ({ userId }) => {
   const [showAllPrograms, setShowAllPrograms] = useState(false);
   const [showProgramLibrary, setShowProgramLibrary] = useState(true);
   const [showCreateProgram, setShowCreateProgram] = useState(false);
+  const [lastWorkoutOpen, setLastWorkoutOpen] = useState(false);
   const [isProgramSaving, setIsProgramSaving] = useState(false);
   const [deletingProgramId, setDeletingProgramId] = useState(null);
   const [pendingProgramDelete, setPendingProgramDelete] = useState(null);
@@ -1403,7 +1404,7 @@ const StrengthProgressTab = ({ userId }) => {
   };
 
   useEffect(() => {
-    if (!showCreateProgram && !swapOpen && !guideOpen) return undefined;
+    if (!showCreateProgram && !swapOpen && !guideOpen && !lastWorkoutOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key !== 'Escape') return;
       if (showCreateProgram) {
@@ -1416,11 +1417,15 @@ const StrengthProgressTab = ({ userId }) => {
       }
       if (guideOpen) {
         closeGuideModal();
+        return;
+      }
+      if (lastWorkoutOpen) {
+        setLastWorkoutOpen(false);
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [guideOpen, showCreateProgram, swapOpen]);
+  }, [guideOpen, lastWorkoutOpen, showCreateProgram, swapOpen]);
 
 // fetchExerciseSearch manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1616,6 +1621,25 @@ const StrengthProgressTab = ({ userId }) => {
     return best;
   }, null);
   const totalSessionsLogged = recentLifts.length;
+
+  const latestWorkoutSummary = useMemo(() => {
+    if (!recentLifts.length) return null;
+    const latestDate = new Date(recentLifts[0]?.created_at || 0);
+    if (Number.isNaN(latestDate.getTime())) return null;
+    const dayKey = latestDate.toISOString().slice(0, 10);
+    const rows = recentLifts.filter((lift) => {
+      const liftDate = new Date(lift?.created_at || 0);
+      if (Number.isNaN(liftDate.getTime())) return false;
+      const key = liftDate.toISOString().slice(0, 10);
+      return key === dayKey;
+    });
+    if (!rows.length) return null;
+    return {
+      dayKey,
+      rows,
+      timestamp: rows[0]?.created_at || recentLifts[0]?.created_at || null,
+    };
+  }, [recentLifts]);
   const totalPrs = prList.length;
   const uniqueExercisesTracked = new Set(recentLifts.map((lift) => lift.exercise_name)).size;
   const topEstimatedOneRm = prList[0]?.one_rm_est ? `${prList[0].one_rm_est.toFixed(1)}kg` : 'No 1RM yet';
@@ -1911,14 +1935,14 @@ const StrengthProgressTab = ({ userId }) => {
     }
 
     setIsProgramSaving(true);
-    const { error } = await supabase.from('user_programs').insert([{
+    const { data: insertedProgram, error } = await supabase.from('user_programs').insert([{
       user_id: userId,
       name: newProgram.name.trim(),
       level: newProgram.level,
       focus: newProgram.focus,
       description: newProgram.description.trim(),
       exercises: cleanedExercises
-    }]);
+    }]).select('*').single();
 
     if (!error) {
       const nextWeights = { ...exerciseWeightMemory };
@@ -1930,6 +1954,11 @@ const StrengthProgressTab = ({ userId }) => {
       saveExerciseWeightMemory(nextWeights);
       setBanner({ type: 'success', message: 'Program saved to your library.' });
       setShowCreateProgram(false);
+      if (insertedProgram) {
+        const mapped = mapSupabaseProgram(insertedProgram, 'user');
+        setSelectedProgram(mapped);
+        setSessionQueue(mapped.exercises || []);
+      }
       setNewProgram({
         name: '',
         level: 'Beginner',
@@ -1937,7 +1966,7 @@ const StrengthProgressTab = ({ userId }) => {
         description: '',
         exercises: []
       });
-      fetchPrograms();
+      await fetchPrograms();
     } else {
       console.error('Error saving program:', error);
       setBanner({ type: 'error', message: 'Could not save program.' });
@@ -2051,6 +2080,21 @@ const StrengthProgressTab = ({ userId }) => {
     }
   }, [programs, pinnedProgramIds]);
 
+  const handleOpenMyGym = async () => {
+    if (!userId) return;
+    const { data: row } = await supabase
+      .from('user_profiles')
+      .select('primary_gym_place_id')
+      .eq('id', Number(userId))
+      .maybeSingle();
+    const placeId = String(row?.primary_gym_place_id || '').trim();
+    if (!placeId) {
+      setBanner({ type: 'warn', message: 'Link your gym in Profile settings first.' });
+      return;
+    }
+    navigate(`/gym/${userId}/community/gym/${encodeURIComponent(placeId)}`);
+  };
+
   return (
     <div className="studio-shell">
       <div className="studio-wrap">
@@ -2077,19 +2121,32 @@ const StrengthProgressTab = ({ userId }) => {
             <h2 className="studio-title">Progress Ritual</h2>
             <p className="studio-subtitle">Less noise. More intent. Every set matters.</p>
           </div>
-          <div className="studio-toggle">
+          <div className="studio-header-actions">
             <button
-              onClick={() => setView('log')}
-              className={`studio-toggle-btn ${view === 'log' ? 'active' : ''}`}
+              className="studio-inline-link"
+              type="button"
+              onClick={() => setLastWorkoutOpen(true)}
+              disabled={!latestWorkoutSummary}
             >
-              Log
+              Last workout
             </button>
-            <button
-              onClick={() => setView('stats')}
-              className={`studio-toggle-btn ${view === 'stats' ? 'active' : ''}`}
-            >
-              Stats
+            <button className="studio-back studio-gym-link-btn" type="button" onClick={handleOpenMyGym}>
+              My gym
             </button>
+            <div className="studio-toggle">
+              <button
+                onClick={() => setView('log')}
+                className={`studio-toggle-btn ${view === 'log' ? 'active' : ''}`}
+              >
+                Log
+              </button>
+              <button
+                onClick={() => setView('stats')}
+                className={`studio-toggle-btn ${view === 'stats' ? 'active' : ''}`}
+              >
+                Stats
+              </button>
+            </div>
           </div>
         </header>
 
@@ -3034,6 +3091,56 @@ the createPRogram helps resolve this problem  */}
                       )}
                     </>
                   )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lastWorkoutOpen && (
+        <div
+          className="studio-swap-backdrop"
+          onClick={(event) => event.target === event.currentTarget && setLastWorkoutOpen(false)}
+        >
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">Last Workout</div>
+                <div className="studio-swap-sub">{latestWorkoutSummary?.dayKey || "No recent workout"}</div>
+              </div>
+              <button className="studio-swap-close" onClick={() => setLastWorkoutOpen(false)} type="button">
+                Close
+              </button>
+            </div>
+            <div className="studio-swap-body">
+              {!latestWorkoutSummary?.rows?.length ? (
+                <div className="studio-empty">No workout data yet.</div>
+              ) : (
+                <div className="studio-guide-content">
+                  {latestWorkoutSummary.rows.slice(0, 24).map((lift, index) => (
+                    <div key={`${lift.id || "lift"}-${index}`} className="studio-program-preview-row">
+                      <span>{lift.exercise_name || "Exercise"}</span>
+                      <span>
+                        {Number(lift.sets || 0)} sets · {lift.reps || 0} reps
+                        {Number(lift.weight || 0) > 0 ? ` · ${lift.weight} kg` : ""}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="community-modal-actions">
+                    <button
+                      className="studio-back community-cta-btn"
+                      type="button"
+                      onClick={() => {
+                        setLastWorkoutOpen(false);
+                        if (userId && latestWorkoutSummary?.dayKey) {
+                          navigate(`/gym/${userId}/logs?day=${encodeURIComponent(latestWorkoutSummary.dayKey)}`);
+                        }
+                      }}
+                    >
+                      Open full logs
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

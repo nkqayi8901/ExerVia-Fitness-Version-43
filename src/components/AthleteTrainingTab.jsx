@@ -581,14 +581,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       outline: newPlan.outline
     };
 
-    const { error } = editingPlanId
+    const mutation = editingPlanId
       ? await supabase
-        .from('user_training_plans')
-        .update(payload)
-        .eq('id', editingPlanId)
+          .from('user_training_plans')
+          .update(payload)
+          .eq('id', editingPlanId)
+          .select()
+          .single()
       : await supabase
-        .from('user_training_plans')
-        .insert([payload]);
+          .from('user_training_plans')
+          .insert([payload])
+          .select()
+          .single();
+    const { data: savedPlanRow, error } = mutation;
 
     if (!error) {
       setBanner({
@@ -598,7 +603,21 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setShowCreatePlan(false);
       setEditingPlanId(null);
       setNewPlan({ ...emptyPlan });
-      fetchPlans();
+      const selectedSavedPlan = mapPlan(
+        savedPlanRow || { ...payload, id: editingPlanId || `saved-${Date.now()}` },
+        'user'
+      );
+      if (selectedSavedPlan) {
+        setSelectedPlan(selectedSavedPlan);
+        setSession((prev) => ({
+          ...prev,
+          sport: selectedSavedPlan.sport || prev.sport,
+          duration: selectedSavedPlan.durationTarget ? String(selectedSavedPlan.durationTarget) : prev.duration,
+          distance: selectedSavedPlan.distanceTarget ? String(selectedSavedPlan.distanceTarget) : prev.distance,
+        }));
+        setSessionFocus(selectedSavedPlan.defaultFocus || 'Base');
+      }
+      await fetchPlans();
     } else {
       console.error('Error saving plan:', error);
       setBanner({ type: 'error', message: 'Could not save plan.' });
@@ -844,7 +863,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       let xpRelinked = false;
       if (data?.id && durationBaseXp > 0) {
         const xpResult = await grantXpEventSafe({
-          userId,
+          userId: Number(userId),
           eventType: 'training_session',
           baseXp: durationBaseXp,
           idempotencyKey: `training_session:${data.id}`,
@@ -862,6 +881,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         xpRelinked = Boolean(xpResult.relinked);
         if (xpResult.error) {
           console.error('grant_xp_event failed:', xpResult.error);
+          setBanner({
+            type: 'warn',
+            message: 'Session logged, but XP update is delayed. It will retry automatically.',
+          });
         }
       }
       try {
@@ -1123,6 +1146,21 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
+  const handleOpenMyGym = async () => {
+    if (!userId) return;
+    const { data: row } = await supabase
+      .from('user_profiles')
+      .select('primary_gym_place_id')
+      .eq('id', Number(userId))
+      .maybeSingle();
+    const placeId = String(row?.primary_gym_place_id || '').trim();
+    if (!placeId) {
+      setBanner({ type: 'warn', message: 'Link your gym in Profile settings first.' });
+      return;
+    }
+    navigate(`/athlete/${userId}/community/gym/${encodeURIComponent(placeId)}`);
+  };
+
   // remixPlan clones an existing plan into the editor,
   // prefixes the name to signal it is a remix,
   // resets editing id to avoid overwriting originals,
@@ -1195,6 +1233,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             <div className="studio-kicker">ATHLETE STUDIO</div>
             <h2 className="studio-title">Training Ritual</h2>
             <p className="studio-subtitle">Precision sessions. Clean metrics. No noise.</p>
+          </div>
+          <div className="studio-header-actions">
+            <button className="studio-back studio-gym-link-btn" type="button" onClick={handleOpenMyGym}>
+              My gym
+            </button>
           </div>
         </header>
 
@@ -1851,6 +1894,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-breath-sub">{breathHint}</div>
               </div>
             )}
+            {timelinePlan?.outline?.[0]?.sessions?.length ? (
+              <div className="studio-floor-plan-checklist">
+                <div className="studio-floor-plan-checklist-title">Today Checklist</div>
+                <div className="studio-floor-plan-checklist-week">
+                  {timelinePlan.outline[0]?.week || 'Week 1'}
+                </div>
+                <ul className="studio-floor-plan-checklist-list">
+                  {(timelinePlan.outline[0]?.sessions || []).slice(0, 3).map((sessionItem, index) => (
+                    <li key={`timer-check-${index}`}>{sessionItem}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
           <div className="studio-floor-actions">
             <button

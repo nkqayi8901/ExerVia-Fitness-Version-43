@@ -10,6 +10,7 @@ import StrengthProgressTab from "./StrengthProgressTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
 import PublicProfilePage from "./PublicProfilePage";
+import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import GymProfilePage from "./GymProfilePage";
 // Component: GymMode - UI layout and interactions.
@@ -314,6 +315,10 @@ export default function GymMode() {
         <Route path="program/*" element={<WorkoutProgram mode="gym" />} />
         <Route path="profile" element={<GymProfileOverview profile={profile} userState={userState} />} />
         <Route path="profile/:targetId" element={<PublicProfilePage mode="gym" viewerId={id} />} />
+        <Route
+          path="profile/:targetId/session/:sessionType/:sessionId"
+          element={<PublicSessionDetailPage mode="gym" viewerId={id} />}
+        />
         <Route path="community" element={<CommunityHub userId={id} />} />
         <Route path="community/group/:groupId" element={<CommunityHub userId={id} forceGroupRoom />} />
         <Route path="community/thread/:threadId" element={<CommunityHub userId={id} forceThreadPage />} />

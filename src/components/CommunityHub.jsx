@@ -18,8 +18,13 @@ import GroupRoomPanel from "./community/GroupRoomPanel";
 import ActivityFeedPanel from "./community/ActivityFeedPanel";
 import LeaderboardPanel from "./community/LeaderboardPanel";
 import ChallengesPanel from "./community/ChallengesPanel";
+import ForumsPanel from "./community/ForumsPanel";
+import GroupsPanel from "./community/GroupsPanel";
+import CirclePanel from "./community/CirclePanel";
+import TemplatesPanel from "./community/TemplatesPanel";
 import CommunityModal from "./community/CommunityModal";
 import useCommunityModalState from "../hooks/useCommunityModalState";
+import useCommunityData from "../hooks/useCommunityData";
 import {
   GROUP_QUESTION_PREFIX,
   STATUS_PREFIX,
@@ -27,14 +32,9 @@ import {
   buildReplyTree,
   forumTracks,
   formatTime,
-  getActivityLabel,
-  normalizeGroupFeedPreview,
   normalizeGroupPostChannel,
   parseQuestionReplyPayload,
   reactionOptions,
-  templateFocusOptions,
-  templateTypeOptions,
-  toDayKey,
 } from "./community/communityHelpers";
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
@@ -90,6 +90,24 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const resolvedPlaceId = String(placeId || "").trim();
     if (!resolvedPlaceId || !userId) return;
     navigate(`/${routePrefix}/${userId}/community/gym/${encodeURIComponent(resolvedPlaceId)}`);
+  };
+  const handleOpenMyGym = async () => {
+    const linkedPlaceId = String(gymLeaderboardContext?.placeId || "").trim();
+    if (linkedPlaceId) {
+      openGymProfile(linkedPlaceId);
+      return;
+    }
+    const { data: row } = await supabase
+      .from("user_profiles")
+      .select("primary_gym_place_id")
+      .eq("id", Number(userId))
+      .maybeSingle();
+    const fallbackPlaceId = String(row?.primary_gym_place_id || "").trim();
+    if (fallbackPlaceId) {
+      openGymProfile(fallbackPlaceId);
+      return;
+    }
+    setBanner("Link your gym in profile settings first.");
   };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
@@ -201,17 +219,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckDragX, setTemplateDeckDragX] = useState(0);
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
-  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
-  const [groupLeaderboard, setGroupLeaderboard] = useState([]);
-  const [gymLeaderboard, setGymLeaderboard] = useState([]);
   const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
-  const [gymLeaderboardContext, setGymLeaderboardContext] = useState({ placeId: "", name: "" });
-  const [activityFeedItems, setActivityFeedItems] = useState([]);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-  const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
-  const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
   const retryCommunityLoad = () => setCommunityReloadToken((prev) => prev + 1);
-  const [activityFeedLoading, setActivityFeedLoading] = useState(false);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
 
@@ -346,6 +355,30 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setProfiles((prev) => ({ ...prev, ...mapped }));
   };
 
+  const {
+    globalLeaderboard,
+    groupLeaderboard,
+    gymLeaderboard,
+    gymLeaderboardContext,
+    activityFeedItems,
+    leaderboardLoading,
+    gymLeaderboardLoading,
+    reportingLeaderboardUserIds,
+    activityFeedLoading,
+    loadActivityFeed,
+    executeReportLeaderboardEntry,
+    handleReportLeaderboardEntry,
+  } = useCommunityData({
+    userId,
+    friends,
+    memberships,
+    activeTab,
+    leaderboardGroupId,
+    loadProfiles,
+    setBanner,
+    openConfirmDialog,
+  });
+
   const refreshGroupsAndMemberships = async () => {
     if (!userId) return;
     const [{ data: groupData }, { data: membershipData }] = await Promise.all([
@@ -408,242 +441,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     });
     setFriendLatest(latest);
   };
-
-  const loadGlobalLeaderboard = useCallback(async () => {
-    if (!userId) return;
-    setLeaderboardLoading(true);
-    const { data, error } = await supabase
-      .from("user_state")
-      .select("user_id,xp,level,rank,streak_days")
-      .order("xp", { ascending: false })
-      .limit(30);
-
-    if (error) {
-      setGlobalLeaderboard([]);
-      setLeaderboardLoading(false);
-      return;
-    }
-    const rows = data || [];
-    setGlobalLeaderboard(rows);
-    loadProfiles(rows.map((row) => row.user_id));
-    setLeaderboardLoading(false);
-  }, [userId]);
-
-  const loadGroupLeaderboard = useCallback(async (groupId) => {
-    if (!groupId || !userId) {
-      setGroupLeaderboard([]);
-      return;
-    }
-    const { data: members, error: memberError } = await supabase
-      .from("community_group_members")
-      .select("user_id")
-      .eq("group_id", groupId);
-    if (memberError) {
-      setGroupLeaderboard([]);
-      return;
-    }
-    const memberIds = Array.from(new Set((members || []).map((row) => Number(row.user_id)).filter(Boolean)));
-    if (!memberIds.length) {
-      setGroupLeaderboard([]);
-      return;
-    }
-    const { data: rows, error: boardError } = await supabase
-      .from("user_state")
-      .select("user_id,xp,level,rank,streak_days")
-      .in("user_id", memberIds)
-      .order("xp", { ascending: false });
-    if (boardError) {
-      setGroupLeaderboard([]);
-      return;
-    }
-    setGroupLeaderboard(rows || []);
-    loadProfiles(memberIds);
-  }, [userId]);
-
-  const loadGymLeaderboard = useCallback(async () => {
-    if (!userId) return;
-    setGymLeaderboardLoading(true);
-    const { data: profileRow } = await supabase
-      .from("user_profiles")
-      .select("primary_gym_place_id, primary_gym_name")
-      .eq("id", Number(userId))
-      .maybeSingle();
-
-    const placeId = String(profileRow?.primary_gym_place_id || "").trim();
-    const gymName = String(profileRow?.primary_gym_name || "").trim();
-    setGymLeaderboardContext({ placeId, name: gymName });
-
-    if (!placeId) {
-      setGymLeaderboard([]);
-      setGymLeaderboardLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.rpc("get_weekly_gym_leaderboard", {
-      p_viewer_profile_id: Number(userId),
-      p_limit: 30,
-    });
-
-    if (error) {
-      console.error("Could not load gym leaderboard:", error);
-      setGymLeaderboard([]);
-      setGymLeaderboardLoading(false);
-      return;
-    }
-
-    const rows = data || [];
-    setGymLeaderboard(rows);
-    loadProfiles(rows.map((row) => row.user_id));
-    setGymLeaderboardLoading(false);
-  }, [userId]);
-
-  const handleReportLeaderboardEntry = async (row) => {
-    if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
-    if (Number(row.user_id) === Number(userId)) return;
-    const targetLabel = profiles?.[Number(row.user_id)] || `User ${row.user_id}`;
-    openConfirmDialog({
-      kind: "report-leaderboard",
-      title: "Report leaderboard user?",
-      body: `Report ${targetLabel} on this week's gym leaderboard?`,
-      payload: { row },
-    });
-  };
-
-  const executeReportLeaderboardEntry = async (row) => {
-    if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
-    if (Number(row.user_id) === Number(userId)) return;
-    const targetId = Number(row.user_id);
-    if (reportingLeaderboardUserIds[targetId]) return;
-    setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: true }));
-    const payload = {
-      reporter_user_id: Number(userId),
-      reported_user_id: targetId,
-      gym_place_id: gymLeaderboardContext.placeId,
-      reason: "suspicious_activity",
-    };
-    const { error } = await supabase.from("gym_leaderboard_reports").insert([payload]);
-    setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: false }));
-    if (error?.code === "23505") {
-      setBanner("Already reported for this week.");
-      return;
-    }
-    if (error) {
-      setBanner("Could not submit report right now.");
-      return;
-    }
-    setBanner("Leaderboard report submitted.");
-    loadGymLeaderboard();
-  };
-
-  const loadActivityFeed = useCallback(async () => {
-    if (!userId) return;
-    setActivityFeedLoading(true);
-    const acceptedFriends = friends.filter((row) => row.status === "accepted");
-    const friendIds = acceptedFriends.map((row) =>
-      Number(row.user_id) === Number(userId) ? Number(row.friend_user_id) : Number(row.user_id)
-    );
-    const actorIds = Array.from(new Set([Number(userId), ...friendIds].filter(Boolean)));
-    const joinedGroupIds = Array.from(new Set(memberships.map((row) => String(row.group_id)).filter(Boolean)));
-
-    const requests = [
-      supabase
-        .from("daily_activity")
-        .select("id,user_id,activity_type,activity_date,created_at")
-        .in("user_id", actorIds)
-        .order("created_at", { ascending: false })
-        .limit(120),
-      joinedGroupIds.length
-        ? supabase
-            .from("community_group_posts")
-            .select("id,group_id,created_by,created_at,body,channel")
-            .in("group_id", joinedGroupIds)
-            .order("created_at", { ascending: false })
-            .limit(60)
-        : Promise.resolve({ data: [], error: null }),
-      supabase
-        .from("community_posts")
-        .select("id,forum_id,title,body,created_by,created_at")
-        .in("created_by", actorIds)
-        .order("created_at", { ascending: false })
-        .limit(40),
-    ];
-
-    const [activityRes, groupPostRes, forumPostRes] = await Promise.all(requests);
-    const activityRows = activityRes.data || [];
-    const groupPostRows = groupPostRes.data || [];
-    const forumPostRows = forumPostRes.data || [];
-
-    const groupIdSet = Array.from(new Set(groupPostRows.map((row) => String(row.group_id)).filter(Boolean)));
-    let groupNameById = {};
-    if (groupIdSet.length) {
-      const { data: groupRows } = await supabase.from("community_groups").select("id,name").in("id", groupIdSet);
-      groupNameById = (groupRows || []).reduce((acc, row) => {
-        acc[row.id] = row.name || "Group";
-        return acc;
-      }, {});
-    }
-
-    const actorProfileIds = [
-      ...activityRows.map((row) => row.user_id),
-      ...groupPostRows.map((row) => row.created_by),
-      ...forumPostRows.map((row) => row.created_by),
-    ];
-    loadProfiles(actorProfileIds);
-
-    const forumPostByActorDay = {};
-    forumPostRows.forEach((row) => {
-      const actor = Number(row.created_by);
-      const dayKey = toDayKey(row.created_at);
-      if (!actor || !dayKey) return;
-      const key = `${actor}:${dayKey}`;
-      if (!forumPostByActorDay[key]) {
-        forumPostByActorDay[key] = String(row.id || "");
-      }
-    });
-
-    const normalized = [
-      ...activityRows.map((row) => ({
-        id: `activity-${row.id}`,
-        created_at: row.created_at || `${row.activity_date}T12:00:00`,
-        actor_id: row.user_id,
-        title: getActivityLabel(row.activity_type),
-        sub: row.activity_date ? `on ${row.activity_date}` : "",
-        activityType: String(row.activity_type || ""),
-        activityDate: row.activity_date || "",
-        postId:
-          String(row.activity_type || "").toLowerCase() === "community_post" && row.activity_date
-            ? forumPostByActorDay[`${Number(row.user_id)}:${String(row.activity_date)}`] || ""
-            : "",
-        type: "activity",
-      })),
-      ...groupPostRows.map((row) => ({
-        id: `group-post-${row.id}`,
-        created_at: row.created_at,
-        actor_id: row.created_by,
-        title: `posted in ${groupNameById[row.group_id] || "group chat"}`,
-        sub: normalizeGroupFeedPreview(row.body).slice(0, 180),
-        groupId: String(row.group_id || ""),
-        groupPostId: String(row.id || ""),
-        type: "group_post",
-      })),
-      ...forumPostRows.map((row) => ({
-        id: `forum-post-${row.id}`,
-        created_at: row.created_at,
-        actor_id: row.created_by,
-        title: String(row.title || "").startsWith(STATUS_PREFIX) ? "posted a status" : "created a forum thread",
-        sub: String(row.title || "").startsWith(STATUS_PREFIX)
-          ? String(row.body || row.title || "").replace(STATUS_PREFIX, "")
-          : row.title || "",
-        postId: String(row.id || ""),
-        type: "forum_post",
-      })),
-    ]
-      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-      .slice(0, 80);
-
-    setActivityFeedItems(normalized);
-    setActivityFeedLoading(false);
-  }, [friends, memberships, userId]);
 
   const loadForumThreadCounts = async () => {
     const { data } = await supabase.from("community_posts").select("id,forum_id,title");
@@ -1041,7 +838,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return forums.length ? forums : forumTracks;
   }, [forums]);
 
-  const tabOrder = ["forums", "feed", "leaderboard", "templates", "groups", "challenges", "circle"];
+  const tabOrder = ["forums", "feed", "leaderboard", "templates", "groups", "challenges", "friends", "circle"];
   const activeTabIndex = Math.max(tabOrder.indexOf(activeTab), 0);
 
   useEffect(() => {
@@ -1050,22 +847,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       if (nextGroupId) setLeaderboardGroupId(nextGroupId);
     }
   }, [leaderboardGroupId, memberships]);
-
-  useEffect(() => {
-    if (activeTab !== "feed") return;
-    loadActivityFeed();
-  }, [activeTab, loadActivityFeed]);
-
-  useEffect(() => {
-    if (activeTab !== "leaderboard") return;
-    loadGlobalLeaderboard();
-    loadGymLeaderboard();
-  }, [activeTab, loadGlobalLeaderboard, loadGymLeaderboard]);
-
-  useEffect(() => {
-    if (activeTab !== "leaderboard" || !leaderboardGroupId) return;
-    loadGroupLeaderboard(leaderboardGroupId);
-  }, [activeTab, leaderboardGroupId, loadGroupLeaderboard]);
 
 // sync the new post modal forum selector with the active forum,
 // this ensures the modal always defaults to the forum the user is browsing,
@@ -2985,6 +2766,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               </p>
             </div>
             <div className="community-cta-row">
+              <button className="studio-back community-cta-btn" onClick={handleOpenMyGym} type="button">
+                My gym
+              </button>
               <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
                 Create group
               </button>
@@ -3041,11 +2825,18 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               Challenges
             </button>
             <button
+              className={`community-tab ${activeTab === "friends" ? "active" : ""}`}
+              onClick={() => setActiveTab("friends")}
+              type="button"
+            >
+              Friends
+            </button>
+            <button
               className={`community-tab ${activeTab === "circle" ? "active" : ""}`}
               onClick={() => setActiveTab("circle")}
               type="button"
             >
-              Your Circle
+              Overview
             </button>
             <span
               className="community-tabs-indicator"
@@ -3302,198 +3093,43 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {/* supports collapse to keep long threads manageable, */}
           {/* and shows empty state when no posts exist */}
           {activeTab === "forums" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Forum Threads</div>
-              <div className="community-forum-topbar">
-                <input
-                  className="community-search"
-                  placeholder="Search threads"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-                <button
-                  className="studio-back community-cta-btn community-primary-btn"
-                  onClick={() => {
-                    const defaultForum =
-                      activeForum ||
-                      (forums[0]?.topic_slug ?? forumTracks[0]?.id ?? "");
-                    setNewPostForum(defaultForum);
-                    setCreatePostOpen(true);
-                  }}
-                >
-                  New post
-                </button>
-              </div>
-              <div className="community-tabs community-topic-tabs">
-                {filteredForums.map((forum) => {
-                  const slug = forum.topic_slug || forum.id;
-                  const count = forumThreadCountsBySlug[slug] || 0;
-                  return (
-                    <button
-                      key={forum.id}
-                      className={`community-tab ${activeForum === slug ? "active" : ""}`}
-                      onClick={() => {
-                        setActiveForum(slug);
-                        loadForumPosts(slug);
-                      }}
-                      type="button"
-                    >
-                      <span>{forum.title}</span>
-                      <span className="community-forum-count-pill">
-                        {count} {count === 1 ? "thread" : "threads"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="community-thread-toolbar">
-                <div className="community-thread-toolbar-left">
-                  <div className="community-thread-label">Sort</div>
-                  <select
-                    className="community-thread-select"
-                    value={threadSort}
-                    onChange={(event) => setThreadSort(event.target.value)}
-                  >
-                    <option value="newest">Newest</option>
-                    <option value="top">Top</option>
-                    <option value="active">Most active</option>
-                  </select>
-                </div>
-                <div className="community-thread-count">
-                  {filteredThreadPosts.length} {filteredThreadPosts.length === 1 ? "thread" : "threads"}
-                </div>
-              </div>
-              <div className="community-thread-list">
-              {filteredThreadPosts
-                .filter((post) => !isBlockedProfile(post.created_by))
-                .map((post) => {
-                const usingGlobalForumSearch = Boolean(search.trim());
-                const repliesByPost = usingGlobalForumSearch ? globalPostReplies : postReplies;
-                const replies = repliesByPost[post.id] || [];
-                const author = profiles[post.created_by] || post.created_by || "Anonymous";
-                const forumTitle = forumTitleById[post.forum_id];
-                const isMostActive = post.id === mostActiveId;
-                const previewText = post.body || "No details yet.";
-                const isExpanded = Boolean(expandedPostIds[post.id]);
-                const isLong = previewText.length > 220;
-                const isPinned = Boolean(pinnedThreadIds[post.id]);
-                const isRecent = Boolean(recentThreadIds[post.id]);
-                return (
-                  <div
-                    key={post.id}
-                    className={`community-feed-card community-thread-card ${isRecent ? "new-thread" : ""}`}
-                  >
-                    <div className="community-feed-title">
-                      <button
-                        className="community-thread-open-link"
-                        type="button"
-                        onClick={() => openThreadPage(post.id)}
-                      >
-                        {post.title}
-                      </button>
-                      {isMostActive && <span className="community-thread-badge">Most active</span>}
-                      {isPinned && <span className="community-thread-badge pinned">Pinned</span>}
-                      {isRecent && <span className="community-thread-badge fresh">New</span>}
-                    </div>
-                    <div className={`community-feed-sub community-thread-preview ${isExpanded ? "expanded" : "collapsed"}`}>
-                      {previewText}
-                    </div>
-                    {isLong && (
-                      <button
-                        type="button"
-                        className="community-readmore-btn"
-                        onClick={() =>
-                          setExpandedPostIds((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
-                        }
-                      >
-                        {isExpanded ? "Show less" : "Read more"}
-                      </button>
-                    )}
-                    <div className="community-thread-meta">
-                      <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(post.created_by)}>{author}</button>
-                      <span className="community-meta-pill">{formatTime(post.created_at)}</span>
-                      <span className="community-meta-pill">{replies.length} replies</span>
-                      {usingGlobalForumSearch && forumTitle && (
-                        <span className="community-meta-pill">{forumTitle}</span>
-                      )}
-                    </div>
-                    <div className="community-thread-actions">
-                      <button
-                        className="studio-back community-action-btn"
-                        type="button"
-                        onClick={() => openThreadPage(post.id)}
-                      >
-                        Open thread
-                      </button>
-                      <button
-                        className="studio-back community-action-btn"
-                        type="button"
-                        onClick={() => {
-                          setActiveThreadId(post.id);
-                          setNewReply({ body: "", parentId: null });
-                          setCreateReplyOpen(true);
-                        }}
-                      >
-                        Reply
-                      </button>
-                      <button
-                        className="studio-back community-action-btn"
-                        type="button"
-                        onClick={() => togglePinnedThread(post.id)}
-                      >
-                        {isPinned ? "Unpin" : "Pin"}
-                      </button>
-                      {Number(userId) === Number(post.created_by) && (
-                        <button className="hud-secondary-btn danger" type="button" onClick={() => handleDeletePost(post.id)}>
-                          Delete
-                        </button>
-                      )}
-                      <button
-                        className="studio-back community-action-btn"
-                        type="button"
-                        onClick={() =>
-                          handleReportContent({
-                            targetType: "thread",
-                            targetId: post.id,
-                            targetUserId: post.created_by
-                          })
-                        }
-                      >
-                        Report
-                      </button>
-                      {Number(post.created_by) !== Number(userId) && (
-                        <button
-                          className="studio-back community-action-btn"
-                          type="button"
-                          onClick={() => handleToggleBlockProfile(post.created_by)}
-                        >
-                          {isBlockedProfile(post.created_by) ? "Unblock" : "Block"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              </div>
-              {!filteredThreadPosts.length &&
-                renderEmptyState({
-                  icon: "CHAT",
-                  title: search.trim() ? "No matching threads" : "No forum threads yet",
-                  sub: search.trim()
-                    ? `Nothing matched "${search.trim()}". Try another keyword.`
-                    : "Start the first thread and spark the conversation.",
-                  ctaLabel: search.trim() ? null : "Start first thread",
-                  onCta: search.trim()
-                    ? null
-                    : () => {
-                        const defaultForum =
-                          activeForum ||
-                          (forums[0]?.topic_slug ?? forumTracks[0]?.id ?? "");
-                        setNewPostForum(defaultForum);
-                        setCreatePostOpen(true);
-                      }
-                })}
-            </div>
+            <ForumsPanel
+              search={search}
+              setSearch={setSearch}
+              activeForum={activeForum}
+              forums={forums}
+              filteredForums={filteredForums}
+              forumThreadCountsBySlug={forumThreadCountsBySlug}
+              threadSort={threadSort}
+              setThreadSort={setThreadSort}
+              filteredThreadPosts={filteredThreadPosts}
+              globalPostReplies={globalPostReplies}
+              postReplies={postReplies}
+              profiles={profiles}
+              forumTitleById={forumTitleById}
+              mostActiveId={mostActiveId}
+              expandedPostIds={expandedPostIds}
+              setExpandedPostIds={setExpandedPostIds}
+              pinnedThreadIds={pinnedThreadIds}
+              recentThreadIds={recentThreadIds}
+              userId={userId}
+              isBlockedProfile={isBlockedProfile}
+              openUserProfile={openUserProfile}
+              openThreadPage={openThreadPage}
+              setActiveThreadId={setActiveThreadId}
+              setNewReply={setNewReply}
+              setCreateReplyOpen={setCreateReplyOpen}
+              togglePinnedThread={togglePinnedThread}
+              handleDeletePost={handleDeletePost}
+              handleReportContent={handleReportContent}
+              handleToggleBlockProfile={handleToggleBlockProfile}
+              renderEmptyState={renderEmptyState}
+              setNewPostForum={setNewPostForum}
+              setCreatePostOpen={setCreatePostOpen}
+              setActiveForum={setActiveForum}
+              loadForumPosts={loadForumPosts}
+              formatTime={formatTime}
+            />
           )}
 
           {activeTab === "feed" && (
@@ -3541,632 +3177,79 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           )}
 
           {activeTab === "templates" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Shared Templates</div>
-              <div className="community-forum-topbar">
-                <input
-                  className="community-search"
-                  placeholder="Search templates (e.g. protein balls, 20k training plan)"
-                  value={templateSearch}
-                  onChange={(event) => setTemplateSearch(event.target.value)}
-                />
-                <button
-                  className="studio-back community-cta-btn community-primary-btn"
-                  type="button"
-                  onClick={() => setCreateRecipeTemplateOpen(true)}
-                >
-                  Create recipe
-                </button>
-              </div>
-              <div className="community-tabs community-topic-tabs">
-                {templateTypeOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className={`community-tab ${templateTypeFilter === option.id ? "active" : ""}`}
-                    type="button"
-                    onClick={() => setTemplateTypeFilter(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <div className="community-tabs community-topic-tabs">
-                {templateFocusOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    className={`community-tab ${templateFocusFilter === option.id ? "active" : ""}`}
-                    type="button"
-                    onClick={() => setTemplateFocusFilter(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <div className="community-thread-toolbar">
-                <div className="community-thread-toolbar-left">
-                  <div className="community-thread-label">Sort</div>
-                  <select
-                    className="community-thread-select"
-                    value={templateSort}
-                    onChange={(event) => setTemplateSort(event.target.value)}
-                  >
-                    <option value="top">Top rated</option>
-                    <option value="tried">Most tried</option>
-                    <option value="newest">Newest</option>
-                  </select>
-                </div>
-                <div className="community-thread-count">
-                  {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
-                </div>
-              </div>
-              <div className="community-tabs community-topic-tabs community-template-view-tabs">
-                <button
-                  className={`community-tab ${templateViewMode === "swipe" ? "active" : ""}`}
-                  type="button"
-                  onClick={() => setTemplateViewMode("swipe")}
-                >
-                  Swipe mode
-                </button>
-                <button
-                  className={`community-tab ${templateViewMode === "forum" ? "active" : ""}`}
-                  type="button"
-                  onClick={() => setTemplateViewMode("forum")}
-                >
-                  Forum mode
-                </button>
-              </div>
-              {templateViewMode === "swipe" && swipeTemplates.length > 0 && (
-                <div className="community-template-deck-shell">
-                  <div className="community-template-deck-head">
-                    <div className="community-panel-title">Template Swipe Deck</div>
-                    <div className="community-thread-count">
-                      {Math.min(templateDeckIndex + 1, swipeTemplates.length)} / {swipeTemplates.length}
-                    </div>
-                  </div>
-                  <div className="community-template-queue" role="list" aria-label="Template queue">
-                    {visibleSwipeQueue.map(({ template, queueIndex }) => {
-                      return (
-                      <button
-                        key={`queue-${template.id}`}
-                        type="button"
-                        className={`community-template-queue-item ${
-                          queueIndex === templateDeckIndex ? "active" : ""
-                        }`}
-                        onClick={() => {
-                          setTemplateDeckIndex(queueIndex);
-                          setTemplateDeckDragX(0);
-                          setTemplateDeckAnimating(null);
-                        }}
-                      >
-                        <span className="community-template-queue-title">{template.title}</span>
-                        <span className="community-template-queue-type">{template.template_type.replace("_", " ")}</span>
-                      </button>
-                      );
-                    })}
-                  </div>
-                  {swipeTemplates.length > 12 && (
-                    <button
-                      type="button"
-                      className="studio-back community-action-btn"
-                      onClick={() => setTemplateQueueExpanded((prev) => !prev)}
-                    >
-                      {templateQueueExpanded ? "Show less queue" : `Show full queue (${swipeTemplates.length})`}
-                    </button>
-                  )}
-                  <div className="community-template-stack-layer layer-back-2" aria-hidden="true" />
-                  <div className="community-template-stack-layer layer-back-1" aria-hidden="true" />
-                  {templateDeckIndex < swipeTemplates.length ? (
-                    (() => {
-                      const template = swipeTemplates[templateDeckIndex];
-                      if (!template) return null;
-                      const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
-                      const avg = rating.count > 0 ? rating.sum / rating.count : 0;
-                      const tryCount = Number(templateTryCounts[template.id] || 0);
-                      const comments = templateComments[template.id] || [];
-                      const author = profiles[template.created_by] || "Athlete";
-                      const previewRows = getTemplatePreviewRows(template, true);
-                      const metaBadges = getTemplateMetaBadges(template);
-                      const payload = template.payload || {};
-                      const workoutRows = Array.isArray(payload.exercises) ? payload.exercises : [];
-                      const outlineRows = Array.isArray(payload.outline) ? payload.outline : [];
-                      return (
-                        <div
-                          key={`deck-${template.id}`}
-                          className={`community-feed-card community-template-swipe-card ${
-                            templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
-                          } ${templateDeckAnimating === "left" ? "animate-left" : ""} ${
-                            templateDeckAnimating && templateDeckAnimating !== "left" ? "animate-right" : ""
-                          }`}
-                          style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
-                          onPointerDown={handleTemplateDeckPointerDown}
-                          onPointerMove={handleTemplateDeckPointerMove}
-                          onPointerUp={handleTemplateDeckPointerEnd}
-                          onPointerCancel={handleTemplateDeckPointerEnd}
-                          onPointerLeave={handleTemplateDeckPointerEnd}
-                          onKeyDown={handleTemplateDeckKeyDown}
-                          tabIndex={0}
-                          role="group"
-                          aria-label="Template swipe card. Use left and right arrow keys to pass or like."
-                        >
-                          {templateDeckDragX > 24 && (
-                            <div className="community-swipe-indicator right">LIKE</div>
-                          )}
-                          {templateDeckDragX < -24 && (
-                            <div className="community-swipe-indicator left">PASS</div>
-                          )}
-                          <div className="community-template-swipe-main">
-                            <div className="community-feed-title">{template.title}</div>
-                            <div className="community-thread-meta">
-                              <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(template.created_by)}>{author}</button>
-                              <span className="community-meta-pill">{formatTime(template.created_at)}</span>
-                              <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
-                            </div>
-                            <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
-                            {metaBadges.length > 0 && (
-                              <div className="community-template-meta-row">
-                                {metaBadges.map((badge, index) => (
-                                  <span key={`deck-${template.id}-meta-${index}`} className="community-template-meta-pill">
-                                    {badge}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {template.template_type === "workout_program" && workoutRows.length > 0 && (
-                              <div className="community-template-program-report">
-                                <div className="community-template-program-head">
-                                  <span className="exercise">Exercise</span>
-                                  <span>Sets</span>
-                                  <span>Rep Range</span>
-                                  <span>Weight (kg)</span>
-                                </div>
-                                <div className="community-template-program-body">
-                                  {workoutRows.map((exercise, index) => (
-                                    <div className="community-template-program-row" key={`deck-program-${template.id}-${index}`}>
-                                      <span className="exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
-                                      <span>{Number(exercise?.sets) || 0}</span>
-                                      <span>{exercise?.reps || "custom"}</span>
-                                      <span>{Number(exercise?.weight) > 0 ? exercise.weight : "-"}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {template.template_type === "training_plan" && outlineRows.length > 0 && (
-                              <div className="community-template-outline">
-                                <div className="community-template-preview-title">Full plan outline</div>
-                                <div className="community-template-outline-list">
-                                  {outlineRows.map((block, blockIndex) => {
-                                    const sessions = Array.isArray(block?.sessions) ? block.sessions : [];
-                                    return (
-                                      <div key={`deck-outline-${template.id}-${blockIndex}`} className="community-template-outline-block">
-                                        <div className="community-template-outline-week">{block?.week || `Week ${blockIndex + 1}`}</div>
-                                        <div className="community-template-outline-sessions">
-                                          {sessions.length
-                                            ? sessions.map((item, itemIndex) => (
-                                                <div key={`deck-outline-session-${template.id}-${blockIndex}-${itemIndex}`}>
-                                                  {item}
-                                                </div>
-                                              ))
-                                            : "No sessions"}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                            {template.template_type === "recipe" && previewRows.length > 0 && (
-                              <div className="community-template-preview">
-                                <div className="community-template-preview-title">Recipe preview</div>
-                                <div className="community-template-preview-list">
-                                  {previewRows.map((row, index) => (
-                                    <div key={`deck-${template.id}-preview-${index}`} className="community-template-preview-item">
-                                      {row}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <div className="community-reaction-row">
-                              <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
-                              <span className="community-meta-pill">Tried {tryCount}</span>
-                              <span className="community-meta-pill">Comments {comments.length}</span>
-                            </div>
-                          </div>
-                          <div className="community-template-swipe-actions community-template-hinge-actions">
-                            <button
-                              className="studio-back community-action-btn community-template-swipe-btn ghost hinge pass"
-                              type="button"
-                              onClick={() => handleTemplateDeckAction("left")}
-                            >
-                              Pass
-                            </button>
-                            <button
-                              className="studio-back community-action-btn community-primary-btn community-template-swipe-btn hinge like"
-                              type="button"
-                              onClick={() => handleTemplateDeckAction("like")}
-                            >
-                              Like
-                            </button>
-                            <button
-                              className="studio-back community-action-btn community-template-swipe-btn hinge add"
-                              type="button"
-                              onClick={() => handleTemplateDeckAction("add")}
-                            >
-                              Add to mine
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="community-empty community-empty-state">
-                      <div className="community-empty-icon" aria-hidden="true">DONE</div>
-                      <div className="community-empty-title">You reached the end of this deck</div>
-                      <div className="community-empty-sub">Reset to swipe these templates again.</div>
-                      <button
-                        className="studio-back community-cta-btn community-primary-btn"
-                        type="button"
-                        onClick={() => setTemplateDeckIndex(0)}
-                      >
-                        Restart deck
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="community-liked-strip">
-                <div className="community-panel-title">Liked Templates</div>
-                {likedTemplates.length > 0 ? (
-                  <div className="community-liked-list">
-                    {likedTemplates.map((template) => (
-                      <div key={`liked-${template.id}`} className="community-liked-item">
-                        <div className="community-liked-main">
-                          <div className="community-liked-title">{template.title}</div>
-                          <div className="community-liked-sub">{template.template_type.replace("_", " ")}</div>
-                        </div>
-                        <div className="community-liked-actions">
-                          <button
-                            className="studio-back community-action-btn"
-                            type="button"
-                            onClick={() => {
-                              const targetIndex = swipeTemplates.findIndex((item) => item.id === template.id);
-                              if (targetIndex >= 0) {
-                                setTemplateDeckIndex(targetIndex);
-                                setTemplateDeckDragX(0);
-                                setTemplateDeckAnimating(null);
-                              }
-                            }}
-                          >
-                            View
-                          </button>
-                          <button
-                            className="studio-back community-action-btn community-primary-btn"
-                            type="button"
-                            onClick={() => handleAddTemplateToMine(template)}
-                          >
-                            Add to mine
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="community-liked-empty">No liked templates yet. Swipe right or tap Like to save them here.</div>
-                )}
-              </div>
-              {!filteredTemplates.length &&
-                renderEmptyState({
-                  icon: "CHAT",
-                  title: "No shared templates yet",
-                  sub: "Share your best plan, program, or recipe and let others add it to their library."
-                })}
-              {(templateViewMode === "forum" || (templateViewMode === "swipe" && !swipeTemplates.length)) &&
-                filteredTemplates.length > 0 && (
-                <div className="community-thread-list">
-                {filteredTemplates.map((template) => {
-                  const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
-                  const avg = rating.count > 0 ? rating.sum / rating.count : 0;
-                  const myRating = Number(rating.mine || 0);
-                  const tryCount = Number(templateTryCounts[template.id] || 0);
-                  const comments = templateComments[template.id] || [];
-                  const author = profiles[template.created_by] || "Athlete";
-                  const previewRows = getTemplatePreviewRows(template, true);
-                  const metaBadges = getTemplateMetaBadges(template);
-                  const payload = template.payload || {};
-                  const workoutRows = Array.isArray(payload.exercises) ? payload.exercises : [];
-                  const outlineRows = Array.isArray(payload.outline) ? payload.outline : [];
-                  return (
-                    <div key={template.id} className="community-feed-card">
-                      <div className="community-feed-title">{template.title}</div>
-                      <div className="community-thread-meta">
-                        <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(template.created_by)}>{author}</button>
-                        <span className="community-meta-pill">{formatTime(template.created_at)}</span>
-                        <span className="community-meta-pill">{template.template_type.replace("_", " ")}</span>
-                        {template.goal && <span className="community-meta-pill">{template.goal}</span>}
-                      </div>
-                      <div className="community-feed-sub">{template.summary || template.subtitle || "Shared template."}</div>
-                      {metaBadges.length > 0 && (
-                        <div className="community-template-meta-row">
-                          {metaBadges.map((badge, index) => (
-                            <span key={`${template.id}-meta-${index}`} className="community-template-meta-pill">
-                              {badge}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {template.template_type === "workout_program" && workoutRows.length > 0 && (
-                        <div className="community-template-program-report">
-                          <div className="community-template-program-head">
-                            <span className="exercise">Exercise</span>
-                            <span>Sets</span>
-                            <span>Rep Range</span>
-                            <span>Weight (kg)</span>
-                          </div>
-                          <div className="community-template-program-body">
-                            {workoutRows.map((exercise, index) => (
-                              <div className="community-template-program-row" key={`forum-program-${template.id}-${index}`}>
-                                <span className="exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
-                                <span>{Number(exercise?.sets) || 0}</span>
-                                <span>{exercise?.reps || "custom"}</span>
-                                <span>{Number(exercise?.weight) > 0 ? exercise.weight : "-"}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {template.template_type === "training_plan" && outlineRows.length > 0 && (
-                        <div className="community-template-outline">
-                          <div className="community-template-preview-title">Full plan outline</div>
-                          <div className="community-template-outline-list">
-                            {outlineRows.map((block, blockIndex) => {
-                              const sessions = Array.isArray(block?.sessions) ? block.sessions : [];
-                              return (
-                                <div key={`forum-outline-${template.id}-${blockIndex}`} className="community-template-outline-block">
-                                  <div className="community-template-outline-week">{block?.week || `Week ${blockIndex + 1}`}</div>
-                                  <div className="community-template-outline-sessions">
-                                    {sessions.length
-                                      ? sessions.map((item, itemIndex) => (
-                                          <div key={`forum-outline-session-${template.id}-${blockIndex}-${itemIndex}`}>
-                                            {item}
-                                          </div>
-                                        ))
-                                      : "No sessions"}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {template.template_type === "recipe" && previewRows.length > 0 && (
-                        <div className="community-template-preview">
-                          <div className="community-template-preview-title">Recipe</div>
-                          <div className="community-template-preview-list">
-                            {previewRows.map((row, index) => (
-                              <div key={`${template.id}-preview-${index}`} className="community-template-preview-item">
-                                {row}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="community-tags">
-                        {(template.tags || []).slice(0, 6).map((tag, index) => (
-                          <span key={`${template.id}-tag-${index}`}>{tag}</span>
-                        ))}
-                      </div>
-                      <div className="community-reaction-row">
-                        <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
-                        <span className="community-meta-pill">Tried {tryCount}</span>
-                        <span className="community-meta-pill">Comments {comments.length}</span>
-                      </div>
-                      <div className="community-reaction-row">
-                        {[1, 2, 3, 4, 5].map((value) => (
-                          <button
-                            key={`${template.id}-rate-${value}`}
-                            className={`community-reaction-btn ${myRating === value ? "active" : ""}`}
-                            type="button"
-                            onClick={() => handleRateTemplate(template.id, value)}
-                          >
-                            {value}★
-                          </button>
-                        ))}
-                        <button
-                          className={`community-reaction-btn ${templateTriedByMe[template.id] ? "active" : ""}`}
-                          type="button"
-                          onClick={() => handleTryTemplate(template.id)}
-                        >
-                          Tried it
-                        </button>
-                      </div>
-                      <div className="community-thread-actions">
-                        <button
-                          className="studio-back community-action-btn"
-                          type="button"
-                          onClick={() => {
-                            const targetIndex = swipeTemplates.findIndex((item) => item.id === template.id);
-                            setTemplateViewMode("swipe");
-                            if (targetIndex >= 0) {
-                              setTemplateDeckIndex(targetIndex);
-                            } else {
-                              setTemplateDeckIndex(0);
-                            }
-                            setTemplateDeckDragX(0);
-                            setTemplateDeckAnimating(null);
-                          }}
-                        >
-                          View
-                        </button>
-                        <button
-                          className="studio-back community-action-btn community-primary-btn"
-                          type="button"
-                          onClick={() => handleAddTemplateToMine(template)}
-                        >
-                          Add to mine
-                        </button>
-                      </div>
-                      <div className="community-template-commentbar">
-                        <input
-                          className="community-modal-input"
-                          placeholder="Comment on this template"
-                          value={templateCommentDrafts[template.id] || ""}
-                          onChange={(event) =>
-                            setTemplateCommentDrafts((prev) => ({
-                              ...prev,
-                              [template.id]: event.target.value
-                            }))
-                          }
-                        />
-                        <button
-                          className="studio-back community-cta-btn"
-                          type="button"
-                          onClick={() => handleCommentTemplate(template.id)}
-                        >
-                          Comment
-                        </button>
-                      </div>
-                      {comments.slice(0, 3).map((comment) => (
-                        <div key={comment.id} className="community-reply-card">
-                          <div className="community-reply-body">{comment.body}</div>
-                          <div className="community-thread-meta">
-                            <button type="button" className="community-meta-pill community-meta-author community-profile-link" onClick={() => openUserProfile(comment.user_id)}>
-                              {profiles[comment.user_id] || "Athlete"}
-                            </button>
-                            <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-                </div>
-              )}
-            </div>
+            <TemplatesPanel
+              templateSearch={templateSearch}
+              setTemplateSearch={setTemplateSearch}
+              setCreateRecipeTemplateOpen={setCreateRecipeTemplateOpen}
+              templateTypeFilter={templateTypeFilter}
+              setTemplateTypeFilter={setTemplateTypeFilter}
+              templateFocusFilter={templateFocusFilter}
+              setTemplateFocusFilter={setTemplateFocusFilter}
+              templateSort={templateSort}
+              setTemplateSort={setTemplateSort}
+              filteredTemplates={filteredTemplates}
+              templateViewMode={templateViewMode}
+              setTemplateViewMode={setTemplateViewMode}
+              swipeTemplates={swipeTemplates}
+              templateDeckIndex={templateDeckIndex}
+              visibleSwipeQueue={visibleSwipeQueue}
+              setTemplateDeckIndex={setTemplateDeckIndex}
+              setTemplateDeckDragX={setTemplateDeckDragX}
+              setTemplateDeckAnimating={setTemplateDeckAnimating}
+              templateQueueExpanded={templateQueueExpanded}
+              setTemplateQueueExpanded={setTemplateQueueExpanded}
+              templateDeckDragX={templateDeckDragX}
+              templateDeckAnimating={templateDeckAnimating}
+              handleTemplateDeckPointerDown={handleTemplateDeckPointerDown}
+              handleTemplateDeckPointerMove={handleTemplateDeckPointerMove}
+              handleTemplateDeckPointerEnd={handleTemplateDeckPointerEnd}
+              handleTemplateDeckKeyDown={handleTemplateDeckKeyDown}
+              templateRatings={templateRatings}
+              templateTryCounts={templateTryCounts}
+              templateComments={templateComments}
+              profiles={profiles}
+              getTemplatePreviewRows={getTemplatePreviewRows}
+              getTemplateMetaBadges={getTemplateMetaBadges}
+              openUserProfile={openUserProfile}
+              formatTime={formatTime}
+              handleTemplateDeckAction={handleTemplateDeckAction}
+              likedTemplates={likedTemplates}
+              handleAddTemplateToMine={handleAddTemplateToMine}
+              renderEmptyState={renderEmptyState}
+              templateTriedByMe={templateTriedByMe}
+              handleRateTemplate={handleRateTemplate}
+              handleTryTemplate={handleTryTemplate}
+              templateCommentDrafts={templateCommentDrafts}
+              setTemplateCommentDrafts={setTemplateCommentDrafts}
+              handleCommentTemplate={handleCommentTemplate}
+            />
           )}
-
-
-          {/* groups discovery + joined sections */}
+{/* groups discovery + joined sections */}
           {/* discover list comes first */}
           {/* joined groups are shown below */}
           {/* join routes into room immediately */}
           {activeTab === "groups" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Find Groups</div>
-              <input
-                className="community-search"
-                placeholder="Search groups (e.g. Keto Diet Group)"
-                value={groupSearch}
-                onChange={(event) => setGroupSearch(event.target.value)}
-              />
-
-              <div className="community-panel-title">Discover Groups</div>
-              <div className="community-scroll-list community-group-list community-group-square-grid">
-                {discoverGroups.map((group) => {
-                  const members = groupMemberCounts[group.id] || 0;
-                  const lastActive = groupLastActive[group.id];
-                  return (
-                    <div key={group.id} className="community-forum-item community-group-square">
-                      <div className="community-forum-title">{group.name}</div>
-                      <div className="community-group-meta-line">
-                        <span className="community-meta-pill">{members} members</span>
-                        <span className="community-meta-pill">{groupPrivacyLabel(group.privacy)}</span>
-                      </div>
-                      <div className="community-forum-sub">{group.goal || "Community group"}</div>
-                      <div className="community-group-activity-row">
-                        <span className={`community-notification-dot mini ${lastActive ? "" : "idle"}`} />
-                        <span>{lastActive ? `Active ${formatTime(lastActive)}` : "No chat activity yet"}</span>
-                      </div>
-                      <div className="community-group-item-actions">
-                        <button
-                          type="button"
-                          className="studio-back community-cta-btn community-group-open-btn"
-                          onClick={() => handleJoinGroup(group.id, true)}
-                        >
-                          Join group
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {!discoverGroups.length &&
-                renderEmptyState({
-                  icon: "👥",
-                  title: "No groups found",
-                  sub: "Try a different search or create a new group.",
-                  ctaLabel: "Create group",
-                  onCta: () => setCreateGroupOpen(true)
-                })}
-
-              <div className="community-panel-title">Joined Groups</div>
-              <div className="community-scroll-list community-group-list community-group-square-grid">
-                {joinedGroups.map((group) => {
-                  const members = groupMemberCounts[group.id] || 0;
-                  const lastActive = groupLastActive[group.id];
-                  return (
-                    <div
-                      key={group.id}
-                      className={`community-forum-item community-group-square ${String(groupRoomId) === String(group.id) ? "active" : ""}`}
-                    >
-                      <div className="community-forum-title">{group.name}</div>
-                      <div className="community-group-meta-line">
-                        <span className="community-meta-pill">{members} members</span>
-                        <span className="community-meta-pill">{groupPrivacyLabel(group.privacy)}</span>
-                      </div>
-                      <div className="community-forum-sub">{group.goal || "Community group"}</div>
-                      <div className="community-group-activity-row">
-                        <span className={`community-notification-dot mini ${lastActive ? "" : "idle"}`} />
-                        <span>{lastActive ? `Active ${formatTime(lastActive)}` : "No chat activity yet"}</span>
-                      </div>
-                      <div className="community-group-item-actions">
-                        <button
-                          type="button"
-                          className="studio-back community-cta-btn community-primary-btn community-group-open-btn"
-                          onClick={() => {
-                            setActiveGroupId(group.id);
-                            navigate(groupRoomPath(group.id));
-                          }}
-                        >
-                          Open room
-                        </button>
-                        <button
-                          type="button"
-                          className="studio-back community-cta-btn community-group-open-btn"
-                          onClick={() => handleLeaveGroup(group.id)}
-                        >
-                          Leave
-                        </button>
-                        {isGroupOwner(group) && (
-                          <button
-                            type="button"
-                            className="studio-back community-cta-btn community-group-open-btn"
-                            onClick={() => handleOpenEditGroup(group)}
-                          >
-                            Edit group
-                          </button>
-                        )}
-                        {isGroupOwner(group) && (
-                          <button
-                            type="button"
-                            className="studio-back community-cta-btn community-group-open-btn"
-                            onClick={() => handleDeleteGroup(group)}
-                          >
-                            Delete group
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {!joinedGroups.length &&
-                renderEmptyState({
-                  icon: "👥",
-                  title: "No joined groups yet",
-                  sub: "Join a group above and it will appear here."
-                })}
-            </div>
+            <GroupsPanel
+              groupSearch={groupSearch}
+              setGroupSearch={setGroupSearch}
+              discoverGroups={discoverGroups}
+              joinedGroups={joinedGroups}
+              groupMemberCounts={groupMemberCounts}
+              groupLastActive={groupLastActive}
+              groupPrivacyLabel={groupPrivacyLabel}
+              formatTime={formatTime}
+              groupRoomId={groupRoomId}
+              setActiveGroupId={setActiveGroupId}
+              navigate={navigate}
+              groupRoomPath={groupRoomPath}
+              handleJoinGroup={handleJoinGroup}
+              handleLeaveGroup={handleLeaveGroup}
+              isGroupOwner={isGroupOwner}
+              handleOpenEditGroup={handleOpenEditGroup}
+              handleDeleteGroup={handleDeleteGroup}
+              renderEmptyState={renderEmptyState}
+              setCreateGroupOpen={setCreateGroupOpen}
+            />
           )}
           {/* challenge list panel with join CTAs, */}
           {/* shows challenge metadata and tags, */}
@@ -4187,103 +3270,28 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {/* highlights group + friend counts at a glance, */}
           {/* provides quick CTAs to create or add, */}
           {/* and anchors the friends list below */}
-          {activeTab === "circle" && (
-            <div className="community-panel">
-              <div className="community-panel-title">Your Circle</div>
-              <div className="community-circle-grid">
-                <div className="community-circle-card">
-                  <div className="community-circle-title">Accountability Groups</div>
-                  <div className="community-circle-sub">{memberships.length} groups joined</div>
-                  <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
-                    Create group
-                  </button>
-                </div>
-                <div className="community-circle-card">
-                  <div className="community-circle-title">
-                    Friends List
-                    {unreadCount > 0 && <span className="community-notification-pill">{unreadCount}</span>}
-                    {incomingRequestCount > 0 && (
-                      <span
-                        className="community-notification-dot alert"
-                        title={`${incomingRequestCount} incoming friend request${incomingRequestCount === 1 ? "" : "s"}`}
-                      />
-                    )}
-                  </div>
-                  <div className="community-circle-sub">{friends.length} connections</div>
-                  <div className="community-group-item-actions">
-                  <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
-                    Add friend
-                  </button>
-                    <button className="studio-back community-cta-btn" onClick={() => navigate(messagesPath())}>
-                      Open inbox
-                    </button>
-                  </div>
-                </div>
-              </div>
-              {/* friends list with status + actions, */}
-              {/* shows incoming/outgoing/accepted states, */}
-              {/* exposes accept/reject/message buttons, */}
-              {/* and renders an empty state when none exist */}
-              <div className="community-friends-list">
-                {friends.map((friend) => {
-                  const status = getFriendStatus(friend);
-                  const label = buildFriendLabel(friend);
-                  const otherId = friend.user_id === Number(userId) ? friend.friend_user_id : friend.user_id;
-                  const hasUnread = getFriendUnread(friend);
-                  return (
-                    <div key={friend.id} className="community-friend-card">
-                      <div>
-                        <div className="community-friend-title-row">
-                          <button type="button" className="community-profile-link community-friend-title" onClick={() => openUserProfile(otherId)}>
-                            {label}
-                          </button>
-                          {hasUnread && <span className="community-notification-dot" />}
-                          {status === "incoming" && <span className="community-notification-dot alert" title="Incoming friend request" />}
-                        </div>
-                        <div className="community-friend-sub">
-                          {buildFriendMeta(friend)}
-                        </div>
-                        <div className="community-friend-sub">
-                          {status === "accepted" ? "Connected" : status === "outgoing" ? "Friend request sent" : "Friend request received"}
-                        </div>
-                      </div>
-                      <div className="community-friend-actions">
-                        {status === "incoming" && (
-                          <>
-                            <button className="studio-back community-cta-btn" onClick={() => handleAcceptFriend(friend)}>Approve</button>
-                            <button className="hud-secondary-btn danger" onClick={() => handleRejectFriend(friend)}>
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {status === "accepted" && (
-                          <>
-                            <button
-                              className="studio-back community-cta-btn"
-                              onClick={() => {
-                                navigate(messagesPath(otherId));
-                              }}
-                            >
-                              Message
-                              {hasUnread && <span className="community-notification-dot mini" />}
-                            </button>
-                            <button className="studio-back community-cta-btn" onClick={() => handleRemoveFriend(friend)}>
-                              Remove
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {!friends.length &&
-                  renderEmptyState({
-                    icon: "🤝",
-                    title: "No connections yet",
-                    sub: "Approve a friend request to unlock direct messages."
-                  })}
-              </div>
-            </div>
+          {(activeTab === "circle" || activeTab === "friends") && (
+            <CirclePanel
+              memberships={memberships}
+              unreadCount={unreadCount}
+              incomingRequestCount={incomingRequestCount}
+              friends={friends}
+              setCreateGroupOpen={setCreateGroupOpen}
+              setAddFriendOpen={setAddFriendOpen}
+              navigate={navigate}
+              messagesPath={messagesPath}
+              getFriendStatus={getFriendStatus}
+              buildFriendLabel={buildFriendLabel}
+              buildFriendMeta={buildFriendMeta}
+              getFriendUnread={getFriendUnread}
+              openUserProfile={openUserProfile}
+              handleAcceptFriend={handleAcceptFriend}
+              handleRejectFriend={handleRejectFriend}
+              handleRemoveFriend={handleRemoveFriend}
+              userId={userId}
+              renderEmptyState={renderEmptyState}
+              forceFriendsListOpen={activeTab === "friends"}
+            />
           )}
         </main>
       </div>
@@ -4577,5 +3585,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     </div>
   );
 }
+
+
+
+
+
+
 
 

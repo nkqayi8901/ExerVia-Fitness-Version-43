@@ -10,6 +10,7 @@ import AthleteTrainingTab from "./AthleteTrainingTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
 import PublicProfilePage from "./PublicProfilePage";
+import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import GymProfilePage from "./GymProfilePage";
 // Component: AthleteMode - UI layout and interactions.
@@ -345,6 +346,10 @@ export default function AthleteMode() {
         <Route
           path="profile/:targetId"
           element={<PublicProfilePage mode="athlete" viewerId={id} />}
+        />
+        <Route
+          path="profile/:targetId/session/:sessionType/:sessionId"
+          element={<PublicSessionDetailPage mode="athlete" viewerId={id} />}
         />
         <Route
           path="community"
