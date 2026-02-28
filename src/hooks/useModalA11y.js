@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const INITIAL_FOCUS_SELECTOR = '[data-modal-initial-focus="true"]';
 
 let modalStack = [];
 let modalIdCounter = 0;
@@ -9,6 +10,12 @@ let modalIdCounter = 0;
 export default function useModalA11y({ open, onClose, modalRef }) {
   const lastFocusedRef = useRef(null);
   const modalIdRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   if (modalIdRef.current == null) {
     modalIdRef.current = ++modalIdCounter;
@@ -22,8 +29,11 @@ export default function useModalA11y({ open, onClose, modalRef }) {
     modalStack = [...modalStack.filter((id) => id !== currentId), currentId];
     lastFocusedRef.current = document.activeElement;
 
+    const preferred = modalEl.querySelector(INITIAL_FOCUS_SELECTOR);
     const focusables = modalEl.querySelectorAll(FOCUSABLE_SELECTOR);
-    if (focusables.length > 0) {
+    if (preferred && typeof preferred.focus === "function") {
+      preferred.focus();
+    } else if (focusables.length > 0) {
       focusables[0].focus();
     } else {
       modalEl.setAttribute("tabindex", "-1");
@@ -37,7 +47,7 @@ export default function useModalA11y({ open, onClose, modalRef }) {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (event.key !== "Tab") return;
@@ -64,10 +74,16 @@ export default function useModalA11y({ open, onClose, modalRef }) {
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       modalStack = modalStack.filter((id) => id !== currentId);
+    };
+  }, [open, modalRef]);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
       const toRestore = lastFocusedRef.current;
       if (toRestore && typeof toRestore.focus === "function") {
         toRestore.focus();
       }
-    };
-  }, [open, onClose, modalRef]);
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 }

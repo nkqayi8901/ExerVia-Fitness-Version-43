@@ -63,11 +63,12 @@ export default function ChallengesPanel({
       })}
       {!challenges.length &&
         renderEmptyState({
-          icon: "ðŸ",
+          icon: "\u{1F3C1}",
           title: "No challenges yet",
           sub: "Create the first challenge and get people moving.",
         })}
     </div>
   );
 }
+
 

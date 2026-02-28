@@ -190,6 +190,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [completedSessionLabel, setCompletedSessionLabel] = useState('');
   const [planFavorites, setPlanFavorites] = useState([]);
   const [pinnedOrder, setPinnedOrder] = useState([]);
+  const [activePlanWeekIndex, setActivePlanWeekIndex] = useState(0);
+  const [recentTrainingSessions, setRecentTrainingSessions] = useState([]);
+  const [lastTrainingOpen, setLastTrainingOpen] = useState(false);
   const [draggingPin, setDraggingPin] = useState(null);
   const [newPlan, setNewPlan] = useState({ ...emptyPlan });
   const [apiStatus, setApiStatus] = useState('idle');
@@ -772,9 +775,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   useEffect(() => {
-    if (!planOpen && !showCreatePlan) return undefined;
+    if (!planOpen && !showCreatePlan && !lastTrainingOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key !== 'Escape') return;
+      if (lastTrainingOpen) {
+        setLastTrainingOpen(false);
+        return;
+      }
       if (showCreatePlan) {
         closeCreatePlanModal();
         return;
@@ -785,7 +792,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [planOpen, showCreatePlan]);
+  }, [lastTrainingOpen, planOpen, showCreatePlan]);
 
   // handleLogSession writes the session to Supabase,
   // computes efficiency metrics when available,
@@ -912,7 +919,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       } else {
         setBanner({
           type: 'info',
-          message: `Session logged. Keep building.${xpRelinked ? ' Profile link repaired.' : ''}`,
+          message: `Session logged. No XP update this time (already counted or below reward threshold).${xpRelinked ? ' Profile link repaired.' : ''}`,
         });
       }
 
@@ -1033,6 +1040,32 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setPinnedOrder(loadPinnedOrder());
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) {
+      setRecentTrainingSessions([]);
+      return;
+    }
+    const run = async () => {
+      const { data } = await supabase
+        .from('training_sessions')
+        .select('id,sport,duration_minutes,created_at,metrics')
+        .eq('user_id', Number(userId))
+        .order('created_at', { ascending: false })
+        .limit(12);
+      setRecentTrainingSessions(data || []);
+    };
+    run();
+  }, [userId]);
+
+  useEffect(() => {
+    const weekCount = (selectedPlan?.outline || []).length;
+    if (!weekCount) {
+      setActivePlanWeekIndex(0);
+      return;
+    }
+    setActivePlanWeekIndex((prev) => Math.max(0, Math.min(prev, weekCount - 1)));
+  }, [selectedPlan]);
+
   // filteredPlans applies search + sport filter,
   // keeps the library list focused by user input,
   // matches on name/goal/summary/sport fields,
@@ -1101,6 +1134,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     .filter(Boolean);
   const pinnedPlan = pinnedPlans[0] || null;
   const timelinePlan = selectedPlan || pinnedPlan || recommendedPlans[0];
+  const timelineOutline = Array.isArray(timelinePlan?.outline) ? timelinePlan.outline : [];
+  const activeWeek = timelineOutline[activePlanWeekIndex] || timelineOutline[0] || null;
+  const lastTraining = recentTrainingSessions[0] || null;
   const holdTimerRef = useRef(null);
   const sessionLoggedPulseTimerRef = useRef(null);
 
@@ -1235,9 +1271,27 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             <p className="studio-subtitle">Precision sessions. Clean metrics. No noise.</p>
           </div>
           <div className="studio-header-actions">
+            <button
+              className="studio-inline-link"
+              type="button"
+              onClick={() => setLastTrainingOpen(true)}
+            >
+              Last training
+            </button>
             <button className="studio-back studio-gym-link-btn" type="button" onClick={handleOpenMyGym}>
               My gym
             </button>
+            {activeWeek?.sessions?.length ? (
+              <div className="studio-header-checklist">
+                <div className="studio-header-checklist-title">Today Checklist</div>
+                <div className="studio-header-checklist-week">{activeWeek.week || "Week 1"}</div>
+                <ul className="studio-header-checklist-list">
+                  {(activeWeek.sessions || []).slice(0, 3).map((item, index) => (
+                    <li key={`header-check-${index}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -1459,27 +1513,57 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-plan-preview">
                   <div className="studio-plan-preview-title">{selectedPlan.name}</div>
                   <div className="studio-plan-preview-sub">{selectedPlan.goal}</div>
+                {(selectedPlan.outline || []).length > 1 && (
+                  <div className="studio-week-selector">
+                    {(selectedPlan.outline || []).map((block, index) => (
+                      <button
+                        key={`week-tab-${block.week}-${index}`}
+                        type="button"
+                        className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
+                        onClick={() => setActivePlanWeekIndex(index)}
+                      >
+                        {block.week || `Week ${index + 1}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="studio-plan-preview-list">
-                  {(selectedPlan.outline || []).slice(0, 2).map((block) => (
-                    <div key={block.week} className="studio-plan-preview-row">
-                      <div className="studio-plan-preview-week">{block.week}</div>
+                  {(selectedPlan.outline || []).length > 0 ? (
+                    <div className="studio-plan-preview-row">
+                      <div className="studio-plan-preview-week">
+                        {selectedPlan.outline[activePlanWeekIndex]?.week || selectedPlan.outline[0]?.week || 'Week 1'}
+                      </div>
                       <div className="studio-plan-preview-sessions">
-                        {(block.sessions || []).slice(0, 3).map((sessionItem, sessionIndex) => (
+                        {(
+                          selectedPlan.outline[activePlanWeekIndex]?.sessions ||
+                          selectedPlan.outline[0]?.sessions ||
+                          []
+                        )
+                          .slice(0, 3)
+                          .map((sessionItem, sessionIndex) => (
                           <span
-                            key={`${block.week}-${sessionItem}-${sessionIndex}`}
+                            key={`preview-${sessionItem}-${sessionIndex}`}
                             className="studio-plan-preview-session-pill"
                           >
                             {sessionItem}
                           </span>
                         ))}
-                        {(block.sessions || []).length > 3 && (
+                        {(
+                          selectedPlan.outline[activePlanWeekIndex]?.sessions ||
+                          selectedPlan.outline[0]?.sessions ||
+                          []
+                        ).length > 3 && (
                           <span className="studio-plan-preview-session-more">
-                            + {(block.sessions || []).length - 3} more
+                            + {(
+                              selectedPlan.outline[activePlanWeekIndex]?.sessions ||
+                              selectedPlan.outline[0]?.sessions ||
+                              []
+                            ).length - 3} more
                           </span>
                         )}
                       </div>
                     </div>
-                  ))}
+                  ) : null}
                     {(selectedPlan.outline || []).length > 2 && (
                       <div className="studio-plan-preview-more">
                         + {(selectedPlan.outline || []).length - 2} more weeks
@@ -1894,14 +1978,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-breath-sub">{breathHint}</div>
               </div>
             )}
-            {timelinePlan?.outline?.[0]?.sessions?.length ? (
+            {activeWeek?.sessions?.length ? (
               <div className="studio-floor-plan-checklist">
                 <div className="studio-floor-plan-checklist-title">Today Checklist</div>
                 <div className="studio-floor-plan-checklist-week">
-                  {timelinePlan.outline[0]?.week || 'Week 1'}
+                  {activeWeek?.week || 'Week 1'}
                 </div>
                 <ul className="studio-floor-plan-checklist-list">
-                  {(timelinePlan.outline[0]?.sessions || []).slice(0, 3).map((sessionItem, index) => (
+                  {(activeWeek?.sessions || []).slice(0, 3).map((sessionItem, index) => (
                     <li key={`timer-check-${index}`}>{sessionItem}</li>
                   ))}
                 </ul>
@@ -1977,6 +2061,50 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             <div className="studio-log-pulse-check" aria-hidden="true">&#10003;</div>
             <div className="studio-log-pulse-title">Session logged</div>
             <div className="studio-log-pulse-sub">Opening your logs...</div>
+          </div>
+        </div>
+      )}
+
+      {lastTrainingOpen && (
+        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && setLastTrainingOpen(false)}>
+          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="studio-swap-header">
+              <div>
+                <div className="studio-panel-title">Last training</div>
+                <div className="studio-swap-sub">
+                  {lastTraining
+                    ? `${String(lastTraining.sport || 'training').toUpperCase()} - ${lastTraining.duration_minutes || 0} min`
+                    : 'No training logged yet'}
+                </div>
+              </div>
+              <button className="studio-swap-close" onClick={() => setLastTrainingOpen(false)} type="button">
+                Close
+              </button>
+            </div>
+            <div className="studio-swap-body">
+              {recentTrainingSessions.length ? (
+                <div className="studio-plan-timeline">
+                  {recentTrainingSessions.slice(0, 3).map((row) => (
+                    <div key={`recent-ath-${row.id}`} className="studio-plan-week">
+                      <div className="studio-plan-week-title">
+                        {String(row.sport || 'training').toUpperCase()} - {row.duration_minutes || 0} min
+                      </div>
+                      <ul className="studio-plan-week-list">
+                        <li>{new Date(row.created_at).toLocaleString()}</li>
+                        {row?.metrics?.plan_name ? <li>Plan: {row.metrics.plan_name}</li> : null}
+                        {row?.metrics?.distance ? <li>Distance: {row.metrics.distance}</li> : null}
+                        {row?.metrics?.focus ? <li>Focus: {row.metrics.focus}</li> : null}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="studio-empty">No training history yet.</div>
+              )}
+              <button className="studio-primary-btn" type="button" onClick={() => navigate(`/athlete/${userId}/logs`)}>
+                Open full logs
+              </button>
+            </div>
           </div>
         </div>
       )}

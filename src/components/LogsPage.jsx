@@ -6,6 +6,7 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
 import { isErrorBanner } from "../utils/banner";
+import curatedRecipes from "../data/recipes.json";
 import {
   addSavedMeal,
   consumeLogsTrainingPrefill,
@@ -237,6 +238,7 @@ export default function LogsPage({ mode = "gym" }) {
       const combined = [
         ...(trainingRes.data || []).map((row) => ({
           id: `train-${row.id}`,
+          sourceRowId: row.id,
           sourceType: "training_session",
           created_at: row.created_at,
           title:
@@ -255,6 +257,7 @@ export default function LogsPage({ mode = "gym" }) {
         })),
         ...(strengthRes.data || []).map((row) => ({
           id: `lift-${row.id}`,
+          sourceRowId: row.id,
           sourceType: "strength_log",
           created_at: row.created_at,
           title: row.exercise_name || "Strength session",
@@ -370,6 +373,25 @@ export default function LogsPage({ mode = "gym" }) {
     () => Array.from(new Set([...BASE_SUPPLEMENTS, ...supplementLibrary])),
     [supplementLibrary]
   );
+  const mealCatalog = useMemo(() => {
+    const curatedTitles = Array.isArray(curatedRecipes)
+      ? curatedRecipes.map((recipe) => String(recipe?.title || "").trim()).filter(Boolean)
+      : [];
+    const savedTitles = (savedMeals || []).map((meal) => String(meal?.name || "").trim()).filter(Boolean);
+    const merged = [...savedTitles, ...curatedTitles];
+    const seen = new Set();
+    return merged.filter((name) => {
+      const key = name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [savedMeals]);
+  const mealSuggestions = useMemo(() => {
+    const query = String(mealInput || "").trim().toLowerCase();
+    if (query.length < 2) return [];
+    return mealCatalog.filter((name) => name.toLowerCase().includes(query)).slice(0, 8);
+  }, [mealCatalog, mealInput]);
 
   const dayGlance = useMemo(
     () => ({
@@ -760,6 +782,7 @@ export default function LogsPage({ mode = "gym" }) {
     const local = getLogsStore(id);
     setSupplementLibrary(Array.from(new Set([...(cloudSupps || []), ...(local.supplementLibrary || [])])));
     setCustomSupplement("");
+    setBanner("Supplement added to library.");
   };
 
   const addExtraActivity = async () => {
@@ -812,6 +835,38 @@ export default function LogsPage({ mode = "gym" }) {
     setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
     await saveDayLog(selectedDay, next);
     setBanner("Activity removed from this day.");
+  };
+
+  const removeTrainingEntry = async (row) => {
+    if (!row || !id) return;
+    if (row.sourceType === "session_completion") {
+      await removeExtraActivityEntry(row.id);
+      return;
+    }
+
+    const sourceId = row.sourceRowId || String(row.id || "").split("-").slice(1).join("-");
+    if (!sourceId) return;
+
+    if (row.sourceType === "training_session") {
+      const { error } = await supabase.from("training_sessions").delete().eq("id", sourceId).eq("user_id", id);
+      if (error) {
+        setBanner("Could not remove training session right now.");
+        return;
+      }
+      setTrainingRows((prev) => prev.filter((item) => String(item.id) !== String(row.id)));
+      setBanner("Training session removed.");
+      return;
+    }
+
+    if (row.sourceType === "strength_log") {
+      const { error } = await supabase.from("strength_logs").delete().eq("id", sourceId).eq("user_id", id);
+      if (error) {
+        setBanner("Could not remove training plan entry right now.");
+        return;
+      }
+      setTrainingRows((prev) => prev.filter((item) => String(item.id) !== String(row.id)));
+      setBanner("Training plan entry removed.");
+    }
   };
 
   const openTrainingReport = (row) => {
@@ -973,15 +1028,17 @@ export default function LogsPage({ mode = "gym" }) {
                     </button>
                     <div className="logs-list-sub">{row.detail}</div>
                   </div>
-                  {String(row.id || "").startsWith("extra-") ? (
-                    <button
-                      className="logs-row-delete"
-                      type="button"
-                      onClick={() => removeExtraActivityEntry(row.id)}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
+                  <button
+                    className="logs-row-delete"
+                    type="button"
+                    onClick={() =>
+                      String(row.id || "").startsWith("extra-")
+                        ? removeExtraActivityEntry(row.id)
+                        : removeTrainingEntry(row)
+                    }
+                  >
+                    Remove
+                  </button>
                 </div>
               ))
             ) : (
@@ -1120,6 +1177,20 @@ export default function LogsPage({ mode = "gym" }) {
             />
             <button className="studio-back logs-action-btn" onClick={addMealEntry} type="button">Add meal</button>
           </div>
+          {mealSuggestions.length > 0 && (
+            <div className="logs-suggestions" role="listbox" aria-label="Meal suggestions">
+              {mealSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className="logs-suggestion-btn"
+                  onClick={() => setMealInput(suggestion)}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
           <label className="logs-inline-check">
             <input type="checkbox" checked={saveMealLibrary} onChange={(event) => setSaveMealLibrary(event.target.checked)} />
             Save into my meal library
@@ -1181,15 +1252,17 @@ export default function LogsPage({ mode = "gym" }) {
                     </button>
                     <div className="logs-list-sub">{row.detail}</div>
                   </div>
-                  {String(row.id || "").startsWith("extra-") ? (
-                    <button
-                      className="logs-row-delete"
-                      type="button"
-                      onClick={() => removeExtraActivityEntry(row.id)}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
+                  <button
+                    className="logs-row-delete"
+                    type="button"
+                    onClick={() =>
+                      String(row.id || "").startsWith("extra-")
+                        ? removeExtraActivityEntry(row.id)
+                        : removeTrainingEntry(row)
+                    }
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>

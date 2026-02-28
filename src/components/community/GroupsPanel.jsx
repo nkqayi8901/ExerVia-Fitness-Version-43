@@ -63,7 +63,7 @@ export default function GroupsPanel({
       </div>
       {!discoverGroups.length &&
         renderEmptyState({
-          icon: "ðŸ‘¥",
+          icon: "\u{1F465}",
           title: "No groups found",
           sub: "Try a different search or create a new group.",
           ctaLabel: "Create group",
@@ -133,11 +133,12 @@ export default function GroupsPanel({
       </div>
       {!joinedGroups.length &&
         renderEmptyState({
-          icon: "ðŸ‘¥",
+          icon: "\u{1F465}",
           title: "No joined groups yet",
           sub: "Join a group above and it will appear here.",
         })}
     </div>
   );
 }
+
 

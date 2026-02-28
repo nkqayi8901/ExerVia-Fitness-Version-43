@@ -195,6 +195,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [reactionCounts, setReactionCounts] = useState({});
   const [userReactions, setUserReactions] = useState({});
   const groupRoomListRef = useRef(null);
+  const createPostTitleRef = useRef(null);
+  const createPostBodyRef = useRef(null);
   const [expandedPostIds, setExpandedPostIds] = useState({});
   const [forumThreadCounts, setForumThreadCounts] = useState({});
   const [pinnedThreadIds, setPinnedThreadIds] = useState({});
@@ -339,7 +341,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // replies, and friends
 // loadFriendStats is similar but it fetches the rank and level of friends to display 
 // in the friend list
-  const loadProfiles = async (ids) => {
+  const loadProfiles = useCallback(async (ids) => {
     const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
     if (!uniqueIds.length) return;
     const { data, error } = await supabase
@@ -353,7 +355,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       mapped[profile.id] = username ? `@${username}` : profile.display_name || `User ${profile.id}`;
     });
     setProfiles((prev) => ({ ...prev, ...mapped }));
-  };
+  }, []);
 
   const {
     globalLeaderboard,
@@ -362,6 +364,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     gymLeaderboardContext,
     activityFeedItems,
     leaderboardLoading,
+    groupLeaderboardLoading,
     gymLeaderboardLoading,
     reportingLeaderboardUserIds,
     activityFeedLoading,
@@ -443,10 +446,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   };
 
   const loadForumThreadCounts = async () => {
-    const { data } = await supabase.from("community_posts").select("id,forum_id,title");
+    const { data } = await supabase.from("community_posts").select("id,forum_id,title,created_by");
     const counts = {};
     (data || []).forEach((post) => {
       if (String(post.title || "").startsWith(STATUS_PREFIX)) return;
+      if (isBlockedProfile(post.created_by)) return;
       if (!post.forum_id) return;
       counts[post.forum_id] = (counts[post.forum_id] || 0) + 1;
     });
@@ -859,6 +863,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   }, [activeForum, createPostOpen]);
 
   useEffect(() => {
+    if (activeTab !== "forums") return;
+    loadForumThreadCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, blockedProfileIds]);
+
+  useEffect(() => {
     let cancelled = false;
     const query = search.trim().toLowerCase();
     if (activeTab !== "forums" || !query || !forums.length) {
@@ -1017,8 +1027,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // resolves the forum id from the current slug selection,
 // prevents posting if the forum or user is missing,
 // then refreshes the active forum feed after success
-  const handleCreatePost = async () => {
-    if (!newPost.title.trim()) return;
+  const handleCreatePost = async (draftPost) => {
+    const payloadTitle = String(draftPost?.title || "").trim();
+    const payloadBody = String(draftPost?.body || "").trim();
+    if (!payloadTitle) return;
     const forumSlug = newPostForum || activeForum;
     let forumId = forums.find((forum) => forum.topic_slug === forumSlug)?.id;
     if (!forumId && forumSlug) {
@@ -1040,8 +1052,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const { error } = await supabase.from("community_posts").insert([
       {
         forum_id: forumId,
-        title: newPost.title.trim(),
-        body: newPost.body.trim(),
+        title: payloadTitle,
+        body: payloadBody,
         created_by: userId
       }
     ]);
@@ -3162,6 +3174,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               memberships={memberships}
               groups={groups}
               leaderboardLoading={leaderboardLoading}
+              groupLeaderboardLoading={groupLeaderboardLoading}
               globalLeaderboard={globalLeaderboard}
               groupLeaderboard={groupLeaderboard}
               gymLeaderboardContext={gymLeaderboardContext}
@@ -3291,6 +3304,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               userId={userId}
               renderEmptyState={renderEmptyState}
               forceFriendsListOpen={activeTab === "friends"}
+              openGroupsTab={() => setActiveTab("groups")}
             />
           )}
         </main>
@@ -3513,22 +3527,31 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               })}
             </select>
             <input
+              ref={createPostTitleRef}
               className="community-modal-input"
               placeholder="Post title"
-              value={newPost.title}
-              onChange={(event) => setNewPost((prev) => ({ ...prev, title: event.target.value }))}
+              defaultValue={newPost.title}
+              data-modal-initial-focus="true"
             />
             <textarea
+              ref={createPostBodyRef}
               className="community-modal-textarea"
               placeholder="Post body"
-              value={newPost.body}
-              onChange={(event) => setNewPost((prev) => ({ ...prev, body: event.target.value }))}
+              defaultValue={newPost.body}
             />
             <div className="community-modal-actions">
               <button className="studio-back community-cta-btn" onClick={() => setCreatePostOpen(false)}>
                 Cancel
               </button>
-              <button className="studio-back community-cta-btn" onClick={handleCreatePost}>
+              <button
+                className="studio-back community-cta-btn"
+                onClick={() =>
+                  handleCreatePost({
+                    title: createPostTitleRef.current?.value || "",
+                    body: createPostBodyRef.current?.value || "",
+                  })
+                }
+              >
                 Post
               </button>
             </div>

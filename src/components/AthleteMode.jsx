@@ -223,6 +223,7 @@ export default function AthleteMode() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [userState, setUserState] = useState(null);
+  const [profileReady, setProfileReady] = useState(false);
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const themeMode = "athlete";
@@ -266,12 +267,32 @@ export default function AthleteMode() {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
     const fetchProfile = async () => {
-      const { data } = await supabase
+      setProfileReady(false);
+      const { data, error } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
+      if (error) {
+        setProfile({
+          id,
+          full_name: "Athlete",
+          username: "",
+        });
+        setProfileReady(true);
+        return;
+      }
+      if (!data) {
+        setProfile({
+          id,
+          full_name: "Athlete",
+          username: "",
+        });
+        setProfileReady(true);
+        return;
+      }
       setProfile(data);
+      setProfileReady(true);
     };
 
     fetchProfile();
@@ -318,7 +339,7 @@ export default function AthleteMode() {
     return () => window.removeEventListener("user_state_updated", handler);
   }, [id]);
 
-  if (!profile) {
+  if (!profileReady || !profile) {
     return <div className={`hud-bg mode-${themeMode} full-center`}>Loading...</div>;
   }
 

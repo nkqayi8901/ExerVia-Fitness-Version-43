@@ -20,8 +20,10 @@ export default function CirclePanel({
   userId,
   renderEmptyState,
   forceFriendsListOpen = false,
+  openGroupsTab,
 }) {
   const [friendsListOpen, setFriendsListOpen] = useState(false);
+  const [expandedFriendId, setExpandedFriendId] = useState(null);
 
   useEffect(() => {
     if (forceFriendsListOpen) {
@@ -36,9 +38,14 @@ export default function CirclePanel({
         <div className="community-circle-card">
           <div className="community-circle-title">Social Groups</div>
           <div className="community-circle-sub">{memberships.length} groups joined</div>
-          <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
-            Create group
-          </button>
+          <div className="community-group-item-actions">
+            <button className="studio-back community-cta-btn" onClick={() => openGroupsTab?.()}>
+              Open groups
+            </button>
+            <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
+              Create group
+            </button>
+          </div>
         </div>
         <div className="community-circle-card">
           <div className="community-circle-title">
@@ -90,9 +97,10 @@ export default function CirclePanel({
                 const label = buildFriendLabel(friend);
                 const otherId = friend.user_id === Number(userId) ? friend.friend_user_id : friend.user_id;
                 const hasUnread = getFriendUnread(friend);
+                const isExpanded = String(expandedFriendId || "") === String(friend.id || "");
                 return (
-                  <div key={friend.id} className="community-friend-card">
-                    <div>
+                  <div key={friend.id} className={`community-friend-card ${isExpanded ? "expanded" : "compact"}`}>
+                    <div className="community-friend-main">
                       <div className="community-friend-title-row">
                         <button
                           type="button"
@@ -106,14 +114,18 @@ export default function CirclePanel({
                           <span className="community-notification-dot alert" title="Incoming friend request" />
                         )}
                       </div>
-                      <div className="community-friend-sub">{buildFriendMeta(friend)}</div>
-                      <div className="community-friend-sub">
-                        {status === "accepted"
-                          ? "Connected"
-                          : status === "outgoing"
-                          ? "Friend request sent"
-                          : "Friend request received"}
-                      </div>
+                      {isExpanded ? (
+                        <>
+                          <div className="community-friend-sub">{buildFriendMeta(friend)}</div>
+                          <div className="community-friend-sub">
+                            {status === "accepted"
+                              ? "Connected"
+                              : status === "outgoing"
+                              ? "Friend request sent"
+                              : "Friend request received"}
+                          </div>
+                        </>
+                      ) : null}
                     </div>
                     <div className="community-friend-actions">
                       {status === "incoming" && (
@@ -137,18 +149,29 @@ export default function CirclePanel({
                             Message
                             {hasUnread && <span className="community-notification-dot mini" />}
                           </button>
-                          <button className="studio-back community-cta-btn" onClick={() => handleRemoveFriend(friend)}>
-                            Remove
-                          </button>
+                          {isExpanded ? (
+                            <button className="studio-back community-cta-btn" onClick={() => handleRemoveFriend(friend)}>
+                              Remove
+                            </button>
+                          ) : null}
                         </>
                       )}
+                      <button
+                        className="studio-back community-cta-btn"
+                        type="button"
+                        onClick={() =>
+                          setExpandedFriendId((prev) => (String(prev || "") === String(friend.id || "") ? null : friend.id))
+                        }
+                      >
+                        {isExpanded ? "Less" : "Details"}
+                      </button>
                     </div>
                   </div>
                 );
               })}
               {!friends.length &&
                 renderEmptyState({
-                  icon: "??",
+                  icon: "FR",
                   title: "No connections yet",
                   sub: "Approve a friend request to unlock direct messages.",
                 })}

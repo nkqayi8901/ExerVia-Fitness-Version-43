@@ -8643,6 +8643,15 @@ code {
   flex-wrap: wrap;
 }
 
+.community-friend-card.compact {
+  padding: 10px 12px;
+}
+
+.community-friend-main {
+  min-width: 180px;
+  flex: 1;
+}
+
 .community-friend-title {
   font-weight: 600;
 }
@@ -8663,6 +8672,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .community-friend-chat {
@@ -12813,22 +12823,23 @@ code {
   z-index: var(--z-overlay-thread);
   background: rgba(2, 6, 23, 0.62);
   backdrop-filter: blur(8px);
-  display: grid;
-  place-items: center;
-  padding: 16px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 72px 14px 14px;
 }
 
 .community-friends-sheet {
-  width: min(860px, 94vw);
-  max-height: min(76vh, 720px);
+  width: min(380px, 92vw);
+  max-height: calc(100vh - 94px);
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.25);
   background: rgba(2, 6, 23, 0.92);
-  padding: 14px;
+  padding: 12px;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .community-friends-sheet-head {
@@ -12836,6 +12847,28 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.mode-gym .community-friends-sheet-backdrop {
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(5px);
+}
+
+.mode-gym .community-friends-sheet {
+  border-color: rgba(15, 118, 110, 0.25);
+  background: rgba(241, 245, 249, 0.96);
+}
+
+@media (max-width: 900px) {
+  .community-friends-sheet-backdrop {
+    padding: 62px 10px 10px;
+    justify-content: center;
+  }
+
+  .community-friends-sheet {
+    width: min(420px, 96vw);
+    max-height: calc(100vh - 84px);
+  }
 }
 
 /* Athlete floor-mode checklist */
@@ -12880,4 +12913,89 @@ code {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(226, 232, 240, 0.9);
+}
+
+.mode-gym .studio-inline-link {
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+}
+
+.studio-week-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.studio-week-chip-btn {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.38);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-week-chip-btn.active {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.logs-suggestions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.logs-suggestion-btn {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.5);
+  color: rgba(226, 232, 240, 0.92);
+  text-align: left;
+  font-size: 12px;
+}
+
+.mode-gym .logs-suggestion-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.studio-header-checklist {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 8px 10px;
+  width: min(320px, 80vw);
+}
+
+.studio-header-checklist-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.studio-header-checklist-week {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.studio-header-checklist-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.mode-gym .studio-header-checklist {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(15, 118, 110, 0.26);
 }

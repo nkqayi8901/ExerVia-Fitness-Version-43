@@ -6,6 +6,8 @@ import { emitToast } from "./utils/toast";
 
 const FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const PRIMARY_GOALS = ["Build Muscle", "Lose Weight", "Improve Endurance", "General Fitness"];
+const SESSION_BOOT_TIMEOUT_MS = 6000;
+const PROFILE_LOAD_TIMEOUT_MS = 7000;
 
 const slugifyUsername = (value) =>
   String(value || "")
@@ -120,8 +122,24 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     localStorage.removeItem("exervia_auth_uid");
   };
 
+  const withTimeout = async (promise, timeoutMs, message = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(message)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
+
   const fetchProfileByAuthUser = async (authUser) => {
     if (!authUser?.id) return null;
+    const authUserId = String(authUser.id);
+    const authEmail = String(authUser.email || "").trim().toLowerCase();
 
     const { data: existing, error: existingError } = await supabase
       .from("user_profiles")
@@ -129,11 +147,51 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       .eq("auth_user_id", authUser.id)
       .maybeSingle();
 
-    if (existingError) {
-      setBanner("Could not load your profile.", "error");
-      return null;
-    }
     if (existing) return existing;
+
+    // If auth_user_id lookup fails or returns empty, attempt a safe email-based recovery.
+    if (authEmail) {
+      const { data: byEmail } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("email", authEmail)
+        .maybeSingle();
+      if (byEmail) {
+        const linkedAuthId = String(byEmail.auth_user_id || "").trim();
+        // Never hijack another linked account.
+        if (!linkedAuthId || linkedAuthId === authUserId) {
+          if (linkedAuthId !== authUserId) {
+            const { data: relinked } = await supabase
+              .from("user_profiles")
+              .update({ auth_user_id: authUserId })
+              .eq("id", byEmail.id)
+              .select("*")
+              .single();
+            if (relinked) return relinked;
+          }
+          return byEmail;
+        }
+      }
+    }
+
+    // Last safe fallback: cached profile id only if it belongs to this auth user/email.
+    const cachedProfileId = Number(localStorage.getItem("exervia_user_id") || 0);
+    if (cachedProfileId > 0) {
+      const { data: byId } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", cachedProfileId)
+        .maybeSingle();
+      const rowAuthId = String(byId?.auth_user_id || "").trim();
+      const rowEmail = String(byId?.email || "").trim().toLowerCase();
+      if (byId && (rowAuthId === authUserId || (authEmail && rowEmail === authEmail))) {
+        return byId;
+      }
+    }
+
+    if (existingError) {
+      setBanner("Could not load your profile right now. Retrying profile link...", "warn");
+    }
 
     const baseName = authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "Athlete";
     let candidateUsername = slugifyUsername(authUser.user_metadata?.username || baseName) || `athlete${Date.now()}`;
@@ -175,6 +233,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   };
 
   const syncSession = async (nextSession) => {
+    const previousProfile = profile;
     try {
       setSession(nextSession || null);
       if (!nextSession?.user) {
@@ -183,7 +242,11 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         return;
       }
 
-      const row = await fetchProfileByAuthUser(nextSession.user);
+      const row = await withTimeout(
+        fetchProfileByAuthUser(nextSession.user),
+        PROFILE_LOAD_TIMEOUT_MS,
+        "Profile loading timed out"
+      );
       if (row) {
         setProfile(row);
         setFullName(row.full_name || "");
@@ -211,26 +274,50 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       }
     } catch (error) {
       console.error("syncSession failed:", error);
-      setBanner("Could not load account right now.", "error");
-      setProfile(null);
-      clearUserStorage();
+      setBanner("Could not fully load account right now. Retrying in background.", "warn");
+      // Keep session/profile state intact on transient failures to avoid accidental sign-out UX.
+      if (
+        previousProfile &&
+        (!nextSession?.user?.id ||
+          String(previousProfile.auth_user_id || "").trim() === String(nextSession.user.id).trim())
+      ) {
+        setProfile(previousProfile);
+      } else if (nextSession?.user) {
+        setProfile({
+          id: null,
+          full_name: nextSession.user.user_metadata?.full_name || nextSession.user.email?.split("@")[0] || "Athlete",
+          display_name: nextSession.user.user_metadata?.full_name || nextSession.user.email?.split("@")[0] || "Athlete",
+          username: slugifyUsername(nextSession.user.user_metadata?.username || nextSession.user.email?.split("@")[0] || "athlete"),
+          auth_user_id: nextSession.user.id,
+          email: nextSession.user.email || null,
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const resolveHomePath = useCallback(async (profileId) => {
-    if (!profileId) return "/auth";
-    const { data } = await supabase
-      .from("user_state")
-      .select("active_mode")
-      .eq("user_id", profileId)
-      .maybeSingle();
-    const modeFromState = data?.active_mode;
-    const modeFromStorage = localStorage.getItem("exervia_active_mode");
-    const preferredMode = modeFromState || modeFromStorage || "gym";
-    localStorage.setItem("exervia_active_mode", preferredMode);
-    return preferredMode === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`;
+    if (!profileId) return "/create-profile";
+    try {
+      const { data } = await withTimeout(
+        supabase
+          .from("user_state")
+          .select("active_mode")
+          .eq("user_id", profileId)
+          .maybeSingle(),
+        1600,
+        "Home path resolution timed out"
+      );
+      const modeFromState = data?.active_mode;
+      const modeFromStorage = localStorage.getItem("exervia_active_mode");
+      const preferredMode = modeFromState || modeFromStorage || "gym";
+      localStorage.setItem("exervia_active_mode", preferredMode);
+      return preferredMode === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`;
+    } catch {
+      const modeFromStorage = localStorage.getItem("exervia_active_mode") || "gym";
+      return modeFromStorage === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`;
+    }
   }, []);
 
   useEffect(() => {
@@ -239,9 +326,17 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     const boot = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          SESSION_BOOT_TIMEOUT_MS,
+          "Session check timed out"
+        );
         if (!mounted) return;
         await syncSession(data?.session || null);
+        if (loadingGuardTimeout) {
+          clearTimeout(loadingGuardTimeout);
+          loadingGuardTimeout = null;
+        }
       } catch (error) {
         console.error("auth boot failed:", error);
         if (mounted) {
@@ -254,12 +349,17 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     loadingGuardTimeout = setTimeout(() => {
       if (mounted) {
         setLoading(false);
+        setBanner("Loading account is taking longer than usual. You can still continue.", "warn");
       }
-    }, 7000);
+    }, 5000);
 
     boot();
 
     const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      if (loadingGuardTimeout) {
+        clearTimeout(loadingGuardTimeout);
+        loadingGuardTimeout = null;
+      }
       await syncSession(nextSession);
     });
 
@@ -291,6 +391,13 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       active = false;
     };
   }, [settingsOnly, loading, session, profile, resolveHomePath, navigate]);
+
+  useEffect(() => {
+    if (!settingsOnly || loading) return;
+    if (!hasSessionUser) {
+      navigate("/auth", { replace: true });
+    }
+  }, [settingsOnly, loading, hasSessionUser, navigate]);
 
   useEffect(() => {
     if (!settingsOnly || !session?.user) return undefined;
@@ -389,9 +496,48 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   };
 
   const executeGoToApp = async () => {
-    if (!profile?.id) return;
-    const destination = await resolveHomePath(profile.id);
-    navigate(destination);
+    try {
+      let resolvedProfileId = Number(profile?.id || 0);
+      const authUser = session?.user || null;
+
+      if (!resolvedProfileId && authUser) {
+        const row = await withTimeout(
+          fetchProfileByAuthUser(authUser),
+          PROFILE_LOAD_TIMEOUT_MS,
+          "Profile lookup timed out"
+        );
+        if (row?.id) {
+          resolvedProfileId = Number(row.id);
+          setProfile(row);
+          setUserStorage(row, authUser);
+        }
+      }
+
+      if (!resolvedProfileId) {
+        const cached = Number(localStorage.getItem("exervia_user_id") || 0);
+        if (cached > 0) {
+          resolvedProfileId = cached;
+        }
+      }
+
+      if (!resolvedProfileId) {
+        setBanner("Could not resolve your profile id. Opening profile setup.", "warn");
+        navigate("/create-profile");
+        return;
+      }
+
+      const destination = await resolveHomePath(resolvedProfileId);
+      navigate(destination);
+    } catch (error) {
+      console.error("executeGoToApp failed:", error);
+      const cached = Number(localStorage.getItem("exervia_user_id") || 0);
+      if (cached > 0) {
+        const mode = localStorage.getItem("exervia_active_mode") || "gym";
+        navigate(mode === "athlete" ? `/athlete/${cached}` : `/gym/${cached}`);
+        return;
+      }
+      setBanner("Could not open app right now. Please try again.", "error");
+    }
   };
   const goToApp = async () => {
     if (!confirmDiscardIfDirty("go_to_app")) return;
@@ -424,28 +570,42 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password
-    });
-    setSaving(false);
-    if (error) {
-      setBanner(parseAuthError(error, "Login failed."), "error");
-      return;
-    }
-    const { data: sessionData } = await supabase.auth.getSession();
-    const authUser = sessionData?.session?.user;
-    if (authUser) {
-      const row = await fetchProfileByAuthUser(authUser);
-      if (row) {
-        setProfile(row);
-        setUserStorage(row, authUser);
-        const destination = await resolveHomePath(row.id);
-        navigate(destination);
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password
+        }),
+        12000,
+        "Login request timed out"
+      );
+      if (error) {
+        setBanner(parseAuthError(error, "Login failed."), "error");
         return;
       }
+      const { data: sessionData } = await withTimeout(
+        supabase.auth.getSession(),
+        5000,
+        "Session refresh timed out"
+      );
+      const authUser = sessionData?.session?.user;
+      if (authUser) {
+        const row = await fetchProfileByAuthUser(authUser);
+        if (row) {
+          setProfile(row);
+          setUserStorage(row, authUser);
+          const destination = await resolveHomePath(row.id);
+          navigate(destination);
+          return;
+        }
+      }
+      setBanner("Logged in. Profile loading...", "success");
+    } catch (error) {
+      const timeoutLike = String(error?.message || "").toLowerCase().includes("timed out");
+      setBanner(timeoutLike ? "Login timed out. Check your connection and try again." : "Login failed.", "error");
+    } finally {
+      setSaving(false);
     }
-    setBanner("Logged in. Profile loading...", "success");
   };
 
   const handleSignup = async () => {
@@ -466,67 +626,82 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
 
     setSaving(true);
+    try {
+      const { data: usernameCollision } = await withTimeout(
+        supabase
+          .from("user_profiles")
+          .select("id")
+          .eq("username", cleanUsername)
+          .maybeSingle(),
+        8000,
+        "Username check timed out"
+      );
 
-    const { data: usernameCollision } = await supabase
-      .from("user_profiles")
-      .select("id")
-      .eq("username", cleanUsername)
-      .maybeSingle();
-
-    if (usernameCollision) {
-      setSaving(false);
-      setBanner("That username is taken. Try another one.", "error");
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          username: cleanUsername
-        }
+      if (usernameCollision) {
+        setBanner("That username is taken. Try another one.", "error");
+        return;
       }
-    });
 
-    if (error) {
-      setSaving(false);
-      setBanner(parseAuthError(error, "Sign up failed."), "error");
-      return;
-    }
-
-    const signedUser = data?.user;
-    if (signedUser?.id) {
-      await supabase.from("user_profiles").insert([
-        {
-          full_name: fullName.trim(),
-          display_name: fullName.trim(),
-          username: cleanUsername,
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
           email: cleanEmail,
-          auth_user_id: signedUser.id,
-          fitness_level: fitnessLevel,
-          primary_goal: primaryGoal
-        }
-      ]);
-    }
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              username: cleanUsername
+            }
+          }
+        }),
+        15000,
+        "Sign up request timed out"
+      );
 
-    setSaving(false);
-    if (!data?.session) {
-      setBanner("Account created. Check your email to confirm, then log in.", "success");
-      setMode("login");
-      return;
+      if (error) {
+        setBanner(parseAuthError(error, "Sign up failed."), "error");
+        return;
+      }
+
+      const signedUser = data?.user;
+      if (signedUser?.id) {
+        await withTimeout(
+          supabase.from("user_profiles").insert([
+            {
+              full_name: fullName.trim(),
+              display_name: fullName.trim(),
+              username: cleanUsername,
+              email: cleanEmail,
+              auth_user_id: signedUser.id,
+              fitness_level: fitnessLevel,
+              primary_goal: primaryGoal
+            }
+          ]),
+          8000,
+          "Profile create timed out"
+        );
+      }
+
+      if (!data?.session) {
+        setBanner("Account created. Check your email to confirm, then log in.", "success");
+        setMode("login");
+        return;
+      }
+      const authUser = data.session.user;
+      const row = await fetchProfileByAuthUser(authUser);
+      if (row) {
+        setProfile(row);
+        setUserStorage(row, authUser);
+        const destination = await resolveHomePath(row.id);
+        navigate(destination);
+        return;
+      }
+      setBanner("Account created.", "success");
+    } catch (error) {
+      const timeoutLike = String(error?.message || "").toLowerCase().includes("timed out");
+      setBanner(timeoutLike ? "Sign up timed out. Please retry." : "Sign up failed.", "error");
+    } finally {
+      setSaving(false);
     }
-    const authUser = data.session.user;
-    const row = await fetchProfileByAuthUser(authUser);
-    if (row) {
-      setProfile(row);
-      setUserStorage(row, authUser);
-      const destination = await resolveHomePath(row.id);
-      navigate(destination);
-      return;
-    }
-    setBanner("Account created.", "success");
   };
 
   const handleForgotPassword = async () => {
@@ -536,15 +711,25 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: `${window.location.origin}/reset-password`
-    });
-    setSaving(false);
-    if (error) {
-      setBanner("Could not send reset email right now.", "error");
-      return;
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/reset-password`
+        }),
+        12000,
+        "Reset email request timed out"
+      );
+      if (error) {
+        setBanner("Could not send reset email right now.", "error");
+        return;
+      }
+      setBanner("Password reset email sent.", "success");
+    } catch (error) {
+      const timeoutLike = String(error?.message || "").toLowerCase().includes("timed out");
+      setBanner(timeoutLike ? "Reset email timed out. Try again." : "Could not send reset email right now.", "error");
+    } finally {
+      setSaving(false);
     }
-    setBanner("Password reset email sent.", "success");
   };
 
   const handleProfileSave = async () => {
@@ -624,9 +809,10 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     setProfile(null);
     setLoading(false);
     clearUserStorage();
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Logout failed:", error.message);
+    try {
+      await withTimeout(supabase.auth.signOut(), 2500, "Logout timed out");
+    } catch (error) {
+      console.error("Logout failed:", error?.message || error);
     }
     setMode("login");
     setBanner("Logged out.", "info");

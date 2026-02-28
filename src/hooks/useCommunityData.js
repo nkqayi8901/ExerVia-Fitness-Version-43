@@ -23,6 +23,7 @@ export default function useCommunityData({
   const [gymLeaderboardContext, setGymLeaderboardContext] = useState({ placeId: "", name: "" });
   const [activityFeedItems, setActivityFeedItems] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [groupLeaderboardLoading, setGroupLeaderboardLoading] = useState(false);
   const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
   const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
@@ -31,13 +32,31 @@ export default function useCommunityData({
     if (!userId) return;
     setLeaderboardLoading(true);
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("user_state")
         .select("user_id,xp,level,rank,streak_days")
         .order("xp", { ascending: false })
         .limit(30);
       if (error) {
-        setGlobalLeaderboard([]);
+        const retry = await supabase
+          .from("user_state")
+          .select("user_id,xp,level,rank")
+          .order("xp", { ascending: false })
+          .limit(30);
+        data = retry.data || [];
+        error = retry.error;
+      }
+      if (error) {
+        const fallback = await supabase.from("user_profiles").select("id").limit(30);
+        const rows = (fallback.data || []).map((row) => ({
+          user_id: row.id,
+          xp: 0,
+          level: 1,
+          rank: "E",
+          streak_days: 0,
+        }));
+        setGlobalLeaderboard(rows);
+        loadProfiles(rows.map((row) => row.user_id));
         return;
       }
       const rows = data || [];
@@ -56,32 +75,50 @@ export default function useCommunityData({
         setGroupLeaderboard([]);
         return;
       }
-      const { data: members, error: memberError } = await supabase
-        .from("community_group_members")
-        .select("user_id")
-        .eq("group_id", groupId);
-      if (memberError) {
+      setGroupLeaderboardLoading(true);
+      try {
+        const { data: members, error: memberError } = await supabase
+          .from("community_group_members")
+          .select("user_id")
+          .eq("group_id", groupId);
+        if (memberError) {
+          setGroupLeaderboard([]);
+          return;
+        }
+        const memberIds = Array.from(
+          new Set((members || []).map((row) => Number(row.user_id)).filter(Boolean))
+        );
+        if (!memberIds.length) {
+          setGroupLeaderboard([]);
+          return;
+        }
+        const { data: rows, error: boardError } = await supabase
+          .from("user_state")
+          .select("user_id,xp,level,rank,streak_days")
+          .in("user_id", memberIds)
+          .order("xp", { ascending: false });
+        if (boardError) {
+          // Fallback if streak_days is not available in schema.
+          const retry = await supabase
+            .from("user_state")
+            .select("user_id,xp,level,rank")
+            .in("user_id", memberIds)
+            .order("xp", { ascending: false });
+          if (retry.error) {
+            setGroupLeaderboard([]);
+            return;
+          }
+          setGroupLeaderboard(retry.data || []);
+          loadProfiles(memberIds);
+          return;
+        }
+        setGroupLeaderboard(rows || []);
+        loadProfiles(memberIds);
+      } catch {
         setGroupLeaderboard([]);
-        return;
+      } finally {
+        setGroupLeaderboardLoading(false);
       }
-      const memberIds = Array.from(
-        new Set((members || []).map((row) => Number(row.user_id)).filter(Boolean))
-      );
-      if (!memberIds.length) {
-        setGroupLeaderboard([]);
-        return;
-      }
-      const { data: rows, error: boardError } = await supabase
-        .from("user_state")
-        .select("user_id,xp,level,rank,streak_days")
-        .in("user_id", memberIds)
-        .order("xp", { ascending: false });
-      if (boardError) {
-        setGroupLeaderboard([]);
-        return;
-      }
-      setGroupLeaderboard(rows || []);
-      loadProfiles(memberIds);
     },
     [loadProfiles, userId]
   );
@@ -198,9 +235,35 @@ export default function useCommunityData({
       ];
 
       const [activityRes, groupPostRes, forumPostRes] = await Promise.all(requests);
-      const activityRows = activityRes.data || [];
-      const groupPostRows = groupPostRes.data || [];
-      const forumPostRows = forumPostRes.data || [];
+      let activityRows = activityRes.data || [];
+      let groupPostRows = groupPostRes.data || [];
+      let forumPostRows = forumPostRes.data || [];
+
+      // Resilient fallback path: if filtered feed queries fail, show latest global rows.
+      if (activityRes.error && forumPostRes.error) {
+        const [fallbackActivity, fallbackForum] = await Promise.all([
+          supabase
+            .from("daily_activity")
+            .select("id,user_id,activity_type,activity_date,created_at")
+            .order("created_at", { ascending: false })
+            .limit(80),
+          supabase
+            .from("community_posts")
+            .select("id,forum_id,title,body,created_by,created_at")
+            .order("created_at", { ascending: false })
+            .limit(60),
+        ]);
+        activityRows = fallbackActivity.data || [];
+        forumPostRows = fallbackForum.data || [];
+      }
+      if (groupPostRes.error) {
+        const fallbackGroups = await supabase
+          .from("community_group_posts")
+          .select("id,group_id,created_by,created_at,body")
+          .order("created_at", { ascending: false })
+          .limit(60);
+        groupPostRows = fallbackGroups.data || [];
+      }
 
       const groupIdSet = Array.from(new Set(groupPostRows.map((row) => String(row.group_id)).filter(Boolean)));
       let groupNameById = {};
@@ -230,6 +293,17 @@ export default function useCommunityData({
         }
       });
 
+      const activityCommunityPostByActorDay = new Set(
+        activityRows
+          .filter((row) => String(row.activity_type || "").toLowerCase() === "community_post")
+          .map((row) => {
+            const actor = Number(row.user_id);
+            const dayKey = toDayKey(row.created_at || `${row.activity_date}T12:00:00`);
+            return actor && dayKey ? `${actor}:${dayKey}` : "";
+          })
+          .filter(Boolean)
+      );
+
       const normalized = [
         ...activityRows.map((row) => ({
           id: `activity-${row.id}`,
@@ -255,17 +329,26 @@ export default function useCommunityData({
           groupPostId: String(row.id || ""),
           type: "group_post",
         })),
-        ...forumPostRows.map((row) => ({
-          id: `forum-post-${row.id}`,
-          created_at: row.created_at,
-          actor_id: row.created_by,
-          title: String(row.title || "").startsWith(STATUS_PREFIX) ? "posted a status" : "created a forum thread",
-          sub: String(row.title || "").startsWith(STATUS_PREFIX)
-            ? String(row.body || row.title || "").replace(STATUS_PREFIX, "")
-            : row.title || "",
-          postId: String(row.id || ""),
-          type: "forum_post",
-        })),
+        ...forumPostRows
+          .filter((row) => {
+            const isStatus = String(row.title || "").startsWith(STATUS_PREFIX);
+            if (!isStatus) return true;
+            const actor = Number(row.created_by);
+            const dayKey = toDayKey(row.created_at);
+            if (!actor || !dayKey) return true;
+            return !activityCommunityPostByActorDay.has(`${actor}:${dayKey}`);
+          })
+          .map((row) => ({
+            id: `forum-post-${row.id}`,
+            created_at: row.created_at,
+            actor_id: row.created_by,
+            title: String(row.title || "").startsWith(STATUS_PREFIX) ? "posted a status" : "created a forum thread",
+            sub: String(row.title || "").startsWith(STATUS_PREFIX)
+              ? String(row.body || row.title || "").replace(STATUS_PREFIX, "")
+              : row.title || "",
+            postId: String(row.id || ""),
+            type: "forum_post",
+          })),
       ]
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 80);
@@ -301,6 +384,7 @@ export default function useCommunityData({
     gymLeaderboardContext,
     activityFeedItems,
     leaderboardLoading,
+    groupLeaderboardLoading,
     gymLeaderboardLoading,
     reportingLeaderboardUserIds,
     activityFeedLoading,

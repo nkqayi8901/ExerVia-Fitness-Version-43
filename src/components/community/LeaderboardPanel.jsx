@@ -6,6 +6,7 @@ export default function LeaderboardPanel({
   memberships,
   groups,
   leaderboardLoading,
+  groupLeaderboardLoading,
   globalLeaderboard,
   groupLeaderboard,
   gymLeaderboardContext,
@@ -65,7 +66,11 @@ export default function LeaderboardPanel({
         <div className="community-feed-card">
           <div className="community-panel-title">Group Top</div>
           {!leaderboardGroupId && <div className="community-empty">Join a group to view rankings.</div>}
+          {!!leaderboardGroupId && groupLeaderboardLoading && (
+            <div className="community-empty">Loading group leaderboard...</div>
+          )}
           {!!leaderboardGroupId &&
+            !groupLeaderboardLoading &&
             groupLeaderboard.slice(0, 15).map((row, index) => (
               <div key={`group-${row.user_id}`} className="community-leaderboard-row">
                 <span className="community-meta-pill">#{index + 1}</span>
@@ -80,7 +85,7 @@ export default function LeaderboardPanel({
                 <span className="community-meta-pill">{row.rank || "-"}</span>
               </div>
             ))}
-          {!!leaderboardGroupId && !groupLeaderboard.length && (
+          {!!leaderboardGroupId && !groupLeaderboardLoading && !groupLeaderboard.length && (
             <div className="community-empty">No ranked members yet.</div>
           )}
         </div>
@@ -151,4 +156,3 @@ export default function LeaderboardPanel({
     </div>
   );
 }
-

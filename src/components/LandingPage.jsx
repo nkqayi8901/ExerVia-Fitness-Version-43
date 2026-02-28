@@ -29,7 +29,7 @@ export default function LandingPage() {
           Dual-Mode <span className="landing-gradient-text">Fitness Platform</span>
         </h1>
         <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-          Choose your path: Gym strength training or athletic performance. Smart guidance for every goal.
+          Choose your path: Gym strength training or athletic performance. A community driven fitness journey.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">

@@ -7,9 +7,9 @@ export const forumTracks = [
 ];
 
 export const reactionOptions = [
-  { id: "like", label: "Like", emoji: "ðŸ‘" },
-  { id: "fire", label: "Fire", emoji: "ðŸ”¥" },
-  { id: "insight", label: "Insight", emoji: "ðŸ’¡" },
+  { id: "like", label: "Like", emoji: "\u{1F44D}" }, // ??
+  { id: "fire", label: "Fire", emoji: "\u{1F525}" }, // ??
+  { id: "insight", label: "Insight", emoji: "\u{1F4A1}" }, // ??
 ];
 
 export const templateTypeOptions = [
@@ -129,4 +129,5 @@ export const toDayKey = (value) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
 
