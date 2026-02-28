@@ -128,6 +128,18 @@ export default function LogsPage({ mode = "gym" }) {
   }, [searchParams]);
 
   useEffect(() => {
+    const reportParam = String(searchParams.get("report") || "").trim();
+    if (!reportParam || !trainingRows.length) return;
+    const match = trainingRows.find((row) => {
+      const rowId = String(row?.id || "").trim();
+      const sourceRowId = String(row?.sourceRowId || "").trim();
+      const compositeId = `${String(row?.sourceType || "").trim()}:${sourceRowId}`;
+      return reportParam === rowId || reportParam === sourceRowId || reportParam === compositeId;
+    });
+    if (match) setActiveTrainingReport(match);
+  }, [searchParams, trainingRows]);
+
+  useEffect(() => {
     if (!banner) return;
     const timeout = setTimeout(() => setBanner(""), 2600);
     return () => clearTimeout(timeout);

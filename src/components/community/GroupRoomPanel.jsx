@@ -11,6 +11,8 @@ export default function GroupRoomPanel({
   groupRoomQuestionRepliesByQuestionId,
   groupRoomQuestionPostById,
   groupRoomQuestionReplyTargetId,
+  groupRoomGeneralUnreadCount = 0,
+  groupRoomQuestionUnreadCount = 0,
   groupRoomDraft,
   groupRoomSending,
   groupRoomListRef,
@@ -67,16 +69,32 @@ export default function GroupRoomPanel({
           <button
             type="button"
             className={`community-room-channel ${groupRoomChannel === "general" ? "active" : ""}`}
+            aria-label="General Chat"
             onClick={() => onSwitchChannel("general")}
           >
             General Chat
+            {groupRoomGeneralUnreadCount > 0 ? (
+              <span
+                className="community-room-channel-badge-dot"
+                aria-label={`${groupRoomGeneralUnreadCount} unread in General Chat`}
+                title={`${groupRoomGeneralUnreadCount} unread`}
+              />
+            ) : null}
           </button>
           <button
             type="button"
             className={`community-room-channel ${groupRoomChannel === "questions" ? "active" : ""}`}
+            aria-label="Questions"
             onClick={() => onSwitchChannel("questions")}
           >
             Questions
+            {groupRoomQuestionUnreadCount > 0 ? (
+              <span
+                className="community-room-channel-badge-dot"
+                aria-label={`${groupRoomQuestionUnreadCount} unread in Questions`}
+                title={`${groupRoomQuestionUnreadCount} unread`}
+              />
+            ) : null}
           </button>
           <div className="community-room-note">
             General Chat is for live discussion. Questions is a mini forum lane for focused Q&amp;A.
@@ -281,4 +299,3 @@ export default function GroupRoomPanel({
     </div>
   );
 }
-

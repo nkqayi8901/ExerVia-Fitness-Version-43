@@ -1902,6 +1902,11 @@ code {
   flex-wrap: wrap;
 }
 
+.program-action-btn {
+  min-height: 38px;
+  border-radius: 999px;
+}
+
 .program-status-main {
   font-size: 19px;
   font-weight: 800;
@@ -3445,7 +3450,25 @@ code {
   background: rgba(15, 23, 42, 0.04);
   border-color: rgba(15, 23, 42, 0.14);
   color: #1f2937;
+  -webkit-text-fill-color: #0f172a;
   opacity: 1;
+}
+.mode-gym .studio-search:focus,
+.mode-gym .studio-search:focus-visible {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.14);
+}
+.mode-gym .studio-search::placeholder {
+  color: rgba(15, 23, 42, 0.5);
+  -webkit-text-fill-color: rgba(15, 23, 42, 0.5);
+}
+.mode-gym .studio-search:-webkit-autofill,
+.mode-gym .studio-search:-webkit-autofill:hover,
+.mode-gym .studio-search:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a;
+  box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.95) inset;
+  transition: background-color 9999s ease-in-out 0s;
 }
 .mode-gym .studio-toggle-btn.active,
 .mode-gym .studio-mini-btn.active {
@@ -5709,13 +5732,70 @@ code {
 
 .studio-header-actions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 10px;
   flex-wrap: wrap;
 }
 
 .studio-gym-link-btn {
   white-space: nowrap;
+}
+
+/* Strength header action row: keep all quick actions visually identical */
+.studio-header-actions .studio-back,
+.studio-header-actions .studio-toggle-btn {
+  height: 38px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.studio-header-actions .studio-header-action-btn {
+  min-width: 116px;
+}
+
+.studio-header-actions .studio-toggle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.studio-header-actions .studio-toggle-btn {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.studio-header-actions .studio-toggle-btn.active {
+  border-color: rgba(56, 189, 248, 0.52);
+  background: rgba(56, 189, 248, 0.16);
+  color: #f8fafc;
+  box-shadow: 0 8px 20px rgba(56, 189, 248, 0.18);
+}
+
+.mode-gym .studio-header-actions .studio-toggle-btn {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.mode-gym .studio-header-actions .studio-toggle-btn.active {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.14);
+  color: #0f172a;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.14);
 }
 .studio-log-pulse-card {
   width: min(360px, 90vw);
@@ -5887,7 +5967,21 @@ code {
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   transition: border 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.community-tab-alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.6);
+  background: rgba(34, 211, 238, 0.92);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
+  display: inline-block;
 }
 
 .community-tab.active {
@@ -6399,7 +6493,21 @@ code {
   margin-bottom: 8px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.community-room-channel-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.56);
+  background: rgba(56, 189, 248, 0.94);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16);
+  display: inline-block;
 }
 
 .community-room-channel.active {
@@ -8631,6 +8739,19 @@ code {
   padding-right: 6px;
 }
 
+.community-friends-list-page {
+  margin-top: 10px;
+  display: grid;
+  gap: 14px;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.community-friends-page {
+  margin-top: 4px;
+}
+
 .community-friend-card {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 16px;
@@ -8702,6 +8823,13 @@ code {
   height: 9px;
   background: #ef4444;
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.72);
+}
+
+.community-notification-dot.request {
+  width: 9px;
+  height: 9px;
+  background: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
 }
 
 .community-notification-pill {
@@ -9019,11 +9147,20 @@ code {
   background: #dc2626;
   box-shadow: 0 0 10px rgba(220, 38, 38, 0.55);
 }
+.mode-gym .community-notification-dot.request {
+  background: #d97706;
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.45);
+}
 .mode-gym .community-tab {
   background: rgba(15, 23, 42, 0.04);
   border-color: rgba(15, 23, 42, 0.18);
   color: #1f2937;
   opacity: 1;
+}
+.mode-gym .community-tab-alert-dot {
+  border-color: rgba(16, 185, 129, 0.56);
+  background: rgba(16, 185, 129, 0.92);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16);
 }
 .mode-gym .community-tab.active {
   border-color: rgba(16, 185, 129, 0.6);
@@ -9369,6 +9506,11 @@ code {
   background: rgba(15, 23, 42, 0.04);
   border-color: rgba(15, 23, 42, 0.14);
   color: #0f172a;
+}
+.mode-gym .community-room-channel-badge-dot {
+  border-color: rgba(16, 185, 129, 0.56);
+  background: rgba(16, 185, 129, 0.94);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16);
 }
 .mode-gym .community-room-channel.active {
   border-color: rgba(16, 185, 129, 0.45);
@@ -10107,7 +10249,7 @@ code {
     font-size: 13px;
   }
 
-  .program-timer-actions .hud-secondary-btn {
+  .program-timer-actions .program-action-btn {
     flex: 1;
   }
 
@@ -10117,7 +10259,7 @@ code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .program-session-actions .hud-secondary-btn {
+  .program-session-actions .program-action-btn {
     width: 100%;
   }
 
@@ -12075,6 +12217,11 @@ code {
   background: rgba(15,23,42,0.04);
   border-color: rgba(15,23,42,0.14);
   color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+.mode-gym .program-preview-input::placeholder {
+  color: rgba(15, 23, 42, 0.45);
+  -webkit-text-fill-color: rgba(15, 23, 42, 0.45);
 }
 .mode-gym .program-set-label {
   color: #0f172a;

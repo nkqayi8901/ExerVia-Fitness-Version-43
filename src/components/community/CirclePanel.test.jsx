@@ -33,9 +33,8 @@ test("opens add friend flow", () => {
 });
 
 test("navigates to friend messages", () => {
-  const props = buildProps();
+  const props = buildProps({ forceFriendsListOpen: true });
   render(<CirclePanel {...props} />);
-  fireEvent.click(screen.getByRole("button", { name: /friends list/i }));
   fireEvent.click(screen.getByRole("button", { name: /message/i }));
   expect(props.navigate).toHaveBeenCalledWith("/messages?friend=7");
 });

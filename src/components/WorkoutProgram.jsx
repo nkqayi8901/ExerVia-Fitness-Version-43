@@ -160,6 +160,8 @@ function ProgramPreview({ backPath, backLabel }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { programId } = useParams();
+  const resolvedUserId = String(localStorage.getItem("exervia_user_id") || "").trim();
+  const exerciseWeightsStorageKey = resolvedUserId ? `exervia_exercise_weights_${resolvedUserId}` : "";
   const injectedProgram = location.state?.program;
   const program =
     findProgram(programId) ||
@@ -209,16 +211,34 @@ function ProgramPreview({ backPath, backLabel }) {
       setEditedExercises([]);
       return;
     }
+    let weightMemory = {};
+    if (exerciseWeightsStorageKey) {
+      try {
+        const raw = localStorage.getItem(exerciseWeightsStorageKey);
+        const parsed = raw ? JSON.parse(raw) : {};
+        if (parsed && typeof parsed === "object") weightMemory = parsed;
+      } catch {
+        weightMemory = {};
+      }
+    }
+    const getRememberedWeight = (exerciseName) => {
+      const key = String(exerciseName || "").trim().toLowerCase();
+      const remembered = Number(weightMemory[key] || 0);
+      return remembered > 0 ? remembered : "";
+    };
     setEditedExercises(
       program.exercises.map((exercise, index) => ({
         ...exercise,
         id: exercise.id || `${program.id}-${index}`,
         sets: Number(exercise.sets) || 1,
         reps: normalizeRepTarget(exercise.reps),
-        weight: exercise.weight ?? ""
+        weight:
+          Number(exercise.weight || 0) > 0
+            ? Number(exercise.weight)
+            : getRememberedWeight(exercise.name),
       }))
     );
-  }, [program]);
+  }, [program, exerciseWeightsStorageKey]);
 
   useEffect(() => {
     if (!guideOpen) return undefined;
@@ -324,12 +344,28 @@ function ProgramPreview({ backPath, backLabel }) {
           ))}
         </div>
         <button
-          className="hud-secondary-btn"
-          onClick={() =>
+          className="studio-back program-action-btn"
+          onClick={() => {
+            if (exerciseWeightsStorageKey) {
+              try {
+                const raw = localStorage.getItem(exerciseWeightsStorageKey);
+                const existing = raw ? JSON.parse(raw) : {};
+                const next = { ...(existing && typeof existing === "object" ? existing : {}) };
+                editedExercises.forEach((exercise) => {
+                  const key = String(exercise?.name || "").trim().toLowerCase();
+                  const weight = Number(exercise?.weight || 0);
+                  if (!key || weight <= 0) return;
+                  next[key] = weight;
+                });
+                localStorage.setItem(exerciseWeightsStorageKey, JSON.stringify(next));
+              } catch {
+                // best effort only
+              }
+            }
             navigate("./session", {
               state: { program: { ...program, exercises: editedExercises } }
-            })
-          }
+            });
+          }}
         >
           Start program
         </button>
@@ -671,11 +707,11 @@ function ProgramSession({ backPath, backLabel }) {
         <div className="hud-card program-timer">
           <div className="hud-card-title">Lock-in Timer</div>
           <div className="program-timer-main">{formatTime(timerSeconds)}</div>
-          <div className="program-timer-actions">
-            <button className="hud-secondary-btn" onClick={() => setTimerRunning((prev) => !prev)}>
+            <div className="program-timer-actions">
+            <button className="studio-back program-action-btn" onClick={() => setTimerRunning((prev) => !prev)}>
               {timerRunning ? "Pause" : "Resume"}
             </button>
-            <button className="hud-secondary-btn" onClick={() => setTimerSeconds(0)}>Reset</button>
+            <button className="studio-back program-action-btn" onClick={() => setTimerSeconds(0)}>Reset</button>
           </div>
         </div>
         {restOpen && (
@@ -684,10 +720,10 @@ function ProgramSession({ backPath, backLabel }) {
             <div className="program-timer-main">{formatTime(restSeconds)}</div>
             <div className="program-status-sub">Manual mode. Continue when ready.</div>
             <div className="program-timer-actions">
-              <button className="hud-secondary-btn" onClick={handleAddRest} type="button">
+              <button className="studio-back program-action-btn" onClick={handleAddRest} type="button">
                 +15s
               </button>
-              <button className="hud-secondary-btn" onClick={handleRestAdvance} type="button">
+              <button className="studio-back program-action-btn" onClick={handleRestAdvance} type="button">
                 {restSeconds > 0 ? "Advance now" : "Continue"}
               </button>
             </div>
@@ -744,7 +780,7 @@ function ProgramSession({ backPath, backLabel }) {
             <div className="program-card-focus">{currentExercise.focus}</div>
             <div className="program-session-actions">
               <button
-                className="hud-secondary-btn program-back-step"
+                className="studio-back program-action-btn program-back-step"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0 && currentSet === 1 && !restOpen}
               >
@@ -752,18 +788,18 @@ function ProgramSession({ backPath, backLabel }) {
               </button>
               {!restOpen ? (
                 <>
-                  <button className="hud-secondary-btn" onClick={handleStartRest} type="button">
+                  <button className="studio-back program-action-btn" onClick={handleStartRest} type="button">
                     Rest
                   </button>
-                  <button className="hud-secondary-btn program-done" onClick={handleDone}>
+                  <button className="studio-back program-action-btn program-done" onClick={handleDone}>
                     Complete set
                   </button>
-                  <button className="hud-secondary-btn program-done" onClick={handleCompleteExercise}>
+                  <button className="studio-back program-action-btn program-done" onClick={handleCompleteExercise}>
                     {currentIndex >= exercises.length - 1 ? "Finish session" : "Complete exercise"}
                   </button>
                 </>
               ) : (
-                <button className="hud-secondary-btn program-done" type="button" onClick={handleRestAdvance}>
+                <button className="studio-back program-action-btn program-done" type="button" onClick={handleRestAdvance}>
                   {restSeconds > 0 ? "Advance now" : "Continue"}
                 </button>
               )}

@@ -273,10 +273,14 @@ function normalizeTextId(value) {
 }
 
 function recipeIdentityKey(meal) {
+  const source = normalizeTextId(meal?.source || meal?.__source);
+  const id = normalizeTextId(meal?.idMeal);
+  const name = normalizeTextId(meal?.strMeal);
   return (
-    normalizeTextId(meal?.idMeal) ||
-    normalizeTextId(meal?.strMeal) ||
-    `${normalizeTextId(meal?.source)}:${normalizeTextId(meal?.strMeal)}`
+    (source && id ? `${source}:${id}` : "") ||
+    id ||
+    (source && name ? `${source}:${name}` : "") ||
+    name
   );
 }
 
@@ -621,6 +625,25 @@ export default function NutritionPage() {
   }, [favoriteMeals, favoriteMealsStorageKey]);
 
   useEffect(() => {
+    if (!favoriteMeals.length) return;
+    const fromMeals = favoriteMeals
+      .map((meal) => recipeIdentityKey(meal))
+      .filter(Boolean);
+    if (!fromMeals.length) return;
+    setFavoriteRecipeKeys((prev) => {
+      const merged = Array.from(new Set([...(prev || []), ...fromMeals]));
+      if (
+        Array.isArray(prev) &&
+        merged.length === prev.length &&
+        merged.every((item, index) => item === prev[index])
+      ) {
+        return prev;
+      }
+      return merged;
+    });
+  }, [favoriteMeals]);
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(fuelBoardStorageKey);
       const parsed = raw ? JSON.parse(raw) : null;
@@ -737,6 +760,24 @@ export default function NutritionPage() {
 
   const isRecipeFavorite = (meal) => favoriteRecipeKeys.includes(recipeIdentityKey(meal));
 
+  const toFavoriteMealSnapshot = (meal) => {
+    if (!meal) return null;
+    return {
+      ...meal,
+      idMeal: meal?.idMeal,
+      strMeal: meal?.strMeal,
+      strMealThumb: meal?.strMealThumb,
+      strCategory: meal?.strCategory,
+      strArea: meal?.strArea,
+      strInstructions: meal?.strInstructions,
+      source: meal?.source || meal?.__source || "",
+      __source: meal?.__source || meal?.source || "",
+      __nutrition: meal?.__nutrition || {},
+      __tip: meal?.__tip || "",
+      __slotTags: Array.isArray(meal?.__slotTags) ? meal.__slotTags : [],
+    };
+  };
+
   const toggleRecipeFavorite = async (meal) => {
     const key = recipeIdentityKey(meal);
     if (!key) return;
@@ -747,22 +788,8 @@ export default function NutritionPage() {
     setFavoriteMeals((prev) => {
       const exists = prev.some((item) => recipeIdentityKey(item) === key);
       if (exists) return prev.filter((item) => recipeIdentityKey(item) !== key);
-      return [
-        ...prev,
-        {
-          idMeal: meal?.idMeal,
-          strMeal: meal?.strMeal,
-          strCategory: meal?.strCategory,
-          strArea: meal?.strArea,
-          source: meal?.source,
-          __nutrition: meal?.__nutrition,
-          __tip: meal?.__tip,
-          __slotTags: meal?.__slotTags,
-          localRecipe: meal?.localRecipe,
-          dummyRecipe: meal?.dummyRecipe,
-          spoonRecipe: meal?.spoonRecipe,
-        },
-      ];
+      const snapshot = toFavoriteMealSnapshot(meal);
+      return snapshot ? [...prev, snapshot] : prev;
     });
     if (storedId && meal?.strMeal) {
       await saveMealToLibrary(storedId, meal.strMeal, "favorite");
@@ -830,10 +857,9 @@ export default function NutritionPage() {
     [weeklyMacroTrend]
   );
   const visibleProtocolMeals = useMemo(() => {
-    if (feedFilter === "saved") return favoriteMeals;
-    if (feedFilter !== "favorites") return protocolMeals;
-    return protocolMeals.filter((meal) => isRecipeFavorite(meal));
-  }, [feedFilter, protocolMeals, favoriteRecipeKeys, favoriteMeals]);
+    if (feedFilter === "favorites") return favoriteMeals;
+    return protocolMeals;
+  }, [feedFilter, protocolMeals, favoriteMeals]);
   const boardTotals = useMemo(() => {
     return BOARD_SLOTS.reduce(
       (acc, slot) => {
@@ -1590,6 +1616,14 @@ export default function NutritionPage() {
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
+  const handleScrollToFuelSection = (sectionId) => {
+    const id = String(sectionId || "").trim();
+    if (!id) return;
+    const node = document.getElementById(id);
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   // initial load
   useEffect(() => {
     fetchMealOfDay();
@@ -1663,14 +1697,7 @@ export default function NutritionPage() {
                 className={`fuel-feed-toggle ${feedFilter === "favorites" ? "active" : ""}`}
                 onClick={() => setFeedFilter("favorites")}
               >
-                Favorites ({favoriteRecipeKeys.length})
-              </button>
-              <button
-                type="button"
-                className={`fuel-feed-toggle ${feedFilter === "saved" ? "active" : ""}`}
-                onClick={() => setFeedFilter("saved")}
-              >
-                My Saved ({favoriteMeals.length})
+                Favorites ({favoriteMeals.length})
               </button>
               <button
                 type="button"
@@ -1690,6 +1717,38 @@ export default function NutritionPage() {
             </button>
           </div>
         ) : null}
+
+        <div className="hud-card" style={{ marginBottom: 12 }}>
+          <div className="hud-card-title">FUEL PRIORITY</div>
+          <div className="hud-dim" style={{ marginBottom: 10 }}>
+            Start here first: recovery, intake targets, and Build My Day.
+          </div>
+          <div className="fuel-feed-toggle-row">
+            {recoveryNudge ? (
+              <button
+                type="button"
+                className="studio-back fuel-compact-btn"
+                onClick={() => handleScrollToFuelSection("fuel-recovery-section")}
+              >
+                Recovery window
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="studio-back fuel-compact-btn"
+              onClick={() => handleScrollToFuelSection("fuel-intake-section")}
+            >
+              Today's intake
+            </button>
+            <button
+              type="button"
+              className="studio-back fuel-compact-btn"
+              onClick={() => handleScrollToFuelSection("fuel-build-section")}
+            >
+              Build My Day
+            </button>
+          </div>
+        </div>
 
         <div className="grid-2">
           {/* LEFT: Protocol controls + meal of day */}
@@ -1748,7 +1807,7 @@ export default function NutritionPage() {
             <div className="hud-divider" />
 
             {recoveryNudge ? (
-              <div className="fuel-recovery-nudge">
+              <div className="fuel-recovery-nudge" id="fuel-recovery-section">
                 <div className="fuel-recovery-nudge-kicker">RECOVERY WINDOW OPEN</div>
                 <div className="fuel-recovery-nudge-title">
                   {recoveryNudge.label} finished{recoveryNudge.minutes > 0 ? ` (${recoveryNudge.minutes} min)` : ""}
@@ -1786,7 +1845,7 @@ export default function NutritionPage() {
               </div>
             ) : null}
 
-            <div className="hud-card-title">TODAY'S INTAKE</div>
+            <div className="hud-card-title" id="fuel-intake-section">TODAY'S INTAKE</div>
             <div className="hud-dim" style={{ marginBottom: 10 }}>
               Targets are personalized from your profile, current level, and selected protocol.
             </div>
@@ -1845,7 +1904,7 @@ export default function NutritionPage() {
               </div>
             </div>
             <div className="hud-divider" />
-            <div className="hud-card-title">BUILD MY DAY</div>
+            <div className="hud-card-title" id="fuel-build-section">BUILD MY DAY</div>
             <div className="hud-dim" style={{ marginBottom: 10 }}>
               Fill Morning, Midday, Pre-Training, and Recovery slots. Save once to log your day.
             </div>
@@ -2198,9 +2257,7 @@ export default function NutritionPage() {
               </div>
             ) : visibleProtocolMeals.length === 0 ? (
               <div className="hud-dim">
-                {feedFilter === "saved"
-                  ? "No saved recipes yet. Tap hearts to build your personal library."
-                  : feedFilter === "favorites"
+                {feedFilter === "favorites"
                   ? "No favorite recipes in this protocol yet."
                   : "No meals matched the current filters. Try a different preference or switch goal to Balanced."}
               </div>

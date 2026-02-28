@@ -2123,26 +2123,28 @@ const StrengthProgressTab = ({ userId }) => {
           </div>
           <div className="studio-header-actions">
             <button
-              className="studio-inline-link"
+              className="studio-back studio-gym-link-btn studio-header-action-btn"
               type="button"
               onClick={() => setLastWorkoutOpen(true)}
               disabled={!latestWorkoutSummary}
             >
               Last workout
             </button>
-            <button className="studio-back studio-gym-link-btn" type="button" onClick={handleOpenMyGym}>
+            <button className="studio-back studio-gym-link-btn studio-header-action-btn" type="button" onClick={handleOpenMyGym}>
               My gym
             </button>
             <div className="studio-toggle">
               <button
+                type="button"
                 onClick={() => setView('log')}
-                className={`studio-toggle-btn ${view === 'log' ? 'active' : ''}`}
+                className={`studio-toggle-btn studio-header-action-btn ${view === 'log' ? 'active' : ''}`}
               >
                 Log
               </button>
               <button
+                type="button"
                 onClick={() => setView('stats')}
-                className={`studio-toggle-btn ${view === 'stats' ? 'active' : ''}`}
+                className={`studio-toggle-btn studio-header-action-btn ${view === 'stats' ? 'active' : ''}`}
               >
                 Stats
               </button>
@@ -3134,7 +3136,9 @@ the createPRogram helps resolve this problem  */}
                       onClick={() => {
                         setLastWorkoutOpen(false);
                         if (userId && latestWorkoutSummary?.dayKey) {
-                          navigate(`/gym/${userId}/logs?day=${encodeURIComponent(latestWorkoutSummary.dayKey)}`);
+                          const latestLiftId = latestWorkoutSummary?.rows?.[0]?.id;
+                          const reportParam = latestLiftId ? `&report=${encodeURIComponent(`lift-${latestLiftId}`)}` : "";
+                          navigate(`/gym/${userId}/logs?day=${encodeURIComponent(latestWorkoutSummary.dayKey)}${reportParam}`);
                         }
                       }}
                     >

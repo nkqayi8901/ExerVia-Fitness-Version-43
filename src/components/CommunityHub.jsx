@@ -36,6 +36,8 @@ import {
   parseQuestionReplyPayload,
   reactionOptions,
 } from "./community/communityHelpers";
+
+const GROUP_ROOM_POST_BUFFER_LIMIT = 400;
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -190,6 +192,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [groupRoomQuestionReplyTargetId, setGroupRoomQuestionReplyTargetId] = useState("");
   const [groupRoomSending, setGroupRoomSending] = useState(false);
   const [groupRoomChannel, setGroupRoomChannel] = useState("general");
+  const [groupRoomSeenByChannel, setGroupRoomSeenByChannel] = useState({});
   const [groupRoomLoading, setGroupRoomLoading] = useState(false);
   const [threadInlineReplyOpen, setThreadInlineReplyOpen] = useState(false);
   const [reactionCounts, setReactionCounts] = useState({});
@@ -225,6 +228,31 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const retryCommunityLoad = () => setCommunityReloadToken((prev) => prev + 1);
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
+
+  useEffect(() => {
+    if (!userId) {
+      setGroupRoomSeenByChannel({});
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`exervia_group_room_seen_${userId}`);
+      setGroupRoomSeenByChannel(raw ? JSON.parse(raw) : {});
+    } catch {
+      setGroupRoomSeenByChannel({});
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(
+        `exervia_group_room_seen_${userId}`,
+        JSON.stringify(groupRoomSeenByChannel || {})
+      );
+    } catch {
+      // best-effort persistence only
+    }
+  }, [groupRoomSeenByChannel, userId]);
 
   useEffect(() => {
     if (!banner) return;
@@ -1116,13 +1144,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         .from("community_group_posts")
         .select("*")
         .eq("group_id", groupId)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: false })
+        .limit(GROUP_ROOM_POST_BUFFER_LIMIT),
       supabase
         .from("community_group_members")
         .select("*")
         .eq("group_id", groupId)
     ]);
-    setGroupRoomPosts(postsData || []);
+    const orderedPosts = [...(postsData || [])].reverse();
+    setGroupRoomPosts(orderedPosts);
     setGroupRoomMembers(memberData || []);
     const profileIds = [
       ...(postsData || []).map((post) => post.created_by),
@@ -2219,6 +2249,30 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return next;
   }, [groupRoomQuestionPosts]);
   const groupRoomVisiblePosts = groupRoomChannel === "questions" ? groupRoomQuestionPosts : groupRoomGeneralPosts;
+  const groupRoomGeneralUnreadCount = useMemo(() => {
+    const roomId = String(groupRoomId || "").trim();
+    if (!roomId || !groupRoomGeneralPosts.length) return 0;
+    const seenAt = String(groupRoomSeenByChannel[`${roomId}:general`] || "");
+    const seenMs = seenAt ? Date.parse(seenAt) : 0;
+    return groupRoomGeneralPosts.reduce((count, post) => {
+      if (Number(post.created_by) === Number(userId)) return count;
+      const createdMs = Date.parse(String(post.created_at || ""));
+      if (!Number.isFinite(createdMs)) return count;
+      return createdMs > seenMs ? count + 1 : count;
+    }, 0);
+  }, [groupRoomGeneralPosts, groupRoomSeenByChannel, groupRoomId, userId]);
+  const groupRoomQuestionUnreadCount = useMemo(() => {
+    const roomId = String(groupRoomId || "").trim();
+    if (!roomId || !groupRoomQuestionPosts.length) return 0;
+    const seenAt = String(groupRoomSeenByChannel[`${roomId}:questions`] || "");
+    const seenMs = seenAt ? Date.parse(seenAt) : 0;
+    return groupRoomQuestionPosts.reduce((count, post) => {
+      if (Number(post.created_by) === Number(userId)) return count;
+      const createdMs = Date.parse(String(post.created_at || ""));
+      if (!Number.isFinite(createdMs)) return count;
+      return createdMs > seenMs ? count + 1 : count;
+    }, 0);
+  }, [groupRoomQuestionPosts, groupRoomSeenByChannel, groupRoomId, userId]);
   const groupRoomDraft = groupRoomChannel === "questions" ? groupRoomQuestionDraft : groupRoomGeneralDraft;
   const isGroupMember = useCallback((groupId) =>
     memberships.some((membership) => String(membership.group_id) === String(groupId)), [memberships]);
@@ -2251,6 +2305,23 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       return name.includes(query) || goal.includes(query);
     });
   }, [groups, groupSearch, isGroupMember]);
+  const groupsTabUnreadCount = useMemo(() => {
+    if (!joinedGroups.length) return 0;
+    return joinedGroups.reduce((count, group) => {
+      const groupId = String(group?.id || "").trim();
+      if (!groupId) return count;
+      const lastActiveRaw = groupLastActive[groupId];
+      const lastActiveMs = Date.parse(String(lastActiveRaw || ""));
+      if (!Number.isFinite(lastActiveMs)) return count;
+      const seenGeneralMs = Date.parse(String(groupRoomSeenByChannel[`${groupId}:general`] || ""));
+      const seenQuestionsMs = Date.parse(String(groupRoomSeenByChannel[`${groupId}:questions`] || ""));
+      const seenMs = Math.max(
+        Number.isFinite(seenGeneralMs) ? seenGeneralMs : 0,
+        Number.isFinite(seenQuestionsMs) ? seenQuestionsMs : 0
+      );
+      return lastActiveMs > seenMs ? count + 1 : count;
+    }, 0);
+  }, [joinedGroups, groupLastActive, groupRoomSeenByChannel]);
   const discoverGroups = useMemo(() => {
     const next = visibleGroups.filter((group) => !isGroupMember(group.id));
     return groupSearch.trim() ? next : next.slice(0, 12);
@@ -2557,8 +2628,22 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!groupRoomId) return;
     const list = groupRoomListRef.current;
     if (!list) return;
-    list.scrollTop = list.scrollHeight;
-  }, [groupRoomPosts, groupRoomId]);
+    const raf = window.requestAnimationFrame(() => {
+      list.scrollTop = list.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [groupRoomPosts, groupRoomId, groupRoomChannel]);
+
+  useEffect(() => {
+    const roomId = String(groupRoomId || "").trim();
+    if (!roomId || !groupRoomChannel) return;
+    const key = `${roomId}:${groupRoomChannel}`;
+    const nowIso = new Date().toISOString();
+    setGroupRoomSeenByChannel((prev) => {
+      if (prev[key] === nowIso) return prev;
+      return { ...prev, [key]: nowIso };
+    });
+  }, [groupRoomId, groupRoomChannel, groupRoomVisiblePosts.length]);
 
   useEffect(() => {
     if (!userId || !groupRoomId) return () => {};
@@ -2577,7 +2662,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           if (!post) return;
           setGroupRoomPosts((prev) => {
             if (prev.some((row) => String(row.id) === String(post.id))) return prev;
-            return [...prev, post];
+            const next = [...prev, post];
+            if (next.length > GROUP_ROOM_POST_BUFFER_LIMIT) {
+              return next.slice(-GROUP_ROOM_POST_BUFFER_LIMIT);
+            }
+            return next;
           });
           setGroupLastActive((prev) => ({ ...prev, [groupRoomId]: post.created_at }));
           if (post.created_by) loadProfiles([post.created_by]);
@@ -2718,6 +2807,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       groupRoomQuestionRepliesByQuestionId={groupRoomQuestionRepliesByQuestionId}
       groupRoomQuestionPostById={groupRoomQuestionPostById}
       groupRoomQuestionReplyTargetId={groupRoomQuestionReplyTargetId}
+      groupRoomGeneralUnreadCount={groupRoomGeneralUnreadCount}
+      groupRoomQuestionUnreadCount={groupRoomQuestionUnreadCount}
       groupRoomDraft={groupRoomDraft}
       groupRoomSending={groupRoomSending}
       groupRoomListRef={groupRoomListRef}
@@ -2828,6 +2919,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               type="button"
             >
               Groups
+              {groupsTabUnreadCount > 0 ? (
+                <span
+                  className="community-tab-alert-dot"
+                  aria-label={`${groupsTabUnreadCount} groups with unread activity`}
+                  title={`${groupsTabUnreadCount} groups with unread activity`}
+                />
+              ) : null}
             </button>
             <button
               className={`community-tab ${activeTab === "challenges" ? "active" : ""}`}
@@ -3305,6 +3403,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               renderEmptyState={renderEmptyState}
               forceFriendsListOpen={activeTab === "friends"}
               openGroupsTab={() => setActiveTab("groups")}
+              openFriendsTab={() => setActiveTab("friends")}
             />
           )}
         </main>

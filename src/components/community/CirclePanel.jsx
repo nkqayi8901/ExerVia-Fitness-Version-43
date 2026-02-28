@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 export default function CirclePanel({
   memberships,
@@ -21,18 +21,15 @@ export default function CirclePanel({
   renderEmptyState,
   forceFriendsListOpen = false,
   openGroupsTab,
+  openFriendsTab,
 }) {
-  const [friendsListOpen, setFriendsListOpen] = useState(false);
   const [expandedFriendId, setExpandedFriendId] = useState(null);
-
-  useEffect(() => {
-    if (forceFriendsListOpen) {
-      setFriendsListOpen(true);
-    }
-  }, [forceFriendsListOpen]);
+  const showFriendsView = Boolean(forceFriendsListOpen);
 
   return (
     <div className="community-panel">
+      {!showFriendsView ? (
+      <>
       <div className="community-panel-title">Overview</div>
       <div className="community-circle-grid">
         <div className="community-circle-card">
@@ -50,10 +47,15 @@ export default function CirclePanel({
         <div className="community-circle-card">
           <div className="community-circle-title">
             Friends List
-            {unreadCount > 0 && <span className="community-notification-pill">{unreadCount}</span>}
+            {unreadCount > 0 && (
+              <span
+                className="community-notification-dot"
+                title={`${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`}
+              />
+            )}
             {incomingRequestCount > 0 && (
               <span
-                className="community-notification-dot alert"
+                className="community-notification-dot request"
                 title={`${incomingRequestCount} incoming friend request${incomingRequestCount === 1 ? "" : "s"}`}
               />
             )}
@@ -63,7 +65,7 @@ export default function CirclePanel({
             <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(true)}>
               Add friend
             </button>
-            <button className="studio-back community-cta-btn" type="button" onClick={() => setFriendsListOpen(true)}>
+            <button className="studio-back community-cta-btn" type="button" onClick={() => openFriendsTab?.()}>
               Friends list
             </button>
             <button className="studio-back community-cta-btn" onClick={() => navigate(messagesPath())}>
@@ -72,27 +74,21 @@ export default function CirclePanel({
           </div>
         </div>
       </div>
+      </>
+      ) : (
+      <div className="community-friends-page">
+        <div className="community-friends-sheet-head">
+          <div className="community-panel-title">Friends list</div>
+          <button className="studio-back community-cta-btn" type="button" onClick={() => navigate(messagesPath())}>
+            Open inbox
+          </button>
+        </div>
+      </div>
+      )}
 
-      {friendsListOpen && (
-        <div
-          className="community-friends-sheet-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Friends list"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setFriendsListOpen(false);
-          }}
-        >
-          <div className="community-friends-sheet" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="community-friends-sheet-head">
-              <div className="community-panel-title">Friends list</div>
-              <button className="studio-back community-cta-btn" type="button" onClick={() => setFriendsListOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            <div className="community-friends-list">
-              {friends.map((friend) => {
+      {showFriendsView ? (
+      <div className="community-friends-list-page">
+        {friends.map((friend) => {
                 const status = getFriendStatus(friend);
                 const label = buildFriendLabel(friend);
                 const otherId = friend.user_id === Number(userId) ? friend.friend_user_id : friend.user_id;
@@ -111,7 +107,7 @@ export default function CirclePanel({
                         </button>
                         {hasUnread && <span className="community-notification-dot" />}
                         {status === "incoming" && (
-                          <span className="community-notification-dot alert" title="Incoming friend request" />
+                          <span className="community-notification-dot request" title="Incoming friend request" />
                         )}
                       </div>
                       {isExpanded ? (
@@ -168,17 +164,15 @@ export default function CirclePanel({
                     </div>
                   </div>
                 );
-              })}
-              {!friends.length &&
-                renderEmptyState({
-                  icon: "FR",
-                  title: "No connections yet",
-                  sub: "Approve a friend request to unlock direct messages.",
-                })}
-            </div>
-          </div>
-        </div>
-      )}
+        })}
+        {!friends.length &&
+          renderEmptyState({
+            icon: "FR",
+            title: "No connections yet",
+            sub: "Approve a friend request to unlock direct messages.",
+          })}
+      </div>
+      ) : null}
     </div>
   );
 }
