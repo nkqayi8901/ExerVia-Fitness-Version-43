@@ -1,5 +1,5 @@
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 
@@ -224,9 +224,25 @@ export default function AthleteMode() {
   const [profile, setProfile] = useState(null);
   const [userState, setUserState] = useState(null);
   const [profileReady, setProfileReady] = useState(false);
+  const profileRequestRef = useRef(0);
+  const stateRequestRef = useRef(0);
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const themeMode = "athlete";
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -268,30 +284,42 @@ export default function AthleteMode() {
 // and output feeds the UI state or data flow
     const fetchProfile = async () => {
       setProfileReady(false);
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) {
-        setProfile({
-          id,
-          full_name: "Athlete",
-          username: "",
-        });
+      const requestId = profileRequestRef.current + 1;
+      profileRequestRef.current = requestId;
+      const fallbackName = localStorage.getItem("exervia_display_name") || "Athlete";
+      try {
+        const { data, error } = await withTimeout(
+          supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", id)
+            .maybeSingle(),
+          6000,
+          "Profile load timed out"
+        );
+        if (profileRequestRef.current !== requestId) return;
+        if (error || !data) {
+          setProfile({
+            id,
+            full_name: fallbackName,
+            username: localStorage.getItem("exervia_username") || "",
+          });
+          setProfileReady(true);
+          return;
+        }
+        setProfile(data);
+        localStorage.setItem("exervia_display_name", String(data.display_name || data.full_name || fallbackName));
         setProfileReady(true);
         return;
+      } catch (error) {
+        console.error("AthleteMode profile load failed:", error);
       }
-      if (!data) {
-        setProfile({
-          id,
-          full_name: "Athlete",
-          username: "",
-        });
-        setProfileReady(true);
-        return;
-      }
-      setProfile(data);
+      if (profileRequestRef.current !== requestId) return;
+      setProfile({
+        id,
+        full_name: fallbackName,
+        username: localStorage.getItem("exervia_username") || "",
+      });
       setProfileReady(true);
     };
 
@@ -310,22 +338,52 @@ export default function AthleteMode() {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
     const fetchUserState = async () => {
-      const { data } = await supabase
-        .from("user_state")
-        .select("*")
-        .eq("user_id", id)
-        .single();
-      if (!data) {
-        await recalcUserState(id);
-        const { data: refreshed } = await supabase
-          .from("user_state")
-          .select("*")
-          .eq("user_id", id)
-          .single();
-        setUserState(refreshed);
-        return;
+      const requestId = stateRequestRef.current + 1;
+      stateRequestRef.current = requestId;
+      const cacheKey = `exervia_user_state_${id}`;
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object") {
+            setUserState(parsed);
+          }
+        }
+      } catch {
+        // ignore cache parse errors
       }
-      setUserState(data);
+      try {
+        const { data } = await withTimeout(
+          supabase
+            .from("user_state")
+            .select("*")
+            .eq("user_id", id)
+            .single(),
+          5000,
+          "State load timed out"
+        );
+        if (stateRequestRef.current !== requestId) return;
+        if (!data) {
+          await withTimeout(recalcUserState(id), 5000, "State recalc timed out");
+          const { data: refreshed } = await withTimeout(
+            supabase
+              .from("user_state")
+              .select("*")
+              .eq("user_id", id)
+              .single(),
+            5000,
+            "State refresh timed out"
+          );
+          if (stateRequestRef.current !== requestId) return;
+          setUserState(refreshed || null);
+          if (refreshed) localStorage.setItem(cacheKey, JSON.stringify(refreshed));
+          return;
+        }
+        setUserState(data);
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (error) {
+        console.error("AthleteMode user_state load failed:", error);
+      }
     };
 
     fetchUserState();

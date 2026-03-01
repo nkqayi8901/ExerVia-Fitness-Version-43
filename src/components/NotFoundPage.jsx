@@ -16,7 +16,17 @@ export default function NotFoundPage() {
         <div className="page-title">Page not found</div>
         <div className="page-subtitle">That route does not exist.</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="studio-back" type="button" onClick={() => navigate(-1)}>
+          <button
+            className="studio-back"
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
+          >
             {"Back"}
           </button>
           <button className="studio-back" type="button" onClick={() => navigate("/")}>

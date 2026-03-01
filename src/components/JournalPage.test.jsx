@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import JournalPage from "./JournalPage";
 
 const mockNavigate = jest.fn();
@@ -52,4 +52,22 @@ afterEach(() => {
 test("shows boot skeleton immediately before journal data hydrates", () => {
   const { container } = render(<JournalPage mode="athlete" />);
   expect(container.querySelector(".journal-loading-skeleton")).toBeInTheDocument();
+});
+
+test("shows warning banner when journal entries refresh fails", async () => {
+  const failingQuery = {
+    select: jest.fn(() => failingQuery),
+    eq: jest.fn(() => failingQuery),
+    order: jest.fn(() => failingQuery),
+    limit: jest.fn(async () => {
+      throw new Error("network down");
+    }),
+  };
+  mockFrom.mockReturnValue(failingQuery);
+
+  render(<JournalPage mode="athlete" />);
+
+  await waitFor(() => {
+    expect(screen.getByText(/could not refresh journal right now/i)).toBeInTheDocument();
+  });
 });

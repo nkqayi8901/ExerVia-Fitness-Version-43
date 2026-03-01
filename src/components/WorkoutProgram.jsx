@@ -172,20 +172,49 @@ function ProgramPreview({ backPath, backLabel }) {
   const [guideDetails, setGuideDetails] = useState(null);
   const [guideLoading, setGuideLoading] = useState(false);
   const [guideError, setGuideError] = useState("");
+  const guideCacheRef = useRef({});
+  const guideRequestRef = useRef(0);
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
 
   const handleExerciseGuide = async (exercise) => {
     if (!exercise?.name) return;
+    const cacheKey = String(exercise.name || "").trim().toLowerCase();
     setGuideExercise(exercise);
     setGuideOpen(true);
     setGuideLoading(true);
     setGuideDetails(null);
     setGuideError("");
+    if (guideCacheRef.current[cacheKey]) {
+      setGuideDetails(guideCacheRef.current[cacheKey]);
+      setGuideLoading(false);
+      return;
+    }
+    const requestId = guideRequestRef.current + 1;
+    guideRequestRef.current = requestId;
     try {
-      const response = await fetch(
-        `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&name=${encodeURIComponent(exercise.name)}`
+      const response = await withTimeout(
+        fetch(
+          `https://wger.de/api/v2/exerciseinfo/?language=2&limit=1&name=${encodeURIComponent(exercise.name)}`
+        ),
+        6000,
+        "Guide request timed out"
       );
-      const data = await response.json();
+      if (guideRequestRef.current !== requestId) return;
+      const data = await withTimeout(response.json(), 2000, "Guide decode timed out");
       const result = data?.results?.[0];
       const description = result?.description
         ? result.description.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
@@ -193,12 +222,16 @@ function ProgramPreview({ backPath, backLabel }) {
       const steps = description
         ? description.split('.').map((part) => part.trim()).filter(Boolean).slice(0, 4)
         : [];
-      setGuideDetails({ description, steps });
+      const nextGuide = { description, steps };
+      guideCacheRef.current[cacheKey] = nextGuide;
+      setGuideDetails(nextGuide);
     } catch (error) {
       console.error('Guide fetch failed:', error);
       setGuideError("Could not load guide details right now.");
     } finally {
-      setGuideLoading(false);
+      if (guideRequestRef.current === requestId) {
+        setGuideLoading(false);
+      }
     }
   };
 
@@ -913,6 +946,20 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const resolvedUserId = userId || localStorage.getItem("exervia_user_id") || "";
   const logsPath = mode === "athlete" ? `/athlete/${resolvedUserId}/logs` : `/gym/${resolvedUserId}/logs`;
 
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
+
   useEffect(() => {
     if (!resolvedUserId || persistedRef.current) return;
     persistedRef.current = true;
@@ -960,10 +1007,22 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         }));
 
       if (validStrengthRows.length > 0) {
-        const { data: insertedRows, error: insertError } = await supabase
-          .from("strength_logs")
-          .insert(validStrengthRows)
-          .select("id,exercise_name,weight,reps,sets");
+        let insertedRows = [];
+        let insertError = null;
+        try {
+          const response = await withTimeout(
+            supabase
+              .from("strength_logs")
+              .insert(validStrengthRows)
+              .select("id,exercise_name,weight,reps,sets"),
+            6500,
+            "Strength save timed out"
+          );
+          insertedRows = response?.data || [];
+          insertError = response?.error || null;
+        } catch (error) {
+          insertError = error;
+        }
 
         if (insertError) {
           console.error("Could not persist program lifts to strength_logs:", insertError);
@@ -972,10 +1031,11 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         } else {
           const baseXp = Math.min(90, Math.max(20, Number(totalSets || 0) * 3));
           if (insertedRows?.[0]?.id && baseXp > 0) {
-            const strengthXp = await grantXpEventSafe({
-              userId: Number(resolvedUserId),
-              eventType: "strength_log",
-              baseXp,
+            const strengthXp = await withTimeout(
+              grantXpEventSafe({
+                userId: Number(resolvedUserId),
+                eventType: "strength_log",
+                baseXp,
               idempotencyKey: `strength_session:${insertedRows[0].id}`,
               sourceTable: "strength_logs",
               sourceId: String(insertedRows[0].id),
@@ -985,13 +1045,16 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
                 total_sets: totalSets,
                 total_tonnage: totalTonnage,
               },
-            });
+              }),
+              4500,
+              "XP grant timed out"
+            );
             awardedXp += Number(strengthXp.awardedXp || 0);
           }
 
           for (const row of insertedRows || []) {
             const idempotencyKey = `pr:${row.id}:user:${Number(resolvedUserId)}`;
-            const { data: prAwarded, error: prError } = await supabase.rpc("verify_pr_and_award_xp", {
+            const { data: prAwarded, error: prError } = await withTimeout(supabase.rpc("verify_pr_and_award_xp", {
               p_log_id: String(row.id),
               p_user_id: Number(resolvedUserId),
               p_exercise_name: String(row.exercise_name || ""),
@@ -999,7 +1062,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
               p_reps: Number(row.reps || 0),
               p_sets: Number(row.sets || 0),
               p_idempotency_key: idempotencyKey,
-            });
+            }), 4500, "PR award timed out");
             if (prError) {
               console.error("verify_pr_and_award_xp failed:", prError);
             } else {
@@ -1047,13 +1110,19 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         })
       );
 
-      setTimeout(() => {
-        setSessionLoggedPulseOpen(false);
-        navigate(logsPath, { state: location.state });
-      }, 1100);
     };
 
-    persistCompletion();
+    withTimeout(persistCompletion(), 9000, "Session sync timed out")
+      .catch((error) => {
+        console.error("ProgramCongrats persist timed out:", error);
+        setSyncWarning("Session saved locally. Sync is still processing.");
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setSessionLoggedPulseOpen(false);
+          navigate(logsPath, { state: location.state });
+        }, 1100);
+      });
     return undefined;
   }, [
     location.state,

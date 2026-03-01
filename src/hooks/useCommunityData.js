@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import {
   STATUS_PREFIX,
@@ -6,6 +6,29 @@ import {
   normalizeGroupFeedPreview,
   toDayKey,
 } from "../components/community/communityHelpers";
+
+const QUERY_TIMEOUT_MS = 7000;
+const CACHE_TTL_MS = 45000;
+
+const withTimeout = (promise, ms = QUERY_TIMEOUT_MS) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out")), ms)
+    ),
+  ]);
+
+const runWithRetry = async (fn, retries = 1) => {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+};
 
 export default function useCommunityData({
   userId,
@@ -17,6 +40,19 @@ export default function useCommunityData({
   setBanner,
   openConfirmDialog,
 }) {
+  const normalizeId = (value) => {
+    if (value === null || value === undefined) return "";
+    const raw = String(value).trim();
+    return raw;
+  };
+
+  const cacheRef = useRef({
+    global: { data: [], at: 0 },
+    group: {},
+    gym: { data: [], context: { placeId: "", name: "" }, at: 0 },
+    feed: { data: [], at: 0 },
+  });
+
   const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
   const [groupLeaderboard, setGroupLeaderboard] = useState([]);
   const [gymLeaderboard, setGymLeaderboard] = useState([]);
@@ -25,29 +61,48 @@ export default function useCommunityData({
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [groupLeaderboardLoading, setGroupLeaderboardLoading] = useState(false);
   const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
+  const [globalLeaderboardLoaded, setGlobalLeaderboardLoaded] = useState(false);
+  const [groupLeaderboardLoaded, setGroupLeaderboardLoaded] = useState(false);
+  const [gymLeaderboardLoaded, setGymLeaderboardLoaded] = useState(false);
   const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
 
   const loadGlobalLeaderboard = useCallback(async () => {
     if (!userId) return;
+    const cache = cacheRef.current.global;
+    if (Date.now() - Number(cache.at || 0) < CACHE_TTL_MS && Array.isArray(cache.data)) {
+      setGlobalLeaderboard(cache.data);
+      setGlobalLeaderboardLoaded(true);
+    }
     setLeaderboardLoading(true);
+    setGlobalLeaderboardLoaded(false);
     try {
-      let { data, error } = await supabase
-        .from("user_state")
-        .select("user_id,xp,level,rank,streak_days")
-        .order("xp", { ascending: false })
-        .limit(30);
+      let data = [];
+      let error = null;
+      await runWithRetry(async () => {
+        const response = await withTimeout(
+          supabase
+            .from("user_state")
+            .select("user_id,xp,level,rank,streak_days")
+            .order("xp", { ascending: false })
+            .limit(30)
+        );
+        data = response?.data || [];
+        error = response?.error || null;
+        if (error) {
+          const retryResponse = await withTimeout(
+            supabase
+              .from("user_state")
+              .select("user_id,xp,level,rank")
+              .order("xp", { ascending: false })
+              .limit(30)
+          );
+          data = retryResponse?.data || [];
+          error = retryResponse?.error || null;
+        }
+      });
       if (error) {
-        const retry = await supabase
-          .from("user_state")
-          .select("user_id,xp,level,rank")
-          .order("xp", { ascending: false })
-          .limit(30);
-        data = retry.data || [];
-        error = retry.error;
-      }
-      if (error) {
-        const fallback = await supabase.from("user_profiles").select("id").limit(30);
+        const fallback = await withTimeout(supabase.from("user_profiles").select("id").limit(30));
         const rows = (fallback.data || []).map((row) => ({
           user_id: row.id,
           xp: 0,
@@ -56,16 +111,21 @@ export default function useCommunityData({
           streak_days: 0,
         }));
         setGlobalLeaderboard(rows);
+        cacheRef.current.global = { data: rows, at: Date.now() };
         loadProfiles(rows.map((row) => row.user_id));
         return;
       }
       const rows = data || [];
       setGlobalLeaderboard(rows);
+      cacheRef.current.global = { data: rows, at: Date.now() };
       loadProfiles(rows.map((row) => row.user_id));
     } catch {
-      setGlobalLeaderboard([]);
+      if (!Array.isArray(cacheRef.current.global.data) || !cacheRef.current.global.data.length) {
+        setGlobalLeaderboard([]);
+      }
     } finally {
       setLeaderboardLoading(false);
+      setGlobalLeaderboardLoaded(true);
     }
   }, [loadProfiles, userId]);
 
@@ -73,51 +133,81 @@ export default function useCommunityData({
     async (groupId) => {
       if (!groupId || !userId) {
         setGroupLeaderboard([]);
+        setGroupLeaderboardLoaded(false);
         return;
       }
+      const groupKey = String(groupId);
+      const cachedGroup = cacheRef.current.group[groupKey];
+      if (
+        cachedGroup &&
+        Date.now() - Number(cachedGroup.at || 0) < CACHE_TTL_MS &&
+        Array.isArray(cachedGroup.data)
+      ) {
+        setGroupLeaderboard(cachedGroup.data);
+        setGroupLeaderboardLoaded(true);
+      }
       setGroupLeaderboardLoading(true);
+      setGroupLeaderboardLoaded(false);
       try {
-        const { data: members, error: memberError } = await supabase
-          .from("community_group_members")
-          .select("user_id")
-          .eq("group_id", groupId);
+        const memberResponse = await runWithRetry(() =>
+          withTimeout(
+            supabase
+              .from("community_group_members")
+              .select("user_id")
+              .eq("group_id", groupId)
+          )
+        );
+        const members = memberResponse?.data || [];
+        const memberError = memberResponse?.error;
         if (memberError) {
           setGroupLeaderboard([]);
           return;
         }
-        const memberIds = Array.from(
-          new Set((members || []).map((row) => Number(row.user_id)).filter(Boolean))
-        );
+        const memberIds = Array.from(new Set((members || []).map((row) => row.user_id).filter(Boolean)));
         if (!memberIds.length) {
           setGroupLeaderboard([]);
           return;
         }
-        const { data: rows, error: boardError } = await supabase
-          .from("user_state")
-          .select("user_id,xp,level,rank,streak_days")
-          .in("user_id", memberIds)
-          .order("xp", { ascending: false });
+        const boardResponse = await runWithRetry(() =>
+          withTimeout(
+            supabase
+              .from("user_state")
+              .select("user_id,xp,level,rank,streak_days")
+              .in("user_id", memberIds)
+              .order("xp", { ascending: false })
+          )
+        );
+        const rows = boardResponse?.data || [];
+        const boardError = boardResponse?.error;
         if (boardError) {
           // Fallback if streak_days is not available in schema.
-          const retry = await supabase
-            .from("user_state")
-            .select("user_id,xp,level,rank")
-            .in("user_id", memberIds)
-            .order("xp", { ascending: false });
+          const retry = await withTimeout(
+            supabase
+              .from("user_state")
+              .select("user_id,xp,level,rank")
+              .in("user_id", memberIds)
+              .order("xp", { ascending: false })
+          );
           if (retry.error) {
             setGroupLeaderboard([]);
             return;
           }
-          setGroupLeaderboard(retry.data || []);
-          loadProfiles(memberIds);
+          const fallbackRows = retry.data || [];
+          setGroupLeaderboard(fallbackRows);
+          cacheRef.current.group[groupKey] = { data: fallbackRows, at: Date.now() };
+          loadProfiles(memberIds.map((id) => normalizeId(id)).filter(Boolean));
           return;
         }
         setGroupLeaderboard(rows || []);
-        loadProfiles(memberIds);
+        cacheRef.current.group[groupKey] = { data: rows || [], at: Date.now() };
+        loadProfiles(memberIds.map((id) => normalizeId(id)).filter(Boolean));
       } catch {
-        setGroupLeaderboard([]);
+        if (!cachedGroup || !Array.isArray(cachedGroup.data) || !cachedGroup.data.length) {
+          setGroupLeaderboard([]);
+        }
       } finally {
         setGroupLeaderboardLoading(false);
+        setGroupLeaderboardLoaded(true);
       }
     },
     [loadProfiles, userId]
@@ -125,24 +215,43 @@ export default function useCommunityData({
 
   const loadGymLeaderboard = useCallback(async () => {
     if (!userId) return;
+    const gymCache = cacheRef.current.gym;
+    if (Date.now() - Number(gymCache.at || 0) < CACHE_TTL_MS) {
+      setGymLeaderboard(gymCache.data || []);
+      setGymLeaderboardContext(gymCache.context || { placeId: "", name: "" });
+      setGymLeaderboardLoaded(true);
+    }
     setGymLeaderboardLoading(true);
+    setGymLeaderboardLoaded(false);
     try {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("primary_gym_place_id, primary_gym_name")
-        .eq("id", Number(userId))
-        .maybeSingle();
+      const profileResponse = await runWithRetry(() =>
+        withTimeout(
+          supabase
+            .from("user_profiles")
+            .select("primary_gym_place_id, primary_gym_name")
+            .eq("id", Number(userId))
+            .maybeSingle()
+        )
+      );
+      const profile = profileResponse?.data;
       const placeId = String(profile?.primary_gym_place_id || "").trim();
       const gymName = String(profile?.primary_gym_name || "").trim();
       setGymLeaderboardContext({ placeId, name: gymName });
       if (!placeId) {
         setGymLeaderboard([]);
+        cacheRef.current.gym = { data: [], context: { placeId, name: gymName }, at: Date.now() };
         return;
       }
-      const { data, error } = await supabase.rpc("get_weekly_gym_leaderboard", {
-        p_viewer_profile_id: Number(userId),
-        p_limit: 30,
-      });
+      const response = await runWithRetry(() =>
+        withTimeout(
+          supabase.rpc("get_weekly_gym_leaderboard", {
+            p_viewer_profile_id: Number(userId),
+            p_limit: 30,
+          })
+        )
+      );
+      const data = response?.data || [];
+      const error = response?.error;
       if (error) {
         console.error("Could not load gym leaderboard:", error);
         setGymLeaderboard([]);
@@ -150,11 +259,19 @@ export default function useCommunityData({
       }
       const rows = data || [];
       setGymLeaderboard(rows);
+      cacheRef.current.gym = {
+        data: rows,
+        context: { placeId, name: gymName },
+        at: Date.now(),
+      };
       loadProfiles(rows.map((row) => row.user_id));
     } catch {
-      setGymLeaderboard([]);
+      if (!Array.isArray(gymCache.data) || !gymCache.data.length) {
+        setGymLeaderboard([]);
+      }
     } finally {
       setGymLeaderboardLoading(false);
+      setGymLeaderboardLoaded(true);
     }
   }, [loadProfiles, userId]);
 
@@ -202,14 +319,18 @@ export default function useCommunityData({
 
   const loadActivityFeed = useCallback(async () => {
     if (!userId) return;
+    const feedCache = cacheRef.current.feed;
+    if (Date.now() - Number(feedCache.at || 0) < 30000 && Array.isArray(feedCache.data)) {
+      setActivityFeedItems(feedCache.data);
+    }
     setActivityFeedLoading(true);
     try {
       const friendIds = (friends || [])
-        .map((row) => (Number(row.user_id) === Number(userId) ? row.friend_user_id : row.user_id))
-        .map((id) => Number(id))
+        .map((row) => (String(row.user_id) === String(userId) ? row.friend_user_id : row.user_id))
+        .map((id) => normalizeId(id))
         .filter(Boolean);
-      const actorIds = Array.from(new Set([Number(userId), ...friendIds].filter(Boolean)));
-      const joinedGroupIds = Array.from(new Set((memberships || []).map((row) => String(row.group_id)).filter(Boolean)));
+      const actorIds = Array.from(new Set([normalizeId(userId), ...friendIds].filter(Boolean)));
+      const joinedGroupIds = Array.from(new Set((memberships || []).map((row) => normalizeId(row.group_id)).filter(Boolean)));
 
       const requests = [
         supabase
@@ -234,7 +355,9 @@ export default function useCommunityData({
           .limit(40),
       ];
 
-      const [activityRes, groupPostRes, forumPostRes] = await Promise.all(requests);
+      const [activityRes, groupPostRes, forumPostRes] = await runWithRetry(() =>
+        withTimeout(Promise.all(requests), QUERY_TIMEOUT_MS + 1500)
+      );
       let activityRows = activityRes.data || [];
       let groupPostRows = groupPostRes.data || [];
       let forumPostRows = forumPostRes.data || [];
@@ -283,13 +406,18 @@ export default function useCommunityData({
       loadProfiles(actorProfileIds);
 
       const forumPostByActorDay = {};
+      const forumPostById = {};
       forumPostRows.forEach((row) => {
-        const actor = Number(row.created_by);
+        const postId = normalizeId(row.id);
+        if (postId) {
+          forumPostById[postId] = row;
+        }
+        const actor = normalizeId(row.created_by);
         const dayKey = toDayKey(row.created_at);
         if (!actor || !dayKey) return;
         const key = `${actor}:${dayKey}`;
         if (!forumPostByActorDay[key]) {
-          forumPostByActorDay[key] = String(row.id || "");
+          forumPostByActorDay[key] = postId;
         }
       });
 
@@ -297,7 +425,7 @@ export default function useCommunityData({
         activityRows
           .filter((row) => String(row.activity_type || "").toLowerCase() === "community_post")
           .map((row) => {
-            const actor = Number(row.user_id);
+            const actor = normalizeId(row.user_id);
             const dayKey = toDayKey(row.created_at || `${row.activity_date}T12:00:00`);
             return actor && dayKey ? `${actor}:${dayKey}` : "";
           })
@@ -305,20 +433,33 @@ export default function useCommunityData({
       );
 
       const normalized = [
-        ...activityRows.map((row) => ({
-          id: `activity-${row.id}`,
-          created_at: row.created_at || `${row.activity_date}T12:00:00`,
-          actor_id: row.user_id,
-          title: getActivityLabel(row.activity_type),
-          sub: row.activity_date ? `on ${row.activity_date}` : "",
-          activityType: String(row.activity_type || ""),
-          activityDate: row.activity_date || "",
-          postId:
+        ...activityRows.map((row) => {
+          const linkedPostId =
             String(row.activity_type || "").toLowerCase() === "community_post" && row.activity_date
-              ? forumPostByActorDay[`${Number(row.user_id)}:${String(row.activity_date)}`] || ""
-              : "",
-          type: "activity",
-        })),
+              ? forumPostByActorDay[`${normalizeId(row.user_id)}:${String(row.activity_date)}`] || ""
+              : "";
+          const linkedPost = linkedPostId ? forumPostById[String(linkedPostId)] : null;
+          const linkedIsStatus = String(linkedPost?.title || "").startsWith(STATUS_PREFIX);
+          return {
+            id: `activity-${row.id}`,
+            created_at: row.created_at || `${row.activity_date}T12:00:00`,
+            actor_id: row.user_id,
+            title:
+              String(row.activity_type || "").toLowerCase() === "community_post" && linkedIsStatus
+                ? "posted a status"
+                : getActivityLabel(row.activity_type),
+            sub:
+              String(row.activity_type || "").toLowerCase() === "community_post" && linkedIsStatus
+                ? String(linkedPost?.body || linkedPost?.title || "").replace(STATUS_PREFIX, "").slice(0, 180)
+                : row.activity_date
+                ? `on ${row.activity_date}`
+                : "",
+            activityType: String(row.activity_type || ""),
+            activityDate: row.activity_date || "",
+            postId: linkedPostId,
+            type: "activity",
+          };
+        }),
         ...groupPostRows.map((row) => ({
           id: `group-post-${row.id}`,
           created_at: row.created_at,
@@ -333,7 +474,7 @@ export default function useCommunityData({
           .filter((row) => {
             const isStatus = String(row.title || "").startsWith(STATUS_PREFIX);
             if (!isStatus) return true;
-            const actor = Number(row.created_by);
+            const actor = normalizeId(row.created_by);
             const dayKey = toDayKey(row.created_at);
             if (!actor || !dayKey) return true;
             return !activityCommunityPostByActorDay.has(`${actor}:${dayKey}`);
@@ -349,13 +490,29 @@ export default function useCommunityData({
             postId: String(row.id || ""),
             type: "forum_post",
           })),
-      ]
+      ];
+
+      // Prevent duplicate status/forum entries when an activity row and forum row reference the same post.
+      const deduped = [];
+      const seenKeys = new Set();
+      normalized.forEach((item) => {
+        const postId = normalizeId(item.postId);
+        const key = postId ? `post:${postId}` : `${item.type}:${item.id}`;
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+        deduped.push(item);
+      });
+
+      const finalItems = deduped
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 80);
 
-      setActivityFeedItems(normalized);
+      setActivityFeedItems(finalItems);
+      cacheRef.current.feed = { data: finalItems, at: Date.now() };
     } catch {
-      setActivityFeedItems([]);
+      if (!Array.isArray(feedCache.data) || !feedCache.data.length) {
+        setActivityFeedItems([]);
+      }
     } finally {
       setActivityFeedLoading(false);
     }
@@ -386,6 +543,9 @@ export default function useCommunityData({
     leaderboardLoading,
     groupLeaderboardLoading,
     gymLeaderboardLoading,
+    globalLeaderboardLoaded,
+    groupLeaderboardLoaded,
+    gymLeaderboardLoaded,
     reportingLeaderboardUserIds,
     activityFeedLoading,
     loadActivityFeed,

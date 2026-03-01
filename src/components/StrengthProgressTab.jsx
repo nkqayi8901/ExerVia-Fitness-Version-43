@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { emitToast } from '../utils/toast';
+import exerciseGuideDefaults from '../data/exerciseGuides.json';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
 import { supabase } from '../supabaseClient';
@@ -277,439 +278,6 @@ const exerciseLibrary = [
   'Battle Ropes'
 ];
 
-const exerciseGuideDefaults = {
-  'Bulgarian Split Squat': [
-    'Set rear foot on a bench and find a stable stance.',
-    'Lower until front thigh is near parallel with a tall chest.',
-    'Drive through the front heel and keep knee tracking over toes.'
-  ],
-  'Flat Dumbbell Bench Press': [
-    'Set shoulder blades and keep feet planted.',
-    'Lower dumbbells with control to chest level.',
-    'Press up and keep wrists stacked over elbows.'
-  ],
-  'Incline Barbell Bench Press': [
-    'Set the bench to a slight incline and brace.',
-    'Lower the bar to upper chest with steady control.',
-    'Press up while keeping your upper back tight.'
-  ],
-  'Decline Bench Press': [
-    'Secure your feet and brace your core.',
-    'Lower the bar to the lower chest with control.',
-    'Press up without bouncing off the chest.'
-  ],
-  'Pec Deck': [
-    'Set the seat so handles align with mid chest.',
-    'Bring elbows together without shrugging.',
-    'Control the return and keep tension on the chest.'
-  ],
-  'Back Squat': [
-    'Brace your core and keep the bar over mid foot.',
-    'Sit down and back while keeping your chest up.',
-    'Drive up by pushing the floor and keeping knees aligned.'
-  ],
-  'Deadlift': [
-    'Set your hips, grip the bar, and brace hard.',
-    'Push the floor away and keep the bar close to the body.',
-    'Lock out with hips and glutes, then lower with control.'
-  ],
-  'Rack Pull': [
-    'Set bar at knee height and brace hard.',
-    'Drive hips forward and keep bar close.',
-    'Lower under control to the pins.'
-  ],
-  'T-Bar Row': [
-    'Hinge at the hips and keep a flat back.',
-    'Row the handle toward lower ribs.',
-    'Lower with control and keep tension.'
-  ],
-  'Pendlay Row': [
-    'Start with a strong hinge and flat back.',
-    'Pull bar from floor to lower chest.',
-    'Reset on the floor each rep.'
-  ],
-  'Inverted Row': [
-    'Set body in a straight line under the bar.',
-    'Pull chest to the bar with elbows down.',
-    'Lower under control without sagging.'
-  ],
-  'Straight-Arm Pulldown': [
-    'Set hips back and keep arms straight.',
-    'Pull the bar to your thighs using lats.',
-    'Return with control without bending elbows.'
-  ],
-  'Bench Press': [
-    'Set your shoulder blades and plant your feet.',
-    'Lower the bar to mid chest with elbows at a steady angle.',
-    'Press up while keeping your upper back tight.'
-  ],
-  'Overhead Press': [
-    'Brace your core and stack ribs over hips.',
-    'Press straight up and move head through at the top.',
-    'Lower under control to the upper chest.'
-  ],
-  'Dumbbell Shoulder Press': [
-    'Start with dumbbells at shoulder height and brace.',
-    'Press up without flaring ribs.',
-    'Lower to a controlled stop at shoulder height.'
-  ],
-  'Arnold Press': [
-    'Start with palms facing you at chest level.',
-    'Press up while rotating palms forward.',
-    'Lower back down and rotate under control.'
-  ],
-  'Upright Row': [
-    'Grip bar just inside shoulder width.',
-    'Pull elbows up and out to upper chest.',
-    'Lower under control without shrugging.'
-  ],
-  'Pull-up': [
-    'Start from a dead hang with shoulders engaged.',
-    'Pull chest toward the bar with elbows down.',
-    'Lower under control to full extension.'
-  ],
-  'Assisted Pull-up': [
-    'Use band or machine for support.',
-    'Pull chest toward the bar with control.',
-    'Lower slowly to full extension.'
-  ],
-  'Chin-up': [
-    'Use an underhand grip and brace.',
-    'Pull chin over the bar with elbows down.',
-    'Lower under control to full extension.'
-  ],
-  'Push-up': [
-    'Set hands under shoulders and keep a tight plank.',
-    'Lower with elbows at a steady angle.',
-    'Press up while keeping hips level.'
-  ],
-  'Leg Press': [
-    'Set feet shoulder width on the platform.',
-    'Lower until knees are at a strong angle.',
-    'Press through the mid foot to lockout.'
-  ],
-  'Hack Squat': [
-    'Set feet mid platform and brace core.',
-    'Lower with control keeping back flat.',
-    'Drive up through the heels.'
-  ],
-  'Smith Machine Squat': [
-    'Set feet slightly forward and brace.',
-    'Lower with control and keep torso steady.',
-    'Drive up through the mid foot.'
-  ],
-  'Step-Ups': [
-    'Use a stable box and plant full foot.',
-    'Drive up through the lead leg.',
-    'Lower under control without collapsing.'
-  ],
-  'Reverse Lunge': [
-    'Step back and drop the rear knee.',
-    'Keep front knee tracking over toes.',
-    'Drive up through the front heel.'
-  ],
-  'Lying Leg Curl': [
-    'Set the pad just above the heels.',
-    'Curl up without lifting hips.',
-    'Lower with control and keep tension.'
-  ],
-  'Seated Leg Curl': [
-    'Set pad above the ankles and brace.',
-    'Curl down using hamstrings only.',
-    'Return with control to full extension.'
-  ],
-  'Nordic Hamstring Curl': [
-    'Brace core and keep hips extended.',
-    'Lower slowly using hamstrings to resist.',
-    'Push up lightly if needed to reset.'
-  ],
-  'Standing Calf Raise': [
-    'Place toes on the edge and keep legs straight.',
-    'Rise onto the balls of your feet.',
-    'Lower with control for a full stretch.'
-  ],
-  'Seated Calf Raise': [
-    'Set pad on thighs and keep feet planted.',
-    'Rise onto the balls of your feet.',
-    'Lower with control to full stretch.'
-  ],
-  'Hip Thrust': [
-    'Set upper back on a bench and brace core.',
-    'Drive hips up and squeeze glutes at the top.',
-    'Lower with control without losing tension.'
-  ],
-  'Barbell Hip Thrust': [
-    'Set the bar over hips with padding.',
-    'Drive through heels and lock out hips.',
-    'Lower with control and keep ribs down.'
-  ],
-  'Glute Bridge': [
-    'Plant feet hip width and brace core.',
-    'Drive hips up and squeeze glutes.',
-    'Lower with control without arching.'
-  ],
-  'Walking Lunge': [
-    'Step forward and drop the back knee.',
-    'Keep front knee aligned over the foot.',
-    'Drive through the front heel to step forward.'
-  ],
-  'Donkey Calf Raise': [
-    'Hinge at hips and keep knees soft.',
-    'Rise onto the balls of your feet.',
-    'Lower slowly for a full stretch.'
-  ],
-  'Single-Leg Calf Raise': [
-    'Stand tall and keep balance.',
-    'Rise onto the ball of one foot.',
-    'Lower with control and repeat.'
-  ],
-  'Kettlebell Swing': [
-    'Hinge at hips with a flat back.',
-    'Snap hips forward to drive the bell.',
-    'Let the bell swing back under control.'
-  ],
-  'Decline Dumbbell Press': [
-    'Set the bench to a decline and brace.',
-    'Lower dumbbells to chest level with control.',
-    'Press up and keep wrists stacked.'
-  ],
-  'Push-up (Feet Elevated)': [
-    'Place feet on a stable platform and brace.',
-    'Lower with elbows at a steady angle.',
-    'Press up while keeping hips level.'
-  ],
-  'Svend Press': [
-    'Press plates together at chest height.',
-    'Push straight out while maintaining squeeze.',
-    'Return with control and keep tension.'
-  ],
-  'Guillotine Press': [
-    'Use a light load and keep shoulders set.',
-    'Lower the bar to the upper chest/neck line.',
-    'Press up smoothly without flaring elbows.'
-  ],
-  'Meadows Row': [
-    'Set a strong hinge and brace your core.',
-    'Row the bar toward the hip with control.',
-    'Lower slowly and keep your back flat.'
-  ],
-  'Neutral-Grip Pull-up': [
-    'Grip handles with palms facing in.',
-    'Pull chest toward the bar with control.',
-    'Lower under control to full extension.'
-  ],
-  'Machine Row': [
-    'Set chest support and brace core.',
-    'Row handles toward your ribs.',
-    'Return under control and keep tension.'
-  ],
-  'Cable Lateral Raise': [
-    'Stand tall and keep slight elbow bend.',
-    'Raise the cable to shoulder height.',
-    'Lower slowly without swinging.'
-  ],
-  'Rear Delt Fly (Dumbbell)': [
-    'Hinge forward with a flat back.',
-    'Raise dumbbells out to the sides.',
-    'Lower slowly and keep tension.'
-  ],
-  'Reverse Pec Deck': [
-    'Set seat to shoulder height.',
-    'Pull handles back with elbows slightly bent.',
-    'Return under control without shrugging.'
-  ],
-  'Cuban Press': [
-    'Raise elbows to shoulder height.',
-    'Externally rotate forearms upward.',
-    'Press overhead with control.'
-  ],
-  'Bradford Press': [
-    'Start with bar at the front rack position.',
-    'Press up and move bar behind the head.',
-    'Press again to return to the front.'
-  ],
-  'Machine Shoulder Press': [
-    'Set the seat so handles align with shoulders.',
-    'Press up without flaring ribs.',
-    'Lower with control to a full stop.'
-  ],
-  'EZ-Bar Curl': [
-    'Keep elbows tucked by your sides.',
-    'Curl the bar up without swinging.',
-    'Lower slowly and keep tension.'
-  ],
-  'Preacher Curl': [
-    'Set upper arms on the pad.',
-    'Curl up without lifting shoulders.',
-    'Lower slowly to full extension.'
-  ],
-  'Concentration Curl': [
-    'Brace elbow against inner thigh.',
-    'Curl with a slow, controlled tempo.',
-    'Lower without losing tension.'
-  ],
-  'Incline Dumbbell Curl': [
-    'Set bench to an incline and brace.',
-    'Curl with elbows behind the torso.',
-    'Lower slowly to full extension.'
-  ],
-  'Cable Curl': [
-    'Stand tall and keep elbows pinned.',
-    'Curl the handle up with control.',
-    'Lower slowly without swinging.'
-  ],
-  'Spider Curl': [
-    'Lie chest down on an incline bench.',
-    'Curl with elbows forward and stable.',
-    'Lower under control to full extension.'
-  ],
-  'Reverse Curl': [
-    'Use an overhand grip and brace.',
-    'Curl up without swinging.',
-    'Lower slowly and keep tension.'
-  ],
-  'Skull Crushers': [
-    'Keep elbows tucked and upper arms still.',
-    'Lower the bar toward the forehead.',
-    'Extend back up without flaring elbows.'
-  ],
-  'Close-Grip Bench Press': [
-    'Grip the bar just inside shoulder width.',
-    'Lower to mid chest with control.',
-    'Press up while keeping elbows tucked.'
-  ],
-  'Bench Dips': [
-    'Set hands on a bench and brace core.',
-    'Lower hips with elbows back.',
-    'Press up without shrugging.'
-  ],
-  'Cable Overhead Triceps Extension': [
-    'Keep elbows high and close together.',
-    'Extend the rope upward with control.',
-    'Return slowly to full stretch.'
-  ],
-  'JM Press': [
-    'Lower the bar in a hybrid press path.',
-    'Stop above the chest with elbows tucked.',
-    'Press back up with control.'
-  ],
-  'Tate Press': [
-    'Start with dumbbells over the chest.',
-    'Lower toward the chest with elbows out.',
-    'Press back up without flaring.'
-  ],
-  'Curtsy Lunge': [
-    'Step back and across behind the lead leg.',
-    'Lower with control and keep torso upright.',
-    'Drive up through the front heel.'
-  ],
-  'Sissy Squat': [
-    'Stay tall and let knees travel forward.',
-    'Lower with control while keeping hips open.',
-    'Drive up through the quads.'
-  ],
-  'Box Squat': [
-    'Sit back to a box with control.',
-    'Pause briefly without relaxing.',
-    'Drive up through the mid foot.'
-  ],
-  'Cyclist Squat': [
-    'Keep heels elevated and torso upright.',
-    'Lower with knees forward and control.',
-    'Drive up through the quads.'
-  ],
-  'Good Morning': [
-    'Set bar on upper back and brace core.',
-    'Hinge at hips with a flat back.',
-    'Return by driving hips forward.'
-  ],
-  'Single-Leg Romanian Deadlift': [
-    'Hinge on one leg and keep hips square.',
-    'Lower with control and keep back flat.',
-    'Drive up through the standing heel.'
-  ],
-  'Glute-Ham Raise': [
-    'Set the machine and brace core.',
-    'Lower slowly with hamstrings controlling.',
-    'Pull back up without jerking.'
-  ],
-  'Calf Press (Leg Press)': [
-    'Set feet on the bottom edge of the platform.',
-    'Press through the balls of the feet.',
-    'Lower slowly for a full stretch.'
-  ],
-  'Hanging Leg Raise': [
-    'Brace your core and keep legs straight.',
-    'Raise legs without swinging.',
-    'Lower slowly with control.'
-  ],
-  "Captain's Chair Leg Raise": [
-    'Brace your core and keep back flat.',
-    'Raise knees toward the chest.',
-    'Lower slowly without swinging.'
-  ],
-  'Cable Crunch': [
-    'Kneel and brace core.',
-    'Crunch down by rounding the spine.',
-    'Return slowly to full stretch.'
-  ],
-  'Decline Sit-Up': [
-    'Brace core and keep feet locked.',
-    'Sit up with controlled tempo.',
-    'Lower slowly without bouncing.'
-  ],
-  'Ab Wheel Rollout': [
-    'Brace core and keep hips locked.',
-    'Roll out slowly without sagging.',
-    'Pull back using abs and lats.'
-  ],
-  'Russian Twist': [
-    'Sit tall with core braced.',
-    'Rotate smoothly side to side.',
-    'Keep movement controlled.'
-  ],
-  'Bicycle Crunch': [
-    'Keep lower back pressed down.',
-    'Rotate elbow toward opposite knee.',
-    'Move with steady control.'
-  ],
-  'Dead Bug': [
-    'Press lower back into the floor.',
-    'Extend opposite arm and leg slowly.',
-    'Return with control and repeat.'
-  ],
-  'Pallof Press': [
-    'Brace core and stand tall.',
-    'Press the handle straight out.',
-    'Resist rotation and return slowly.'
-  ],
-  'Sled Push': [
-    'Set a strong forward lean and brace.',
-    'Drive through legs with short steps.',
-    'Keep hands firm and torso stable.'
-  ],
-  'Sled Pull': [
-    'Lean back slightly and brace core.',
-    'Pull with steady steps and control.',
-    'Keep shoulders down and back.'
-  ],
-  'Suitcase Carry': [
-    'Hold the load at your side and brace.',
-    'Walk with tall posture and steady steps.',
-    'Avoid leaning toward the weight.'
-  ],
-  'Yoke Carry': [
-    'Brace core and set the frame.',
-    'Walk with short, steady steps.',
-    'Keep chest tall and breathing controlled.'
-  ],
-  'Battle Ropes': [
-    'Set an athletic stance and brace.',
-    'Drive the ropes with steady rhythm.',
-    'Keep shoulders down and core tight.'
-  ]
-};
-
 const exerciseGroups = {
   Chest: [
     'Bench Press',
@@ -892,6 +460,7 @@ const StrengthProgressTab = ({ userId }) => {
 
   const [personalRecords, setPersonalRecords] = useState({});
   const [recentLifts, setRecentLifts] = useState([]);
+  const [statsBootLoading, setStatsBootLoading] = useState(false);
 
   const [programs, setPrograms] = useState([]);
   const [pinnedProgramIds, setPinnedProgramIds] = useState([]);
@@ -1110,6 +679,13 @@ const StrengthProgressTab = ({ userId }) => {
       setGuideLoading(false);
     }
   };
+
+  const guideHasCoachCues = useMemo(() => {
+    if (!guideDetails || typeof guideDetails !== 'object') return false;
+    if (Array.isArray(guideDetails.steps) && guideDetails.steps.length > 0) return true;
+    if (String(guideDetails.description || '').trim()) return true;
+    return false;
+  }, [guideDetails]);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -2034,9 +1610,13 @@ const StrengthProgressTab = ({ userId }) => {
   useEffect(() => {
     if (userId) {
       fetchProfile();
-      fetchPersonalRecords();
-      fetchRecentLifts();
       fetchPrograms();
+      setStatsBootLoading(true);
+      Promise.all([fetchPersonalRecords(), fetchRecentLifts()])
+        .catch(() => {
+          // keep UI responsive; banner messaging is handled by callers where needed
+        })
+        .finally(() => setStatsBootLoading(false));
     }
   }, [userId]);
 
@@ -2110,7 +1690,11 @@ const StrengthProgressTab = ({ userId }) => {
                 if (userId) {
                   navigate(`/gym/${userId}`);
                 } else {
-                  navigate(-1);
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate("/auth");
+                  }
                 }
               }}
               type="button"
@@ -2579,7 +2163,9 @@ const StrengthProgressTab = ({ userId }) => {
                 <div className="studio-progress-drilldown-top">
                   <div className="studio-progress-title">Lift Progress By Exercise</div>
                 </div>
-                {exerciseProgressOptions.length > 0 ? (
+                {statsBootLoading ? (
+                  <div className="studio-empty">Loading strength stats...</div>
+                ) : exerciseProgressOptions.length > 0 ? (
                   <>
                     <div className="studio-chip-row">
                       {exerciseProgressOptions.map((item) => (
@@ -2624,8 +2210,10 @@ const StrengthProgressTab = ({ userId }) => {
             {/* This is a structural UI container. */}
             <section className="studio-panel studio-reveal">
               <div className="studio-panel-title">Personal Records</div>
-              {prList.length > 0 ? (
-                <div className="studio-pr-grid">
+                {statsBootLoading ? (
+                  <div className="studio-empty">Loading personal records...</div>
+                ) : prList.length > 0 ? (
+                  <div className="studio-pr-grid">
                   {prList.slice(0, 4).map((pr) => (
                     <div key={pr.id} className="studio-pr-card">
                       <div className="studio-pr-top">
@@ -3179,11 +2767,23 @@ the createPRogram helps resolve this problem  */}
                   <div className="studio-guide-meta">
                     {guideExercise.sets} sets · {guideExercise.reps} reps
                   </div>
+                  {!guideLoading && (
+                    <div className={`studio-guide-status ${guideHasCoachCues ? 'ready' : 'missing'}`}>
+                      <span className={`studio-guide-status-icon ${guideHasCoachCues ? 'ready' : 'missing'}`}>
+                        {guideHasCoachCues ? '✓' : '!'}
+                      </span>
+                      <span>
+                        {guideHasCoachCues
+                          ? 'Coach cues loaded'
+                          : 'Coach cues unavailable. Showing baseline form reminders.'}
+                      </span>
+                    </div>
+                  )}
                   {guideLoading ? (
                     <div className="studio-empty">Loading guide...</div>
                   ) : (
                     <div className="studio-guide-text">
-                      {guideDetails?.description || 'No guide yet. Focus on control and form.'}
+                      {guideDetails?.description || 'No movement-specific cues yet. Keep tempo controlled and prioritize clean form.'}
                     </div>
                   )}
                   {!guideLoading && (

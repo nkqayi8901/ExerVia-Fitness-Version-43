@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import Navbar from "./Navbar";
@@ -19,6 +19,21 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
   const [leaderboardRows, setLeaderboardRows] = useState([]);
   const [activeCrews, setActiveCrews] = useState([]);
   const [profileLabels, setProfileLabels] = useState({});
+  const requestRef = useRef(0);
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
   const topTonnage = useMemo(() => Number(leaderboardRows[0]?.weekly_tonnage || 0), [leaderboardRows]);
 
@@ -29,91 +44,148 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
     }
 
     const fetchGymPage = async () => {
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
       setLoading(true);
       setCopyState("");
-
-      const [{ data: gymProfileRow }, { count: gymMembersCount }, { data: leaderboardData }] = await Promise.all([
-        supabase
-          .from("user_profiles")
-          .select("primary_gym_name,primary_gym_address")
-          .eq("primary_gym_place_id", decodedPlaceId)
-          .not("primary_gym_name", "is", null)
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("user_profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("primary_gym_place_id", decodedPlaceId),
-        supabase.rpc("get_weekly_gym_leaderboard_by_place", {
-          p_place_id: decodedPlaceId,
-          p_limit: 30,
-        }),
-      ]);
-
-      const leaderboard = leaderboardData || [];
-      setLeaderboardRows(leaderboard);
-      setGymMeta({
-        name: String(gymProfileRow?.primary_gym_name || "").trim(),
-        address: String(gymProfileRow?.primary_gym_address || "").trim(),
-      });
-      setMemberCount(Number(gymMembersCount || 0));
-
-      const leaderboardIds = Array.from(new Set(leaderboard.map((row) => Number(row.user_id)).filter(Boolean)));
-      if (leaderboardIds.length) {
-        const { data: profileRows } = await supabase
-          .from("user_profiles")
-          .select("id,username,display_name")
-          .in("id", leaderboardIds);
-        const nextLabels = {};
-        (profileRows || []).forEach((row) => {
-          const username = String(row.username || "").trim().replace(/^@+/, "");
-          nextLabels[row.id] = username ? `@${username}` : row.display_name || `User ${row.id}`;
-        });
-        setProfileLabels(nextLabels);
-      } else {
-        setProfileLabels({});
-      }
-
-      const { data: gymUsers } = await supabase
-        .from("user_profiles")
-        .select("id")
-        .eq("primary_gym_place_id", decodedPlaceId)
-        .limit(500);
-      const gymUserIds = Array.from(new Set((gymUsers || []).map((row) => Number(row.id)).filter(Boolean)));
-
-      if (gymUserIds.length) {
-        const { data: crewRows } = await supabase
-          .from("community_group_members")
-          .select("group_id,user_id,community_groups(name)")
-          .in("user_id", gymUserIds)
-          .limit(2000);
-        const byGroup = {};
-        (crewRows || []).forEach((row) => {
-          const groupId = String(row.group_id || "");
-          if (!groupId) return;
-          if (!byGroup[groupId]) {
-            byGroup[groupId] = {
-              id: groupId,
-              name: row.community_groups?.name || "Group",
-              members: new Set(),
-            };
+      const cacheKey = `exervia_gym_profile_${decodedPlaceId}`;
+      try {
+        const cachedRaw = localStorage.getItem(cacheKey);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          if (cached && typeof cached === "object") {
+            setGymMeta(cached.gymMeta || { name: "", address: "" });
+            setMemberCount(Number(cached.memberCount || 0));
+            setLeaderboardRows(Array.isArray(cached.leaderboardRows) ? cached.leaderboardRows : []);
+            setActiveCrews(Array.isArray(cached.activeCrews) ? cached.activeCrews : []);
+            setProfileLabels(cached.profileLabels || {});
           }
-          byGroup[groupId].members.add(Number(row.user_id));
-        });
-        const crewList = Object.values(byGroup)
-          .map((group) => ({
-            id: group.id,
-            name: group.name,
-            count: group.members.size,
-          }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 5);
-        setActiveCrews(crewList);
-      } else {
-        setActiveCrews([]);
+        }
+      } catch {
+        // ignore cache parse
       }
 
-      setLoading(false);
+      try {
+        const [{ data: gymProfileRow }, { count: gymMembersCount }, { data: leaderboardData }] =
+          await withTimeout(
+            Promise.all([
+              supabase
+                .from("user_profiles")
+                .select("primary_gym_name,primary_gym_address")
+                .eq("primary_gym_place_id", decodedPlaceId)
+                .not("primary_gym_name", "is", null)
+                .limit(1)
+                .maybeSingle(),
+              supabase
+                .from("user_profiles")
+                .select("id", { count: "exact", head: true })
+                .eq("primary_gym_place_id", decodedPlaceId),
+              supabase.rpc("get_weekly_gym_leaderboard_by_place", {
+                p_place_id: decodedPlaceId,
+                p_limit: 30,
+              }),
+            ]),
+            7000,
+            "Gym profile load timed out"
+          );
+
+        if (requestRef.current !== requestId) return;
+
+        const leaderboard = leaderboardData || [];
+        const nextGymMeta = {
+          name: String(gymProfileRow?.primary_gym_name || "").trim(),
+          address: String(gymProfileRow?.primary_gym_address || "").trim(),
+        };
+        setLeaderboardRows(leaderboard);
+        setGymMeta(nextGymMeta);
+        setMemberCount(Number(gymMembersCount || 0));
+
+        const leaderboardIds = Array.from(new Set(leaderboard.map((row) => Number(row.user_id)).filter(Boolean)));
+        let resolvedProfileLabels = {};
+        if (leaderboardIds.length) {
+          const { data: profileRows } = await withTimeout(
+            supabase.from("user_profiles").select("id,username,display_name").in("id", leaderboardIds),
+            5000,
+            "Gym labels load timed out"
+          );
+          if (requestRef.current !== requestId) return;
+          const nextLabels = {};
+          (profileRows || []).forEach((row) => {
+            const username = String(row.username || "").trim().replace(/^@+/, "");
+            nextLabels[row.id] = username ? `@${username}` : row.display_name || `User ${row.id}`;
+          });
+          setProfileLabels(nextLabels);
+          resolvedProfileLabels = nextLabels;
+        } else {
+          setProfileLabels({});
+          resolvedProfileLabels = {};
+        }
+
+        const { data: gymUsers } = await withTimeout(
+          supabase.from("user_profiles").select("id").eq("primary_gym_place_id", decodedPlaceId).limit(500),
+          5000,
+          "Gym members load timed out"
+        );
+        if (requestRef.current !== requestId) return;
+        const gymUserIds = Array.from(new Set((gymUsers || []).map((row) => Number(row.id)).filter(Boolean)));
+
+        if (gymUserIds.length) {
+          const { data: crewRows } = await withTimeout(
+            supabase
+              .from("community_group_members")
+              .select("group_id,user_id,community_groups(name)")
+              .in("user_id", gymUserIds)
+              .limit(2000),
+            6000,
+            "Gym crews load timed out"
+          );
+          if (requestRef.current !== requestId) return;
+          const byGroup = {};
+          (crewRows || []).forEach((row) => {
+            const groupId = String(row.group_id || "");
+            if (!groupId) return;
+            if (!byGroup[groupId]) {
+              byGroup[groupId] = {
+                id: groupId,
+                name: row.community_groups?.name || "Group",
+                members: new Set(),
+              };
+            }
+            byGroup[groupId].members.add(Number(row.user_id));
+          });
+          const crewList = Object.values(byGroup)
+            .map((group) => ({
+              id: group.id,
+              name: group.name,
+              count: group.members.size,
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+          setActiveCrews(crewList);
+          try {
+            localStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                gymMeta: nextGymMeta,
+                memberCount: Number(gymMembersCount || 0),
+                leaderboardRows: leaderboard,
+                activeCrews: crewList,
+                profileLabels: resolvedProfileLabels,
+              })
+            );
+          } catch {
+            // ignore cache write failure
+          }
+        } else {
+          setActiveCrews([]);
+        }
+      } catch (error) {
+        console.error("GymProfilePage load failed:", error);
+      } finally {
+        if (requestRef.current === requestId) {
+          setLoading(false);
+        }
+      }
     };
 
     fetchGymPage();

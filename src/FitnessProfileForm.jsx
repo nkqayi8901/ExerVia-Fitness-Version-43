@@ -45,6 +45,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const placesServiceRef = useRef(null);
   const placesSessionRef = useRef(null);
   const placesDebounceRef = useRef(null);
+  const lastSyncRef = useRef({ userId: "", at: 0 });
 
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
@@ -242,6 +243,18 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         return;
       }
 
+      const nextUserId = String(nextSession.user.id || "");
+      const now = Date.now();
+      if (
+        nextUserId &&
+        previousProfile &&
+        String(previousProfile.auth_user_id || "") === nextUserId &&
+        now - Number(lastSyncRef.current.at || 0) < 3000
+      ) {
+        setLoading(false);
+        return;
+      }
+
       const row = await withTimeout(
         fetchProfileByAuthUser(nextSession.user),
         PROFILE_LOAD_TIMEOUT_MS,
@@ -271,6 +284,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
           gymLat: row.primary_gym_lat == null ? "" : String(row.primary_gym_lat).trim(),
           gymLng: row.primary_gym_lng == null ? "" : String(row.primary_gym_lng).trim(),
         };
+        lastSyncRef.current = { userId: nextUserId, at: Date.now() };
       }
     } catch (error) {
       console.error("syncSession failed:", error);
@@ -291,6 +305,9 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
           auth_user_id: nextSession.user.id,
           email: nextSession.user.email || null,
         });
+      }
+      if (nextSession?.user?.id) {
+        lastSyncRef.current = { userId: String(nextSession.user.id), at: Date.now() };
       }
     } finally {
       setLoading(false);
@@ -355,12 +372,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     boot();
 
-    const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (loadingGuardTimeout) {
         clearTimeout(loadingGuardTimeout);
         loadingGuardTimeout = null;
       }
-      await syncSession(nextSession);
+      syncSession(nextSession);
     });
 
     return () => {

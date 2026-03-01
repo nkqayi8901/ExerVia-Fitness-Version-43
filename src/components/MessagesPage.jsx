@@ -56,6 +56,28 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const [blockedUserIds, setBlockedUserIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const listRef = useRef(null);
+  const bootRequestRef = useRef(0);
+  const messagesRequestRef = useRef(0);
+  const cacheRef = useRef({
+    friends: [],
+    heads: {},
+    byFriend: {},
+    at: 0,
+  });
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
   const basePath = mode === "gym" ? `/gym/${userId}` : `/athlete/${userId}`;
   const communityPath = `${basePath}/community`;
@@ -111,10 +133,20 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const loadProfiles = async (ids) => {
     const uniqueIds = Array.from(new Set((ids || []).filter(Boolean)));
     if (!uniqueIds.length) return;
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("id,username,display_name")
-      .in("id", uniqueIds);
+    let data = null;
+    try {
+      const response = await withTimeout(
+        supabase
+          .from("user_profiles")
+          .select("id,username,display_name")
+          .in("id", uniqueIds),
+        5000,
+        "Profile labels timed out"
+      );
+      data = response?.data || null;
+    } catch {
+      return;
+    }
     if (!data) return;
     const next = {};
     data.forEach((row) => {
@@ -138,28 +170,55 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
 
   const loadFriends = async () => {
     if (!userId) return;
-    const { data } = await supabase
-      .from("community_friends")
-      .select("*")
-      .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`);
+    let data = [];
+    try {
+      const response = await withTimeout(
+        supabase
+          .from("community_friends")
+          .select("*")
+          .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`),
+        6500,
+        "Friends list timed out"
+      );
+      data = response?.data || [];
+    } catch (error) {
+      console.error("Messages friends load failed:", error);
+      data = cacheRef.current.friends || [];
+    }
     const rows = data || [];
     setFriends(rows);
+    cacheRef.current.friends = rows;
     const ids = rows.flatMap((row) => [row.user_id, row.friend_user_id]);
     loadProfiles(ids);
   };
 
   const loadMessages = async (friendId) => {
     if (!friendId || !userId) return;
+    const requestId = messagesRequestRef.current + 1;
+    messagesRequestRef.current = requestId;
     const currentId = Number(userId);
     const low = Math.min(currentId, Number(friendId));
     const high = Math.max(currentId, Number(friendId));
-    const { data } = await supabase
-      .from("community_friend_messages")
-      .select("*")
-      .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
-      .order("created_at", { ascending: true });
+    let data = [];
+    try {
+      const response = await withTimeout(
+        supabase
+          .from("community_friend_messages")
+          .select("*")
+          .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
+          .order("created_at", { ascending: true }),
+        6500,
+        "Conversation load timed out"
+      );
+      data = response?.data || [];
+    } catch (error) {
+      console.error("Messages conversation load failed:", error);
+      data = cacheRef.current.byFriend[String(friendId)] || [];
+    }
+    if (messagesRequestRef.current !== requestId) return [];
     const rows = data || [];
     setMessages(rows);
+    cacheRef.current.byFriend[String(friendId)] = rows;
     return rows;
   };
 
@@ -172,12 +231,23 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
 
   const loadConversationHeads = async () => {
     if (!userId) return;
-    const { data } = await supabase
-      .from("community_friend_messages")
-      .select("id,user_id,friend_user_id,body,created_at")
-      .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`)
-      .order("created_at", { ascending: false })
-      .limit(400);
+    let data = [];
+    try {
+      const response = await withTimeout(
+        supabase
+          .from("community_friend_messages")
+          .select("id,user_id,friend_user_id,body,created_at")
+          .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`)
+          .order("created_at", { ascending: false })
+          .limit(400),
+        7000,
+        "Conversation heads timed out"
+      );
+      data = response?.data || [];
+    } catch (error) {
+      console.error("Messages heads load failed:", error);
+      data = Object.values(cacheRef.current.heads || {});
+    }
     const latest = {};
     (data || []).forEach((row) => {
       const otherId =
@@ -185,6 +255,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
       if (!latest[otherId]) latest[otherId] = row;
     });
     setConversationHeads(latest);
+    cacheRef.current.heads = latest;
     await loadProfiles(
       Object.keys(latest)
         .map((id) => Number(id))
@@ -196,18 +267,33 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   useEffect(() => {
     let mounted = true;
     const boot = async () => {
+      const requestId = bootRequestRef.current + 1;
+      bootRequestRef.current = requestId;
       setLoading(true);
-      const heads = (await Promise.all([loadFriends(), loadConversationHeads()]))[1];
-      if (!mounted) return;
-      const preferredFriend = Number(searchParams.get("friend") || "");
-      if (preferredFriend && heads?.[preferredFriend]) {
-        setSelectedFriendId(preferredFriend);
-        const rows = await loadMessages(preferredFriend);
-        const lastRowTs =
-          rows.length > 0 ? rows[rows.length - 1].created_at : new Date().toISOString();
-        markConversationSeen(preferredFriend, lastRowTs);
+      const warmCacheFresh = Date.now() - Number(cacheRef.current.at || 0) < 30000;
+      if (warmCacheFresh) {
+        setFriends(cacheRef.current.friends || []);
+        setConversationHeads(cacheRef.current.heads || {});
       }
-      setLoading(false);
+      try {
+        const heads = (await Promise.all([loadFriends(), loadConversationHeads()]))[1];
+        if (!mounted || bootRequestRef.current !== requestId) return;
+        cacheRef.current.at = Date.now();
+        const preferredFriend = Number(searchParams.get("friend") || "");
+        if (preferredFriend && heads?.[preferredFriend]) {
+          setSelectedFriendId(preferredFriend);
+          const rows = await loadMessages(preferredFriend);
+          const lastRowTs =
+            rows.length > 0 ? rows[rows.length - 1].created_at : new Date().toISOString();
+          markConversationSeen(preferredFriend, lastRowTs);
+        }
+      } catch (error) {
+        console.error("Messages boot failed:", error);
+      } finally {
+        if (mounted && bootRequestRef.current === requestId) {
+          setLoading(false);
+        }
+      }
     };
     boot();
     return () => {

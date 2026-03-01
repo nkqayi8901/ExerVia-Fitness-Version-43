@@ -23,6 +23,20 @@ const resolveProfilePath = (pathname, profileId) => {
   return `/${mode}/${profileId}${suffix}`;
 };
 
+const withTimeout = async (promise, timeoutMs, message = "Request timed out") => {
+  let handle = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        handle = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (handle) clearTimeout(handle);
+  }
+};
+
 export default function RequireAuth({ children }) {
   const location = useLocation();
   const [ready, setReady] = useState(false);
@@ -35,38 +49,94 @@ export default function RequireAuth({ children }) {
     let cancelled = false;
 
     const validate = async () => {
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session || null;
-      if (!session?.user?.id) {
+      let hasSessionUser = false;
+      try {
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          6000,
+          "Session check timed out"
+        );
+        const session = data?.session || null;
+        hasSessionUser = Boolean(session?.user?.id);
+        if (!session?.user?.id) {
+          if (!cancelled) {
+            setAuthed(false);
+            setReady(true);
+          }
+          return;
+        }
+
+        if (!cancelled && currentProfileId) {
+          const fastExpectedPath = resolveProfilePath(location.pathname, currentProfileId);
+          if (fastExpectedPath && fastExpectedPath !== location.pathname) {
+            setRedirectPath(fastExpectedPath);
+          }
+        }
+
+        let profileId = "";
+        const authUid = String(session.user.id || "").trim();
+
+        let profileByAuth = null;
+        try {
+          const { data } = await withTimeout(
+            supabase
+              .from("user_profiles")
+              .select("id")
+              .eq("auth_user_id", authUid)
+              .maybeSingle(),
+            6000,
+            "Profile lookup timed out"
+          );
+          profileByAuth = data || null;
+        } catch {
+          profileByAuth = null;
+        }
+
+        if (profileByAuth?.id) {
+          profileId = String(profileByAuth.id);
+          localStorage.setItem("exervia_user_id", profileId);
+        } else {
+          const cachedId = String(currentProfileId || "").trim();
+          if (cachedId) {
+            try {
+              const { data: cachedProfile } = await supabase
+                .from("user_profiles")
+                .select("id,auth_user_id,email")
+                .eq("id", Number(cachedId))
+                .maybeSingle();
+              const cachedAuthUid = String(cachedProfile?.auth_user_id || "").trim();
+              const cachedEmail = String(cachedProfile?.email || "").trim().toLowerCase();
+              const sessionEmail = String(session.user.email || "").trim().toLowerCase();
+              if (cachedProfile?.id && (cachedAuthUid === authUid || (sessionEmail && cachedEmail === sessionEmail))) {
+                profileId = String(cachedProfile.id);
+              } else {
+                localStorage.removeItem("exervia_user_id");
+              }
+            } catch {
+              // If profile lookup is temporarily unavailable, fall back to cached id
+              // so navigation remains usable instead of hanging behind auth checks.
+              profileId = cachedId;
+            }
+          }
+        }
+
         if (!cancelled) {
-          setAuthed(false);
+          const expectedPath = profileId ? resolveProfilePath(location.pathname, profileId) : null;
+          if (expectedPath && expectedPath !== location.pathname) {
+            setRedirectPath(expectedPath);
+          } else if (profileId) {
+            setRedirectPath("");
+          }
+          setAuthed(true);
           setReady(true);
         }
-        return;
-      }
-
-      let profileId = currentProfileId;
-      if (!profileId) {
-        const { data: profileRow } = await supabase
-          .from("user_profiles")
-          .select("id")
-          .eq("auth_user_id", session.user.id)
-          .maybeSingle();
-        if (profileRow?.id) {
-          profileId = String(profileRow.id);
-          localStorage.setItem("exervia_user_id", profileId);
-        }
-      }
-
-      if (!cancelled) {
-        const expectedPath = profileId ? resolveProfilePath(location.pathname, profileId) : null;
-        if (expectedPath && expectedPath !== location.pathname) {
-          setRedirectPath(expectedPath);
-        } else {
+      } catch (error) {
+        console.error("RequireAuth validate failed:", error);
+        if (!cancelled) {
+          setAuthed(hasSessionUser);
           setRedirectPath("");
+          setReady(true);
         }
-        setAuthed(true);
-        setReady(true);
       }
     };
 

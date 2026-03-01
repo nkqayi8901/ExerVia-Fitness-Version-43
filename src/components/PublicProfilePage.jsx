@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 // Component: PublicProfilePage - UI layout and interactions.
@@ -32,6 +32,21 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
   const [friendStatus, setFriendStatus] = useState("none");
   const [banner, setBanner] = useState("");
   const [loading, setLoading] = useState(true);
+  const requestRef = useRef(0);
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
   const backPath = mode === "gym" ? `/gym/${id}/community` : `/athlete/${id}/community`;
   const isSelf = currentUserId === viewedUserId;
@@ -79,73 +94,113 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
 
   const fetchData = async () => {
     if (!viewedUserId) return;
+    const requestId = requestRef.current + 1;
+    requestRef.current = requestId;
     setLoading(true);
+    const cacheKey = `exervia_public_profile_${viewedUserId}`;
+    try {
+      const cachedRaw = localStorage.getItem(cacheKey);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached?.profile) {
+          setProfile(cached.profile || null);
+          setUserState(cached.userState || null);
+          setGroups(Array.isArray(cached.groups) ? cached.groups : []);
+          setRecentSessions(Array.isArray(cached.recentSessions) ? cached.recentSessions : []);
+        }
+      }
+    } catch {
+      // ignore cache parse failures
+    }
 
-    const [
-      { data: profileData },
-      { data: stateData },
-      { data: memberships },
-      { data: sessions },
-      { data: strengthRows },
-    ] =
-      await Promise.all([
-        supabase
-          .from("user_profiles")
-          .select("id, full_name, display_name, username, fitness_level, primary_goal")
-          .eq("id", viewedUserId)
-          .maybeSingle(),
-        supabase.from("user_state").select("*").eq("user_id", viewedUserId).maybeSingle(),
-        supabase
-          .from("community_group_members")
-          .select("group_id, role, community_groups(name)")
-          .eq("user_id", viewedUserId)
-          .limit(12),
-        supabase
-          .from("training_sessions")
-          .select("id, sport, duration_minutes, created_at")
-          .eq("user_id", viewedUserId)
-          .order("created_at", { ascending: false })
-          .limit(12),
-        supabase
-          .from("strength_logs")
-          .select("id, exercise_name, sets, reps, weight, created_at")
-          .eq("user_id", viewedUserId)
-          .order("created_at", { ascending: false })
-          .limit(12),
-      ]);
+    try {
+      const [
+        { data: profileData },
+        { data: stateData },
+        { data: memberships },
+        { data: sessions },
+        { data: strengthRows },
+      ] = await withTimeout(
+        Promise.all([
+          supabase
+            .from("user_profiles")
+            .select("id, full_name, display_name, username, fitness_level, primary_goal")
+            .eq("id", viewedUserId)
+            .maybeSingle(),
+          supabase.from("user_state").select("*").eq("user_id", viewedUserId).maybeSingle(),
+          supabase
+            .from("community_group_members")
+            .select("group_id, role, community_groups(name)")
+            .eq("user_id", viewedUserId)
+            .limit(12),
+          supabase
+            .from("training_sessions")
+            .select("id, sport, duration_minutes, created_at")
+            .eq("user_id", viewedUserId)
+            .order("created_at", { ascending: false })
+            .limit(12),
+          supabase
+            .from("strength_logs")
+            .select("id, exercise_name, sets, reps, weight, created_at")
+            .eq("user_id", viewedUserId)
+            .order("created_at", { ascending: false })
+            .limit(12),
+        ]),
+        7000,
+        "Public profile load timed out"
+      );
+      if (requestRef.current !== requestId) return;
 
-    const mappedGroups = (memberships || []).map((row) => ({
-      id: row.group_id,
-      name: row.community_groups?.name || "Group",
-      role: row.role || "member",
-    }));
+      const mappedGroups = (memberships || []).map((row) => ({
+        id: row.group_id,
+        name: row.community_groups?.name || "Group",
+        role: row.role || "member",
+      }));
 
-    setProfile(profileData || null);
-    setUserState(stateData || null);
-    setGroups(mappedGroups);
-    const combinedRecent = [
-      ...(sessions || []).map((row) => ({
-        id: String(row.id),
-        sourceType: "training",
-        title: String(row.sport || "Training").toUpperCase(),
-        subtitle: `${Number(row.duration_minutes || 0)} min`,
-        created_at: row.created_at,
-      })),
-      ...(strengthRows || []).map((row) => ({
-        id: String(row.id),
-        sourceType: "strength",
-        title: String(row.exercise_name || "Strength").toUpperCase(),
-        subtitle: `${Number(row.sets || 0)} sets · ${row.reps || 0} reps${
-          Number(row.weight || 0) > 0 ? ` · ${row.weight} kg` : ""
-        }`,
-        created_at: row.created_at,
-      })),
-    ]
-      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-      .slice(0, 3);
-    setRecentSessions(combinedRecent);
-    await fetchFriendStatus();
-    setLoading(false);
+      setProfile(profileData || null);
+      setUserState(stateData || null);
+      setGroups(mappedGroups);
+      const combinedRecent = [
+        ...(sessions || []).map((row) => ({
+          id: String(row.id),
+          sourceType: "training",
+          title: String(row.sport || "Training").toUpperCase(),
+          subtitle: `${Number(row.duration_minutes || 0)} min`,
+          created_at: row.created_at,
+        })),
+        ...(strengthRows || []).map((row) => ({
+          id: String(row.id),
+          sourceType: "strength",
+          title: String(row.exercise_name || "Strength").toUpperCase(),
+          subtitle: `${Number(row.sets || 0)} sets · ${row.reps || 0} reps${
+            Number(row.weight || 0) > 0 ? ` · ${row.weight} kg` : ""
+          }`,
+          created_at: row.created_at,
+        })),
+      ]
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 3);
+      setRecentSessions(combinedRecent);
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          profile: profileData || null,
+          userState: stateData || null,
+          groups: mappedGroups,
+          recentSessions: combinedRecent,
+        })
+      );
+      await withTimeout(fetchFriendStatus(), 3000, "Friend status timed out");
+    } catch (error) {
+      console.error("PublicProfilePage load failed:", error);
+      if (!profile) {
+        setBanner("Could not fully load profile right now.");
+      }
+    } finally {
+      if (requestRef.current === requestId) {
+        setLoading(false);
+      }
+    }
   };
 
   useEffect(() => {

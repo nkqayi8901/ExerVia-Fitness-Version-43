@@ -826,7 +826,11 @@ code {
 .hud-strong { font-weight: 900; letter-spacing: 0.5px; }
 
 /* Page layout */
-.page-shell { max-width: 1100px; margin: 0 auto; padding: 26px 18px; }
+.page-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: max(26px, calc(20px + env(safe-area-inset-top, 0px))) 18px 26px;
+}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; }
 .page-title { font-size: 28px; font-weight: 900; letter-spacing: 0.5px; }
 .page-subtitle { color: rgba(255,255,255,0.65); margin-top: 4px; }
@@ -2673,6 +2677,9 @@ code {
 .fuel-modal {
   width: min(1100px, 96vw);
   max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(99,102,241,0.38);
@@ -2700,10 +2707,12 @@ code {
 .fuel-modal-body {
   display: grid;
   grid-template-columns: 420px 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 14px;
   padding: 12px;
   overflow: auto;
-  max-height: calc(86vh - 64px);
+  max-height: none;
 }
 .fuel-modal-body::-webkit-scrollbar {
   width: 9px;
@@ -4668,6 +4677,47 @@ code {
   font-size: 13px;
   color: rgba(148, 163, 184, 0.9);
 }
+.studio-guide-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.studio-guide-status.ready {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: rgba(134, 239, 172, 0.95);
+  background: rgba(34, 197, 94, 0.12);
+}
+.studio-guide-status.missing {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: rgba(253, 224, 71, 0.95);
+  background: rgba(251, 191, 36, 0.12);
+}
+.studio-guide-status-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.studio-guide-status-icon.ready {
+  background: rgba(34, 197, 94, 0.28);
+  color: rgba(220, 252, 231, 0.95);
+}
+.studio-guide-status-icon.missing {
+  background: rgba(251, 191, 36, 0.3);
+  color: rgba(254, 249, 195, 0.95);
+}
 .studio-guide-text {
   font-size: 14px;
   line-height: 1.5;
@@ -4708,6 +4758,24 @@ code {
 }
 .mode-gym .studio-guide-meta {
   color: rgba(51, 65, 85, 0.85);
+}
+.mode-gym .studio-guide-status.ready {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: rgba(6, 95, 70, 0.92);
+  background: rgba(16, 185, 129, 0.16);
+}
+.mode-gym .studio-guide-status.missing {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: rgba(146, 64, 14, 0.92);
+  background: rgba(245, 158, 11, 0.16);
+}
+.mode-gym .studio-guide-status-icon.ready {
+  background: rgba(16, 185, 129, 0.26);
+  color: rgba(6, 78, 59, 0.95);
+}
+.mode-gym .studio-guide-status-icon.missing {
+  background: rgba(245, 158, 11, 0.26);
+  color: rgba(124, 45, 18, 0.95);
 }
 .mode-gym .studio-guide-text {
   color: rgba(30, 41, 59, 0.95);
@@ -6391,7 +6459,8 @@ code {
   width: 100%;
   max-height: calc(100vh - 64px);
   max-height: calc(100dvh - 64px);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   background:
@@ -6405,9 +6474,11 @@ code {
 }
 
 .community-group-room-shell.route-mode {
-  max-height: none;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+  min-height: 0;
   padding-top: 0;
   box-sizing: border-box;
   border-radius: 0;
@@ -7269,13 +7340,16 @@ code {
 }
 
 .community-thread-replies-wrap {
-  overflow: hidden;
-  max-height: 1800px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: min(62vh, 820px);
   transition: max-height 0.24s ease, opacity 0.24s ease;
   opacity: 1;
+  padding-right: 4px;
 }
 
 .community-thread-replies-wrap.collapsed {
+  overflow: hidden;
   max-height: 36px;
   opacity: 0.75;
 }
@@ -9971,8 +10045,11 @@ code {
   }
 
   .community-group-room-shell.route-mode {
-    min-height: calc(100vh - 58px);
-    min-height: calc(100dvh - 58px);
+    height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
+    max-height: calc(100vh - 58px);
+    max-height: calc(100dvh - 58px);
+    min-height: 0;
   }
 
   .community-group-room-head {
@@ -10362,8 +10439,11 @@ code {
   }
 
   .community-group-room-shell.route-mode {
-    min-height: calc(100vh - 54px);
-    min-height: calc(100dvh - 54px);
+    height: calc(100vh - 54px);
+    height: calc(100dvh - 54px);
+    max-height: calc(100vh - 54px);
+    max-height: calc(100dvh - 54px);
+    min-height: 0;
   }
 
   .community-group-room-layout {
@@ -10696,6 +10776,7 @@ code {
 .logs-shell {
   display: grid;
   gap: 14px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
 }
 
 .logs-top-card {

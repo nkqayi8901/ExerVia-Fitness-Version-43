@@ -775,9 +775,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   useEffect(() => {
-    if (!planOpen && !showCreatePlan && !lastTrainingOpen) return undefined;
+    if (!planOpen && !showCreatePlan && !lastTrainingOpen && !congratsOpen && !timerOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key !== 'Escape') return;
+      if (congratsOpen) {
+        setCongratsOpen(false);
+        return;
+      }
+      if (timerOpen) {
+        setTimerRunning(false);
+        setTimerOpen(false);
+        setFloorUiHidden(false);
+        return;
+      }
       if (lastTrainingOpen) {
         setLastTrainingOpen(false);
         return;
@@ -792,7 +802,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [lastTrainingOpen, planOpen, showCreatePlan]);
+  }, [congratsOpen, lastTrainingOpen, planOpen, showCreatePlan, timerOpen]);
 
   // handleLogSession writes the session to Supabase,
   // computes efficiency metrics when available,
@@ -1938,7 +1948,12 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           className={`studio-floor-overlay ${floorUiHidden ? 'hidden-ui' : ''}`}
           onClick={(event) => {
             if (event.target !== event.currentTarget) return;
-            setFloorUiHidden((prev) => !prev);
+            if (floorUiHidden) {
+              setFloorUiHidden(false);
+              return;
+            }
+            setTimerRunning(false);
+            setTimerOpen(false);
           }}
         >
           <div className="studio-floor-top">
@@ -2114,7 +2129,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       {/* saves reflection back into session notes, */}
       {/* closes on save or skip */}
       {congratsOpen && (
-        <div className="studio-congrats-overlay">
+        <div
+          className="studio-congrats-overlay"
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setCongratsOpen(false);
+          }}
+        >
             <div className="studio-congrats-panel">
               <div className="program-celebration" aria-hidden="true">
                 {[...Array(10)].map((_, index) => (

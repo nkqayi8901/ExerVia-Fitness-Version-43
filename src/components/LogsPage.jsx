@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -101,8 +101,11 @@ export default function LogsPage({ mode = "gym" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const todayKey = getTodayLogKey();
+  const safeTodayKey = /^\d{4}-\d{2}-\d{2}$/.test(String(todayKey || ""))
+    ? String(todayKey)
+    : toDayKeyLocal(new Date());
 
-  const [selectedDay, setSelectedDay] = useState(todayKey);
+  const [selectedDay, setSelectedDay] = useState(safeTodayKey);
   const [dailyLogsByDate, setDailyLogsByDate] = useState({});
   const [savedMeals, setSavedMeals] = useState([]);
   const [supplementLibrary, setSupplementLibrary] = useState([]);
@@ -120,6 +123,43 @@ export default function LogsPage({ mode = "gym" }) {
   const [glanceDetail, setGlanceDetail] = useState("training");
   const [weightGoalKg, setWeightGoalKg] = useState("");
   const [waterGoalMl, setWaterGoalMl] = useState("2000");
+  const logsRequestRef = useRef(0);
+  const trainingRequestRef = useRef(0);
+  const normalizeDayLog = useCallback((candidate) => {
+    const defaults = {
+      weightValue: "",
+      weightUnit: "kg",
+      waterAmount: "",
+      waterUnit: "ml",
+      meals: [],
+      supplementsTaken: [],
+      extraActivities: [],
+    };
+    const fallback = typeof emptyDay === "function" ? emptyDay() : null;
+    const source = candidate && typeof candidate === "object" ? candidate : fallback;
+    if (!source || typeof source !== "object") return { ...defaults };
+    return {
+      ...defaults,
+      ...source,
+      meals: Array.isArray(source.meals) ? source.meals : [],
+      supplementsTaken: Array.isArray(source.supplementsTaken) ? source.supplementsTaken : [],
+      extraActivities: Array.isArray(source.extraActivities) ? source.extraActivities : [],
+    };
+  }, []);
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
   useEffect(() => {
     const dayParam = String(searchParams.get("day") || "").trim();
@@ -190,29 +230,43 @@ export default function LogsPage({ mode = "gym" }) {
   useEffect(() => {
     const run = async () => {
       if (!id) return;
+      const requestId = logsRequestRef.current + 1;
+      logsRequestRef.current = requestId;
       setLogsBootLoading(true);
       try {
-        const [logsMap, meals, supplements] = await Promise.all([
-          fetchDailyLogs(id),
-          fetchSavedMeals(id),
-          fetchSupplementLibrary(id),
-        ]);
+        const [logsMap, meals, supplements] = await withTimeout(
+          Promise.all([fetchDailyLogs(id), fetchSavedMeals(id), fetchSupplementLibrary(id)]),
+          8000,
+          "Logs bootstrap timed out"
+        );
+        if (logsRequestRef.current !== requestId) return;
 
-        const local = getLogsStore(id);
-        const mergedLogs = { ...(local.byDate || {}), ...(logsMap || {}) };
+        const local = getLogsStore(id) || {};
+        const mergedLogs = { ...((local && local.byDate) || {}), ...(logsMap || {}) };
         const mergedMeals = [...(meals || [])];
-        (local.savedMeals || []).forEach((item) => {
+        (((local && local.savedMeals) || [])).forEach((item) => {
           if (!mergedMeals.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
             mergedMeals.push(item);
           }
         });
-        const mergedSupps = Array.from(new Set([...(supplements || []), ...(local.supplementLibrary || [])]));
+        const mergedSupps = Array.from(new Set([...(supplements || []), ...(((local && local.supplementLibrary) || []))]));
 
         setDailyLogsByDate(mergedLogs);
         setSavedMeals(mergedMeals);
         setSupplementLibrary(mergedSupps);
+      } catch (error) {
+        console.error("Logs bootstrap failed:", error);
+        if (logsRequestRef.current === requestId) {
+          const local = getLogsStore(id) || {};
+          setDailyLogsByDate(((local && local.byDate) || {}));
+          setSavedMeals(((local && local.savedMeals) || []));
+          setSupplementLibrary(((local && local.supplementLibrary) || []));
+          setBanner("Loaded local logs. Cloud sync is slow right now.");
+        }
       } finally {
-        setLogsBootLoading(false);
+        if (logsRequestRef.current === requestId) {
+          setLogsBootLoading(false);
+        }
       }
     };
 
@@ -220,34 +274,33 @@ export default function LogsPage({ mode = "gym" }) {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
-    setTrainingBootLoading(true);
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) return;
-    setTrainingBootLoading(false);
-  }, [id, trainingRows]);
-
-  useEffect(() => {
     const run = async () => {
       if (!id) return;
-      const [trainingRes, strengthRes] = await Promise.all([
-        supabase
-          .from("training_sessions")
-          .select("*")
-          .eq("user_id", id)
-          .order("created_at", { ascending: false })
-          .limit(120),
-        supabase
-          .from("strength_logs")
-          .select("*")
-          .eq("user_id", id)
-          .order("created_at", { ascending: false })
-          .limit(120),
-      ]);
+      const requestId = trainingRequestRef.current + 1;
+      trainingRequestRef.current = requestId;
+      setTrainingBootLoading(true);
+      try {
+        const [trainingRes, strengthRes] = await withTimeout(
+          Promise.all([
+            supabase
+              .from("training_sessions")
+              .select("*")
+              .eq("user_id", id)
+              .order("created_at", { ascending: false })
+              .limit(120),
+            supabase
+              .from("strength_logs")
+              .select("*")
+              .eq("user_id", id)
+              .order("created_at", { ascending: false })
+              .limit(120),
+          ]),
+          9000,
+          "Training logs timed out"
+        );
+        if (trainingRequestRef.current !== requestId) return;
 
-      const combined = [
+        const combined = [
         ...(trainingRes.data || []).map((row) => ({
           id: `train-${row.id}`,
           sourceRowId: row.id,
@@ -283,15 +336,28 @@ export default function LogsPage({ mode = "gym" }) {
             notes: row.notes || "",
           },
         })),
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      setTrainingRows(combined);
+        setTrainingRows(combined);
+      } catch (error) {
+        console.error("Training rows load failed:", error);
+        if (trainingRequestRef.current === requestId) {
+          setBanner("Could not refresh training logs right now.");
+        }
+      } finally {
+        if (trainingRequestRef.current === requestId) {
+          setTrainingBootLoading(false);
+        }
+      }
     };
 
     run();
   }, [id]);
 
-  const selectedLog = useMemo(() => dailyLogsByDate[selectedDay] || emptyDay(), [dailyLogsByDate, selectedDay]);
+  const selectedLog = useMemo(() => {
+    const existing = dailyLogsByDate[selectedDay];
+    return normalizeDayLog(existing);
+  }, [dailyLogsByDate, normalizeDayLog, selectedDay]);
   const trainingByDay = useMemo(() => {
     const map = {};
     trainingRows.forEach((row) => {
@@ -303,7 +369,10 @@ export default function LogsPage({ mode = "gym" }) {
   }, [trainingRows]);
 
   const dayTraining = useMemo(() => trainingByDay[selectedDay] || [], [trainingByDay, selectedDay]);
-  const allExtraActivities = useMemo(() => selectedLog.extraActivities || [], [selectedLog]);
+  const allExtraActivities = useMemo(
+    () => (selectedLog && typeof selectedLog === "object" ? selectedLog.extraActivities || [] : []),
+    [selectedLog]
+  );
   const sessionCompletionEntries = useMemo(
     () =>
       allExtraActivities.filter(
@@ -429,7 +498,7 @@ export default function LogsPage({ mode = "gym" }) {
       const date = new Date();
       date.setDate(date.getDate() - offset);
       const key = toDayKeyLocal(date);
-      const day = dailyLogsByDate[key] || emptyDay();
+      const day = normalizeDayLog(dailyLogsByDate[key]);
       result.push({
         key,
         label: date.toLocaleDateString(undefined, { weekday: "short" }),
@@ -438,12 +507,12 @@ export default function LogsPage({ mode = "gym" }) {
       });
     }
     return result;
-  }, [dailyLogsByDate]);
+  }, [dailyLogsByDate, normalizeDayLog]);
 
   const maxWeightInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.weightKg || 0));
   const maxWaterInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.waterMl || 0));
-  const selectedWeightKg = toKg(selectedLog.weightValue, selectedLog.weightUnit || "kg");
-  const selectedWaterMl = toMl(selectedLog.waterAmount, selectedLog.waterUnit || "ml");
+  const selectedWeightKg = toKg(selectedLog?.weightValue, selectedLog?.weightUnit || "kg");
+  const selectedWaterMl = toMl(selectedLog?.waterAmount, selectedLog?.waterUnit || "ml");
   const weightGoalStatus =
     Number(weightGoalKg) > 0 && selectedWeightKg > 0
       ? `${selectedWeightKg >= Number(weightGoalKg) ? "On/above" : "Below"} target by ${Math.abs(
@@ -623,50 +692,55 @@ export default function LogsPage({ mode = "gym" }) {
   const markActivity = async (actionKey = "logs_activity", baseXp = 10, sourceId = "") => {
     if (!id) return;
     const dayKey = selectedDay || todayKey;
-    const xpResult = await grantXpEventSafe({
-      userId: id,
-      eventType: "streak_bonus",
-      baseXp,
-      idempotencyKey: `logs:${dayKey}:${actionKey}`,
-      sourceTable: "daily_logs",
-      sourceId: String(sourceId || dayKey),
-      meta: { day: dayKey, action: actionKey },
-    });
-    await trackDailyActivity(id, "logs_entry");
-    await recalcUserState(id);
-    window.dispatchEvent(new Event("user_state_updated"));
-    return {
-      awardedXp: Number(xpResult.awardedXp || 0),
-      xpError: Boolean(xpResult.error),
-    };
+    try {
+      const xpResult = await withTimeout(grantXpEventSafe({
+        userId: id,
+        eventType: "streak_bonus",
+        baseXp,
+        idempotencyKey: `logs:${dayKey}:${actionKey}`,
+        sourceTable: "daily_logs",
+        sourceId: String(sourceId || dayKey),
+        meta: { day: dayKey, action: actionKey },
+      }), 4500, "Logs XP timed out");
+      await withTimeout(trackDailyActivity(id, "logs_entry"), 3500, "Logs activity timed out");
+      await withTimeout(recalcUserState(id), 3500, "Logs state sync timed out");
+      window.dispatchEvent(new Event("user_state_updated"));
+      return {
+        awardedXp: Number(xpResult.awardedXp || 0),
+        xpError: Boolean(xpResult.error),
+      };
+    } catch (error) {
+      console.error("Logs markActivity failed:", error);
+      return { awardedXp: 0, xpError: true };
+    }
   };
 
   const patchDayLogLocal = useCallback((dayKey, updater) => {
     setDailyLogsByDate((prev) => {
-      const current = prev[dayKey] || emptyDay();
+      const current = normalizeDayLog(prev[dayKey]);
       return { ...prev, [dayKey]: updater(current) };
     });
-  }, []);
+  }, [normalizeDayLog]);
 
   const nextDayLog = useCallback((dayKey, updater) => {
-    const current = dailyLogsByDate[dayKey] || emptyDay();
+    const current = normalizeDayLog(dailyLogsByDate[dayKey]);
     return updater(current);
-  }, [dailyLogsByDate]);
+  }, [dailyLogsByDate, normalizeDayLog]);
 
   const saveDayLog = useCallback(async (dayKey, log) => {
     if (!id || !log) return false;
 
-    const local = getLogsStore(id);
+    const local = getLogsStore(id) || {};
     const nextLocal = {
       ...local,
       byDate: {
-        ...(local.byDate || {}),
+        ...(((local && local.byDate) || {})),
         [dayKey]: log,
       },
     };
     saveLogsStore(id, nextLocal);
 
-    const ok = await upsertDailyLog(id, dayKey, log);
+    const ok = await withTimeout(upsertDailyLog(id, dayKey, log), 7000, "Daily log sync timed out");
     if (!ok) {
       setBanner("Saved locally. Cloud sync will work after logs tables are active.");
     }
@@ -749,9 +823,9 @@ export default function LogsPage({ mode = "gym" }) {
       if (!ok) addSavedMeal(id, text, "manual");
 
       const cloudMeals = await fetchSavedMeals(id);
-      const local = getLogsStore(id);
+      const local = getLogsStore(id) || {};
       const merged = [...(cloudMeals || [])];
-      (local.savedMeals || []).forEach((item) => {
+      (((local && local.savedMeals) || [])).forEach((item) => {
         if (!merged.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
           merged.push(item);
         }
@@ -782,17 +856,17 @@ export default function LogsPage({ mode = "gym" }) {
 
     const ok = await addSupplementToLibrary(id, name);
     if (!ok) {
-      const local = getLogsStore(id);
+      const local = getLogsStore(id) || {};
       const next = {
         ...local,
-        supplementLibrary: Array.from(new Set([...(local.supplementLibrary || []), name])),
+        supplementLibrary: Array.from(new Set([...(((local && local.supplementLibrary) || [])), name])),
       };
       saveLogsStore(id, next);
     }
 
     const cloudSupps = await fetchSupplementLibrary(id);
-    const local = getLogsStore(id);
-    setSupplementLibrary(Array.from(new Set([...(cloudSupps || []), ...(local.supplementLibrary || [])])));
+    const local = getLogsStore(id) || {};
+    setSupplementLibrary(Array.from(new Set([...(cloudSupps || []), ...(((local && local.supplementLibrary) || []))])));
     setCustomSupplement("");
     setBanner("Supplement added to library.");
   };

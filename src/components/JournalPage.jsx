@@ -464,11 +464,27 @@ export default function JournalPage({ mode = "gym" }) {
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const confirmRef = useRef(null);
+  const quoteRequestRef = useRef(0);
+  const entriesRequestRef = useRef(0);
   const banner = bannerState.message;
   const bannerVariant = bannerState.type || "info";
   const setBanner = useCallback((message, type = "info") => {
     setBannerState({ message, type });
   }, []);
+
+  const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
+    let timeoutHandle = null;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(label)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }
+  };
 
   const todayKey = formatDayKey(new Date());
 
@@ -615,6 +631,8 @@ export default function JournalPage({ mode = "gym" }) {
   const isBootLoading = quoteLoading || entriesLoading;
 
   const fetchQuote = async () => {
+    const requestId = quoteRequestRef.current + 1;
+    quoteRequestRef.current = requestId;
     setQuoteLoading(true);
     const legacyCacheKey = `exervia_quote_${todayKey}`;
     const cacheKey = `exervia_quote_v2_${todayKey}`;
@@ -624,6 +642,7 @@ export default function JournalPage({ mode = "gym" }) {
       try {
         const parsedCache = JSON.parse(cached);
         if (parsedCache?.source === "api" && parsedCache?.content) {
+          if (quoteRequestRef.current !== requestId) return;
           setQuote(parsedCache);
           setQuoteLoading(false);
           return;
@@ -645,6 +664,7 @@ export default function JournalPage({ mode = "gym" }) {
       const json = await fetchJsonWithTimeout(source);
       const parsed = normalizeQuotePayload(json);
       if (parsed?.content) {
+        if (quoteRequestRef.current !== requestId) return;
         const payload = { ...parsed, source: "api" };
         setQuote(payload);
         localStorage.setItem(cacheKey, JSON.stringify(payload));
@@ -653,29 +673,50 @@ export default function JournalPage({ mode = "gym" }) {
       }
     }
 
+    if (quoteRequestRef.current !== requestId) return;
     const fallback = pickFallbackQuote();
     setQuote(fallback);
     setQuoteLoading(false);
   };
 
   const loadEntries = async () => {
+    const requestId = entriesRequestRef.current + 1;
+    entriesRequestRef.current = requestId;
     setEntriesLoading(true);
     if (!userId) {
       setEntriesLoading(false);
       return;
     }
-    const { data } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(120);
-    setEntries(data || []);
-    setEntriesLoading(false);
+    try {
+      const { data } = await withTimeout(
+        supabase
+          .from("journal_entries")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(120),
+        7000,
+        "Journal entries load timed out"
+      );
+      if (entriesRequestRef.current !== requestId) return;
+      setEntries(data || []);
+    } catch (error) {
+      console.error("Journal entries load failed:", error);
+      if (entriesRequestRef.current === requestId) {
+        setBanner("Could not refresh journal right now.", "warn");
+      }
+    } finally {
+      if (entriesRequestRef.current === requestId) {
+        setEntriesLoading(false);
+      }
+    }
   };
 
   useEffect(() => {
-    Promise.all([fetchQuote(), loadEntries()]);
+    Promise.all([fetchQuote(), loadEntries()]).catch(() => {
+      setQuoteLoading(false);
+      setEntriesLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -738,27 +779,35 @@ export default function JournalPage({ mode = "gym" }) {
     let error = null;
     try {
       if (existingEntry) {
-        const result = await supabase
-          .from("journal_entries")
-          .update({ notes })
-          .eq("id", existingEntry.id)
-          .eq("user_id", userId);
+        const result = await withTimeout(
+          supabase
+            .from("journal_entries")
+            .update({ notes })
+            .eq("id", existingEntry.id)
+            .eq("user_id", userId),
+          7000,
+          "Journal update timed out"
+        );
         error = result.error;
       } else {
-        const result = await supabase.from("journal_entries").insert([
-          {
-            user_id: userId,
-            mode,
-            notes,
-          },
-        ]);
+        const result = await withTimeout(
+          supabase.from("journal_entries").insert([
+            {
+              user_id: userId,
+              mode,
+              notes,
+            },
+          ]),
+          7000,
+          "Journal save timed out"
+        );
         error = result.error;
       }
 
       if (!error) {
         const entryDayKey =
           formatDayKey(existingEntry?.created_at || editingTarget?.dayKey || todayKey) || todayKey;
-        const xpResult = await grantXpEventSafe({
+        const xpResult = await withTimeout(grantXpEventSafe({
           userId,
           eventType: "streak_bonus",
           baseXp: 20,
@@ -766,9 +815,9 @@ export default function JournalPage({ mode = "gym" }) {
           sourceTable: "journal_entries",
           sourceId: String(existingEntry?.id || `${entryDayKey}:${slot}`),
           meta: { slot, day: entryDayKey, mode },
-        });
-        await trackDailyActivity(userId, "journal_entry");
-        await recalcUserState(userId);
+        }), 4500, "Journal XP timed out");
+        await withTimeout(trackDailyActivity(userId, "journal_entry"), 3500, "Journal activity timed out");
+        await withTimeout(recalcUserState(userId), 3500, "Journal state sync timed out");
         window.dispatchEvent(new Event("user_state_updated"));
         window.dispatchEvent(new Event("journal_updated"));
         await loadEntries();
@@ -782,7 +831,12 @@ export default function JournalPage({ mode = "gym" }) {
         if (editingTarget?.slot === slot) {
           setEditingTarget(null);
         }
+      } else {
+        setBanner("Could not save journal entry right now.", "error");
       }
+    } catch (error) {
+      console.error("Journal save failed:", error);
+      setBanner("Could not save journal entry right now.", "error");
     } finally {
       setSavingSlot("");
     }

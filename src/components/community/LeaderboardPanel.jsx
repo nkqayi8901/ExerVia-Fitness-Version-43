@@ -12,6 +12,9 @@ export default function LeaderboardPanel({
   gymLeaderboardContext,
   gymLeaderboardLoading,
   gymLeaderboard,
+  globalLeaderboardLoaded,
+  groupLeaderboardLoaded,
+  gymLeaderboardLoaded,
   reportingLeaderboardUserIds,
   profiles,
   userId,
@@ -62,6 +65,9 @@ export default function LeaderboardPanel({
                 <span className="community-meta-pill">{row.rank || "-"}</span>
               </div>
             ))}
+          {!leaderboardLoading && globalLeaderboardLoaded && !globalLeaderboard.length ? (
+            <div className="community-empty">No ranked users available yet.</div>
+          ) : null}
         </div>
         <div className="community-feed-card">
           <div className="community-panel-title">Group Top</div>
@@ -85,7 +91,7 @@ export default function LeaderboardPanel({
                 <span className="community-meta-pill">{row.rank || "-"}</span>
               </div>
             ))}
-          {!!leaderboardGroupId && !groupLeaderboardLoading && !groupLeaderboard.length && (
+          {!!leaderboardGroupId && !groupLeaderboardLoading && groupLeaderboardLoaded && !groupLeaderboard.length && (
             <div className="community-empty">No ranked members yet.</div>
           )}
         </div>
@@ -148,7 +154,7 @@ export default function LeaderboardPanel({
                 )}
               </div>
             ))}
-          {!!gymLeaderboardContext.placeId && !gymLeaderboardLoading && !gymLeaderboard.length && (
+          {!!gymLeaderboardContext.placeId && !gymLeaderboardLoading && gymLeaderboardLoaded && !gymLeaderboard.length && (
             <div className="community-empty">No gym lifts logged yet this week.</div>
           )}
         </div>

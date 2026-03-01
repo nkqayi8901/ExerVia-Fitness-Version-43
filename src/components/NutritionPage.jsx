@@ -1,5 +1,5 @@
 // src/components/NutritionPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
@@ -564,6 +564,12 @@ export default function NutritionPage() {
     () => `exervia_recovery_nudge_${storedId || "guest"}`,
     [storedId]
   );
+  const protocolCacheKey = useMemo(
+    () =>
+      `exervia_protocol_cache_${storedId || "guest"}_${preference}_${goal}_${timeWindow}_${curatedOnly ? "curated" : "all"}`,
+    [storedId, preference, goal, timeWindow, curatedOnly]
+  );
+  const protocolRequestRef = useRef(0);
 
   useEffect(() => {
     if (!saveBanner) return;
@@ -1019,9 +1025,22 @@ export default function NutritionPage() {
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const fetchProtocolMeals = async () => {
+    const requestId = protocolRequestRef.current + 1;
+    protocolRequestRef.current = requestId;
     setError("");
     setAvailabilityNote("");
-    setLoading(true);
+    let hasWarmStart = false;
+    try {
+      const raw = localStorage.getItem(protocolCacheKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed) && parsed.length) {
+        setProtocolMeals(parsed);
+        hasWarmStart = true;
+      }
+    } catch {
+      // ignore cache parse errors
+    }
+    setLoading(!hasWarmStart);
     setActiveMeal(null);
 
     try {
@@ -1162,6 +1181,7 @@ export default function NutritionPage() {
         ...picked.map((meal) => recipeIdentityKey(meal)).filter(Boolean)
       ];
       localStorage.setItem(seenKey, JSON.stringify(nextSeen.slice(-180)));
+      if (requestId !== protocolRequestRef.current) return;
       if (preference === "turkey" && picked.length <= 3) {
         if (SPOON_KEY) {
           setAvailabilityNote("Turkey recipes are limited today. Showing the best available matches.");
@@ -1175,11 +1195,19 @@ export default function NutritionPage() {
         setAvailabilityNote("Showing curated recipes for this protocol.");
       }
       setProtocolMeals(picked);
+      try {
+        localStorage.setItem(protocolCacheKey, JSON.stringify(picked));
+      } catch {
+        // best-effort cache
+      }
     } catch {
+      if (requestId !== protocolRequestRef.current) return;
       setError("Fuel feed failed. Try again.");
       setProtocolMeals([]);
     } finally {
-      setLoading(false);
+      if (requestId === protocolRequestRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -1346,6 +1374,10 @@ export default function NutritionPage() {
   };
 
   const handleAddOffProductToToday = async (product) => {
+    if (!storedId) {
+      setSaveBanner("Sign in to save intake.");
+      return;
+    }
     const title = String(product?.product_name || "").trim();
     if (!title) return;
     const nutrition = {
@@ -1407,6 +1439,10 @@ export default function NutritionPage() {
   };
 
   const handleSaveFuelBoardToLogs = async () => {
+    if (!storedId) {
+      setSaveBanner("Sign in to save Build My Day.");
+      return;
+    }
     const filled = BOARD_SLOTS
       .map((slot) => ({ slot: slot.key, item: fuelBoard[slot.key] }))
       .filter((row) => row.item && row.item.text);
@@ -1430,7 +1466,11 @@ export default function NutritionPage() {
   };
 
   const handleSaveMealToLogs = async () => {
-    if (!activeMeal?.strMeal || !storedId) return;
+    if (!storedId) {
+      setSaveBanner("Sign in to save meals.");
+      return;
+    }
+    if (!activeMeal?.strMeal) return;
 
     const mealName = String(activeMeal.strMeal).trim();
     const nutrition = {
@@ -1456,7 +1496,11 @@ export default function NutritionPage() {
   };
 
   const handleShareRecipeTemplate = async () => {
-    if (!activeMeal?.strMeal || !storedId) return;
+    if (!storedId) {
+      setSaveBanner("Sign in to share recipes.");
+      return;
+    }
+    if (!activeMeal?.strMeal) return;
     const ingredients = buildIngredients(activeMeal).map((item) => ({
       ingredient: item.ingredient,
       measure: item.measure || ""
@@ -1507,7 +1551,10 @@ export default function NutritionPage() {
   };
 
   const handleCreateCustomRecipe = async () => {
-    if (!storedId) return;
+    if (!storedId) {
+      setSaveBanner("Sign in to create custom recipes.");
+      return;
+    }
     const title = String(customRecipeDraft.title || "").trim();
     if (!title) {
       setSaveBanner("Add a recipe title first.");
