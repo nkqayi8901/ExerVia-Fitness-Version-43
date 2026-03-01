@@ -231,6 +231,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
   const templateRefreshTimerRef = useRef(null);
+  const templatesBootstrappedRef = useRef(false);
 
   useEffect(() => {
     if (!userId) {
@@ -266,9 +267,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   useEffect(() => {
     if (!banner) return;
     const errorLike = isErrorBanner(banner);
-    if (!errorLike) {
-      emitToast(banner, "info", 3000);
-    }
+    emitToast(banner, errorLike ? "error" : "info", errorLike ? 3600 : 3000);
   }, [banner]);
 
   useEffect(() => {
@@ -533,16 +532,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setChallengeMyProgress(mine);
   };
 
-  const loadSharedTemplateData = async () => {
+  const loadSharedTemplateData = useCallback(async () => {
     const [{ data: templateData }, { data: ratingData }, { data: tryData }, { data: commentData }] = await Promise.all([
-      supabase.from("shared_templates").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("shared_templates").select("*").order("created_at", { ascending: false }).limit(220),
       supabase.from("shared_template_ratings").select("template_id,user_id,rating"),
       supabase.from("shared_template_tries").select("template_id,user_id"),
       supabase
         .from("shared_template_comments")
         .select("id,template_id,user_id,body,created_at")
         .order("created_at", { ascending: false })
-        .limit(1000)
+        .limit(320)
     ]);
 
     const ratingBuckets = {};
@@ -588,7 +587,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       ...(commentData || []).map((row) => row.user_id)
     ];
     loadProfiles(profileIds);
-  };
+  }, [loadProfiles, userId]);
 
   const scheduleTemplateRefresh = useCallback(() => {
     if (templateRefreshTimerRef.current) {
@@ -599,6 +598,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       templateRefreshTimerRef.current = null;
     }, 240);
   }, [loadSharedTemplateData]);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (activeTab !== "templates") return;
+    if (templatesBootstrappedRef.current) return;
+    templatesBootstrappedRef.current = true;
+    loadSharedTemplateData();
+  }, [activeTab, loadSharedTemplateData, userId]);
 // loadForumPosts takes a forum slug and loads the posts for that forum from the backend,
 // it also loads the profiles of the post creators and the replies to those posts,
 // this function is called when the active forum changes and also when a new post is created
@@ -660,7 +667,11 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             .or(`user_id.eq.${userId},friend_user_id.eq.${userId}`),
           supabase.from("community_posts").select("id,forum_id"),
           supabase.from("community_group_members").select("group_id,user_id"),
-          supabase.from("community_group_posts").select("group_id,created_at").order("created_at", { ascending: false }),
+          supabase
+            .from("community_group_posts")
+            .select("group_id,created_at")
+            .order("created_at", { ascending: false })
+            .limit(700),
           supabase.from("community_challenge_participants").select("challenge_id,user_id,progress")
         ]);
         if (!mounted) return;
@@ -709,7 +720,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         const defaultForum = forumTracks[0].id;
         setActiveForum(defaultForum);
         loadForumPosts(defaultForum, forumRes.data || []);
-        loadSharedTemplateData();
       } catch (error) {
         if (mounted) {
           setCommunityLoadError(
@@ -910,7 +920,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     if (!createPostOpen) {
       setNewPostForum(activeForum);
     }
-  }, [activeForum, createPostOpen]);
+  }, [activeForum, createPostOpen, setNewPostForum]);
 
   useEffect(() => {
     if (activeTab !== "forums") return;
@@ -981,7 +991,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => {
       cancelled = true;
     };
-  }, [activeTab, search, forums]);
+  }, [activeTab, search, forums, loadProfiles]);
 
 // below are the action handlers for create/join/update flows,
 // they call supabase mutations, set banner feedback,
@@ -2501,6 +2511,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   }, [templateSearch, templateTypeFilter, templateFocusFilter, templateSort]);
 
   useEffect(() => {
+    if (templateTypeFilter === "training_plan" && templateFocusFilter !== "all") {
+      setTemplateFocusFilter("all");
+    }
+  }, [templateTypeFilter, templateFocusFilter]);
+
+  useEffect(() => {
     if (!swipeTemplates.length) setTemplateDeckIndex(0);
   }, [swipeTemplates, templateDeckIndex]);
 
@@ -2703,7 +2719,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, groupRoomId]);
+  }, [userId, groupRoomId, loadProfiles]);
 
   useEffect(() => {
     if (!userId || !forceThreadPage || !selectedThread?.id) return () => {};
@@ -2732,11 +2748,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, forceThreadPage, selectedThread?.id]);
+  }, [userId, forceThreadPage, selectedThread?.id, loadProfiles]);
 
   useEffect(() => {
     if (!forceGroupRoom || !routeGroupId || !userId) return;
-    if (String(groupRoomId) === String(routeGroupId)) return;
+    if (String(groupRoomId) === String(routeGroupId)) {
+      setRouteGroupBootLoading(false);
+      return;
+    }
     let cancelled = false;
 
     const openRoutedRoom = async () => {
@@ -2780,6 +2799,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     openRoutedRoom();
     return () => {
       cancelled = true;
+      setRouteGroupBootLoading(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forceGroupRoom, routeGroupId, userId, memberships, groupRoomId]);
@@ -2998,8 +3018,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       )}
       {forceGroupRoom && (
         <div className="community-group-room-route-panel">
-          {(routeGroupBootLoading || !groupRoomId) && renderEmptyState({ icon: "...", title: "Loading room", sub: "Fetching group messages." })}
+          {routeGroupBootLoading && renderEmptyState({ icon: "...", title: "Loading room", sub: "Fetching group messages." })}
           {!routeGroupBootLoading && groupRoomId && renderGroupRoom(true)}
+          {!routeGroupBootLoading &&
+            !groupRoomId &&
+            renderEmptyState({
+              icon: "!",
+              title: "Could not open room",
+              sub: "Use Back and open the group again.",
+            })}
         </div>
       )}
       {forceThreadPage && (

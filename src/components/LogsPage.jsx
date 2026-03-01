@@ -188,8 +188,7 @@ export default function LogsPage({ mode = "gym" }) {
   useEffect(() => {
     if (!banner) return;
     const isErrorLike = isErrorBanner(banner);
-    if (isErrorLike) return;
-    emitToast(String(banner), "info", 2800);
+    emitToast(String(banner), isErrorLike ? "error" : "info", isErrorLike ? 3600 : 2800);
   }, [banner]);
 
   useEffect(() => {

@@ -1,21 +1,48 @@
 // App.js
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LandingPage from "./components/LandingPage";
-import FitnessProfileForm from "./FitnessProfileForm";
-import GymMode from "./components/GymMode";
-import AthleteMode from "./components/AthleteMode";
-import NutritionPage from "./components/NutritionPage";
-import JournalPage from "./components/JournalPage";
-import ResetPasswordPage from "./components/ResetPasswordPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
-import NotFoundPage from "./components/NotFoundPage";
 import ToastHost from "./components/ToastHost";
 import { captureAppError, initErrorMonitoring } from "./services/errorMonitoring";
 
+const isTestEnv = process.env.NODE_ENV === "test";
+const resolveEagerModule = (loader) => {
+  const mod = loader();
+  return mod?.default || mod;
+};
+
+const LandingPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/LandingPage"))
+  : lazy(() => import("./components/LandingPage"));
+const FitnessProfileForm = isTestEnv
+  ? resolveEagerModule(() => require("./FitnessProfileForm"))
+  : lazy(() => import("./FitnessProfileForm"));
+const GymMode = isTestEnv
+  ? resolveEagerModule(() => require("./components/GymMode"))
+  : lazy(() => import("./components/GymMode"));
+const AthleteMode = isTestEnv
+  ? resolveEagerModule(() => require("./components/AthleteMode"))
+  : lazy(() => import("./components/AthleteMode"));
+const NutritionPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/NutritionPage"))
+  : lazy(() => import("./components/NutritionPage"));
+const JournalPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/JournalPage"))
+  : lazy(() => import("./components/JournalPage"));
+const ResetPasswordPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/ResetPasswordPage"))
+  : lazy(() => import("./components/ResetPasswordPage"));
+const NotFoundPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/NotFoundPage"))
+  : lazy(() => import("./components/NotFoundPage"));
+
 function App() {
-  const withRouteBoundary = (element) => <ErrorBoundary>{element}</ErrorBoundary>;
+  const withRouteBoundary = (element) => (
+    <ErrorBoundary>
+      <Suspense fallback={<div className="full-center">Loading...</div>}>{element}</Suspense>
+    </ErrorBoundary>
+  );
   const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
 
   useEffect(() => {

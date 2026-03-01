@@ -1,6 +1,6 @@
 // src/components/NutritionPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "./Navbar";
 import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
@@ -484,6 +484,7 @@ const formatNudgeAge = (timestampMs) => {
 
 export default function NutritionPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const storedId = localStorage.getItem("exervia_user_id");
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const pageMode = storedMode === "gym" ? "gym" : "athlete";
@@ -519,6 +520,7 @@ export default function NutritionPage() {
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
   const [curatedOnly, setCuratedOnly] = useState(true);
+  const [activeFuelView, setActiveFuelView] = useState("overview");
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [activeBoardSlot, setActiveBoardSlot] = useState("");
@@ -572,6 +574,26 @@ export default function NutritionPage() {
   const protocolRequestRef = useRef(0);
 
   useEffect(() => {
+    const raw = String(searchParams.get("tab") || "").trim().toLowerCase();
+    if (raw === "recovery" || raw === "intake" || raw === "build" || raw === "overview") {
+      setActiveFuelView(raw);
+      return;
+    }
+    setActiveFuelView("overview");
+  }, [searchParams]);
+
+  const setFuelView = (view) => {
+    const nextView = ["overview", "recovery", "intake", "build"].includes(String(view || ""))
+      ? String(view)
+      : "overview";
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", nextView);
+      return next;
+    });
+  };
+
+  useEffect(() => {
     if (!saveBanner) return;
     const timeout = setTimeout(() => setSaveBanner(""), 2800);
     return () => clearTimeout(timeout);
@@ -580,8 +602,7 @@ export default function NutritionPage() {
   useEffect(() => {
     if (!saveBanner) return;
     const isErrorLike = isErrorBanner(saveBanner);
-    if (isErrorLike) return;
-    emitToast(String(saveBanner), "info", 3000);
+    emitToast(String(saveBanner), isErrorLike ? "error" : "info", isErrorLike ? 3600 : 3000);
   }, [saveBanner]);
 
   useEffect(() => {
@@ -764,7 +785,16 @@ export default function NutritionPage() {
     return 6;
   }, [timeWindow]);
 
-  const isRecipeFavorite = (meal) => favoriteRecipeKeys.includes(recipeIdentityKey(meal));
+  const isRecipeFavorite = (meal) => {
+    const key = recipeIdentityKey(meal);
+    const id = normalizeTextId(meal?.idMeal);
+    const name = normalizeTextId(meal?.strMeal);
+    if (key && favoriteRecipeKeys.includes(key)) return true;
+    if (id && favoriteRecipeKeys.some((item) => item === id || item.endsWith(`:${id}`))) return true;
+    if (name && favoriteRecipeKeys.includes(`name:${name}`)) return true;
+    if (!name) return false;
+    return favoriteMeals.some((item) => normalizeTextId(item?.strMeal) === name);
+  };
 
   const toFavoriteMealSnapshot = (meal) => {
     if (!meal) return null;
@@ -786,16 +816,41 @@ export default function NutritionPage() {
 
   const toggleRecipeFavorite = async (meal) => {
     const key = recipeIdentityKey(meal);
+    const id = normalizeTextId(meal?.idMeal);
+    const name = normalizeTextId(meal?.strMeal);
+    const nameKey = name ? `name:${name}` : "";
     if (!key) return;
     setFavoriteRecipeKeys((prev) => {
-      const exists = prev.includes(key);
-      return exists ? prev.filter((item) => item !== key) : [...prev, key];
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const exists =
+        safePrev.includes(key) ||
+        (nameKey ? safePrev.includes(nameKey) : false) ||
+        (id ? safePrev.some((item) => item === id || item.endsWith(`:${id}`)) : false);
+      const next = exists
+        ? safePrev.filter((item) => item !== key && item !== nameKey && (!id || (item !== id && !item.endsWith(`:${id}`))))
+        : [...safePrev, key, ...(nameKey ? [nameKey] : []), ...(id ? [id] : [])];
+      localStorage.setItem(favoriteStorageKey, JSON.stringify(next.slice(-400)));
+      return next;
     });
     setFavoriteMeals((prev) => {
-      const exists = prev.some((item) => recipeIdentityKey(item) === key);
-      if (exists) return prev.filter((item) => recipeIdentityKey(item) !== key);
-      const snapshot = toFavoriteMealSnapshot(meal);
-      return snapshot ? [...prev, snapshot] : prev;
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const exists = safePrev.some((item) => {
+        const itemKey = recipeIdentityKey(item);
+        const itemName = normalizeTextId(item?.strMeal);
+        return itemKey === key || (name && itemName === name);
+      });
+      const next = exists
+        ? safePrev.filter((item) => {
+            const itemKey = recipeIdentityKey(item);
+            const itemName = normalizeTextId(item?.strMeal);
+            return itemKey !== key && (!name || itemName !== name);
+          })
+        : (() => {
+            const snapshot = toFavoriteMealSnapshot(meal);
+            return snapshot ? [...safePrev, snapshot] : safePrev;
+          })();
+      localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(next.slice(-400)));
+      return next;
     });
     if (storedId && meal?.strMeal) {
       await saveMealToLibrary(storedId, meal.strMeal, "favorite");
@@ -1051,7 +1106,7 @@ export default function NutritionPage() {
       const localMeals = getLocalRecipePool(preference, timeWindow, goal);
       const useLocalOnly = curatedOnly || localMeals.length >= cap;
       let list = [...localMeals];
-      const mealdbTerms = MEALDB_SEARCH_TERMS[preference] || [preference];
+      const mealdbTerms = (MEALDB_SEARCH_TERMS[preference] || [preference]).slice(0, 2);
 
       if (!useLocalOnly) {
         let mealdbList = [];
@@ -1073,7 +1128,7 @@ export default function NutritionPage() {
         }
         list = [...list, ...mealdbList];
 
-        const terms = DUMMY_SEARCH_TERMS[preference] || [preference];
+        const terms = (DUMMY_SEARCH_TERMS[preference] || [preference]).slice(0, 2);
         const dummyLists = await Promise.all(terms.map((term) => dummySearchByName(term)));
         list = [...list, ...dummyLists.flat()];
       }
@@ -1083,7 +1138,7 @@ export default function NutritionPage() {
       if (!useLocalOnly && SPOON_KEY && (preference === "turkey" || list.length < cap + 2)) {
         const spoonTerms = (MEALDB_SEARCH_TERMS[preference] || [preference]).slice(
           0,
-          preference === "turkey" ? 3 : 1
+          preference === "turkey" ? 2 : 1
         );
         const spoonLists = await Promise.all(spoonTerms.map((term) => spoonSearchByName(term, 8)));
         list = [...list, ...spoonLists.flat()];
@@ -1128,7 +1183,7 @@ export default function NutritionPage() {
           else if (preference === "beef") raw = await mealdbFilterByCategory("Beef");
           else if (preference === "pork") raw = await mealdbFilterByCategory("Pork");
           else if (preference === "chicken") raw = await mealdbFilterByCategory("Chicken");
-          const fallbackTerms = MEALDB_SEARCH_TERMS[preference] || [preference];
+          const fallbackTerms = (MEALDB_SEARCH_TERMS[preference] || [preference]).slice(0, 2);
           const fallbackLists = await Promise.all(
             fallbackTerms.map((term) => mealdbSearchByName(term))
           );
@@ -1691,6 +1746,10 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curatedOnly]);
 
+  const showOverview = activeFuelView === "overview";
+  const showRecovery = activeFuelView === "recovery";
+  const showIntake = activeFuelView === "intake";
+  const showBuild = activeFuelView === "build";
 
   // Render
   // The return statement below manages the UI layout and interactions,
@@ -1771,26 +1830,33 @@ export default function NutritionPage() {
             Start here first: recovery, intake targets, and Build My Day.
           </div>
           <div className="fuel-feed-toggle-row">
+            <button
+              type="button"
+              className={`studio-back fuel-compact-btn ${activeFuelView === "overview" ? "fuel-chip-active" : ""}`}
+              onClick={() => setFuelView("overview")}
+            >
+              Overview
+            </button>
             {recoveryNudge ? (
               <button
                 type="button"
-                className="studio-back fuel-compact-btn"
-                onClick={() => handleScrollToFuelSection("fuel-recovery-section")}
+                className={`studio-back fuel-compact-btn ${activeFuelView === "recovery" ? "fuel-chip-active" : ""}`}
+                onClick={() => setFuelView("recovery")}
               >
                 Recovery window
               </button>
             ) : null}
             <button
               type="button"
-              className="studio-back fuel-compact-btn"
-              onClick={() => handleScrollToFuelSection("fuel-intake-section")}
+              className={`studio-back fuel-compact-btn ${activeFuelView === "intake" ? "fuel-chip-active" : ""}`}
+              onClick={() => setFuelView("intake")}
             >
               Today's intake
             </button>
             <button
               type="button"
-              className="studio-back fuel-compact-btn"
-              onClick={() => handleScrollToFuelSection("fuel-build-section")}
+              className={`studio-back fuel-compact-btn ${activeFuelView === "build" ? "fuel-chip-active" : ""}`}
+              onClick={() => setFuelView("build")}
             >
               Build My Day
             </button>
@@ -1853,7 +1919,7 @@ export default function NutritionPage() {
 
             <div className="hud-divider" />
 
-            {recoveryNudge ? (
+            {showRecovery && recoveryNudge ? (
               <div className="fuel-recovery-nudge" id="fuel-recovery-section">
                 <div className="fuel-recovery-nudge-kicker">RECOVERY WINDOW OPEN</div>
                 <div className="fuel-recovery-nudge-title">
@@ -1891,12 +1957,18 @@ export default function NutritionPage() {
                 </div>
               </div>
             ) : null}
+            {showRecovery && !recoveryNudge ? (
+              <div className="hud-dim" id="fuel-recovery-section">
+                No active recovery window right now. Complete a session to trigger recovery recommendations.
+              </div>
+            ) : null}
 
-            <div className="hud-card-title" id="fuel-intake-section">TODAY'S INTAKE</div>
-            <div className="hud-dim" style={{ marginBottom: 10 }}>
-              Targets are personalized from your profile, current level, and selected protocol.
-            </div>
-            <div className="fuel-macro-grid">
+            <div style={{ display: showIntake ? undefined : "none" }}>
+              <div className="hud-card-title" id="fuel-intake-section">TODAY'S INTAKE</div>
+              <div className="hud-dim" style={{ marginBottom: 10 }}>
+                Targets are personalized from your profile, current level, and selected protocol.
+              </div>
+              <div className="fuel-macro-grid">
               <div className="fuel-macro-card">
                 <div className="fuel-macro-label">Calories</div>
                 <div className="fuel-macro-value">
@@ -1949,13 +2021,15 @@ export default function NutritionPage() {
                   />
                 </div>
               </div>
+              </div>
             </div>
-            <div className="hud-divider" />
-            <div className="hud-card-title" id="fuel-build-section">BUILD MY DAY</div>
-            <div className="hud-dim" style={{ marginBottom: 10 }}>
-              Fill Morning, Midday, Pre-Training, and Recovery slots. Save once to log your day.
-            </div>
-            <div className="fuel-board-progress">
+            <div className="hud-divider" style={{ display: showBuild ? undefined : "none" }} />
+            <div style={{ display: showBuild ? undefined : "none" }}>
+              <div className="hud-card-title" id="fuel-build-section">BUILD MY DAY</div>
+              <div className="hud-dim" style={{ marginBottom: 10 }}>
+                Fill Morning, Midday, Pre-Training, and Recovery slots. Save once to log your day.
+              </div>
+              <div className="fuel-board-progress">
               <div className="fuel-board-progress-top">
                 <span>{boardFilledCount} / {BOARD_SLOTS.length} slots filled</span>
                 <span>{boardProgressPct}%</span>
@@ -2050,10 +2124,12 @@ export default function NutritionPage() {
             <div className="fuel-board-total">
               Running total: {Math.round(boardTotals.calories)} cal | {Math.round(boardTotals.protein)}g P | {Math.round(boardTotals.carbs)}g C | {Math.round(boardTotals.fat)}g F
             </div>
-            <button className="studio-back fuel-compact-btn" type="button" onClick={handleSaveFuelBoardToLogs}>
-              Save Build My Day to logs
-            </button>
-            <div className="fuel-quick-row">
+              <button className="studio-back fuel-compact-btn" type="button" onClick={handleSaveFuelBoardToLogs}>
+                Save Build My Day to logs
+              </button>
+            </div>
+            <div style={{ display: showIntake ? undefined : "none" }}>
+              <div className="fuel-quick-row">
               <input
                 className="studio-form-input"
                 placeholder="Quick log meal"
@@ -2087,8 +2163,8 @@ export default function NutritionPage() {
               <button className="studio-back fuel-compact-btn" type="button" onClick={handleQuickMacroAdd}>
                 Add intake
               </button>
-            </div>
-            <div className="fuel-weekly-grid">
+              </div>
+              <div className="fuel-weekly-grid">
               <div className="fuel-weekly-card">
                 <div className="fuel-macro-label">Calories · 7 days</div>
                 <div className="fuel-weekly-bars">
@@ -2181,8 +2257,8 @@ export default function NutritionPage() {
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="fuel-intake-top">
+              </div>
+              <div className="fuel-intake-top">
               <div className="fuel-macro-label">
                 Intake for{" "}
                 {new Date(selectedMacroDay).toLocaleDateString(undefined, {
@@ -2196,8 +2272,8 @@ export default function NutritionPage() {
                   Back to today
                 </button>
               ) : null}
-            </div>
-            {selectedDayMeals.length > 0 ? (
+              </div>
+              {selectedDayMeals.length > 0 ? (
               <div className="fuel-intake-list">
                 {selectedDayMeals.slice(-5).reverse().map((meal, index) => {
                   const macros = getEntryMacros(meal);
@@ -2211,10 +2287,12 @@ export default function NutritionPage() {
                   );
                 })}
               </div>
-            ) : (
-              <div className="hud-dim fuel-intake-empty">No intake logged for this day yet.</div>
-            )}
+              ) : (
+                <div className="hud-dim fuel-intake-empty">No intake logged for this day yet.</div>
+              )}
+            </div>
 
+            <div style={{ display: showOverview ? undefined : "none" }}>
             <div className="hud-card-title">MEAL OF THE DAY</div>
             {mealOfDay ? (
               <div
@@ -2284,10 +2362,11 @@ export default function NutritionPage() {
                 </div>
               )
             )}
+            </div>
           </div>
 
           {/* RIGHT: Protocol feed */}
-          <div className="hud-card">
+          <div className="hud-card" style={{ display: showOverview ? undefined : "none" }}>
             <div className="hud-card-title">PROTOCOL FEED</div>
 
             {error ? <div className="fuel-error">{error}</div> : null}

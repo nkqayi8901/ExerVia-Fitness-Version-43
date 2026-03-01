@@ -700,8 +700,8 @@ const StrengthProgressTab = ({ userId }) => {
 
   useEffect(() => {
     if (!banner?.message) return;
-    if (banner.type === 'error') return;
-    emitToast(String(banner.message), banner.type || 'info', 3200);
+    const type = banner.type === 'error' ? 'error' : banner.type || 'info';
+    emitToast(String(banner.message), type, type === 'error' ? 3600 : 3200);
   }, [banner]);
 
 // lifecycle hook for side effects,
@@ -1612,11 +1612,22 @@ const StrengthProgressTab = ({ userId }) => {
       fetchProfile();
       fetchPrograms();
       setStatsBootLoading(true);
-      Promise.all([fetchPersonalRecords(), fetchRecentLifts()])
+      let settled = false;
+      const settleStatsBoot = () => {
+        if (settled) return;
+        settled = true;
+        setStatsBootLoading(false);
+      };
+      fetchPersonalRecords()
         .catch(() => {
           // keep UI responsive; banner messaging is handled by callers where needed
         })
-        .finally(() => setStatsBootLoading(false));
+        .finally(settleStatsBoot);
+      fetchRecentLifts()
+        .catch(() => {
+          // keep UI responsive; banner messaging is handled by callers where needed
+        })
+        .finally(settleStatsBoot);
     }
   }, [userId]);
 

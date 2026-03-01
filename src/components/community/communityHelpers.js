@@ -7,9 +7,9 @@ export const forumTracks = [
 ];
 
 export const reactionOptions = [
-  { id: "like", label: "Like", emoji: "\u{1F44D}" }, // ??
-  { id: "fire", label: "Fire", emoji: "\u{1F525}" }, // ??
   { id: "insight", label: "Insight", emoji: "\u{1F4A1}" }, // ??
+  { id: "like", label: "Like", emoji: "\u{1F44D}" }, // ??
+  { id: "dislike", label: "Dislike", emoji: "\u{1F44E}" }, // ??
 ];
 
 export const templateTypeOptions = [

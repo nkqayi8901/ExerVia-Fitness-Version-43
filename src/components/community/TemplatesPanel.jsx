@@ -47,6 +47,18 @@ export default function TemplatesPanel({
   setTemplateCommentDrafts,
   handleCommentTemplate,
 }) {
+  const showFocusFilters = templateTypeFilter !== "training_plan";
+  const [expandedTemplateIds, setExpandedTemplateIds] = React.useState({});
+
+  const toggleTemplateExpanded = (templateId) => {
+    const id = String(templateId || "");
+    if (!id) return;
+    setExpandedTemplateIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   return (
     <div className="community-panel">
       <div className="community-panel-title">Shared Templates</div>
@@ -77,18 +89,20 @@ export default function TemplatesPanel({
           </button>
         ))}
       </div>
-      <div className="community-tabs community-topic-tabs">
-        {templateFocusOptions.map((option) => (
-          <button
-            key={option.id}
-            className={`community-tab ${templateFocusFilter === option.id ? "active" : ""}`}
-            type="button"
-            onClick={() => setTemplateFocusFilter(option.id)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {showFocusFilters ? (
+        <div className="community-tabs community-topic-tabs">
+          {templateFocusOptions.map((option) => (
+            <button
+              key={option.id}
+              className={`community-tab ${templateFocusFilter === option.id ? "active" : ""}`}
+              type="button"
+              onClick={() => setTemplateFocusFilter(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="community-thread-toolbar">
         <div className="community-thread-toolbar-left">
           <div className="community-thread-label">Sort</div>
@@ -372,6 +386,8 @@ export default function TemplatesPanel({
         filteredTemplates.length > 0 && (
           <div className="community-thread-list">
             {filteredTemplates.map((template) => {
+              const templateId = String(template.id || "");
+              const isExpanded = Boolean(expandedTemplateIds[templateId]);
               const rating = templateRatings[template.id] || { sum: 0, count: 0, mine: null };
               const avg = rating.count > 0 ? rating.sum / rating.count : 0;
               const myRating = Number(rating.mine || 0);
@@ -408,7 +424,7 @@ export default function TemplatesPanel({
                       ))}
                     </div>
                   )}
-                  {template.template_type === "workout_program" && workoutRows.length > 0 && (
+                  {isExpanded && template.template_type === "workout_program" && workoutRows.length > 0 && (
                     <div className="community-template-program-report">
                       <div className="community-template-program-head">
                         <span className="exercise">Exercise</span>
@@ -428,7 +444,7 @@ export default function TemplatesPanel({
                       </div>
                     </div>
                   )}
-                  {template.template_type === "training_plan" && outlineRows.length > 0 && (
+                  {isExpanded && template.template_type === "training_plan" && outlineRows.length > 0 && (
                     <div className="community-template-outline">
                       <div className="community-template-preview-title">Full plan outline</div>
                       <div className="community-template-outline-list">
@@ -450,7 +466,7 @@ export default function TemplatesPanel({
                       </div>
                     </div>
                   )}
-                  {template.template_type === "recipe" && previewRows.length > 0 && (
+                  {isExpanded && template.template_type === "recipe" && previewRows.length > 0 && (
                     <div className="community-template-preview">
                       <div className="community-template-preview-title">Recipe</div>
                       <div className="community-template-preview-list">
@@ -462,52 +478,66 @@ export default function TemplatesPanel({
                       </div>
                     </div>
                   )}
-                  <div className="community-tags">
-                    {(template.tags || []).slice(0, 6).map((tag, index) => (
-                      <span key={`${template.id}-tag-${index}`}>{tag}</span>
-                    ))}
-                  </div>
+                  {isExpanded && (
+                    <div className="community-tags">
+                      {(template.tags || []).slice(0, 6).map((tag, index) => (
+                        <span key={`${template.id}-tag-${index}`}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="community-reaction-row">
                     <span className="community-meta-pill">Rating {avg.toFixed(1)} ({rating.count})</span>
                     <span className="community-meta-pill">Tried {tryCount}</span>
                     <span className="community-meta-pill">Comments {comments.length}</span>
                   </div>
-                  <div className="community-reaction-row">
-                    {[1, 2, 3, 4, 5].map((value) => (
+                  {!isExpanded && comments.length > 0 ? (
+                    <div className="community-reply-card">
+                      <div className="community-reply-body">{comments[0]?.body || ""}</div>
+                      <div className="community-thread-meta">
+                        <button
+                          type="button"
+                          className="community-meta-pill community-meta-author community-profile-link"
+                          onClick={() => openUserProfile(comments[0]?.user_id)}
+                        >
+                          {profiles[comments[0]?.user_id] || "Athlete"}
+                        </button>
+                        <span className="community-meta-pill">{formatTime(comments[0]?.created_at)}</span>
+                        {comments.length > 1 ? (
+                          <span className="community-meta-pill">+{comments.length - 1} more</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                  {isExpanded && (
+                    <div className="community-reaction-row">
+                      {[1, 2, 3, 4, 5].map((value) => (
                       <button
                         key={`${template.id}-rate-${value}`}
-                        className={`community-reaction-btn ${myRating === value ? "active" : ""}`}
+                        className={`community-reaction-btn community-rating-btn ${myRating === value ? "active" : ""}`}
+                        data-rating={value}
+                        aria-label={`Rate ${value} star${value > 1 ? "s" : ""}`}
                         type="button"
                         onClick={() => handleRateTemplate(template.id, value)}
                       >
                         {value}â˜…
                       </button>
                     ))}
-                    <button
-                      className={`community-reaction-btn ${templateTriedByMe[template.id] ? "active" : ""}`}
-                      type="button"
-                      onClick={() => handleTryTemplate(template.id)}
-                    >
-                      Tried it
-                    </button>
-                  </div>
+                      <button
+                        className={`community-reaction-btn ${templateTriedByMe[template.id] ? "active" : ""}`}
+                        type="button"
+                        onClick={() => handleTryTemplate(template.id)}
+                      >
+                        Tried it
+                      </button>
+                    </div>
+                  )}
                   <div className="community-thread-actions">
                     <button
                       className="studio-back community-action-btn"
                       type="button"
-                      onClick={() => {
-                        const targetIndex = swipeTemplates.findIndex((item) => item.id === template.id);
-                        setTemplateViewMode("swipe");
-                        if (targetIndex >= 0) {
-                          setTemplateDeckIndex(targetIndex);
-                        } else {
-                          setTemplateDeckIndex(0);
-                        }
-                        setTemplateDeckDragX(0);
-                        setTemplateDeckAnimating(null);
-                      }}
+                      onClick={() => toggleTemplateExpanded(templateId)}
                     >
-                      View
+                      {isExpanded ? "Hide" : "View"}
                     </button>
                     <button
                       className="studio-back community-action-btn community-primary-btn"
@@ -517,41 +547,45 @@ export default function TemplatesPanel({
                       Add to mine
                     </button>
                   </div>
-                  <div className="community-template-commentbar">
-                    <input
-                      className="community-modal-input"
-                      placeholder="Comment on this template"
-                      value={templateCommentDrafts[template.id] || ""}
-                      onChange={(event) =>
-                        setTemplateCommentDrafts((prev) => ({
-                          ...prev,
-                          [template.id]: event.target.value,
-                        }))
-                      }
-                    />
-                    <button
-                      className="studio-back community-cta-btn"
-                      type="button"
-                      onClick={() => handleCommentTemplate(template.id)}
-                    >
-                      Comment
-                    </button>
-                  </div>
-                  {comments.slice(0, 3).map((comment) => (
-                    <div key={comment.id} className="community-reply-card">
-                      <div className="community-reply-body">{comment.body}</div>
-                      <div className="community-thread-meta">
+                  {isExpanded && (
+                    <>
+                      <div className="community-template-commentbar">
+                        <input
+                          className="community-modal-input"
+                          placeholder="Comment on this template"
+                          value={templateCommentDrafts[template.id] || ""}
+                          onChange={(event) =>
+                            setTemplateCommentDrafts((prev) => ({
+                              ...prev,
+                              [template.id]: event.target.value,
+                            }))
+                          }
+                        />
                         <button
+                          className="studio-back community-cta-btn"
                           type="button"
-                          className="community-meta-pill community-meta-author community-profile-link"
-                          onClick={() => openUserProfile(comment.user_id)}
+                          onClick={() => handleCommentTemplate(template.id)}
                         >
-                          {profiles[comment.user_id] || "Athlete"}
+                          Comment
                         </button>
-                        <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
                       </div>
-                    </div>
-                  ))}
+                      {comments.slice(0, 3).map((comment) => (
+                        <div key={comment.id} className="community-reply-card">
+                          <div className="community-reply-body">{comment.body}</div>
+                          <div className="community-thread-meta">
+                            <button
+                              type="button"
+                              className="community-meta-pill community-meta-author community-profile-link"
+                              onClick={() => openUserProfile(comment.user_id)}
+                            >
+                              {profiles[comment.user_id] || "Athlete"}
+                            </button>
+                            <span className="community-meta-pill">{formatTime(comment.created_at)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -560,4 +594,3 @@ export default function TemplatesPanel({
     </div>
   );
 }
-

@@ -21,7 +21,7 @@ export default function ActivityFeedPanel({
   renderEmptyState,
 }) {
   return (
-    <div className="community-panel">
+    <div className="community-panel community-activity-panel">
       <div className="community-panel-title">Activity Feed</div>
       <div className="community-inline-reply">
         <div className="community-inline-reply-head">
@@ -206,4 +206,3 @@ export default function ActivityFeedPanel({
     </div>
   );
 }
-

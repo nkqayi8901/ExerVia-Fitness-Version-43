@@ -492,7 +492,7 @@ export default function JournalPage({ mode = "gym" }) {
     if (!banner) return;
     const timeout = setTimeout(() => setBanner("", "info"), 2800);
     return () => clearTimeout(timeout);
-  }, [banner]);
+  }, [banner, setBanner]);
 
   useEffect(() => {
     if (!banner) return;

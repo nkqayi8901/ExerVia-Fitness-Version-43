@@ -13,6 +13,7 @@ import PublicProfilePage from "./PublicProfilePage";
 import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import GymProfilePage from "./GymProfilePage";
+import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -32,6 +33,7 @@ import GymProfilePage from "./GymProfilePage";
 // and output feeds the UI state or data flow
 function AthleteDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
 
 // dayMarker manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -55,9 +57,14 @@ function AthleteDashboard({ profile, id, userState }) {
           <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
           <div className="page-marker">{dayMarker}</div>
         </div>
-        <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
-          Switch to Gym Mode
-        </button>
+        <div className="dashboard-header-actions">
+          <button className="studio-back" type="button" onClick={() => setWalkthroughOpen(true)}>
+            Walkthrough
+          </button>
+          <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
+            Switch to Gym Mode
+          </button>
+        </div>
       </div>
 
       <div className="grid-3">
@@ -112,6 +119,12 @@ function AthleteDashboard({ profile, id, userState }) {
           Add meal
         </button>
       </div>
+      <DashboardWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        mode="athlete"
+        userId={id}
+      />
 
     </div>
   );
