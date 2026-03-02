@@ -7901,6 +7901,8 @@ code {
   margin-left: auto;
   margin-right: auto;
   perspective: 1200px;
+  isolation: isolate;
+  overflow: hidden;
 }
 
 .community-template-deck-head {
@@ -8144,6 +8146,12 @@ code {
   will-change: transform;
   transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   box-shadow: 0 20px 55px rgba(2, 6, 23, 0.5);
+}
+
+.community-template-deck-shell > .community-empty-state {
+  position: relative;
+  z-index: 2;
+  margin: 0;
 }
 
 .community-template-swipe-card.swipe-left {
