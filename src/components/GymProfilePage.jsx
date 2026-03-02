@@ -86,7 +86,7 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
               }),
             ]),
             7000,
-            "Gym profile load timed out"
+            "Location profile load timed out"
           );
 
         if (requestRef.current !== requestId) return;
@@ -106,7 +106,7 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
           const { data: profileRows } = await withTimeout(
             supabase.from("user_profiles").select("id,username,display_name").in("id", leaderboardIds),
             5000,
-            "Gym labels load timed out"
+          "Location labels load timed out"
           );
           if (requestRef.current !== requestId) return;
           const nextLabels = {};
@@ -124,7 +124,7 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
         const { data: gymUsers } = await withTimeout(
           supabase.from("user_profiles").select("id").eq("primary_gym_place_id", decodedPlaceId).limit(500),
           5000,
-          "Gym members load timed out"
+          "Location members load timed out"
         );
         if (requestRef.current !== requestId) return;
         const gymUserIds = Array.from(new Set((gymUsers || []).map((row) => Number(row.id)).filter(Boolean)));
@@ -137,7 +137,7 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
               .in("user_id", gymUserIds)
               .limit(2000),
             6000,
-            "Gym crews load timed out"
+            "Location crews load timed out"
           );
           if (requestRef.current !== requestId) return;
           const byGroup = {};
@@ -200,12 +200,21 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
     }
   };
 
+  const handleOpenDirections = () => {
+    const placeQuery = String(decodedPlaceId || "").trim();
+    const addressQuery = String(gymMeta.address || "").trim();
+    const query = placeQuery || addressQuery;
+    if (!query) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   if (loading) {
     return (
       <div className={`hud-bg mode-${mode}`}>
-        <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+        <Navbar modeLabel="LOCATION PROFILE" mode={mode} userId={resolvedViewerId} />
         <div className="page-shell">
-          <div className="hud-card">Loading gym profile...</div>
+          <div className="hud-card">Loading location profile...</div>
         </div>
       </div>
     );
@@ -214,13 +223,13 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
   if (!decodedPlaceId) {
     return (
       <div className={`hud-bg mode-${mode}`}>
-        <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+        <Navbar modeLabel="LOCATION PROFILE" mode={mode} userId={resolvedViewerId} />
         <div className="page-shell">
           <div className="hud-card">
             <button className="studio-back" onClick={() => navigate(backPath)} type="button">
               Back
             </button>
-            <div className="page-title mt-3">Gym not found</div>
+            <div className="page-title mt-3">Location not found</div>
           </div>
         </div>
       </div>
@@ -229,26 +238,31 @@ export default function GymProfilePage({ mode = "gym", viewerId }) {
 
   return (
     <div className={`hud-bg mode-${mode}`}>
-      <Navbar modeLabel="GYM PROFILE" mode={mode} userId={resolvedViewerId} />
+      <Navbar modeLabel="LOCATION PROFILE" mode={mode} userId={resolvedViewerId} />
       <div className="page-shell gym-profile-shell">
         <div className="page-header gym-profile-head">
           <div>
             <button className="studio-back" onClick={() => navigate(backPath)} type="button">
               Back
             </button>
-            <h2 className="page-title">{gymMeta.name || "Linked Gym"}</h2>
-            <p className="page-subtitle">{gymMeta.address || "Weekly standings for this gym location."}</p>
+            <h2 className="page-title">{gymMeta.name || "Linked Location"}</h2>
+            <p className="page-subtitle">{gymMeta.address || "Weekly standings for this training location."}</p>
           </div>
-          <button className="studio-back community-cta-btn" type="button" onClick={handleCopyShare}>
-            {copyState ? `${copyState} link` : "Share gym card"}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button className="studio-back community-cta-btn" type="button" onClick={handleOpenDirections}>
+              Directions
+            </button>
+            <button className="studio-back community-cta-btn" type="button" onClick={handleCopyShare}>
+              {copyState ? `${copyState} link` : "Share location card"}
+            </button>
+          </div>
         </div>
 
         <div className="grid-3">
           <div className="hud-card">
             <div className="hud-card-title">MEMBERS</div>
             <div className="hud-big">{memberCount}</div>
-            <div className="hud-dim">Profiles linked to this gym</div>
+            <div className="hud-dim">Profiles linked to this location</div>
           </div>
           <div className="hud-card">
             <div className="hud-card-title">SESSIONS (WEEK)</div>

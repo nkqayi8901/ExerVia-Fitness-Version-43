@@ -14,6 +14,16 @@ const defaultStore = () => ({
   savedMeals: [],
 });
 
+const safeSetItem = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn("localStorage write skipped:", error);
+    return false;
+  }
+};
+
 export const getLogsStore = (userId) => {
   const key = buildUserKey("exervia_logs_store", userId);
   const raw = localStorage.getItem(key);
@@ -32,7 +42,7 @@ export const getLogsStore = (userId) => {
 
 export const saveLogsStore = (userId, store) => {
   const key = buildUserKey("exervia_logs_store", userId);
-  localStorage.setItem(key, JSON.stringify(store));
+  safeSetItem(key, JSON.stringify(store));
 };
 
 export const addSavedMeal = (userId, mealName, source = "custom") => {
@@ -57,19 +67,30 @@ export const queueLogsTrainingPrefill = (userId, payload) => {
     dayKey: payload?.dayKey || getTodayKey(),
     createdAt: new Date().toISOString(),
   };
-  localStorage.setItem(key, JSON.stringify(entry));
+  safeSetItem(key, JSON.stringify(entry));
 };
 
-export const consumeLogsTrainingPrefill = (userId) => {
+export const getLogsTrainingPrefill = (userId) => {
   const key = buildUserKey("exervia_logs_prefill", userId);
   const raw = localStorage.getItem(key);
   if (!raw) return null;
-  localStorage.removeItem(key);
   try {
     return JSON.parse(raw);
   } catch {
     return null;
   }
+};
+
+export const clearLogsTrainingPrefill = (userId) => {
+  const key = buildUserKey("exervia_logs_prefill", userId);
+  localStorage.removeItem(key);
+};
+
+export const consumeLogsTrainingPrefill = (userId) => {
+  const entry = getLogsTrainingPrefill(userId);
+  if (!entry) return null;
+  clearLogsTrainingPrefill(userId);
+  return entry;
 };
 
 export const getTodayLogKey = getTodayKey;

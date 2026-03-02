@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "./Navbar";
-import { emptyDay, fetchDailyLogs, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
+import { emptyDay, fetchDailyLogs, fetchSavedMeals, removeMealFromLibrary, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
 import localRecipes from "../data/recipes.json";
@@ -30,6 +30,8 @@ const MEALDB = "https://www.themealdb.com/api/json/v1/1";
 const DUMMY_RECIPES_SEARCH = "https://dummyjson.com/recipes/search?q=";
 const OFF_SEARCH =
   "https://world.openfoodfacts.org/cgi/search.pl?json=1&page_size=8&search_terms=";
+const OFF_SEARCH_V2 =
+  "https://world.openfoodfacts.org/api/v2/search?fields=code,product_name,nutriments&page_size=8&search_terms=";
 const SPOON_BASE = "https://api.spoonacular.com";
 const SPOON_KEY = String(process.env.REACT_APP_SPOONACULAR_API_KEY || "").trim();
 
@@ -270,6 +272,15 @@ async function spoonSearchByName(term, limit = 8) {
 
 function normalizeTextId(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function normalizeOffQuery(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\b(\d+g|\d+kg|\d+ml|\d+l|pinch|tbsp|tsp|cup|cups)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function recipeIdentityKey(meal) {
@@ -572,6 +583,7 @@ export default function NutritionPage() {
     [storedId, preference, goal, timeWindow, curatedOnly]
   );
   const protocolRequestRef = useRef(0);
+  const favoritesHydratedRef = useRef(false);
 
   useEffect(() => {
     const raw = String(searchParams.get("tab") || "").trim().toLowerCase();
@@ -641,15 +653,51 @@ export default function NutritionPage() {
     } catch {
       setFavoriteMeals([]);
     }
+    favoritesHydratedRef.current = true;
   }, [favoriteMealsStorageKey]);
 
   useEffect(() => {
+    if (!favoritesHydratedRef.current) return;
     localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteRecipeKeys.slice(-400)));
   }, [favoriteRecipeKeys, favoriteStorageKey]);
 
   useEffect(() => {
+    if (!favoritesHydratedRef.current) return;
     localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(favoriteMeals.slice(-400)));
   }, [favoriteMeals, favoriteMealsStorageKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCloudFavorites = async () => {
+      if (!storedId) return;
+      const cloudMeals = await fetchSavedMeals(storedId);
+      if (cancelled || !Array.isArray(cloudMeals) || !cloudMeals.length) return;
+      const normalizedCloud = cloudMeals
+        .filter((entry) => String(entry?.source || "").toLowerCase() === "favorite")
+        .map((entry) => {
+          const name = String(entry?.name || "").trim();
+          if (!name) return null;
+          return {
+            idMeal: String(entry?.id || name),
+            strMeal: name,
+            source: entry?.source || "favorite",
+          };
+        })
+        .filter(Boolean);
+      if (!normalizedCloud.length) return;
+      setFavoriteMeals((prev) => {
+        const existing = Array.isArray(prev) ? prev : [];
+        const seen = new Set(existing.map((item) => normalizeTextId(item?.strMeal)));
+        const additions = normalizedCloud.filter((item) => !seen.has(normalizeTextId(item?.strMeal)));
+        if (!additions.length) return existing;
+        return [...existing, ...additions].slice(-400);
+      });
+    };
+    loadCloudFavorites();
+    return () => {
+      cancelled = true;
+    };
+  }, [storedId]);
 
   useEffect(() => {
     if (!favoriteMeals.length) return;
@@ -819,6 +867,7 @@ export default function NutritionPage() {
     const id = normalizeTextId(meal?.idMeal);
     const name = normalizeTextId(meal?.strMeal);
     const nameKey = name ? `name:${name}` : "";
+    const removing = isRecipeFavorite(meal);
     if (!key) return;
     setFavoriteRecipeKeys((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
@@ -853,7 +902,11 @@ export default function NutritionPage() {
       return next;
     });
     if (storedId && meal?.strMeal) {
-      await saveMealToLibrary(storedId, meal.strMeal, "favorite");
+      if (removing) {
+        await removeMealFromLibrary(storedId, meal.strMeal);
+      } else {
+        await saveMealToLibrary(storedId, meal.strMeal, "favorite");
+      }
     }
   };
 
@@ -888,8 +941,47 @@ export default function NutritionPage() {
     const fat = Math.max(40, Math.round((totalCalories * ratios.fat) / 9));
     return { calories: totalCalories, protein, carbs, fat };
   }, [goal, userNutritionContext]);
-  const todayMacroTotals = useMemo(() => sumMacros(todayMeals), [todayMeals]);
-  const selectedDayMeals = useMemo(() => logMealsByDate[selectedMacroDay] || [], [logMealsByDate, selectedMacroDay]);
+  const todayLogKey = getTodayLogKey();
+  const boardMealsForToday = useMemo(
+    () =>
+      BOARD_SLOTS.map((slot) => {
+        const item = fuelBoard[slot.key];
+        if (!item?.text) return null;
+        return {
+          id: `board-${slot.key}`,
+          text: `${getSlotLabel(slot.key)} · ${item.text}`,
+          nutrition: item.nutrition || emptyMacros(),
+          source: item.source || "build_my_day",
+          fromBoard: true,
+        };
+      }).filter(Boolean),
+    [fuelBoard]
+  );
+  const mergedTodayMeals = useMemo(() => {
+    const seen = new Set();
+    const merged = [];
+    [...(todayMeals || []), ...boardMealsForToday].forEach((meal) => {
+      const key = normalizeTextId(meal?.text) || String(meal?.id || "");
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(meal);
+    });
+    return merged;
+  }, [todayMeals, boardMealsForToday]);
+  const todayMacroTotals = useMemo(() => sumMacros(mergedTodayMeals), [mergedTodayMeals]);
+  const selectedDayMeals = useMemo(() => {
+    const baseMeals = logMealsByDate[selectedMacroDay] || [];
+    if (selectedMacroDay !== todayLogKey) return baseMeals;
+    const seen = new Set();
+    const merged = [];
+    [...baseMeals, ...boardMealsForToday].forEach((meal) => {
+      const key = normalizeTextId(meal?.text) || String(meal?.id || "");
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(meal);
+    });
+    return merged;
+  }, [logMealsByDate, selectedMacroDay, todayLogKey, boardMealsForToday]);
   const weeklyMacroTrend = useMemo(() => {
     const rows = [];
     for (let offset = 6; offset >= 0; offset -= 1) {
@@ -899,7 +991,7 @@ export default function NutritionPage() {
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
       const key = `${year}-${month}-${day}`;
-      const meals = logMealsByDate[key] || [];
+      const meals = key === todayLogKey ? mergedTodayMeals : logMealsByDate[key] || [];
       rows.push({
         key,
         label: date.toLocaleDateString(undefined, { weekday: "short" }),
@@ -907,7 +999,7 @@ export default function NutritionPage() {
       });
     }
     return rows;
-  }, [logMealsByDate]);
+  }, [logMealsByDate, mergedTodayMeals, todayLogKey]);
   const weeklyMax = useMemo(
     () => ({
       calories: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.calories || 0)),
@@ -1274,6 +1366,10 @@ export default function NutritionPage() {
     setDetailLoading(true);
     try {
       const sourcePool = [...(protocolMeals || []), ...(favoriteMeals || [])];
+      if (!idMeal) {
+        setActiveMeal(null);
+        return;
+      }
       if (String(idMeal || "").startsWith("dummy-")) {
         const sourceMeal = sourcePool.find((meal) => String(meal.idMeal) === String(idMeal));
         if (sourceMeal?.dummyRecipe) {
@@ -1319,12 +1415,32 @@ export default function NutritionPage() {
       const res = await fetch(`${MEALDB}/lookup.php?i=${encodeURIComponent(idMeal)}`);
       const json = await res.json();
       const meal = json?.meals?.[0] || null;
-      setActiveMeal(meal ? { ...meal, source: sourceMeal?.source || "mealdb" } : null);
+      if (meal) {
+        setActiveMeal({ ...meal, source: sourceMeal?.source || "mealdb" });
+        return;
+      }
+      // Favorites saved from logs/community can have non-MealDB ids.
+      // Fall back to the in-memory source object so modal still opens.
+      if (sourceMeal) {
+        setActiveMeal(sourceMeal);
+        return;
+      }
+      setActiveMeal(null);
     } catch {
       setActiveMeal(null);
     } finally {
       setDetailLoading(false);
     }
+  };
+
+  const openMealFromCard = (meal) => {
+    if (!meal) return;
+    const idMeal = String(meal.idMeal || "").trim();
+    if (!idMeal) {
+      setActiveMeal(meal);
+      return;
+    }
+    fetchMealDetail(idMeal);
   };
 
   const handleMoreLikeThis = async () => {
@@ -1380,13 +1496,32 @@ export default function NutritionPage() {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-    const query = (q || offQuery).trim();
+    const rawQuery = String(q || offQuery || "").trim();
+    const query = normalizeOffQuery(rawQuery);
     if (!query) return;
     setOffLoading(true);
     try {
-      const res = await fetch(`${OFF_SEARCH}${encodeURIComponent(query)}`);
-      const json = await res.json();
-      setOffResults(json?.products || []);
+      const trySearch = async (baseUrl, term) => {
+        const res = await fetch(`${baseUrl}${encodeURIComponent(term)}`);
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json?.products) ? json.products : [];
+      };
+
+      let products = await trySearch(OFF_SEARCH, query);
+      if (!products.length) {
+        products = await trySearch(OFF_SEARCH_V2, query);
+      }
+      if (!products.length) {
+        const compact = query.split(" ").slice(0, 2).join(" ");
+        if (compact && compact !== query) {
+          products = await trySearch(OFF_SEARCH, compact);
+          if (!products.length) {
+            products = await trySearch(OFF_SEARCH_V2, compact);
+          }
+        }
+      }
+      setOffResults(products);
     } catch {
       setOffResults([]);
     } finally {
@@ -1718,14 +1853,6 @@ export default function NutritionPage() {
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
-  const handleScrollToFuelSection = (sectionId) => {
-    const id = String(sectionId || "").trim();
-    if (!id) return;
-    const node = document.getElementById(id);
-    if (!node) return;
-    node.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   // initial load
   useEffect(() => {
     fetchMealOfDay();
@@ -1750,6 +1877,7 @@ export default function NutritionPage() {
   const showRecovery = activeFuelView === "recovery";
   const showIntake = activeFuelView === "intake";
   const showBuild = activeFuelView === "build";
+  const showProtocolSettings = showOverview || showRecovery;
 
   // Render
   // The return statement below manages the UI layout and interactions,
@@ -1863,12 +1991,12 @@ export default function NutritionPage() {
           </div>
         </div>
 
-        <div className="grid-2">
+        <div className={`grid-2 ${showIntake || showBuild ? "fuel-single-column" : ""}`}>
           {/* LEFT: Protocol controls + meal of day */}
           <div className="hud-card">
-            <div className="hud-card-title">PROTOCOL SETTINGS</div>
+            {showProtocolSettings ? <div className="hud-card-title">PROTOCOL SETTINGS</div> : null}
 
-            <div className="fuel-row">
+            <div className="fuel-row" style={{ display: showProtocolSettings ? undefined : "none" }}>
               <div className="fuel-label">Goal</div>
               <div className="fuel-seg">
                 {GOALS.map((g) => (
@@ -1884,7 +2012,7 @@ export default function NutritionPage() {
               </div>
             </div>
 
-            <div className="fuel-row">
+            <div className="fuel-row" style={{ display: showProtocolSettings ? undefined : "none" }}>
               <div className="fuel-label">Time</div>
               <div className="fuel-seg">
                 {TIME_WINDOWS.map((t) => (
@@ -1899,7 +2027,7 @@ export default function NutritionPage() {
               </div>
             </div>
 
-            <div className="fuel-row">
+            <div className="fuel-row" style={{ display: showProtocolSettings ? undefined : "none" }}>
               <div className="fuel-label">Preference</div>
               <div className="fuel-seg fuel-seg-wrap">
                 {PREFERENCES.map((p) => (
@@ -1917,7 +2045,7 @@ export default function NutritionPage() {
               </div>
             </div>
 
-            <div className="hud-divider" />
+            <div className="hud-divider" style={{ display: showProtocolSettings ? undefined : "none" }} />
 
             {showRecovery && recoveryNudge ? (
               <div className="fuel-recovery-nudge" id="fuel-recovery-section">
@@ -1973,7 +2101,7 @@ export default function NutritionPage() {
                 <div className="fuel-macro-label">Calories</div>
                 <div className="fuel-macro-value">
                   {Math.round(todayMacroTotals.calories)}
-                  <span> / {macroTargets.calories}</span>
+                  <span> / ?</span>
                 </div>
                 <div className="fuel-macro-bar">
                   <div
@@ -1986,7 +2114,7 @@ export default function NutritionPage() {
                 <div className="fuel-macro-label">Protein</div>
                 <div className="fuel-macro-value">
                   {Math.round(todayMacroTotals.protein)}g
-                  <span> / {macroTargets.protein}g</span>
+                  <span> / ?</span>
                 </div>
                 <div className="fuel-macro-bar">
                   <div
@@ -1999,7 +2127,7 @@ export default function NutritionPage() {
                 <div className="fuel-macro-label">Carbs</div>
                 <div className="fuel-macro-value">
                   {Math.round(todayMacroTotals.carbs)}g
-                  <span> / {macroTargets.carbs}g</span>
+                  <span> / ?</span>
                 </div>
                 <div className="fuel-macro-bar">
                   <div
@@ -2012,7 +2140,7 @@ export default function NutritionPage() {
                 <div className="fuel-macro-label">Fat</div>
                 <div className="fuel-macro-value">
                   {Math.round(todayMacroTotals.fat)}g
-                  <span> / {macroTargets.fat}g</span>
+                  <span> / ?</span>
                 </div>
                 <div className="fuel-macro-bar">
                   <div
@@ -2299,11 +2427,11 @@ export default function NutritionPage() {
                 className="fuel-mealofday"
                 role="button"
                 tabIndex={0}
-                onClick={() => fetchMealDetail(mealOfDay.idMeal)}
+                onClick={() => openMealFromCard(mealOfDay)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    fetchMealDetail(mealOfDay.idMeal);
+                    openMealFromCard(mealOfDay);
                   }
                 }}
               >
@@ -2395,11 +2523,11 @@ export default function NutritionPage() {
                     className="fuel-tile"
                     role="button"
                     tabIndex={0}
-                    onClick={() => fetchMealDetail(m.idMeal)}
+                    onClick={() => openMealFromCard(m)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        fetchMealDetail(m.idMeal);
+                        openMealFromCard(m);
                       }
                     }}
                   >

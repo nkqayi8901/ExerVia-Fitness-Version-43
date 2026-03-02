@@ -102,7 +102,7 @@ export default function LeaderboardPanel({
           )}
           {!!gymLeaderboardContext.placeId && (
             <div className="community-feed-title-row">
-              <div className="community-feed-sub">{gymLeaderboardContext.name || "Linked Gym"}</div>
+              <div className="community-feed-sub">{gymLeaderboardContext.name || "Linked Location"}</div>
               <button
                 type="button"
                 className="studio-back community-cta-btn"

@@ -1229,15 +1229,15 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     if (!userId) return;
     const { data: row } = await supabase
       .from('user_profiles')
-      .select('primary_gym_place_id')
+      .select('primary_region_place_id, primary_gym_place_id')
       .eq('id', Number(userId))
       .maybeSingle();
-    const placeId = String(row?.primary_gym_place_id || '').trim();
+    const placeId = String(row?.primary_region_place_id || row?.primary_gym_place_id || '').trim();
     if (!placeId) {
-      setBanner({ type: 'warn', message: 'Link your gym in Profile settings first.' });
+      setBanner({ type: 'warn', message: 'Set your region in Profile settings first.' });
       return;
     }
-    navigate(`/athlete/${userId}/community/gym/${encodeURIComponent(placeId)}`);
+    navigate(`/athlete/${userId}/community/location/${encodeURIComponent(placeId)}`);
   };
 
   // remixPlan clones an existing plan into the editor,
@@ -1322,7 +1322,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               Last training
             </button>
             <button className="studio-back studio-gym-link-btn studio-header-action-btn" type="button" onClick={handleOpenMyGym}>
-              My gym
+              My region
             </button>
             {selectedPlanWeek?.sessions?.length ? (
               <div className="studio-header-checklist">

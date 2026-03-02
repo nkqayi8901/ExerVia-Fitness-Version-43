@@ -91,7 +91,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const openGymProfile = (placeId) => {
     const resolvedPlaceId = String(placeId || "").trim();
     if (!resolvedPlaceId || !userId) return;
-    navigate(`/${routePrefix}/${userId}/community/gym/${encodeURIComponent(resolvedPlaceId)}`);
+    navigate(`/${routePrefix}/${userId}/community/location/${encodeURIComponent(resolvedPlaceId)}`);
   };
   const handleOpenMyGym = async () => {
     const linkedPlaceId = String(gymLeaderboardContext?.placeId || "").trim();
@@ -101,15 +101,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     const { data: row } = await supabase
       .from("user_profiles")
-      .select("primary_gym_place_id")
+      .select("primary_region_place_id, primary_gym_place_id")
       .eq("id", Number(userId))
       .maybeSingle();
-    const fallbackPlaceId = String(row?.primary_gym_place_id || "").trim();
+    const fallbackPlaceId = String(row?.primary_region_place_id || row?.primary_gym_place_id || "").trim();
     if (fallbackPlaceId) {
       openGymProfile(fallbackPlaceId);
       return;
     }
-    setBanner("Link your gym in profile settings first.");
+    setBanner("Set your region in profile settings first.");
   };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
@@ -758,12 +758,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     const interval = setInterval(() => {
       const now = Date.now();
       setRecentThreadIds((prev) => {
+        let changed = false;
         const next = {};
         Object.entries(prev).forEach(([postId, createdMs]) => {
           if (now - Number(createdMs) < 12000) {
             next[postId] = createdMs;
+          } else {
+            changed = true;
           }
         });
+        if (!changed && Object.keys(next).length === Object.keys(prev).length) return prev;
         return next;
       });
     }, 4000);
@@ -930,12 +934,14 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   useEffect(() => {
     let cancelled = false;
+    let debounceHandle = null;
     const query = search.trim().toLowerCase();
-    if (activeTab !== "forums" || !query || !forums.length) {
+    if (activeTab !== "forums" || query.length < 2 || !forums.length) {
       setGlobalForumPosts([]);
       setGlobalPostReplies({});
       return () => {
         cancelled = true;
+        if (debounceHandle) clearTimeout(debounceHandle);
       };
     }
 
@@ -947,6 +953,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         .from("community_posts")
         .select("*")
         .in("forum_id", forumIds)
+        .limit(300)
         .order("created_at", { ascending: false });
 
       const filteredPosts = (posts || []).filter((post) => {
@@ -987,9 +994,12 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       loadProfiles(authorIds);
     };
 
-    loadGlobalSearchResults();
+    debounceHandle = setTimeout(() => {
+      loadGlobalSearchResults();
+    }, 220);
     return () => {
       cancelled = true;
+      if (debounceHandle) clearTimeout(debounceHandle);
     };
   }, [activeTab, search, forums, loadProfiles]);
 
@@ -2195,15 +2205,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             >
               Reply
             </button>
-            {Number(userId) === Number(reply.created_by) && (
-              <button
-                className="community-reply-btn danger"
-                onClick={() => handleDeleteReply(reply.id)}
-                type="button"
-              >
-                Delete
-              </button>
-            )}
             <button
               className="community-reply-btn"
               type="button"
@@ -2217,6 +2218,15 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             >
               Report
             </button>
+            {Number(userId) === Number(reply.created_by) && (
+              <button
+                className="community-reply-btn danger"
+                onClick={() => handleDeleteReply(reply.id)}
+                type="button"
+              >
+                Delete
+              </button>
+            )}
             {Number(reply.created_by) !== Number(userId) && (
               <button
                 className="community-reply-btn"
@@ -2930,7 +2940,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             </div>
             <div className="community-cta-row">
               <button className="studio-back community-cta-btn" onClick={handleOpenMyGym} type="button">
-                My gym
+                My region
               </button>
               <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
                 Create group

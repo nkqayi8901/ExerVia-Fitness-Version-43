@@ -102,6 +102,21 @@ export async function saveMealToLibrary(userId, mealName, source = "manual") {
   return true;
 }
 
+export async function removeMealFromLibrary(userId, mealName) {
+  const name = String(mealName || "").trim();
+  if (!name) return false;
+  const { error } = await supabase
+    .from("saved_meals")
+    .delete()
+    .eq("user_id", Number(userId))
+    .ilike("name", name);
+  if (error) {
+    console.error("removeMealFromLibrary error:", error);
+    return false;
+  }
+  return true;
+}
+
 export async function fetchSupplementLibrary(userId) {
   const { data, error } = await supabase
     .from("supplement_library")

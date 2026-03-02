@@ -5,7 +5,12 @@ export async function recalcUserState(userId) {
 
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
 
-  const [{ data: strengthLogs }, { data: sessions }, { data: activityDays }, { data: existing }] = await Promise.all([
+  const [
+    { data: strengthLogs, error: strengthError },
+    { data: sessions, error: sessionsError },
+    { data: activityDays, error: activityError },
+    { data: existing, error: existingError }
+  ] = await Promise.all([
     supabase.from('strength_logs').select('*').eq('user_id', userId).gte('created_at', since),
     supabase.from('training_sessions').select('*').eq('user_id', userId).gte('created_at', since),
     supabase
@@ -17,10 +22,15 @@ export async function recalcUserState(userId) {
     supabase.from('user_state').select('*').eq('user_id', userId).single(),
   ]);
 
-  // XP/level/rank are server-authoritative via RPC/integrity SQL.
-  const xp = Number(existing?.xp || 0);
-  const level = Number(existing?.level || 1);
-  const rank = existing?.rank || 'D';
+  if (strengthError || sessionsError || activityError || existingError) {
+    console.error('recalcUserState aborted due to query error', {
+      strengthError,
+      sessionsError,
+      activityError,
+      existingError
+    });
+    return;
+  }
 
   let fatigue = 0;
   let momentum = 0;
@@ -73,14 +83,11 @@ export async function recalcUserState(userId) {
   await supabase.from('user_state').upsert(
     {
       user_id: userId,
-      xp,
-      level,
-      rank,
       fatigue_score,
       recovery_score,
       momentum_score,
       streak_days,
-      last_activity: now.toISOString(),
+      // Preserve server-written last_activity for inactivity calculations.
       updated_at: now.toISOString(),
     },
     { onConflict: 'user_id' }

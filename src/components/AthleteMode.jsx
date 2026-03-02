@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -14,6 +14,12 @@ import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import GymProfilePage from "./GymProfilePage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
+function LegacyGymLocationRedirect() {
+  const { placeId } = useParams();
+  const nextPlaceId = encodeURIComponent(String(placeId || "").trim());
+  return <Navigate to={`../location/${nextPlaceId}`} replace />;
+}
+
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -58,15 +64,14 @@ function AthleteDashboard({ profile, id, userState }) {
           <div className="page-marker">{dayMarker}</div>
         </div>
         <div className="dashboard-header-actions">
-          <button className="studio-back" type="button" onClick={() => setWalkthroughOpen(true)}>
+          <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
             Walkthrough
           </button>
-          <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
+          <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
             Switch to Gym Mode
           </button>
         </div>
       </div>
-
       <div className="grid-3">
         <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/training`)}>
           <div className="hud-card-title">TRAINING</div>
@@ -117,6 +122,9 @@ function AthleteDashboard({ profile, id, userState }) {
         </button>
         <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
+        </button>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/settings`)}>
+          Set region
         </button>
       </div>
       <DashboardWalkthroughModal
@@ -455,7 +463,8 @@ export default function AthleteMode() {
           path="community/thread/:threadId"
           element={<CommunityHub userId={id} forceThreadPage />}
         />
-        <Route path="community/gym/:placeId" element={<GymProfilePage mode="athlete" viewerId={id} />} />
+        <Route path="community/location/:placeId" element={<GymProfilePage mode="athlete" viewerId={id} />} />
+        <Route path="community/gym/:placeId" element={<LegacyGymLocationRedirect />} />
         <Route path="messages" element={<MessagesPage mode="athlete" userId={id} />} />
       </Routes>
     </div>

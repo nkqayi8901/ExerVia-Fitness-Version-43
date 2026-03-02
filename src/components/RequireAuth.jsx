@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { clearAuthStorage, getStoredProfileId, setStoredProfileId } from "../utils/authStorage";
 
 // Component: RequireAuth - UI layout and interactions.
 // This component renders the authentication gate experience and wires up its local UI state.
@@ -42,39 +43,37 @@ export default function RequireAuth({ children }) {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [redirectPath, setRedirectPath] = useState("");
-
-  const currentProfileId = String(localStorage.getItem("exervia_user_id") || "").trim();
+  const [resolvedProfileId, setResolvedProfileId] = useState(getStoredProfileId());
 
   useEffect(() => {
     let cancelled = false;
+    let validateSeq = 0;
 
-    const validate = async () => {
+    const validate = async (sessionOverride = null) => {
+      const currentSeq = validateSeq + 1;
+      validateSeq = currentSeq;
       let hasSessionUser = false;
       try {
-        const { data } = await withTimeout(
-          supabase.auth.getSession(),
-          6000,
-          "Session check timed out"
-        );
-        const session = data?.session || null;
+        const session =
+          sessionOverride ||
+          (await withTimeout(supabase.auth.getSession(), 6000, "Session check timed out")).data
+            ?.session ||
+          null;
         hasSessionUser = Boolean(session?.user?.id);
-        if (!session?.user?.id) {
+        if (!session?.user?.id || cancelled || validateSeq !== currentSeq) {
           if (!cancelled) {
+            clearAuthStorage();
+            setResolvedProfileId("");
+            setRedirectPath("");
             setAuthed(false);
             setReady(true);
           }
           return;
         }
 
-        if (!cancelled && currentProfileId) {
-          const fastExpectedPath = resolveProfilePath(location.pathname, currentProfileId);
-          if (fastExpectedPath && fastExpectedPath !== location.pathname) {
-            setRedirectPath(fastExpectedPath);
-          }
-        }
-
         let profileId = "";
         const authUid = String(session.user.id || "").trim();
+        const cachedId = getStoredProfileId();
 
         let profileByAuth = null;
         try {
@@ -94,9 +93,8 @@ export default function RequireAuth({ children }) {
 
         if (profileByAuth?.id) {
           profileId = String(profileByAuth.id);
-          localStorage.setItem("exervia_user_id", profileId);
+          setStoredProfileId(profileId);
         } else {
-          const cachedId = String(currentProfileId || "").trim();
           if (cachedId) {
             try {
               const { data: cachedProfile } = await supabase
@@ -110,7 +108,7 @@ export default function RequireAuth({ children }) {
               if (cachedProfile?.id && (cachedAuthUid === authUid || (sessionEmail && cachedEmail === sessionEmail))) {
                 profileId = String(cachedProfile.id);
               } else {
-                localStorage.removeItem("exervia_user_id");
+                clearAuthStorage();
               }
             } catch {
               // If profile lookup is temporarily unavailable, fall back to cached id
@@ -120,11 +118,9 @@ export default function RequireAuth({ children }) {
           }
         }
 
-        if (!cancelled) {
-          const expectedPath = profileId ? resolveProfilePath(location.pathname, profileId) : null;
-          if (expectedPath && expectedPath !== location.pathname) {
-            setRedirectPath(expectedPath);
-          } else if (profileId) {
+        if (!cancelled && validateSeq === currentSeq) {
+          setResolvedProfileId(profileId);
+          if (profileId) {
             setRedirectPath("");
           }
           setAuthed(true);
@@ -132,7 +128,11 @@ export default function RequireAuth({ children }) {
         }
       } catch (error) {
         console.error("RequireAuth validate failed:", error);
-        if (!cancelled) {
+        if (!cancelled && validateSeq === currentSeq) {
+          if (!hasSessionUser) {
+            clearAuthStorage();
+            setResolvedProfileId("");
+          }
           setAuthed(hasSessionUser);
           setRedirectPath("");
           setReady(true);
@@ -143,17 +143,33 @@ export default function RequireAuth({ children }) {
     validate();
 
     const { data: authSub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!cancelled) {
-        setAuthed(Boolean(nextSession?.user?.id));
+      if (cancelled) return;
+      if (!nextSession?.user?.id) {
+        clearAuthStorage();
+        setResolvedProfileId("");
+        setAuthed(false);
+        setRedirectPath("");
         setReady(true);
+        return;
       }
+      validate(nextSession);
     });
 
     return () => {
       cancelled = true;
       authSub?.subscription?.unsubscribe();
     };
-  }, [currentProfileId, location.pathname]);
+  }, []);
+
+  useEffect(() => {
+    if (!authed || !resolvedProfileId) return;
+    const expectedPath = resolveProfilePath(location.pathname, resolvedProfileId);
+    if (expectedPath && expectedPath !== location.pathname) {
+      setRedirectPath(expectedPath);
+      return;
+    }
+    setRedirectPath("");
+  }, [authed, location.pathname, resolvedProfileId]);
 
   if (!ready) {
     return (

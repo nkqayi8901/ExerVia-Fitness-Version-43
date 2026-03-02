@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate, useParams } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -14,6 +14,12 @@ import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import GymProfilePage from "./GymProfilePage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
+function LegacyGymLocationRedirect() {
+  const { placeId } = useParams();
+  const nextPlaceId = encodeURIComponent(String(placeId || "").trim());
+  return <Navigate to={`../location/${nextPlaceId}`} replace />;
+}
+
 // Component: GymMode - UI layout and interactions.
 // This component renders the gymmode experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -58,15 +64,14 @@ function GymDashboard({ profile, id, userState }) {
           <div className="page-marker">{dayMarker}</div>
         </div>
         <div className="dashboard-header-actions">
-          <button className="studio-back" type="button" onClick={() => setWalkthroughOpen(true)}>
+          <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
             Walkthrough
           </button>
-          <button className="studio-back dashboard-switch-btn" onClick={() => navigate(`/athlete/${id}`)}>
+          <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/athlete/${id}`)}>
             Switch to Athlete Mode
           </button>
         </div>
       </div>
-
       <div className="grid-3">
         <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/progress`)}>
           <div className="hud-card-title">PROGRESS</div>
@@ -117,6 +122,9 @@ function GymDashboard({ profile, id, userState }) {
         </button>
         <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
+        </button>
+        <button className="studio-back home-quick-btn" onClick={() => navigate(`/settings`)}>
+          Set region
         </button>
       </div>
       <DashboardWalkthroughModal
@@ -394,7 +402,8 @@ export default function GymMode() {
         <Route path="community" element={<CommunityHub userId={id} />} />
         <Route path="community/group/:groupId" element={<CommunityHub userId={id} forceGroupRoom />} />
         <Route path="community/thread/:threadId" element={<CommunityHub userId={id} forceThreadPage />} />
-        <Route path="community/gym/:placeId" element={<GymProfilePage mode="gym" viewerId={id} />} />
+        <Route path="community/location/:placeId" element={<GymProfilePage mode="gym" viewerId={id} />} />
+        <Route path="community/gym/:placeId" element={<LegacyGymLocationRedirect />} />
         <Route path="messages" element={<MessagesPage mode="gym" userId={id} />} />
       </Routes>
     </div>

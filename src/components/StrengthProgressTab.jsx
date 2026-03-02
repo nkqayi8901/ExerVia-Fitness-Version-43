@@ -448,6 +448,27 @@ const toLiftDayKey = (value) => {
   return `${year}-${month}-${day}`;
 };
 
+const WEIGHT_EXERCISES = [
+  { value: 'squat', label: 'Squat', icon: '' },
+  { value: 'bench_press', label: 'Bench Press', icon: '' },
+  { value: 'deadlift', label: 'Deadlift', icon: '' },
+  { value: 'overhead_press', label: 'Overhead Press', icon: '' },
+  { value: 'barbell_row', label: 'Barbell Row', icon: '' },
+];
+
+const BODYWEIGHT_EXERCISES = [
+  { value: 'pushups', label: 'Push-ups', icon: '' },
+  { value: 'pullups', label: 'Pull-ups', icon: '' },
+  { value: 'squats', label: 'Bodyweight Squats', icon: '' },
+  { value: 'plank', label: 'Plank', icon: '' },
+  { value: 'lunges', label: 'Lunges', icon: '' },
+];
+
+const EXERCISE_LABEL_BY_VALUE = [...WEIGHT_EXERCISES, ...BODYWEIGHT_EXERCISES].reduce((acc, entry) => {
+  acc[entry.value] = entry.label;
+  return acc;
+}, {});
+
 // StrengthProgressTab manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -486,6 +507,8 @@ const StrengthProgressTab = ({ userId }) => {
   const lastAddedTimeoutRef = useRef(null);
   const lastRowTapRef = useRef({ index: null, time: 0 });
   const prVerificationRef = useRef(new Set());
+  const swapSearchRequestRef = useRef(0);
+  const creatorSearchRequestRef = useRef(0);
   const [creatorSearch, setCreatorSearch] = useState('');
   const [creatorResults, setCreatorResults] = useState([]);
   const [creatorFocusedIndex, setCreatorFocusedIndex] = useState(0);
@@ -506,22 +529,6 @@ const StrengthProgressTab = ({ userId }) => {
   const [exerciseWeightMemory, setExerciseWeightMemory] = useState({});
   const [selectedStrengthTrendDay, setSelectedStrengthTrendDay] = useState('');
   const [selectedProgressExercise, setSelectedProgressExercise] = useState('');
-
-  const weightExercises = [
-    { value: 'squat', label: 'Squat', icon: '' },
-    { value: 'bench_press', label: 'Bench Press', icon: '' },
-    { value: 'deadlift', label: 'Deadlift', icon: '' },
-    { value: 'overhead_press', label: 'Overhead Press', icon: '' },
-    { value: 'barbell_row', label: 'Barbell Row', icon: '' },
-  ];
-
-  const bodyweightExercises = [
-    { value: 'pushups', label: 'Push-ups', icon: '' },
-    { value: 'pullups', label: 'Pull-ups', icon: '' },
-    { value: 'squats', label: 'Bodyweight Squats', icon: '' },
-    { value: 'plank', label: 'Plank', icon: '' },
-    { value: 'lunges', label: 'Lunges', icon: '' },
-  ];
 
 // normalizeQuery manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1009,9 +1016,13 @@ const StrengthProgressTab = ({ userId }) => {
 // and output feeds the UI state or data flow
   const fetchExerciseSearch = async (query) => {
     if (!query || query.trim().length < 2) {
+      swapSearchRequestRef.current += 1;
       setSwapResults([]);
+      setIsSwapLoading(false);
       return;
     }
+    const requestId = swapSearchRequestRef.current + 1;
+    swapSearchRequestRef.current = requestId;
 
     const localMatches = searchLocalExercises(query).map(name =>
       buildExerciseTemplate(
@@ -1028,6 +1039,7 @@ const StrengthProgressTab = ({ userId }) => {
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
       );
       const payload = await response.json();
+      if (swapSearchRequestRef.current !== requestId) return;
 // remoteResults manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -1047,10 +1059,14 @@ const StrengthProgressTab = ({ userId }) => {
       );
       setSwapResults(merged.length > 0 ? merged : localMatches);
     } catch (error) {
+      if (swapSearchRequestRef.current !== requestId) return;
       console.error('Exercise search failed:', error);
       setSwapResults(localMatches);
+    } finally {
+      if (swapSearchRequestRef.current === requestId) {
+        setIsSwapLoading(false);
+      }
     }
-    setIsSwapLoading(false);
   };
 
 // fetchCreatorSearch manages a focused piece of logic,
@@ -1059,9 +1075,12 @@ const StrengthProgressTab = ({ userId }) => {
 // and output feeds the UI state or data flow
   const fetchCreatorSearch = async (query) => {
     if (!query || query.trim().length < 2) {
+      creatorSearchRequestRef.current += 1;
       setCreatorResults([]);
       return;
     }
+    const requestId = creatorSearchRequestRef.current + 1;
+    creatorSearchRequestRef.current = requestId;
 
     try {
       const localMatches = searchLocalExercises(query).map(name =>
@@ -1076,6 +1095,7 @@ const StrengthProgressTab = ({ userId }) => {
         `https://wger.de/api/v2/exerciseinfo/?language=2&limit=20&name=${encodeURIComponent(query)}`
       );
       const payload = await response.json();
+      if (creatorSearchRequestRef.current !== requestId) return;
 // remoteResults manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -1095,6 +1115,7 @@ const StrengthProgressTab = ({ userId }) => {
       );
       setCreatorResults(merged.length > 0 ? merged : localMatches);
     } catch (error) {
+      if (creatorSearchRequestRef.current !== requestId) return;
       console.error('Creator exercise search failed:', error);
       setCreatorResults(searchLocalExercises(query).map(name =>
         buildExerciseTemplate(
@@ -1166,36 +1187,41 @@ const StrengthProgressTab = ({ userId }) => {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-  const getExerciseLabel = (exerciseName) => {
-    const allExercises = [...weightExercises, ...bodyweightExercises];
-    return allExercises.find(e => e.value === exerciseName)?.label || exerciseName;
-  };
+  const getExerciseLabel = (exerciseName) => EXERCISE_LABEL_BY_VALUE[exerciseName] || exerciseName;
 
 // getExerciseIcon manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
   const getExerciseIcon = (exerciseName, exerciseType) => {
-    const list = exerciseType === 'bodyweight' ? bodyweightExercises : weightExercises;
+    const list = exerciseType === 'bodyweight' ? BODYWEIGHT_EXERCISES : WEIGHT_EXERCISES;
     return list.find(e => e.value === exerciseName)?.icon || '';
   };
 
-  const prList = Object.values(personalRecords).sort((a, b) => {
-    const aScore = a.one_rm_est || 0;
-    const bScore = b.one_rm_est || 0;
-    return bScore - aScore;
-  });
-  const topPrs = prList.slice(0, 2);
-  const bestLift = recentLifts.reduce((best, lift) => {
-    const reps = Number(lift.reps) || 0;
-    const sets = Number(lift.sets) || 0;
-    const weight = Number(lift.weight) || 0;
-    const score = weight > 0 ? weight * reps * sets : reps * sets;
-    if (!best || score > best.score) {
-      return { lift, score };
-    }
-    return best;
-  }, null);
+  const prList = useMemo(
+    () =>
+      Object.values(personalRecords).sort((a, b) => {
+        const aScore = a.one_rm_est || 0;
+        const bScore = b.one_rm_est || 0;
+        return bScore - aScore;
+      }),
+    [personalRecords]
+  );
+  const topPrs = useMemo(() => prList.slice(0, 2), [prList]);
+  const bestLift = useMemo(
+    () =>
+      recentLifts.reduce((best, lift) => {
+        const reps = Number(lift.reps) || 0;
+        const sets = Number(lift.sets) || 0;
+        const weight = Number(lift.weight) || 0;
+        const score = weight > 0 ? weight * reps * sets : reps * sets;
+        if (!best || score > best.score) {
+          return { lift, score };
+        }
+        return best;
+      }, null),
+    [recentLifts]
+  );
   const totalSessionsLogged = recentLifts.length;
 
   const latestWorkoutSummary = useMemo(() => {
@@ -1217,8 +1243,14 @@ const StrengthProgressTab = ({ userId }) => {
     };
   }, [recentLifts]);
   const totalPrs = prList.length;
-  const uniqueExercisesTracked = new Set(recentLifts.map((lift) => lift.exercise_name)).size;
-  const topEstimatedOneRm = prList[0]?.one_rm_est ? `${prList[0].one_rm_est.toFixed(1)}kg` : 'No 1RM yet';
+  const uniqueExercisesTracked = useMemo(
+    () => new Set(recentLifts.map((lift) => lift.exercise_name)).size,
+    [recentLifts]
+  );
+  const topEstimatedOneRm = useMemo(
+    () => (prList[0]?.one_rm_est ? `${prList[0].one_rm_est.toFixed(1)}kg` : 'No 1RM yet'),
+    [prList]
+  );
   const recentLiftVolumeByDay = useMemo(() => {
     const totals = new Map();
     recentLifts.forEach((lift) => {
@@ -1242,7 +1274,10 @@ const StrengthProgressTab = ({ userId }) => {
       .slice(0, 7)
       .reverse();
   }, [recentLifts]);
-  const maxRecentLiftVolume = Math.max(1, ...recentLiftVolumeByDay.map((item) => item.volume || 0));
+  const maxRecentLiftVolume = useMemo(
+    () => Math.max(1, ...recentLiftVolumeByDay.map((item) => item.volume || 0)),
+    [recentLiftVolumeByDay]
+  );
   const exerciseCountTrend = useMemo(() => {
     const counts = {};
     recentLifts.forEach((lift) => {
@@ -1254,7 +1289,10 @@ const StrengthProgressTab = ({ userId }) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
   }, [recentLifts]);
-  const maxExerciseCount = Math.max(1, ...exerciseCountTrend.map((item) => item.count || 0));
+  const maxExerciseCount = useMemo(
+    () => Math.max(1, ...exerciseCountTrend.map((item) => item.count || 0)),
+    [exerciseCountTrend]
+  );
   const exerciseProgressOptions = useMemo(() => {
     const counts = new Map();
     recentLifts.forEach((lift) => {
@@ -1293,7 +1331,10 @@ const StrengthProgressTab = ({ userId }) => {
         };
       });
   }, [recentLifts, selectedProgressExercise]);
-  const maxExerciseProgressWeight = Math.max(1, ...exerciseProgressSeries.map((item) => item.weight || 0));
+  const maxExerciseProgressWeight = useMemo(
+    () => Math.max(1, ...exerciseProgressSeries.map((item) => item.weight || 0)),
+    [exerciseProgressSeries]
+  );
   const selectedTrendDay = selectedStrengthTrendDay || recentLiftVolumeByDay[recentLiftVolumeByDay.length - 1]?.dayKey || '';
   const selectedTrendDayLifts = useMemo(
     () =>
@@ -1303,16 +1344,26 @@ const StrengthProgressTab = ({ userId }) => {
     [recentLifts, selectedTrendDay]
   );
 
-  const filteredPrograms = programs.filter(program => {
+  const filteredPrograms = useMemo(() => {
     const query = programSearch.toLowerCase();
-    return (
+    return programs.filter((program) => (
       program.name.toLowerCase().includes(query) ||
       (program.focus || '').toLowerCase().includes(query) ||
       (program.description || '').toLowerCase().includes(query)
-    );
-  });
-  const pinnedPrograms = programs.filter((program) => pinnedProgramIds.includes(program.id));
-  const visiblePrograms = showAllPrograms ? filteredPrograms : filteredPrograms.slice(0, 6);
+    ));
+  }, [programSearch, programs]);
+  const pinnedPrograms = useMemo(
+    () => programs.filter((program) => pinnedProgramIds.includes(program.id)),
+    [pinnedProgramIds, programs]
+  );
+  const visiblePrograms = useMemo(
+    () => (showAllPrograms ? filteredPrograms : filteredPrograms.slice(0, 6)),
+    [filteredPrograms, showAllPrograms]
+  );
+  const recentExerciseTypes = useMemo(
+    () => new Set(recentLifts.map((lift) => lift.exercise_type)),
+    [recentLifts]
+  );
 
 // scoreProgram manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1355,9 +1406,8 @@ const StrengthProgressTab = ({ userId }) => {
     if (goal.includes('fitness') && focus.includes('full')) score += 1;
 
     if (recentLifts.length > 0) {
-      const recentTypes = new Set(recentLifts.map(lift => lift.exercise_type));
-      if (recentTypes.has('bodyweight') && focus.includes('bodyweight')) score += 1;
-      if (recentTypes.has('weights') && (focus.includes('push') || focus.includes('pull') || focus.includes('lower') || focus.includes('upper'))) {
+      if (recentExerciseTypes.has('bodyweight') && focus.includes('bodyweight')) score += 1;
+      if (recentExerciseTypes.has('weights') && (focus.includes('push') || focus.includes('pull') || focus.includes('lower') || focus.includes('upper'))) {
         score += 1;
       }
     }
@@ -1365,9 +1415,13 @@ const StrengthProgressTab = ({ userId }) => {
     return score;
   };
 
-  const recommendedPrograms = [...programs]
-    .sort((a, b) => scoreProgram(b) - scoreProgram(a))
-    .slice(0, 3);
+  const recommendedPrograms = useMemo(
+    () =>
+      [...programs]
+        .sort((a, b) => scoreProgram(b) - scoreProgram(a))
+        .slice(0, 3),
+    [programs, profile, recentExerciseTypes, recentLifts]
+  );
 
   const isExerciseInDraft = (name) =>
     newProgram.exercises.some((exercise) => normalizeExerciseName(exercise.name) === normalizeExerciseName(name));
@@ -1404,12 +1458,18 @@ const StrengthProgressTab = ({ userId }) => {
     const weight = Number(exercise.weight || 0);
     if (!weight) return;
     const key = normalizeExerciseName(exercise.name);
-    const previous = Number(exerciseWeightMemory[key] || 0);
-    if (previous === weight) return;
-    saveExerciseWeightMemory({
-      ...exerciseWeightMemory,
-      [key]: weight
+    let shouldSave = false;
+    setExerciseWeightMemory((prev) => {
+      const previous = Number(prev[key] || 0);
+      if (previous === weight) return prev;
+      shouldSave = true;
+      const next = { ...prev, [key]: weight };
+      if (exerciseWeightsStorageKey) {
+        localStorage.setItem(exerciseWeightsStorageKey, JSON.stringify(next));
+      }
+      return next;
     });
+    if (!shouldSave) return;
     setCreatorFeedback(`Saved default weight for ${exercise.name}: ${weight}kg`);
   };
 
@@ -1675,15 +1735,15 @@ const StrengthProgressTab = ({ userId }) => {
     if (!userId) return;
     const { data: row } = await supabase
       .from('user_profiles')
-      .select('primary_gym_place_id')
+      .select('primary_region_place_id, primary_gym_place_id')
       .eq('id', Number(userId))
       .maybeSingle();
-    const placeId = String(row?.primary_gym_place_id || '').trim();
+    const placeId = String(row?.primary_region_place_id || row?.primary_gym_place_id || '').trim();
     if (!placeId) {
-      setBanner({ type: 'warn', message: 'Link your gym in Profile settings first.' });
+      setBanner({ type: 'warn', message: 'Set your region in Profile settings first.' });
       return;
     }
-    navigate(`/gym/${userId}/community/gym/${encodeURIComponent(placeId)}`);
+    navigate(`/gym/${userId}/community/location/${encodeURIComponent(placeId)}`);
   };
 
   return (
@@ -1726,7 +1786,7 @@ const StrengthProgressTab = ({ userId }) => {
               Last workout
             </button>
             <button className="studio-back studio-gym-link-btn studio-header-action-btn" type="button" onClick={handleOpenMyGym}>
-              My gym
+              My region
             </button>
             <div className="studio-toggle">
               <button

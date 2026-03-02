@@ -9,7 +9,8 @@ import { isErrorBanner } from "../utils/banner";
 import curatedRecipes from "../data/recipes.json";
 import {
   addSavedMeal,
-  consumeLogsTrainingPrefill,
+  clearLogsTrainingPrefill,
+  getLogsTrainingPrefill,
   getLogsStore,
   getTodayLogKey,
   saveLogsStore,
@@ -721,10 +722,15 @@ export default function LogsPage({ mode = "gym" }) {
     });
   }, [normalizeDayLog]);
 
-  const nextDayLog = useCallback((dayKey, updater) => {
-    const current = normalizeDayLog(dailyLogsByDate[dayKey]);
-    return updater(current);
-  }, [dailyLogsByDate, normalizeDayLog]);
+  const applyDayLogUpdate = useCallback((dayKey, updater) => {
+    let nextLog = null;
+    setDailyLogsByDate((prev) => {
+      const current = normalizeDayLog(prev[dayKey]);
+      nextLog = updater(current);
+      return { ...prev, [dayKey]: nextLog };
+    });
+    return nextLog;
+  }, [normalizeDayLog]);
 
   const saveDayLog = useCallback(async (dayKey, log) => {
     if (!id || !log) return false;
@@ -748,11 +754,12 @@ export default function LogsPage({ mode = "gym" }) {
 
   useEffect(() => {
     const run = async () => {
-      const pending = consumeLogsTrainingPrefill(id);
+      if (!id) return;
+      const pending = getLogsTrainingPrefill(id);
       if (!pending) return;
       const dayKey = pending.dayKey || todayKey;
       setSelectedDay(dayKey);
-      const next = nextDayLog(dayKey, (current) => ({
+      const next = applyDayLogUpdate(dayKey, (current) => ({
         ...current,
         extraActivities: [
           ...(current.extraActivities || []),
@@ -767,13 +774,18 @@ export default function LogsPage({ mode = "gym" }) {
           },
         ],
       }));
-      setDailyLogsByDate((prev) => ({ ...prev, [dayKey]: next }));
-      await saveDayLog(dayKey, next);
-      setBanner("Session moved into Logs.");
+      try {
+        await saveDayLog(dayKey, next);
+        clearLogsTrainingPrefill(id);
+        setBanner("Session moved into Logs.");
+      } catch (error) {
+        console.error("Logs prefill apply failed:", error);
+        setBanner("Could not move session into Logs right now.");
+      }
     };
 
     run();
-  }, [id, nextDayLog, saveDayLog, todayKey]);
+  }, [applyDayLogUpdate, id, saveDayLog, todayKey]);
 
   const applyWeight = async () => {
     const value = Number(selectedLog.weightValue);
@@ -782,9 +794,14 @@ export default function LogsPage({ mode = "gym" }) {
       setBanner(`Weight must be between 1 and ${max} ${selectedLog.weightUnit}.`);
       return;
     }
-    await saveDayLog(selectedDay, selectedLog);
-    const xp = await markActivity("weight", 10, selectedDay);
-    setBanner(xp.awardedXp > 0 ? `Weight logged. +${xp.awardedXp} XP earned.` : "Weight logged.");
+    try {
+      await saveDayLog(selectedDay, selectedLog);
+      const xp = await markActivity("weight", 10, selectedDay);
+      setBanner(xp.awardedXp > 0 ? `Weight logged. +${xp.awardedXp} XP earned.` : "Weight logged.");
+    } catch (error) {
+      console.error("Weight log failed:", error);
+      setBanner("Could not save weight right now.");
+    }
   };
 
   const applyWater = async () => {
@@ -793,9 +810,14 @@ export default function LogsPage({ mode = "gym" }) {
       setBanner("Enter a valid water amount.");
       return;
     }
-    await saveDayLog(selectedDay, selectedLog);
-    const xp = await markActivity("water", 10, selectedDay);
-    setBanner(xp.awardedXp > 0 ? `Water logged. +${xp.awardedXp} XP earned.` : "Water logged.");
+    try {
+      await saveDayLog(selectedDay, selectedLog);
+      const xp = await markActivity("water", 10, selectedDay);
+      setBanner(xp.awardedXp > 0 ? `Water logged. +${xp.awardedXp} XP earned.` : "Water logged.");
+    } catch (error) {
+      console.error("Water log failed:", error);
+      setBanner("Could not save water right now.");
+    }
   };
 
   const addMealEntry = async () => {
@@ -810,69 +832,81 @@ export default function LogsPage({ mode = "gym" }) {
       setMealInput("");
       return;
     }
-    const next = nextDayLog(selectedDay, (log) => ({
+    const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       meals: [...(log.meals || []), { id: `meal-${Date.now()}`, text }],
     }));
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
+    try {
+      await saveDayLog(selectedDay, next);
 
-    if (saveMealLibrary) {
-      const ok = await saveMealToLibrary(id, text, "manual");
-      if (!ok) addSavedMeal(id, text, "manual");
+      if (saveMealLibrary) {
+        const ok = await saveMealToLibrary(id, text, "manual");
+        if (!ok) addSavedMeal(id, text, "manual");
 
-      const cloudMeals = await fetchSavedMeals(id);
-      const local = getLogsStore(id) || {};
-      const merged = [...(cloudMeals || [])];
-      (((local && local.savedMeals) || [])).forEach((item) => {
-        if (!merged.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
-          merged.push(item);
-        }
-      });
-      setSavedMeals(merged);
+        const cloudMeals = await fetchSavedMeals(id);
+        const local = getLogsStore(id) || {};
+        const merged = [...(cloudMeals || [])];
+        (((local && local.savedMeals) || [])).forEach((item) => {
+          if (!merged.some((meal) => String(meal.name).toLowerCase() === String(item.name).toLowerCase())) {
+            merged.push(item);
+          }
+        });
+        setSavedMeals(merged);
+      }
+
+      setMealInput("");
+      const xp = await markActivity("meal", 12, selectedDay);
+      setBanner(xp.awardedXp > 0 ? `Meal logged. +${xp.awardedXp} XP earned.` : "Meal logged.");
+    } catch (error) {
+      console.error("Meal log failed:", error);
+      setBanner("Could not add meal right now.");
     }
-
-    setMealInput("");
-    const xp = await markActivity("meal", 12, selectedDay);
-    setBanner(xp.awardedXp > 0 ? `Meal logged. +${xp.awardedXp} XP earned.` : "Meal logged.");
   };
 
   const toggleSupplement = async (name) => {
-    const next = nextDayLog(selectedDay, (log) => {
+    const next = applyDayLogUpdate(selectedDay, (log) => {
       const taken = new Set(log.supplementsTaken || []);
       if (taken.has(name)) taken.delete(name);
       else taken.add(name);
       return { ...log, supplementsTaken: Array.from(taken) };
     });
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
-    await markActivity("supplement", 8, selectedDay);
+    try {
+      await saveDayLog(selectedDay, next);
+      await markActivity("supplement", 8, selectedDay);
+    } catch (error) {
+      console.error("Supplement toggle failed:", error);
+      setBanner("Could not update supplement right now.");
+    }
   };
 
   const addSupplement = async () => {
     const name = customSupplement.trim();
     if (!name) return;
+    try {
+      const ok = await addSupplementToLibrary(id, name);
+      if (!ok) {
+        const local = getLogsStore(id) || {};
+        const next = {
+          ...local,
+          supplementLibrary: Array.from(new Set([...(((local && local.supplementLibrary) || [])), name])),
+        };
+        saveLogsStore(id, next);
+      }
 
-    const ok = await addSupplementToLibrary(id, name);
-    if (!ok) {
+      const cloudSupps = await fetchSupplementLibrary(id);
       const local = getLogsStore(id) || {};
-      const next = {
-        ...local,
-        supplementLibrary: Array.from(new Set([...(((local && local.supplementLibrary) || [])), name])),
-      };
-      saveLogsStore(id, next);
+      setSupplementLibrary(Array.from(new Set([...(cloudSupps || []), ...(((local && local.supplementLibrary) || []))])));
+      setCustomSupplement("");
+      setBanner("Supplement added to library.");
+    } catch (error) {
+      console.error("Add supplement failed:", error);
+      setBanner("Could not add supplement right now.");
     }
-
-    const cloudSupps = await fetchSupplementLibrary(id);
-    const local = getLogsStore(id) || {};
-    setSupplementLibrary(Array.from(new Set([...(cloudSupps || []), ...(((local && local.supplementLibrary) || []))])));
-    setCustomSupplement("");
-    setBanner("Supplement added to library.");
   };
 
   const addExtraActivity = async () => {
     if (!extraType) return;
-    const next = nextDayLog(selectedDay, (log) => ({
+    const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       extraActivities: [
         ...(log.extraActivities || []),
@@ -884,42 +918,58 @@ export default function LogsPage({ mode = "gym" }) {
         },
       ],
     }));
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
-    setExtraMinutes("");
-    setExtraNotes("");
-    const xp = await markActivity("extra_activity", 12, selectedDay);
-    setBanner(xp.awardedXp > 0 ? `Extra activity logged. +${xp.awardedXp} XP earned.` : "Extra activity logged.");
+    try {
+      await saveDayLog(selectedDay, next);
+      setExtraMinutes("");
+      setExtraNotes("");
+      const xp = await markActivity("extra_activity", 12, selectedDay);
+      setBanner(xp.awardedXp > 0 ? `Extra activity logged. +${xp.awardedXp} XP earned.` : "Extra activity logged.");
+    } catch (error) {
+      console.error("Extra activity log failed:", error);
+      setBanner("Could not log extra activity right now.");
+    }
   };
 
   const removeMealEntry = async (mealId) => {
-    const next = nextDayLog(selectedDay, (log) => ({
+    const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       meals: (log.meals || []).filter((meal) => meal.id !== mealId),
     }));
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
-    setBanner("Meal removed from this day.");
+    try {
+      await saveDayLog(selectedDay, next);
+      setBanner("Meal removed from this day.");
+    } catch (error) {
+      console.error("Remove meal failed:", error);
+      setBanner("Could not remove meal right now.");
+    }
   };
 
   const removeSupplementEntry = async (name) => {
-    const next = nextDayLog(selectedDay, (log) => ({
+    const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       supplementsTaken: (log.supplementsTaken || []).filter((supplement) => supplement !== name),
     }));
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
-    setBanner("Supplement removed from this day.");
+    try {
+      await saveDayLog(selectedDay, next);
+      setBanner("Supplement removed from this day.");
+    } catch (error) {
+      console.error("Remove supplement failed:", error);
+      setBanner("Could not remove supplement right now.");
+    }
   };
 
   const removeExtraActivityEntry = async (activityId) => {
-    const next = nextDayLog(selectedDay, (log) => ({
+    const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       extraActivities: (log.extraActivities || []).filter((item) => item.id !== activityId),
     }));
-    setDailyLogsByDate((prev) => ({ ...prev, [selectedDay]: next }));
-    await saveDayLog(selectedDay, next);
-    setBanner("Activity removed from this day.");
+    try {
+      await saveDayLog(selectedDay, next);
+      setBanner("Activity removed from this day.");
+    } catch (error) {
+      console.error("Remove activity failed:", error);
+      setBanner("Could not remove activity right now.");
+    }
   };
 
   const removeTrainingEntry = async (row) => {
