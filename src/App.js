@@ -1,10 +1,12 @@
 // App.js
 import { Suspense, lazy, useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import ToastHost from "./components/ToastHost";
 import { captureAppError, initErrorMonitoring } from "./services/errorMonitoring";
+import { supabase } from "./supabaseClient";
+import { getStoredProfileId } from "./utils/authStorage";
 
 const isTestEnv = process.env.NODE_ENV === "test";
 const resolveEagerModule = (loader) => {
@@ -36,6 +38,82 @@ const ResetPasswordPage = isTestEnv
 const NotFoundPage = isTestEnv
   ? resolveEagerModule(() => require("./components/NotFoundPage"))
   : lazy(() => import("./components/NotFoundPage"));
+
+function RouteResumeTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search}${location.hash}`;
+    if (!path) return;
+    if (
+      path === "/" ||
+      path.startsWith("/auth") ||
+      path.startsWith("/reset-password") ||
+      path.startsWith("/create-profile")
+    ) {
+      return;
+    }
+    try {
+      localStorage.setItem("exervia_last_path", path);
+    } catch {
+      // ignore storage failures
+    }
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+}
+
+function HomeEntryRoute() {
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const hasSession = Boolean(data?.session?.user?.id);
+        if (!active) return;
+        if (!hasSession) {
+          setReady(true);
+          return;
+        }
+
+        const lastPath = String(localStorage.getItem("exervia_last_path") || "").trim();
+        const resumeable =
+          lastPath.startsWith("/gym/") ||
+          lastPath.startsWith("/athlete/") ||
+          lastPath.startsWith("/nutrition") ||
+          lastPath.startsWith("/journal") ||
+          lastPath.startsWith("/settings");
+        if (resumeable) {
+          navigate(lastPath, { replace: true });
+          return;
+        }
+
+        const profileId = getStoredProfileId();
+        if (profileId) {
+          const mode = localStorage.getItem("exervia_active_mode") || "gym";
+          navigate(mode === "athlete" ? `/athlete/${profileId}` : `/gym/${profileId}`, {
+            replace: true,
+          });
+          return;
+        }
+
+        navigate("/create-profile", { replace: true });
+      } catch {
+        setReady(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
+
+  if (!ready) return <div className="full-center">Loading...</div>;
+  return <LandingPage />;
+}
 
 function App() {
   const withRouteBoundary = (element) => (
@@ -77,12 +155,13 @@ function App() {
   return (
     <Router>
       <ErrorBoundary>
+        <RouteResumeTracker />
         {isOffline ? (
           <div className="exervia-offline-strip">You're offline - data may be stale until connection returns.</div>
         ) : null}
         <div className="min-h-screen">
           <Routes>
-            <Route path="/" element={withRouteBoundary(<LandingPage />)} />
+            <Route path="/" element={withRouteBoundary(<HomeEntryRoute />)} />
             <Route path="/auth" element={withRouteBoundary(<FitnessProfileForm />)} />
             <Route
               path="/settings"

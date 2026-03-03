@@ -3,7 +3,7 @@ import { supabase } from "./supabaseClient";
 import { useNavigate } from "react-router-dom";
 import heroImage from "./assets/exervia-hero.webp";
 import { emitToast } from "./utils/toast";
-import { clearAuthStorage, setAuthStorage } from "./utils/authStorage";
+import { clearAuthStorage, getStoredProfileId, setAuthStorage } from "./utils/authStorage";
 
 const FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const PRIMARY_GOALS = ["Build Muscle", "Lose Weight", "Improve Endurance", "General Fitness"];
@@ -105,7 +105,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
   };
 
-  const fetchProfileByAuthUser = async (authUser) => {
+  const fetchProfileByAuthUser = useCallback(async (authUser) => {
     if (!authUser?.id) return null;
     const authUserId = String(authUser.id);
     const authEmail = String(authUser.email || "").trim().toLowerCase();
@@ -215,7 +215,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       return null;
     }
     return created;
-  };
+  }, [setBanner]);
 
   const syncSession = async (nextSession) => {
     const previousProfile = profile;
@@ -365,22 +365,52 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
   useEffect(() => {
     let active = true;
-    if (settingsOnly || loading || !session?.user || !profile?.id || hasAutoRedirectedRef.current) {
+    if (settingsOnly || loading || !session?.user || hasAutoRedirectedRef.current) {
       return () => {
         active = false;
       };
     }
     hasAutoRedirectedRef.current = true;
     (async () => {
-      const destination = await resolveHomePath(profile.id);
-      if (active) {
-        navigate(destination, { replace: true });
+      try {
+        let resolvedProfileId = Number(profile?.id || 0);
+        if (!resolvedProfileId) {
+          const cached = Number(getStoredProfileId() || 0);
+          if (cached > 0) {
+            resolvedProfileId = cached;
+          }
+        }
+        if (!resolvedProfileId && session?.user) {
+          const row = await withTimeout(
+            fetchProfileByAuthUser(session.user),
+            PROFILE_LOAD_TIMEOUT_MS,
+            "Profile lookup timed out"
+          );
+          if (row?.id) {
+            resolvedProfileId = Number(row.id);
+            setProfile(row);
+            setUserStorage(row, session.user);
+          }
+        }
+        if (!active) return;
+        if (!resolvedProfileId) {
+          navigate("/create-profile", { replace: true });
+          return;
+        }
+        const destination = await resolveHomePath(resolvedProfileId);
+        if (active) {
+          navigate(destination, { replace: true });
+        }
+      } catch {
+        if (active) {
+          navigate("/auth", { replace: true });
+        }
       }
     })();
     return () => {
       active = false;
     };
-  }, [settingsOnly, loading, session, profile, resolveHomePath, navigate]);
+  }, [settingsOnly, loading, session, profile, resolveHomePath, navigate, fetchProfileByAuthUser]);
 
   useEffect(() => {
     if (settingsOnly) return;
@@ -554,6 +584,18 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       );
 
       if (error) {
+        const signupError = String(error?.message || "").toLowerCase();
+        if (
+          signupError.includes("already registered") ||
+          signupError.includes("already been registered") ||
+          signupError.includes("already in use") ||
+          signupError.includes("user already") ||
+          (signupError.includes("email address") && signupError.includes("already"))
+        ) {
+          setBanner("Account already linked. Use Login or Continue with Google.", "warn");
+          setMode("login");
+          return;
+        }
         setBanner(parseAuthError(error, "Sign up failed."), "error");
         return;
       }
