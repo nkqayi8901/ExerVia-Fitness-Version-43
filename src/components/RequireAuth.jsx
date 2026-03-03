@@ -58,12 +58,29 @@ export default function RequireAuth({ children }) {
       validateSeq = currentSeq;
       let hasSessionUser = false;
       try {
-        const session =
+        let session =
           sessionOverride ||
           (await withTimeout(supabase.auth.getSession(), 6000, "Session check timed out")).data
             ?.session ||
           null;
         hasSessionUser = Boolean(session?.user?.id);
+        if (!session?.user?.id) {
+          // Confirm sign-out to avoid transient null-session races during token refresh.
+          try {
+            const confirmed =
+              (await withTimeout(
+                supabase.auth.getSession(),
+                2000,
+                "Session confirm timed out"
+              ))?.data?.session || null;
+            if (confirmed?.user?.id) {
+              session = confirmed;
+              hasSessionUser = true;
+            }
+          } catch {
+            // continue and treat as signed out
+          }
+        }
         if (!session?.user?.id || cancelled || validateSeq !== currentSeq) {
           if (!cancelled) {
             clearAuthStorage();
@@ -181,14 +198,7 @@ export default function RequireAuth({ children }) {
 
     const { data: authSub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (cancelled) return;
-      if (!nextSession?.user?.id) {
-        clearAuthStorage();
-        setResolvedProfileId("");
-        setAuthed(false);
-        setRedirectPath("");
-        setReady(true);
-        return;
-      }
+      // Always validate, even when nextSession is null, to avoid transient null-session races.
       validate(nextSession);
     });
 
