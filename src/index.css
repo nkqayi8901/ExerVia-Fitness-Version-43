@@ -348,6 +348,45 @@ code {
   background: #4b5563;
 }
 
+.profile-oauth-divider {
+  margin-top: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.profile-oauth-divider::before,
+.profile-oauth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.profile-google-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(17, 24, 39, 0.9));
+  border-color: rgba(148, 163, 184, 0.36);
+}
+
+.profile-google-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .profile-section .studio-toggle-btn {
   background: rgba(17, 24, 39, 0.68);
   border: 1px solid rgba(148, 163, 184, 0.32);

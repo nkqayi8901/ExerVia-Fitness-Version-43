@@ -37,8 +37,6 @@ export default function useCommunityData({
   activeTab,
   leaderboardGroupId,
   loadProfiles,
-  setBanner,
-  openConfirmDialog,
 }) {
   const normalizeId = (value) => {
     if (value === null || value === undefined) return "";
@@ -49,22 +47,16 @@ export default function useCommunityData({
   const cacheRef = useRef({
     global: { data: [], at: 0 },
     group: {},
-    gym: { data: [], context: { placeId: "", name: "" }, at: 0 },
     feed: { data: [], at: 0 },
   });
 
   const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
   const [groupLeaderboard, setGroupLeaderboard] = useState([]);
-  const [gymLeaderboard, setGymLeaderboard] = useState([]);
-  const [gymLeaderboardContext, setGymLeaderboardContext] = useState({ placeId: "", name: "" });
   const [activityFeedItems, setActivityFeedItems] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [groupLeaderboardLoading, setGroupLeaderboardLoading] = useState(false);
-  const [gymLeaderboardLoading, setGymLeaderboardLoading] = useState(false);
   const [globalLeaderboardLoaded, setGlobalLeaderboardLoaded] = useState(false);
   const [groupLeaderboardLoaded, setGroupLeaderboardLoaded] = useState(false);
-  const [gymLeaderboardLoaded, setGymLeaderboardLoaded] = useState(false);
-  const [reportingLeaderboardUserIds, setReportingLeaderboardUserIds] = useState({});
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
 
   const loadGlobalLeaderboard = useCallback(async () => {
@@ -211,110 +203,6 @@ export default function useCommunityData({
       }
     },
     [loadProfiles, userId]
-  );
-
-  const loadGymLeaderboard = useCallback(async () => {
-    if (!userId) return;
-    const gymCache = cacheRef.current.gym;
-    if (Date.now() - Number(gymCache.at || 0) < CACHE_TTL_MS) {
-      setGymLeaderboard(gymCache.data || []);
-      setGymLeaderboardContext(gymCache.context || { placeId: "", name: "" });
-      setGymLeaderboardLoaded(true);
-    }
-    setGymLeaderboardLoading(true);
-    setGymLeaderboardLoaded(false);
-    try {
-      const profileResponse = await runWithRetry(() =>
-        withTimeout(
-          supabase
-            .from("user_profiles")
-            .select("primary_gym_place_id, primary_gym_name")
-            .eq("id", Number(userId))
-            .maybeSingle()
-        )
-      );
-      const profile = profileResponse?.data;
-      const placeId = String(profile?.primary_gym_place_id || "").trim();
-      const gymName = String(profile?.primary_gym_name || "").trim();
-      setGymLeaderboardContext({ placeId, name: gymName });
-      if (!placeId) {
-        setGymLeaderboard([]);
-        cacheRef.current.gym = { data: [], context: { placeId, name: gymName }, at: Date.now() };
-        return;
-      }
-      const response = await runWithRetry(() =>
-        withTimeout(
-          supabase.rpc("get_weekly_gym_leaderboard", {
-            p_viewer_profile_id: Number(userId),
-            p_limit: 30,
-          })
-        )
-      );
-      const data = response?.data || [];
-      const error = response?.error;
-      if (error) {
-        console.error("Could not load gym leaderboard:", error);
-        setGymLeaderboard([]);
-        return;
-      }
-      const rows = data || [];
-      setGymLeaderboard(rows);
-      cacheRef.current.gym = {
-        data: rows,
-        context: { placeId, name: gymName },
-        at: Date.now(),
-      };
-      loadProfiles(rows.map((row) => row.user_id));
-    } catch {
-      if (!Array.isArray(gymCache.data) || !gymCache.data.length) {
-        setGymLeaderboard([]);
-      }
-    } finally {
-      setGymLeaderboardLoading(false);
-      setGymLeaderboardLoaded(true);
-    }
-  }, [loadProfiles, userId]);
-
-  const executeReportLeaderboardEntry = useCallback(
-    async (row) => {
-      if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
-      const targetId = Number(row.user_id);
-      if (!targetId || targetId === Number(userId)) return;
-      if (reportingLeaderboardUserIds[targetId]) return;
-      setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: true }));
-      const payload = {
-        reporter_user_id: Number(userId),
-        reported_user_id: targetId,
-        gym_place_id: gymLeaderboardContext.placeId,
-        reason: "suspicious_activity",
-      };
-      const { error } = await supabase.from("gym_leaderboard_reports").insert([payload]);
-      setReportingLeaderboardUserIds((prev) => ({ ...prev, [targetId]: false }));
-      if (error?.code === "23505") {
-        setBanner("Already reported for this week.");
-      } else if (error) {
-        setBanner("Could not submit report right now.");
-        return;
-      }
-      setBanner("Leaderboard report submitted.");
-      loadGymLeaderboard();
-    },
-    [gymLeaderboardContext.placeId, loadGymLeaderboard, reportingLeaderboardUserIds, setBanner, userId]
-  );
-
-  const handleReportLeaderboardEntry = useCallback(
-    async (row) => {
-      if (!userId || !row?.user_id || !gymLeaderboardContext.placeId) return;
-      if (Number(row.user_id) === Number(userId)) return;
-      const targetLabel = `User ${row.user_id}`;
-      openConfirmDialog?.({
-        kind: "report-leaderboard",
-        title: "Report leaderboard user?",
-        body: `Report ${targetLabel} on this week's gym leaderboard?`,
-        payload: { row },
-      });
-    },
-    [gymLeaderboardContext.placeId, openConfirmDialog, userId]
   );
 
   const loadActivityFeed = useCallback(async () => {
@@ -526,8 +414,7 @@ export default function useCommunityData({
   useEffect(() => {
     if (activeTab !== "leaderboard") return;
     loadGlobalLeaderboard();
-    loadGymLeaderboard();
-  }, [activeTab, loadGlobalLeaderboard, loadGymLeaderboard]);
+  }, [activeTab, loadGlobalLeaderboard]);
 
   useEffect(() => {
     if (activeTab !== "leaderboard" || !leaderboardGroupId) return;
@@ -537,19 +424,12 @@ export default function useCommunityData({
   return {
     globalLeaderboard,
     groupLeaderboard,
-    gymLeaderboard,
-    gymLeaderboardContext,
     activityFeedItems,
     leaderboardLoading,
     groupLeaderboardLoading,
-    gymLeaderboardLoading,
     globalLeaderboardLoaded,
     groupLeaderboardLoaded,
-    gymLeaderboardLoaded,
-    reportingLeaderboardUserIds,
     activityFeedLoading,
     loadActivityFeed,
-    executeReportLeaderboardEntry,
-    handleReportLeaderboardEntry,
   };
 }

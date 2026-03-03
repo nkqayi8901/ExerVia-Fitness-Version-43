@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -12,13 +12,7 @@ import WorkoutProgram from "./WorkoutProgram";
 import PublicProfilePage from "./PublicProfilePage";
 import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
-import GymProfilePage from "./GymProfilePage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
-function LegacyGymLocationRedirect() {
-  const { placeId } = useParams();
-  const nextPlaceId = encodeURIComponent(String(placeId || "").trim());
-  return <Navigate to={`../location/${nextPlaceId}`} replace />;
-}
 
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
@@ -124,7 +118,7 @@ function AthleteDashboard({ profile, id, userState }) {
           Add meal
         </button>
         <button className="studio-back home-quick-btn" onClick={() => navigate(`/settings`)}>
-          Set region
+          Settings
         </button>
       </div>
       <DashboardWalkthroughModal
@@ -463,8 +457,6 @@ export default function AthleteMode() {
           path="community/thread/:threadId"
           element={<CommunityHub userId={id} forceThreadPage />}
         />
-        <Route path="community/location/:placeId" element={<GymProfilePage mode="athlete" viewerId={id} />} />
-        <Route path="community/gym/:placeId" element={<LegacyGymLocationRedirect />} />
         <Route path="messages" element={<MessagesPage mode="athlete" userId={id} />} />
       </Routes>
     </div>

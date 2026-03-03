@@ -1731,21 +1731,6 @@ const StrengthProgressTab = ({ userId }) => {
     }
   }, [programs, pinnedProgramIds]);
 
-  const handleOpenMyGym = async () => {
-    if (!userId) return;
-    const { data: row } = await supabase
-      .from('user_profiles')
-      .select('primary_region_place_id, primary_gym_place_id')
-      .eq('id', Number(userId))
-      .maybeSingle();
-    const placeId = String(row?.primary_region_place_id || row?.primary_gym_place_id || '').trim();
-    if (!placeId) {
-      setBanner({ type: 'warn', message: 'Set your region in Profile settings first.' });
-      return;
-    }
-    navigate(`/gym/${userId}/community/location/${encodeURIComponent(placeId)}`);
-  };
-
   return (
     <div className="studio-shell">
       <div className="studio-wrap">
@@ -1784,9 +1769,6 @@ const StrengthProgressTab = ({ userId }) => {
               disabled={!latestWorkoutSummary}
             >
               Last workout
-            </button>
-            <button className="studio-back studio-gym-link-btn studio-header-action-btn" type="button" onClick={handleOpenMyGym}>
-              My region
             </button>
             <div className="studio-toggle">
               <button

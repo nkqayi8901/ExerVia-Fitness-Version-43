@@ -1225,21 +1225,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
   };
 
-  const handleOpenMyGym = async () => {
-    if (!userId) return;
-    const { data: row } = await supabase
-      .from('user_profiles')
-      .select('primary_region_place_id, primary_gym_place_id')
-      .eq('id', Number(userId))
-      .maybeSingle();
-    const placeId = String(row?.primary_region_place_id || row?.primary_gym_place_id || '').trim();
-    if (!placeId) {
-      setBanner({ type: 'warn', message: 'Set your region in Profile settings first.' });
-      return;
-    }
-    navigate(`/athlete/${userId}/community/location/${encodeURIComponent(placeId)}`);
-  };
-
   // remixPlan clones an existing plan into the editor,
   // prefixes the name to signal it is a remix,
   // resets editing id to avoid overwriting originals,
@@ -1320,9 +1305,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               onClick={() => setLastTrainingOpen(true)}
             >
               Last training
-            </button>
-            <button className="studio-back studio-gym-link-btn studio-header-action-btn" type="button" onClick={handleOpenMyGym}>
-              My region
             </button>
             {selectedPlanWeek?.sessions?.length ? (
               <div className="studio-header-checklist">

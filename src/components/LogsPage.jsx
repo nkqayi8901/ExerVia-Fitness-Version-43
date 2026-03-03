@@ -513,6 +513,24 @@ export default function LogsPage({ mode = "gym" }) {
   const maxWaterInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.waterMl || 0));
   const selectedWeightKg = toKg(selectedLog?.weightValue, selectedLog?.weightUnit || "kg");
   const selectedWaterMl = toMl(selectedLog?.waterAmount, selectedLog?.waterUnit || "ml");
+  const lastLoggedWeight = useMemo(() => {
+    const entries = Object.entries(dailyLogsByDate || {})
+      .filter(([dayKey, log]) => {
+        if (dayKey === selectedDay) return false;
+        const day = normalizeDayLog(log);
+        return day.weightValue !== "" && day.weightValue !== null && Number(day.weightValue) > 0;
+      })
+      .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime());
+    if (!entries.length) return "";
+    const [dayKey, log] = entries[0];
+    const day = normalizeDayLog(log);
+    const dateLabel = new Date(`${dayKey}T00:00:00`).toLocaleDateString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+    return `${day.weightValue} ${day.weightUnit || "kg"} (${dateLabel})`;
+  }, [dailyLogsByDate, normalizeDayLog, selectedDay]);
   const weightGoalStatus =
     Number(weightGoalKg) > 0 && selectedWeightKg > 0
       ? `${selectedWeightKg >= Number(weightGoalKg) ? "On/above" : "Below"} target by ${Math.abs(
@@ -1238,6 +1256,9 @@ export default function LogsPage({ mode = "gym" }) {
         <div className="hud-card">
           <div className="hud-card-title">Weight</div>
           <div className="hud-dim">How is the weight looking today? Keep it honest and consistent.</div>
+          <div className="logs-goal-note">
+            {lastLoggedWeight ? `Last logged: ${lastLoggedWeight}` : "No previous weight logged yet."}
+          </div>
           <div className="logs-goal-row">
             <input
               className="studio-form-input"

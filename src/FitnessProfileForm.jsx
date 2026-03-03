@@ -17,13 +17,6 @@ const slugifyUsername = (value) =>
     .replace(/[^a-z0-9]+/g, "")
     .slice(0, 24);
 
-const toRegionKeyPart = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
 const parseAuthError = (error, fallback) => {
   const message = String(error?.message || "").toLowerCase();
   if (message.includes("invalid login credentials")) {
@@ -44,69 +37,17 @@ const parseAuthError = (error, fallback) => {
   return fallback;
 };
 
-const MAPS_KEY = String(process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
-const REGION_COUNTRIES = [
-  { code: "IE", name: "Ireland" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "US", name: "United States" },
-  { code: "ZA", name: "South Africa" },
-  { code: "CA", name: "Canada" },
-  { code: "AU", name: "Australia" },
-  { code: "NZ", name: "New Zealand" },
-  { code: "IN", name: "India" },
-  { code: "FR", name: "France" },
-  { code: "DE", name: "Germany" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "NL", name: "Netherlands" },
-  { code: "BR", name: "Brazil" },
-  { code: "MX", name: "Mexico" },
-  { code: "NG", name: "Nigeria" },
-  { code: "KE", name: "Kenya" },
-  { code: "AE", name: "United Arab Emirates" },
-  { code: "SG", name: "Singapore" },
-  { code: "PH", name: "Philippines" },
-];
-const REGION_OPTIONS_BY_COUNTRY = {
-  IE: ["Cork", "Dublin", "Galway", "Limerick", "Waterford", "Kerry", "Wexford", "Mayo", "Donegal"],
-  GB: ["England", "Scotland", "Wales", "Northern Ireland", "London", "Manchester", "Birmingham", "Leeds", "Bristol"],
-  US: ["California", "Texas", "Florida", "New York", "Illinois", "Georgia", "Washington", "Massachusetts", "Colorado"],
-  ZA: ["Western Cape", "Gauteng", "KwaZulu-Natal", "Eastern Cape", "Free State", "Limpopo", "Mpumalanga"],
-  CA: ["Ontario", "Quebec", "British Columbia", "Alberta", "Manitoba", "Nova Scotia"],
-  AU: ["New South Wales", "Victoria", "Queensland", "Western Australia", "South Australia", "Tasmania"],
-  NZ: ["Auckland", "Wellington", "Canterbury", "Waikato", "Otago", "Bay of Plenty"],
-  IN: ["Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Gujarat", "West Bengal", "Punjab"],
-  FR: ["Ile-de-France", "Provence-Alpes-Cote d'Azur", "Auvergne-Rhone-Alpes", "Occitanie", "Nouvelle-Aquitaine"],
-  DE: ["Bavaria", "Berlin", "Hamburg", "Hesse", "North Rhine-Westphalia", "Saxony"],
-  ES: ["Madrid", "Catalonia", "Andalusia", "Valencia", "Basque Country", "Galicia"],
-  IT: ["Lombardy", "Lazio", "Sicily", "Veneto", "Emilia-Romagna", "Tuscany"],
-  NL: ["North Holland", "South Holland", "Utrecht", "North Brabant", "Gelderland"],
-  BR: ["Sao Paulo", "Rio de Janeiro", "Minas Gerais", "Bahia", "Parana", "Pernambuco"],
-  MX: ["Mexico City", "Jalisco", "Nuevo Leon", "Puebla", "Yucatan", "Baja California"],
-  NG: ["Lagos", "Abuja FCT", "Rivers", "Kano", "Oyo", "Kaduna"],
-  KE: ["Nairobi", "Mombasa", "Kiambu", "Nakuru", "Kisumu", "Uasin Gishu"],
-  AE: ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah"],
-  SG: ["Central Region", "East Region", "North Region", "North-East Region", "West Region"],
-  PH: ["Metro Manila", "Cebu", "Davao del Sur", "Cavite", "Laguna", "Bulacan"],
-};
-const COUNTRY_NAME_TO_CODE = REGION_COUNTRIES.reduce((acc, item) => {
-  acc[String(item.name || "").toLowerCase()] = item.code;
-  return acc;
-}, {});
-
 export default function FitnessProfileForm({ settingsOnly = false }) {
   const navigate = useNavigate();
   const hasAutoRedirectedRef = useRef(false);
   const settingsSnapshotRef = useRef(null);
-  const placesServiceRef = useRef(null);
-  const placesSessionRef = useRef(null);
-  const regionDebounceRef = useRef(null);
   const lastSyncRef = useRef({ userId: "", at: 0 });
 
   const [mode, setMode] = useState("login");
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [oauthSaving, setOauthSaving] = useState(false);
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
 
   const [email, setEmail] = useState("");
@@ -118,23 +59,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [gymName, setGymName] = useState("");
-  const [gymPlaceId, setGymPlaceId] = useState("");
-  const [gymAddress, setGymAddress] = useState("");
-  const [gymLat, setGymLat] = useState("");
-  const [gymLng, setGymLng] = useState("");
-  const [mapsReady, setMapsReady] = useState(false);
-  const [regionName, setRegionName] = useState("");
-  const [regionPlaceId, setRegionPlaceId] = useState("");
-  const [regionCountryCode, setRegionCountryCode] = useState("");
-  const [regionLat, setRegionLat] = useState("");
-  const [regionLng, setRegionLng] = useState("");
-  const [regionQuery, setRegionQuery] = useState("");
-  const [regionSuggestions, setRegionSuggestions] = useState([]);
-  const [regionSearchLoading, setRegionSearchLoading] = useState(false);
-  const [regionCountrySelect, setRegionCountrySelect] = useState("");
-  const [regionStateSelect, setRegionStateSelect] = useState("");
-  const [regionCountrySearch, setRegionCountrySearch] = useState("");
   const [confirmBanner, setConfirmBanner] = useState(null);
 
   const [profile, setProfile] = useState(null);
@@ -153,45 +77,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   }, [banner, bannerVariant]);
 
   const resolvedUsername = useMemo(() => slugifyUsername(username || fullName), [username, fullName]);
-  const resolvedFallbackCountryCode = useMemo(() => {
-    const explicit = String(regionCountrySelect || "").trim().toUpperCase();
-    if (explicit) return explicit;
-    const stored = String(regionCountryCode || "").trim().toUpperCase();
-    if (stored) return stored;
-    const suffix = String(regionName || "").split(",").pop()?.trim().toLowerCase() || "";
-    return COUNTRY_NAME_TO_CODE[suffix] || "";
-  }, [regionCountrySelect, regionCountryCode, regionName]);
-  const fallbackCountryOptions = useMemo(() => {
-    if (!resolvedFallbackCountryCode) return REGION_COUNTRIES;
-    const exists = REGION_COUNTRIES.some((item) => item.code === resolvedFallbackCountryCode);
-    if (exists) return REGION_COUNTRIES;
-    return [{ code: resolvedFallbackCountryCode, name: resolvedFallbackCountryCode }, ...REGION_COUNTRIES];
-  }, [resolvedFallbackCountryCode]);
-  const filteredFallbackCountryOptions = useMemo(() => {
-    const query = String(regionCountrySearch || "").trim().toLowerCase();
-    if (!query) return fallbackCountryOptions;
-    const filtered = fallbackCountryOptions.filter((item) => {
-      const code = String(item.code || "").toLowerCase();
-      const name = String(item.name || "").toLowerCase();
-      return code.includes(query) || name.includes(query);
-    });
-    // Keep currently selected value visible even if it doesn't match the current search string.
-    if (
-      resolvedFallbackCountryCode &&
-      !filtered.some((item) => item.code === resolvedFallbackCountryCode)
-    ) {
-      const selected = fallbackCountryOptions.find((item) => item.code === resolvedFallbackCountryCode);
-      if (selected) return [selected, ...filtered];
-    }
-    return filtered;
-  }, [fallbackCountryOptions, regionCountrySearch, resolvedFallbackCountryCode]);
-  const fallbackRegionOptions = useMemo(() => {
-    const selected = String(resolvedFallbackCountryCode || "").toUpperCase();
-    const base = REGION_OPTIONS_BY_COUNTRY[selected] || [];
-    const current = String(regionStateSelect || "").trim();
-    if (!current || base.includes(current)) return base;
-    return [current, ...base];
-  }, [resolvedFallbackCountryCode, regionStateSelect]);
   const isSettingsDirty = useMemo(() => {
     if (!settingsOnly || !session?.user || !profile?.id) return false;
     const snapshot = settingsSnapshotRef.current;
@@ -200,22 +85,9 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       String(fullName || "").trim() !== snapshot.fullName ||
       String(username || "").trim() !== snapshot.username ||
       String(fitnessLevel || "").trim() !== snapshot.fitnessLevel ||
-      String(primaryGoal || "").trim() !== snapshot.primaryGoal ||
-      String(regionName || "").trim() !== snapshot.regionName ||
-      String(regionPlaceId || "").trim() !== snapshot.regionPlaceId ||
-      String(regionCountryCode || "").trim() !== snapshot.regionCountryCode ||
-      String(regionLat || "").trim() !== snapshot.regionLat ||
-      String(regionLng || "").trim() !== snapshot.regionLng ||
-      String(regionCountrySelect || "").trim() !== snapshot.regionCountrySelect ||
-      String(regionStateSelect || "").trim() !== snapshot.regionStateSelect ||
-      String(gymName || "").trim() !== snapshot.gymName ||
-      String(gymPlaceId || "").trim() !== snapshot.gymPlaceId ||
-      String(gymAddress || "").trim() !== snapshot.gymAddress ||
-      String(gymLat || "").trim() !== snapshot.gymLat ||
-      String(gymLng || "").trim() !== snapshot.gymLng
+      String(primaryGoal || "").trim() !== snapshot.primaryGoal
     );
-  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal, regionName, regionPlaceId, regionCountryCode, regionLat, regionLng, regionCountrySelect, regionStateSelect, gymName, gymPlaceId, gymAddress, gymLat, gymLng]);
-
+  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal]);
   const setUserStorage = (profileRow, authUser) => setAuthStorage(profileRow, authUser);
   const clearUserStorage = () => clearAuthStorage();
 
@@ -378,37 +250,12 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         setUsername(row.username || "");
         setFitnessLevel(row.fitness_level || "Beginner");
         setPrimaryGoal(row.primary_goal || "Build Muscle");
-        setRegionName(row.primary_region_name || "");
-        setRegionPlaceId(row.primary_region_place_id || "");
-        setRegionCountryCode(row.primary_region_country_code || "");
-        setRegionLat(row.primary_region_lat == null ? "" : String(row.primary_region_lat));
-        setRegionLng(row.primary_region_lng == null ? "" : String(row.primary_region_lng));
-        setRegionQuery(row.primary_region_name || "");
-        setRegionCountrySelect(String(row.primary_region_country_code || "").toUpperCase());
-        setRegionStateSelect(String(row.primary_region_name || "").split(",")[0].trim());
-        setGymName(row.primary_gym_name || "");
-        setGymPlaceId(row.primary_gym_place_id || "");
-        setGymAddress(row.primary_gym_address || "");
-        setGymLat(row.primary_gym_lat == null ? "" : String(row.primary_gym_lat));
-        setGymLng(row.primary_gym_lng == null ? "" : String(row.primary_gym_lng));
         setUserStorage(row, nextSession.user);
         settingsSnapshotRef.current = {
           fullName: String(row.full_name || "").trim(),
           username: String(row.username || "").trim(),
           fitnessLevel: String(row.fitness_level || "Beginner").trim(),
           primaryGoal: String(row.primary_goal || "Build Muscle").trim(),
-          regionName: String(row.primary_region_name || "").trim(),
-          regionPlaceId: String(row.primary_region_place_id || "").trim(),
-          regionCountryCode: String(row.primary_region_country_code || "").trim(),
-          regionLat: row.primary_region_lat == null ? "" : String(row.primary_region_lat).trim(),
-          regionLng: row.primary_region_lng == null ? "" : String(row.primary_region_lng).trim(),
-          regionCountrySelect: String(row.primary_region_country_code || "").trim().toUpperCase(),
-          regionStateSelect: String(row.primary_region_name || "").split(",")[0].trim(),
-          gymName: String(row.primary_gym_name || "").trim(),
-          gymPlaceId: String(row.primary_gym_place_id || "").trim(),
-          gymAddress: String(row.primary_gym_address || "").trim(),
-          gymLat: row.primary_gym_lat == null ? "" : String(row.primary_gym_lat).trim(),
-          gymLng: row.primary_gym_lng == null ? "" : String(row.primary_gym_lng).trim(),
         };
         lastSyncRef.current = { userId: nextUserId, at: Date.now() };
       }
@@ -536,6 +383,22 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   }, [settingsOnly, loading, session, profile, resolveHomePath, navigate]);
 
   useEffect(() => {
+    if (settingsOnly) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashRaw = String(window.location.hash || "");
+    const hashParams = hashRaw.startsWith("#") ? new URLSearchParams(hashRaw.slice(1)) : null;
+    const oauthError =
+      searchParams.get("error_description") ||
+      searchParams.get("error") ||
+      hashParams?.get("error_description") ||
+      hashParams?.get("error");
+    if (!oauthError) return;
+    const cleaned = decodeURIComponent(String(oauthError || "")).replace(/\+/g, " ").trim();
+    if (!cleaned) return;
+    setBanner(`Google sign-in failed: ${cleaned}`, "error");
+  }, [settingsOnly, setBanner]);
+
+  useEffect(() => {
     if (!settingsOnly || loading) return;
     if (!hasSessionUser) {
       navigate("/auth", { replace: true });
@@ -552,86 +415,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     window.addEventListener("beforeunload", beforeUnloadHandler);
     return () => window.removeEventListener("beforeunload", beforeUnloadHandler);
   }, [settingsOnly, session, isSettingsDirty]);
-
-  useEffect(() => {
-    if (!settingsOnly || !MAPS_KEY) return undefined;
-    if (window.google?.maps?.places?.AutocompleteService) {
-      setMapsReady(true);
-      placesServiceRef.current = new window.google.maps.places.AutocompleteService();
-      placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
-      return undefined;
-    }
-    const existing = document.getElementById("exervia-google-maps-script");
-    if (existing) {
-      const onLoad = () => {
-        if (window.google?.maps?.places?.AutocompleteService) {
-          setMapsReady(true);
-          placesServiceRef.current = new window.google.maps.places.AutocompleteService();
-          placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
-        }
-      };
-      existing.addEventListener("load", onLoad);
-      return () => existing.removeEventListener("load", onLoad);
-    }
-    const script = document.createElement("script");
-    script.id = "exervia-google-maps-script";
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(MAPS_KEY)}&libraries=places`;
-    script.onload = () => {
-      if (window.google?.maps?.places?.AutocompleteService) {
-        setMapsReady(true);
-        placesServiceRef.current = new window.google.maps.places.AutocompleteService();
-        placesSessionRef.current = new window.google.maps.places.AutocompleteSessionToken();
-      }
-    };
-    script.onerror = () => setMapsReady(false);
-    document.body.appendChild(script);
-    return undefined;
-  }, [settingsOnly]);
-
-  useEffect(() => {
-    if (!settingsOnly || !mapsReady || !placesServiceRef.current) return undefined;
-    const query = String(regionQuery || "").trim();
-    if (query.length < 2) {
-      setRegionSuggestions([]);
-      setRegionSearchLoading(false);
-      return undefined;
-    }
-    if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
-    regionDebounceRef.current = setTimeout(() => {
-      setRegionSearchLoading(true);
-      placesServiceRef.current.getPlacePredictions(
-        {
-          input: query,
-          sessionToken: placesSessionRef.current,
-          types: ["(regions)"],
-        },
-        (predictions, status) => {
-          setRegionSearchLoading(false);
-          if (status !== "OK" || !Array.isArray(predictions)) {
-            setRegionSuggestions([]);
-            return;
-          }
-          setRegionSuggestions(
-            predictions.slice(0, 8).map((row) => {
-              const terms = Array.isArray(row.terms) ? row.terms : [];
-              const country = terms.length ? String(terms[terms.length - 1]?.value || "").trim().toUpperCase() : "";
-              return {
-                placeId: String(row.place_id || ""),
-                name: String(row.structured_formatting?.main_text || row.description || ""),
-                address: String(row.description || ""),
-                countryCode: country.length === 2 ? country : "",
-              };
-            })
-          );
-        }
-      );
-    }, 250);
-    return () => {
-      if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
-    };
-  }, [regionQuery, mapsReady, settingsOnly]);
 
   const confirmDiscardIfDirty = (nextAction = "") => {
     if (!isSettingsDirty) return true;
@@ -690,36 +473,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const goToApp = async () => {
     if (!confirmDiscardIfDirty("go_to_app")) return;
     await executeGoToApp();
-  };
-
-  const pickRegionSuggestion = (item) => {
-    if (!item) return;
-    setRegionName(String(item.name || ""));
-    setRegionPlaceId(String(item.placeId || ""));
-    setRegionCountryCode(String(item.countryCode || "").toUpperCase());
-    setRegionCountrySelect(String(item.countryCode || "").toUpperCase());
-    setRegionStateSelect(String(item.name || ""));
-    setRegionQuery(String(item.address || item.name || ""));
-    setRegionSuggestions([]);
-    setBanner(`Region linked: ${String(item.name || "Selected region")}`, "success");
-  };
-
-  const clearRegionLink = () => {
-    setRegionName("");
-    setRegionPlaceId("");
-    setRegionCountryCode("");
-    setRegionLat("");
-    setRegionLng("");
-    setRegionCountrySelect("");
-    setRegionStateSelect("");
-    setRegionQuery("");
-    setRegionSuggestions([]);
-    // Keep legacy location fields aligned with region state.
-    setGymName("");
-    setGymPlaceId("");
-    setGymAddress("");
-    setGymLat("");
-    setGymLng("");
   };
 
   const handleLogin = async () => {
@@ -848,37 +601,41 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    if (saving || oauthSaving) return;
+    setOauthSaving(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth`;
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo },
+        }),
+        12000,
+        "Google auth request timed out"
+      );
+      if (error) {
+        setBanner(parseAuthError(error, "Could not start Google sign-in."), "error");
+        return;
+      }
+      setBanner("Redirecting to Google...", "info");
+    } catch (error) {
+      const timeoutLike = String(error?.message || "").toLowerCase().includes("timed out");
+      setBanner(timeoutLike ? "Google sign-in timed out. Try again." : "Could not start Google sign-in.", "error");
+    } finally {
+      setOauthSaving(false);
+    }
+  };
+
   const handleProfileSave = async () => {
     if (!profile?.id) return;
     const cleanUsername = slugifyUsername(username);
-    const selectedCountry = REGION_COUNTRIES.find((item) => item.code === String(resolvedFallbackCountryCode || "").toUpperCase());
-    const isManualRegionMode = !MAPS_KEY;
-    const resolvedRegionCountry = isManualRegionMode
-      ? String(resolvedFallbackCountryCode || "").toUpperCase()
-      : String(regionCountryCode || "").trim().toUpperCase();
-    const resolvedRegionName = isManualRegionMode
-      ? `${String(regionStateSelect || "").trim()}${selectedCountry ? `, ${selectedCountry.name}` : ""}`.trim()
-      : String(regionName || "").trim();
-    const manualRegionPlaceId = isManualRegionMode
-      ? `region:${toRegionKeyPart(resolvedRegionCountry)}:${toRegionKeyPart(regionStateSelect)}`
-      : "";
-    const resolvedRegionPlaceId = isManualRegionMode
-      ? manualRegionPlaceId
-      : String(regionPlaceId || "").trim();
     if (!fullName.trim()) {
       setBanner("Full name is required.", "error");
       return;
     }
     if (!cleanUsername || cleanUsername.length < 3) {
       setBanner("Username must be at least 3 characters.", "error");
-      return;
-    }
-    if (isManualRegionMode && (!resolvedRegionCountry || !String(regionStateSelect || "").trim())) {
-      setBanner("Select both country and state/region.", "error");
-      return;
-    }
-    if (!isManualRegionMode && regionQuery.trim() && !resolvedRegionPlaceId) {
-      setBanner("Select your region from suggestions to keep rankings accurate.", "error");
       return;
     }
     setSaving(true);
@@ -896,60 +653,20 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       return;
     }
 
-    const compatibilityPayload = {
+    const profilePayload = {
       full_name: fullName.trim(),
       display_name: fullName.trim(),
       username: cleanUsername,
       fitness_level: fitnessLevel,
       primary_goal: primaryGoal,
-      // Compatibility mirror for existing location-based flows
-      primary_gym_name: resolvedRegionName || null,
-      primary_gym_place_id: resolvedRegionPlaceId || null,
-      primary_gym_address: resolvedRegionName || null,
-      primary_gym_lat: Number.isFinite(Number(regionLat)) && !isManualRegionMode ? Number(regionLat) : null,
-      primary_gym_lng: Number.isFinite(Number(regionLng)) && !isManualRegionMode ? Number(regionLng) : null,
-      primary_gym_linked_at: resolvedRegionName ? new Date().toISOString() : null,
     };
 
-    const regionPayload = {
-      primary_region_name: resolvedRegionName || null,
-      primary_region_place_id: resolvedRegionPlaceId || null,
-      primary_region_country_code: resolvedRegionCountry || null,
-      primary_region_lat: Number.isFinite(Number(regionLat)) && !isManualRegionMode ? Number(regionLat) : null,
-      primary_region_lng: Number.isFinite(Number(regionLng)) && !isManualRegionMode ? Number(regionLng) : null,
-      primary_region_linked_at: resolvedRegionName ? new Date().toISOString() : null,
-        primary_region_verified: !isManualRegionMode && Boolean(resolvedRegionPlaceId),
-    };
-
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("user_profiles")
-      .update({ ...compatibilityPayload, ...regionPayload })
+      .update(profilePayload)
       .eq("id", profile.id)
       .select("*")
       .single();
-
-    const errorMessage = String(error?.message || "").toLowerCase();
-    const missingRegionColumns =
-      error &&
-      (errorMessage.includes("primary_region_") ||
-        (errorMessage.includes("column") && errorMessage.includes("does not exist")));
-
-    let usedLegacyFallback = false;
-    if (missingRegionColumns) {
-      ({ data, error } = await supabase
-        .from("user_profiles")
-        .update(compatibilityPayload)
-        .eq("id", profile.id)
-        .select("*")
-        .single());
-      if (!error && data) {
-        usedLegacyFallback = true;
-        setBanner(
-          "Profile saved using legacy location fields. Run supabase/region_linking.sql to enable verified region columns.",
-          "warn"
-        );
-      }
-    }
 
     setSaving(false);
     if (error || !data) {
@@ -964,22 +681,8 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       username: String(data.username || "").trim(),
       fitnessLevel: String(data.fitness_level || "Beginner").trim(),
       primaryGoal: String(data.primary_goal || "Build Muscle").trim(),
-      regionName: String(data.primary_region_name || "").trim(),
-      regionPlaceId: String(data.primary_region_place_id || "").trim(),
-      regionCountryCode: String(data.primary_region_country_code || "").trim(),
-      regionLat: data.primary_region_lat == null ? "" : String(data.primary_region_lat).trim(),
-      regionLng: data.primary_region_lng == null ? "" : String(data.primary_region_lng).trim(),
-      regionCountrySelect: String(data.primary_region_country_code || "").trim().toUpperCase(),
-      regionStateSelect: String(data.primary_region_name || "").split(",")[0].trim(),
-      gymName: String(data.primary_gym_name || "").trim(),
-      gymPlaceId: String(data.primary_gym_place_id || "").trim(),
-      gymAddress: String(data.primary_gym_address || "").trim(),
-      gymLat: data.primary_gym_lat == null ? "" : String(data.primary_gym_lat).trim(),
-      gymLng: data.primary_gym_lng == null ? "" : String(data.primary_gym_lng).trim(),
     };
-    if (!usedLegacyFallback) {
-      setBanner("Profile updated.", "success");
-    }
+    setBanner("Profile updated.", "success");
   };
 
   const executeLogout = async () => {
@@ -1210,21 +913,47 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
             <div className="flex gap-3 mt-6 flex-wrap">
               {mode === "login" ? (
-                <button className="profile-button-primary" onClick={handleLogin} disabled={saving} type="button">
+                <button className="profile-button-primary" onClick={handleLogin} disabled={saving || oauthSaving} type="button">
                   {saving ? "Logging in..." : "Login"}
                 </button>
               ) : null}
               {mode === "signup" ? (
-                <button className="profile-button-primary" onClick={handleSignup} disabled={saving} type="button">
+                <button className="profile-button-primary" onClick={handleSignup} disabled={saving || oauthSaving} type="button">
                   {saving ? "Creating account..." : "Create Account"}
                 </button>
               ) : null}
               {mode === "forgot" ? (
-                <button className="profile-button-primary" onClick={handleForgotPassword} disabled={saving} type="button">
+                <button className="profile-button-primary" onClick={handleForgotPassword} disabled={saving || oauthSaving} type="button">
                   {saving ? "Sending..." : "Send Reset Email"}
                 </button>
               ) : null}
             </div>
+            {mode !== "forgot" ? (
+              <>
+                <div className="profile-oauth-divider">
+                  <span>or</span>
+                </div>
+                <button
+                  className="profile-button-secondary profile-google-btn"
+                  onClick={handleGoogleAuth}
+                  disabled={saving || oauthSaving}
+                  type="button"
+                >
+                  <span className="profile-google-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" focusable="false" aria-hidden="true">
+                      <path
+                        fill="#EA4335"
+                        d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.6 3.2 14.5 2.3 12 2.3 6.8 2.3 2.6 6.6 2.6 12s4.2 9.7 9.4 9.7c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.1-1.6H12z"
+                      />
+                      <path fill="#34A853" d="M3.7 7.5l3.2 2.3C7.7 8 9.7 6.6 12 6.6c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.6 4.1 14.5 3.2 12 3.2 8.4 3.2 5.2 5.2 3.7 7.5z" />
+                      <path fill="#FBBC05" d="M12 20.8c2.4 0 4.4-.8 5.8-2.2l-2.8-2.3c-.8.6-1.8 1-3 1-2.2 0-4.1-1.4-4.8-3.3L4 16.5c1.5 2.5 4.4 4.3 8 4.3z" />
+                      <path fill="#4285F4" d="M21 12c0-.6-.1-1.1-.1-1.6H12v3.9h5.4c-.2 1.1-.8 2-1.6 2.7l2.8 2.3C20.3 17.8 21 15.2 21 12z" />
+                    </svg>
+                  </span>
+                  <span>{oauthSaving ? "Opening Google..." : "Continue with Google"}</span>
+                </button>
+              </>
+            ) : null}
           </div>
           )
         ) : (
@@ -1235,7 +964,9 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                 <p className="text-gray-300 m-0">Signed in as {session?.user?.email || "Unknown user"}</p>
               </div>
               <div className="flex gap-2">
-                <button className="studio-back" onClick={goToApp} type="button">Go to App</button>
+                <button className="studio-back" onClick={goToApp} type="button">
+                  Go to App
+                </button>
                 <button className="profile-button-secondary" onClick={handleLogout} type="button">Logout</button>
               </div>
             </div>
@@ -1269,99 +1000,6 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                     <option key={goal} value={goal}>{goal}</option>
                   ))}
                 </select>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div className="hud-divider" />
-                <label className="block text-white mb-2">Region (verified)</label>
-                {MAPS_KEY ? (
-                  <>
-                    <input
-                      className="profile-input"
-                      value={regionQuery}
-                      onChange={(e) => setRegionQuery(e.target.value)}
-                      placeholder="Search region (e.g. Cork, Ireland)"
-                    />
-                    <p className="text-xs text-gray-400 mt-2 mb-0">
-                      Pick from suggestions only. Free text is not used for ranked region leaderboards.
-                    </p>
-                    {mapsReady && regionSearchLoading ? (
-                      <div className="text-xs text-gray-300 mt-2">Searching regions...</div>
-                    ) : null}
-                    {regionSuggestions.length > 0 ? (
-                      <div className="grid gap-2 mt-2">
-                        {regionSuggestions.map((item) => (
-                          <button
-                            key={`region-${item.placeId || item.address}`}
-                            type="button"
-                            className="profile-button-secondary"
-                            onClick={() => pickRegionSuggestion(item)}
-                            style={{ textAlign: "left" }}
-                          >
-                            {item.name}
-                            <div className="text-xs text-gray-300">{item.address}</div>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <input
-                      className="profile-input"
-                      placeholder="Search country (e.g. Ireland)"
-                      value={regionCountrySearch}
-                      onChange={(e) => setRegionCountrySearch(e.target.value)}
-                    />
-                    <div className="mt-2" />
-                    <select
-                      className="profile-select"
-                      value={resolvedFallbackCountryCode}
-                      onChange={(e) => {
-                        setRegionCountrySelect(String(e.target.value || "").toUpperCase());
-                        setRegionStateSelect("");
-                      }}
-                    >
-                      <option value="">Select country</option>
-                      {filteredFallbackCountryOptions.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="mt-2" />
-                    <select
-                      className="profile-select"
-                      value={regionStateSelect}
-                      onChange={(e) => setRegionStateSelect(e.target.value)}
-                      disabled={!resolvedFallbackCountryCode}
-                    >
-                      <option value="">{resolvedFallbackCountryCode ? "Select state/region" : "Select country first"}</option>
-                      {fallbackRegionOptions.map((item) => (
-                        <option key={`${resolvedFallbackCountryCode}-${item}`} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-400 mt-2 mb-0">
-                      Dropdown fallback mode is active because REACT_APP_GOOGLE_MAPS_API_KEY is missing.
-                    </p>
-                  </>
-                )}
-                {(regionPlaceId || regionName) ? (
-                  <div className="text-xs text-gray-300 mt-2">
-                    Linked region: {regionName || "Region"} {regionCountryCode ? `(${regionCountryCode})` : ""}
-                  </div>
-                ) : null}
-                <div className="mt-2">
-                  <button className="profile-button-secondary" type="button" onClick={clearRegionLink}>
-                    Clear Region
-                  </button>
-                </div>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <p className="text-xs text-gray-300 m-0">
-                  Region powers discovery + rankings. It is also mirrored to legacy location fields for compatibility.
-                </p>
               </div>
             </div>
 

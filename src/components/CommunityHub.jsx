@@ -88,29 +88,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     navigate(`/${routePrefix}/${userId}/profile/${resolvedTarget}`);
   };
-  const openGymProfile = (placeId) => {
-    const resolvedPlaceId = String(placeId || "").trim();
-    if (!resolvedPlaceId || !userId) return;
-    navigate(`/${routePrefix}/${userId}/community/location/${encodeURIComponent(resolvedPlaceId)}`);
-  };
-  const handleOpenMyGym = async () => {
-    const linkedPlaceId = String(gymLeaderboardContext?.placeId || "").trim();
-    if (linkedPlaceId) {
-      openGymProfile(linkedPlaceId);
-      return;
-    }
-    const { data: row } = await supabase
-      .from("user_profiles")
-      .select("primary_region_place_id, primary_gym_place_id")
-      .eq("id", Number(userId))
-      .maybeSingle();
-    const fallbackPlaceId = String(row?.primary_region_place_id || row?.primary_gym_place_id || "").trim();
-    if (fallbackPlaceId) {
-      openGymProfile(fallbackPlaceId);
-      return;
-    }
-    setBanner("Set your region in profile settings first.");
-  };
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const backPath = storedMode === "gym" ? `/gym/${userId || ""}` : `/athlete/${userId || ""}`;
   const [activeTab, setActiveTab] = useState("forums");
@@ -354,10 +331,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
         setBanner("Report submitted.");
         return;
       }
-      if (confirmDialog.kind === "report-leaderboard") {
-        await executeReportLeaderboardEntry(confirmDialog.payload?.row);
-        return;
-      }
       if (confirmDialog.kind === "delete-group") {
         await executeDeleteGroup(confirmDialog.payload?.group);
       }
@@ -390,20 +363,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const {
     globalLeaderboard,
     groupLeaderboard,
-    gymLeaderboard,
-    gymLeaderboardContext,
     activityFeedItems,
     leaderboardLoading,
     groupLeaderboardLoading,
-    gymLeaderboardLoading,
     globalLeaderboardLoaded,
     groupLeaderboardLoaded,
-    gymLeaderboardLoaded,
-    reportingLeaderboardUserIds,
     activityFeedLoading,
     loadActivityFeed,
-    executeReportLeaderboardEntry,
-    handleReportLeaderboardEntry,
   } = useCommunityData({
     userId,
     friends,
@@ -411,8 +377,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     activeTab,
     leaderboardGroupId,
     loadProfiles,
-    setBanner,
-    openConfirmDialog,
   });
 
   const refreshGroupsAndMemberships = async () => {
@@ -2939,9 +2903,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               </p>
             </div>
             <div className="community-cta-row">
-              <button className="studio-back community-cta-btn" onClick={handleOpenMyGym} type="button">
-                My region
-              </button>
               <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
                 Create group
               </button>
@@ -3352,18 +3313,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               groupLeaderboardLoading={groupLeaderboardLoading}
               globalLeaderboard={globalLeaderboard}
               groupLeaderboard={groupLeaderboard}
-              gymLeaderboardContext={gymLeaderboardContext}
-              gymLeaderboardLoading={gymLeaderboardLoading}
-              gymLeaderboard={gymLeaderboard}
               globalLeaderboardLoaded={globalLeaderboardLoaded}
               groupLeaderboardLoaded={groupLeaderboardLoaded}
-              gymLeaderboardLoaded={gymLeaderboardLoaded}
-              reportingLeaderboardUserIds={reportingLeaderboardUserIds}
               profiles={profiles}
-              userId={userId}
               openUserProfile={openUserProfile}
-              openGymProfile={openGymProfile}
-              handleReportLeaderboardEntry={handleReportLeaderboardEntry}
             />
           )}
 
