@@ -44,6 +44,10 @@ export default function RequireAuth({ children }) {
   const [authed, setAuthed] = useState(false);
   const [redirectPath, setRedirectPath] = useState("");
   const [resolvedProfileId, setResolvedProfileId] = useState(getStoredProfileId());
+  const cachedProfileId = getStoredProfileId();
+  const cachedProfilePath = cachedProfileId
+    ? resolveProfilePath(location.pathname, cachedProfileId)
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -210,6 +214,9 @@ export default function RequireAuth({ children }) {
         <div className="hud-card">Checking account session...</div>
       </div>
     );
+  }
+  if (!authed && cachedProfilePath && cachedProfilePath !== location.pathname) {
+    return <Navigate to={cachedProfilePath} replace />;
   }
   if (!authed) return <Navigate to="/auth" replace />;
   if (
