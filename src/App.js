@@ -1,6 +1,7 @@
 // App.js
 import { Suspense, lazy, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import ToastHost from "./components/ToastHost";
@@ -214,6 +215,7 @@ function App() {
           </Routes>
         </div>
         <ToastHost />
+        <Analytics />
       </ErrorBoundary>
     </Router>
   );
