@@ -1,6 +1,7 @@
 // App.js
 import { Suspense, lazy, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import RequireAuth from "./components/RequireAuth";
 import ToastHost from "./components/ToastHost";
@@ -215,6 +216,7 @@ function App() {
         </div>
         <ToastHost />
       </ErrorBoundary>
+      <SpeedInsights />
     </Router>
   );
 }
