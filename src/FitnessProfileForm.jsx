@@ -967,7 +967,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
                 <button className="studio-back" onClick={goToApp} type="button">
                   Go to App
                 </button>
-                <button className="profile-button-secondary" onClick={handleLogout} type="button">Logout</button>
+                <button className="studio-back" onClick={handleLogout} type="button">Logout</button>
               </div>
             </div>
             {isSettingsDirty ? (
