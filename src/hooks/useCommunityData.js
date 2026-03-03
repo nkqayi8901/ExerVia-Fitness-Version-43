@@ -95,19 +95,43 @@ export default function useCommunityData({
       });
       if (error) {
         const fallback = await withTimeout(supabase.from("user_profiles").select("id").limit(30));
-        const rows = (fallback.data || []).map((row) => ({
+        let rows = (fallback.data || []).map((row) => ({
           user_id: row.id,
           xp: 0,
           level: 1,
           rank: "E",
           streak_days: 0,
         }));
+        if (!rows.length) {
+          const selfState = await withTimeout(
+            supabase
+              .from("user_state")
+              .select("user_id,xp,level,rank,streak_days")
+              .eq("user_id", Number(userId))
+              .maybeSingle()
+          );
+          if (selfState?.data?.user_id) {
+            rows = [selfState.data];
+          }
+        }
         setGlobalLeaderboard(rows);
         cacheRef.current.global = { data: rows, at: Date.now() };
         loadProfiles(rows.map((row) => row.user_id));
         return;
       }
-      const rows = data || [];
+      let rows = data || [];
+      if (!rows.length) {
+        const selfState = await withTimeout(
+          supabase
+            .from("user_state")
+            .select("user_id,xp,level,rank,streak_days")
+            .eq("user_id", Number(userId))
+            .maybeSingle()
+        );
+        if (selfState?.data?.user_id) {
+          rows = [selfState.data];
+        }
+      }
       setGlobalLeaderboard(rows);
       cacheRef.current.global = { data: rows, at: Date.now() };
       loadProfiles(rows.map((row) => row.user_id));

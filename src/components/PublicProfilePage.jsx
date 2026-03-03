@@ -120,6 +120,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
         { data: memberships },
         { data: sessions },
         { data: strengthRows },
+        { data: activityRows },
       ] = await withTimeout(
         Promise.all([
           supabase
@@ -145,6 +146,12 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
             .eq("user_id", viewedUserId)
             .order("created_at", { ascending: false })
             .limit(12),
+          supabase
+            .from("daily_activity")
+            .select("id, activity_type, activity_date, created_at")
+            .eq("user_id", viewedUserId)
+            .order("created_at", { ascending: false })
+            .limit(20),
         ]),
         7000,
         "Public profile load timed out"
@@ -180,14 +187,38 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
       ]
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 3);
-      setRecentSessions(combinedRecent);
+      const fallbackRecent = (activityRows || [])
+        .filter((row) => {
+          const type = String(row.activity_type || "").trim().toLowerCase();
+          return type === "training_session" || type === "logs_activity" || type === "session_completion";
+        })
+        .map((row) => {
+          const type = String(row.activity_type || "").trim().toLowerCase();
+          const title =
+            type === "training_session"
+              ? "TRAINING"
+              : type === "session_completion"
+                ? "SESSION COMPLETE"
+                : "TRAINING LOGGED";
+          return {
+            id: String(row.id),
+            sourceType: "activity",
+            title,
+            subtitle: "Activity log entry",
+            originLabel: "From activity feed",
+            created_at: row.created_at || row.activity_date,
+          };
+        })
+        .slice(0, 3);
+      const recentToShow = combinedRecent.length ? combinedRecent : fallbackRecent;
+      setRecentSessions(recentToShow);
       localStorage.setItem(
         cacheKey,
         JSON.stringify({
           profile: profileData || null,
           userState: stateData || null,
           groups: mappedGroups,
-          recentSessions: combinedRecent,
+          recentSessions: recentToShow,
         })
       );
       await withTimeout(fetchFriendStatus(), 3000, "Friend status timed out");
@@ -268,6 +299,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
 
   const handleOpenSession = (session) => {
     if (!currentUserId || !viewedUserId || !session?.id || !session?.sourceType) return;
+    if (session.sourceType !== "training" && session.sourceType !== "strength") return;
     const base = mode === "gym" ? `/gym/${id}` : `/athlete/${id}`;
     navigate(`${base}/profile/${viewedUserId}/session/${session.sourceType}/${session.id}`);
   };
@@ -371,14 +403,20 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
             type="button"
             className="public-session-row mt-2"
             onClick={() => handleOpenSession(session)}
+            disabled={session.sourceType === "activity"}
           >
             <span className="public-session-main">
               <span className="public-session-title">{session.title || "SESSION"}</span>
               <span className="public-session-subtitle">
                 {session.subtitle || "No detail"} | {formatDate(session.created_at)}
               </span>
+              {session.originLabel ? (
+                <span className="public-session-subtitle">{session.originLabel}</span>
+              ) : null}
             </span>
-            <span className="public-session-action">View session</span>
+            <span className="public-session-action">
+              {session.sourceType === "activity" ? "Logged" : "View session"}
+            </span>
           </button>
         ))}
       </div>

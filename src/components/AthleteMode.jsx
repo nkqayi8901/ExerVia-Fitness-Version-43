@@ -264,7 +264,6 @@ export default function AthleteMode() {
 // keeps data and UI in sync,
 // cleans up to prevent leaks
   useEffect(() => {
-    if (id) localStorage.setItem("exervia_user_id", id);
     if (id) {
       const path = routeLocation.pathname || "";
       const isSharedPage = path.includes("/profile") || path.includes("/community");

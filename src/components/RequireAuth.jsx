@@ -95,6 +95,26 @@ export default function RequireAuth({ children }) {
           profileId = String(profileByAuth.id);
           setStoredProfileId(profileId);
         } else {
+          const sessionEmail = String(session.user.email || "").trim().toLowerCase();
+          if (sessionEmail) {
+            try {
+              const { data: byEmail } = await withTimeout(
+                supabase
+                  .from("user_profiles")
+                  .select("id,email")
+                  .eq("email", sessionEmail)
+                  .maybeSingle(),
+                6000,
+                "Profile lookup timed out"
+              );
+              if (byEmail?.id) {
+                profileId = String(byEmail.id);
+                setStoredProfileId(profileId);
+              }
+            } catch {
+              // continue to cached fallback below
+            }
+          }
           if (cachedId) {
             try {
               const { data: cachedProfile } = await supabase
@@ -179,6 +199,13 @@ export default function RequireAuth({ children }) {
     );
   }
   if (!authed) return <Navigate to="/auth" replace />;
+  if (
+    authed &&
+    !resolvedProfileId &&
+    (location.pathname.startsWith("/gym/") || location.pathname.startsWith("/athlete/"))
+  ) {
+    return <Navigate to="/create-profile" replace />;
+  }
   if (redirectPath) return <Navigate to={redirectPath} replace />;
   return children;
 }

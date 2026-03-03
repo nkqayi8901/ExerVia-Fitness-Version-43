@@ -71,6 +71,11 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   }, []);
 
   useEffect(() => {
+    if (session?.user?.id) return;
+    hasAutoRedirectedRef.current = false;
+  }, [session?.user?.id]);
+
+  useEffect(() => {
     if (!banner) return;
     if (bannerVariant === "error") return;
     emitToast(banner, bannerVariant, 3000);

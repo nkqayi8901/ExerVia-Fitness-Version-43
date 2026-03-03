@@ -26,7 +26,7 @@ export default function LandingPage() {
 
       <section className="max-w-6xl mx-auto px-6 py-16 text-center">
         <h1 className="text-5xl font-bold text-white mb-6">
-          Dual-Mode <span className="landing-gradient-text">Fitness Platform</span>
+          Dual-Mode <span className="landing-gradient-text">Fitness Social Platform</span>
         </h1>
         <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
           Choose your path: Gym strength training or athletic performance. A community driven fitness journey.
@@ -42,7 +42,7 @@ export default function LandingPage() {
             <p className="text-gray-300 mb-4">Strength training & muscle building</p>
             <ul className="text-gray-400 space-y-2 text-left">
               <li>• Progressive overload tracking</li>
-              <li>• Workout plan generation</li>
+              <li>• Workout plan optimisation</li>
               <li>• Strength metrics analysis</li>
             </ul>
           </div>
@@ -55,7 +55,7 @@ export default function LandingPage() {
             <h3 className="text-2xl font-bold text-white mb-4">Athlete Mode</h3>
             <p className="text-gray-300 mb-4">Sport performance & endurance</p>
             <ul className="text-gray-400 space-y-2 text-left">
-              <li>• Sport-specific training</li>
+              <li>• Training-specific training</li>
               <li>• Performance analytics</li>
               <li>• Competition preparation</li>
             </ul>

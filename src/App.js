@@ -84,8 +84,7 @@ function HomeEntryRoute() {
           lastPath.startsWith("/gym/") ||
           lastPath.startsWith("/athlete/") ||
           lastPath.startsWith("/nutrition") ||
-          lastPath.startsWith("/journal") ||
-          lastPath.startsWith("/settings");
+          lastPath.startsWith("/journal");
         if (resumeable) {
           navigate(lastPath, { replace: true });
           return;

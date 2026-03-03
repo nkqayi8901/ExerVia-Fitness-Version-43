@@ -251,7 +251,6 @@ export default function GymMode() {
 // keeps data and UI in sync,
 // cleans up to prevent leaks
   useEffect(() => {
-    if (id) localStorage.setItem("exervia_user_id", id);
     if (id) localStorage.setItem("exervia_active_mode", "gym");
 
 // setMode manages a focused piece of logic,
