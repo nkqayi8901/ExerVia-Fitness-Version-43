@@ -148,12 +148,25 @@ export default function RequireAuth({ children }) {
         }
       } catch (error) {
         console.error("RequireAuth validate failed:", error);
+        let fallbackHasSession = hasSessionUser;
+        if (!fallbackHasSession) {
+          try {
+            const fallbackSession = (await supabase.auth.getSession())?.data?.session || null;
+            fallbackHasSession = Boolean(fallbackSession?.user?.id);
+          } catch {
+            fallbackHasSession = false;
+          }
+        }
         if (!cancelled && validateSeq === currentSeq) {
-          if (!hasSessionUser) {
+          if (!fallbackHasSession) {
             clearAuthStorage();
             setResolvedProfileId("");
+            setAuthed(false);
+          } else {
+            // Preserve previous resolved profile id on transient failures so route
+            // normalization can still push tampered URLs back to the signed-in user.
+            setAuthed(true);
           }
-          setAuthed(hasSessionUser);
           setRedirectPath("");
           setReady(true);
         }
