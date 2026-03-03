@@ -350,10 +350,18 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     boot();
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (loadingGuardTimeout) {
         clearTimeout(loadingGuardTimeout);
         loadingGuardTimeout = null;
+      }
+      // Avoid clearing active auth state from transient null-session events
+      // (for example INITIAL_SESSION while tokens are refreshing).
+      if (!nextSession?.user?.id) {
+        if (event === "SIGNED_OUT") {
+          syncSession(null);
+        }
+        return;
       }
       syncSession(nextSession);
     });

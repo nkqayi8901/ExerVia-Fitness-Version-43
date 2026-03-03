@@ -81,14 +81,16 @@ export default function RequireAuth({ children }) {
             // continue and treat as signed out
           }
         }
-        if (!session?.user?.id || cancelled || validateSeq !== currentSeq) {
-          if (!cancelled) {
-            clearAuthStorage();
-            setResolvedProfileId("");
-            setRedirectPath("");
-            setAuthed(false);
-            setReady(true);
-          }
+        // Stale or cancelled validations must never mutate auth state.
+        if (cancelled || validateSeq !== currentSeq) {
+          return;
+        }
+        if (!session?.user?.id) {
+          clearAuthStorage();
+          setResolvedProfileId("");
+          setRedirectPath("");
+          setAuthed(false);
+          setReady(true);
           return;
         }
 
