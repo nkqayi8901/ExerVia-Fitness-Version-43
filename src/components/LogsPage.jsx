@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
@@ -25,6 +25,15 @@ import {
   upsertDailyLog,
 } from "../services/logsApi";
 
+// This component is responsible for rendering the Logs page, which 
+// includes daily logging of meals, supplements, extra activities, and 
+// displaying training sessions for a given day.
+// The component manages a complex state that includes the daily logs,
+// training sessions, saved meals, supplement library, and various UI states.
+// The component also handles interactions such as adding meals, supplements,
+// extra activities, and viewing training session details.
+// The code is structured with multiple useEffect hooks to handle 
+// data fetching and state updates,
 const EXTRA_ACTIVITY_TYPES = ["Yoga", "Pilates", "Sauna", "Steam", "Walk", "Mobility"];
 const BASE_SUPPLEMENTS = [
   "Creatine",
@@ -46,6 +55,12 @@ const toDayKeyLocal = (value) => {
   return `${year}-${month}-${day}`;
 };
 
+// Utility functions for normalizing and inferring log data, 
+// formatting labels, and unit conversions.
+// These functions help to maintain consistent data structures and
+// provide user-friendly labels and insights based on the logged data.
+// The isLegacyCompletion function checks if a log entry represents a 
+// completed session based on its type and notes.
 const isLegacyCompletion = (item) =>
   /program|session/i.test(String(item?.type || "")) && /completed/i.test(String(item?.notes || ""));
 
@@ -97,6 +112,15 @@ const toMl = (value, unit) => {
   return String(unit || "ml").toLowerCase() === "liters" ? num * 1000 : num;
 };
 
+// The LogsPage component is the main component for the logs page, which includes
+// the logic for fetching and displaying daily logs, training sessions, and
+// handling user interactions for logging meals, supplements, and extra activities.
+// The component uses multiple useEffect hooks to manage data fetching and state updates,
+// and useMemo to compute derived data for rendering the UI efficiently.
+// The component also includes logic for handling loading states, error handling, and
+// providing insights based on the logged data.
+// The component relies on various services for data fetching and state management,
+// and uses utility functions for data normalization and formatting.
 export default function LogsPage({ mode = "gym" }) {
   const { id } = useParams();
   const navigate = useNavigate();

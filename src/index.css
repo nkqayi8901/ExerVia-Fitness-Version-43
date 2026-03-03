@@ -984,6 +984,27 @@ code {
   white-space: nowrap;
 }
 
+.mode-gym .public-session-row {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f172a;
+}
+
+.mode-gym .public-session-row:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.mode-gym .public-session-subtitle {
+  color: rgba(15, 23, 42, 0.68);
+}
+
+.mode-gym .public-session-action {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: rgba(15, 23, 42, 0.86);
+  background: rgba(255, 255, 255, 0.92);
+}
+
 .profile-shell .profile-explain {
   margin-top: 36px;
 }

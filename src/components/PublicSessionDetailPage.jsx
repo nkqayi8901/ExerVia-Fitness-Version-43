@@ -38,6 +38,7 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
   const [banner, setBanner] = useState("");
   const [entry, setEntry] = useState(null);
   const [sameDayStrength, setSameDayStrength] = useState([]);
+  const [strengthReportDate, setStrengthReportDate] = useState("");
 
   useEffect(() => {
     const run = async () => {
@@ -60,6 +61,20 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
           return;
         }
         setEntry(data);
+        setStrengthReportDate(data.created_at || "");
+        const fromIso = startOfDayIso(data.created_at);
+        const toIso = endOfDayIso(data.created_at);
+        if (fromIso && toIso) {
+          const { data: strengthRows } = await supabase
+            .from("strength_logs")
+            .select("id,created_at,exercise_name,sets,reps,weight")
+            .eq("user_id", resolvedTargetId)
+            .gte("created_at", fromIso)
+            .lte("created_at", toIso)
+            .order("created_at", { ascending: true })
+            .limit(60);
+          setSameDayStrength(strengthRows || []);
+        }
         setLoading(false);
         return;
       }
@@ -129,12 +144,30 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
 
       {!entry ? null : isStrength ? (
         <div className="hud-card">
-          <div className="hud-card-title">STRENGTH LOG</div>
+          <div className="hud-card-title">TRAINING REPORT</div>
           <div className="hud-big">{String(entry.exercise_name || "Strength").toUpperCase()}</div>
-          <div className="hud-dim mt-2">{formatDateTime(entry.created_at)}</div>
-          <div className="mt-3">
-            {Number(entry.sets || 0)} sets · {entry.reps || 0} reps
-            {Number(entry.weight || 0) > 0 ? ` · ${entry.weight} kg` : ""}
+          <div className="hud-dim mt-2">{formatDateTime(strengthReportDate || entry.created_at)}</div>
+          <div className="table-shell mt-3">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Exercise</th>
+                  <th>Sets</th>
+                  <th>Rep Range</th>
+                  <th>Weight (kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(sameDayStrength.length ? sameDayStrength : [entry]).map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.exercise_name || "Exercise"}</td>
+                    <td>{Number(row.sets || 0)}</td>
+                    <td>{row.reps || "-"}</td>
+                    <td>{Number(row.weight || 0) > 0 ? row.weight : "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           {entry.notes ? <div className="mt-2">{entry.notes}</div> : null}
         </div>
@@ -184,4 +217,3 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
     </div>
   );
 }
-
