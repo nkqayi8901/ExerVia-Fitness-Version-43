@@ -644,7 +644,41 @@ export default function LogsPage({ mode = "gym" }) {
     }
     return [40, 50, 60, 70, 80, 90, 100, 110, 120, 130];
   }, [selectedLog?.weightUnit]);
-  
+
+  const deriveCompletionExercises = useCallback((reportRow) => {
+    if (!reportRow || reportRow.sourceType !== "session_completion") return [];
+    const details = reportRow.report?.details || null;
+    if (!details || details.category !== "workout_program") return [];
+
+    const existing = Array.isArray(details.exercises) ? details.exercises : [];
+    const expectedCount = Number(details.totalExercises || 0);
+    if (existing.length >= 2 && (!expectedCount || existing.length >= expectedCount)) {
+      return existing;
+    }
+
+    const dayKey = toDayKeyLocal(reportRow.created_at);
+    const sameDayStrength = (trainingByDay[dayKey] || []).filter((item) => item.sourceType === "strength_log");
+    if (sameDayStrength.length < 2) return existing;
+
+    const dedupedByName = new Map();
+    [...sameDayStrength]
+      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+      .forEach((item, index) => {
+        const name = String(item?.report?.exerciseName || item?.title || "").trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        dedupedByName.set(key, {
+          id: item.sourceRowId || item.id || `exercise-${index}`,
+          name,
+          sets: Number(item?.report?.sets || 0),
+          reps: item?.report?.reps || "",
+          weight: Number(item?.report?.weight || 0),
+        });
+      });
+
+    const rebuilt = Array.from(dedupedByName.values());
+    return rebuilt.length > existing.length ? rebuilt : existing;
+  }, [trainingByDay]);
 
   const allSessionCompletions = useMemo(() => {
     const rows = [];
@@ -743,8 +777,14 @@ export default function LogsPage({ mode = "gym" }) {
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
 
       const prevDetails = previous?.report || null;
-      const currentExercises = Array.isArray(details.exercises) ? details.exercises : [];
-      const previousExercises = Array.isArray(prevDetails?.exercises) ? prevDetails.exercises : [];
+      const currentExercises = deriveCompletionExercises(activeTrainingReport);
+      const previousExercises = previous
+        ? deriveCompletionExercises({
+            sourceType: "session_completion",
+            created_at: previous.created_at,
+            report: { details: prevDetails || null },
+          })
+        : [];
 
       const previousByExercise = {};
       previousExercises.forEach((exercise) => {
@@ -761,7 +801,11 @@ export default function LogsPage({ mode = "gym" }) {
         if (String(row.id) === String(activeTrainingReport.id)) return;
         const rowTime = new Date(row.created_at || 0).getTime();
         if (rowTime >= currentCreatedAt) return;
-        const exercises = Array.isArray(row.report?.exercises) ? row.report.exercises : [];
+        const exercises = deriveCompletionExercises({
+          sourceType: "session_completion",
+          created_at: row.created_at,
+          report: { details: row.report || null },
+        });
         exercises.forEach((exercise) => {
           const key = String(exercise?.name || "").trim().toLowerCase();
           if (!key) return;
@@ -807,7 +851,12 @@ export default function LogsPage({ mode = "gym" }) {
     }
 
     return null;
-  }, [activeTrainingReport, trainingRows, allSessionCompletions]);
+  }, [activeTrainingReport, trainingRows, allSessionCompletions, deriveCompletionExercises]);
+
+  const activeCompletionExercises = useMemo(
+    () => deriveCompletionExercises(activeTrainingReport),
+    [activeTrainingReport, deriveCompletionExercises]
+  );
 
   const markActivity = async (actionKey = "logs_activity", baseXp = 10, sourceId = "") => {
     if (!id) return;
@@ -1727,10 +1776,13 @@ export default function LogsPage({ mode = "gym" }) {
                         <div className="logs-list-main">
                           <div className="logs-list-title">Program Overview</div>
                           <div className="logs-list-sub">
-                            {(activeTrainingReport.report?.details?.totalExercises ?? 0)} exercises
+                            {Math.max(
+                              Number(activeTrainingReport.report?.details?.totalExercises || 0),
+                              activeCompletionExercises.length
+                            )} exercises
                             {activeTrainingReport.report?.details?.duration ? ` · ${activeTrainingReport.report?.details?.duration}` : ""}
                             {(() => {
-                              const exercises = activeTrainingReport.report?.details?.exercises || [];
+                              const exercises = activeCompletionExercises || [];
                               const hasFailure = exercises.some((exercise) =>
                                 String(exercise?.reps || "").toLowerCase().includes("failure")
                               );
@@ -1750,7 +1802,7 @@ export default function LogsPage({ mode = "gym" }) {
                           <span className="logs-program-report-col">Weight (kg)</span>
                         </div>
                         <div className="logs-program-report-body">
-                          {(activeTrainingReport.report?.details?.exercises || []).map((exercise, index) => (
+                          {(activeCompletionExercises || []).map((exercise, index) => (
                             <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-program-report-row">
                               <span className="logs-program-report-col exercise">
                                 {exercise.name || `Exercise ${index + 1}`}
