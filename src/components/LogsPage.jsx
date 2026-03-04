@@ -1293,23 +1293,20 @@ export default function LogsPage({ mode = "gym" }) {
               <div className="logs-goal-note">
                 {lastLoggedWeight ? `Last logged: ${lastLoggedWeight}` : "No previous weight logged yet."}
               </div>
-              <div className="logs-goal-row">
-                <input
-                  className="studio-form-input"
-                  type="number"
-                  value={weightGoalKg}
-                  onChange={(event) => setWeightGoalKg(event.target.value)}
-                  placeholder="Goal (kg)"
-                />
-                <div className="logs-goal-note">{weightGoalStatus}</div>
-              </div>
-              <div className="logs-row">
+              <div className="logs-row logs-row-wrap">
                 <input
                   className="studio-form-input"
                   type="number"
                   value={selectedLog.weightValue}
                   onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightValue: event.target.value }))}
-                  placeholder={selectedLog.weightUnit === "lbs" ? "max 500" : "max 227"}
+                  placeholder="Current"
+                />
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={weightGoalKg}
+                  onChange={(event) => setWeightGoalKg(event.target.value)}
+                  placeholder={selectedLog.weightUnit === "lbs" ? "Target max 500" : "Target max 227"}
                 />
                 <select
                   className="studio-select"
@@ -1321,28 +1318,26 @@ export default function LogsPage({ mode = "gym" }) {
                 </select>
                 <button className="studio-back logs-action-btn" type="button" onClick={applyWeight}>Save</button>
               </div>
+              <div className="logs-goal-note">{weightGoalStatus}</div>
             </section>
 
             <section className="logs-health-block">
               <div className="logs-health-title">Water</div>
               <div className="hud-dim">Were you able to hit at least 2000ml today?</div>
-              <div className="logs-goal-row">
+              <div className="logs-row logs-row-wrap">
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={selectedLog.waterAmount}
+                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterAmount: event.target.value }))}
+                  placeholder="Current"
+                />
                 <input
                   className="studio-form-input"
                   type="number"
                   value={waterGoalMl}
                   onChange={(event) => setWaterGoalMl(event.target.value)}
                   placeholder="Goal (ml)"
-                />
-                <div className="logs-goal-note">{waterGoalStatus}</div>
-              </div>
-              <div className="logs-row">
-                <input
-                  className="studio-form-input"
-                  type="number"
-                  value={selectedLog.waterAmount}
-                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterAmount: event.target.value }))}
-                  placeholder="e.g. 2500"
                 />
                 <select
                   className="studio-select"
@@ -1354,6 +1349,7 @@ export default function LogsPage({ mode = "gym" }) {
                 </select>
                 <button className="studio-back logs-action-btn" type="button" onClick={applyWater}>Save</button>
               </div>
+              <div className="logs-goal-note">{waterGoalStatus}</div>
             </section>
           </div>
         </div>

@@ -11258,6 +11258,12 @@ code {
   align-items: center;
   margin-bottom: 8px;
 }
+.logs-row-wrap {
+  flex-wrap: wrap;
+}
+.logs-row-wrap .studio-form-input {
+  flex: 1 1 130px;
+}
 
 .logs-action-btn {
   margin-bottom: 0;
