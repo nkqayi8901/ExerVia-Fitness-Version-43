@@ -1122,6 +1122,18 @@ export default function LogsPage({ mode = "gym" }) {
 
   const openTrainingReport = (row) => {
     if (!row) return;
+    if (row.sourceType === "strength_log") {
+      const strengthDayKey = toDayKeyLocal(row.created_at);
+      const completionMatch = combinedTrainingItems.find((item) => {
+        if (item?.sourceType !== "session_completion") return false;
+        if (String(item?.report?.details?.category || "") !== "workout_program") return false;
+        return toDayKeyLocal(item.created_at) === strengthDayKey;
+      });
+      if (completionMatch) {
+        setActiveTrainingReport(completionMatch);
+        return;
+      }
+    }
     setActiveTrainingReport(row);
   };
 
