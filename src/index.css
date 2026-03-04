@@ -12336,7 +12336,8 @@ code {
 .logs-report-modal {
   width: min(94vw, 560px);
   max-height: min(88vh, 860px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   border: 1px solid rgba(56, 189, 248, 0.3);
   background:
@@ -12511,7 +12512,8 @@ code {
 .logs-program-report {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
+  max-height: none;
   background: rgba(15, 23, 42, 0.36);
 }
 

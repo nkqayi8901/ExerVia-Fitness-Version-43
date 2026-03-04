@@ -755,18 +755,45 @@ export default function LogsPage({ mode = "gym" }) {
       return Math.abs(createdAtMs - completionCreatedAtMs) <= 3 * 60 * 60 * 1000;
     });
 
-    const candidateRows =
-      sameDayStrength.length >= 2
-        ? sameDayStrength
-        : byNoteOrTitle.length >= 2
-          ? byNoteOrTitle
-          : byTimeWindow.length >= 2
-            ? byTimeWindow
-          : sameDayStrength;
+    let candidateRows = [];
+    if (expectedCount > 0 && sameDayStrength.length >= expectedCount) {
+      candidateRows = sameDayStrength;
+    } else if (expectedCount > 0 && byNoteOrTitle.length >= expectedCount) {
+      if (Number.isFinite(completionCreatedAtMs)) {
+        candidateRows = [...byNoteOrTitle]
+          .sort((a, b) => {
+            const aMs = new Date(a.created_at || 0).getTime();
+            const bMs = new Date(b.created_at || 0).getTime();
+            return Math.abs(aMs - completionCreatedAtMs) - Math.abs(bMs - completionCreatedAtMs);
+          })
+          .slice(0, expectedCount);
+      } else {
+        candidateRows = [...byNoteOrTitle]
+          .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+          .slice(0, expectedCount);
+      }
+    } else {
+      candidateRows =
+        sameDayStrength.length >= 2
+          ? sameDayStrength
+          : byNoteOrTitle.length >= 2
+            ? byNoteOrTitle
+            : byTimeWindow.length >= 2
+              ? byTimeWindow
+              : sameDayStrength;
+    }
     if (candidateRows.length < 2) return existing;
 
+    const seenRowIds = new Set();
     const rebuilt = [...candidateRows]
       .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+      .filter((item) => {
+        const key = String(item?.sourceRowId || item?.id || "").trim();
+        if (!key) return true;
+        if (seenRowIds.has(key)) return false;
+        seenRowIds.add(key);
+        return true;
+      })
       .map((item, index) => {
         const name = String(item?.report?.exerciseName || item?.title || "").trim();
         return {
@@ -779,6 +806,10 @@ export default function LogsPage({ mode = "gym" }) {
       });
 
     const normalizedRebuilt = expectedCount > 0 ? rebuilt.slice(0, expectedCount) : rebuilt;
+    if (expectedCount > 0) {
+      if (existing.length >= expectedCount) return existing;
+      if (normalizedRebuilt.length >= expectedCount) return normalizedRebuilt;
+    }
     return normalizedRebuilt.length > existing.length ? normalizedRebuilt : existing;
   }, [trainingByDay, trainingRows]);
 
@@ -1036,6 +1067,7 @@ export default function LogsPage({ mode = "gym" }) {
           ...(current.extraActivities || []),
           {
             id: `extra-${Date.now()}`,
+            created_at: pending.createdAt || new Date().toISOString(),
             source: pending.source || "session_completion",
             type: pending.type || "Workout",
             title: pending.title || pending.type || "Session",

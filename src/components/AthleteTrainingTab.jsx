@@ -1260,13 +1260,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // breath phase cues during the first minute,
-  // used to guide the user into rhythm,
-  // labels switch based on elapsed time,
-  // only active while timer is open
-  const isBreathPhase = timerSeconds <= 60 && timerOpen;
-  const breathLabel = timerSeconds <= 30 ? 'Inhale' : 'Exhale';
-  const breathHint = timerSeconds <= 30 ? '4 seconds in \u00B7 4 seconds hold' : '6 seconds out \u00B7 reset';
   const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
 
   // handleBack returns to the parent view,
@@ -1629,9 +1622,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                           selectedPlan.outline[activePlanWeekIndex]?.sessions ||
                           selectedPlan.outline[0]?.sessions ||
                           []
-                        )
-                          .slice(0, 3)
-                          .map((sessionItem, sessionIndex) => (
+                        ).map((sessionItem, sessionIndex) => (
                           <span
                             key={`preview-${sessionItem}-${sessionIndex}`}
                             className="studio-plan-preview-session-pill"
@@ -1639,27 +1630,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                             {sessionItem}
                           </span>
                         ))}
-                        {(
-                          selectedPlan.outline[activePlanWeekIndex]?.sessions ||
-                          selectedPlan.outline[0]?.sessions ||
-                          []
-                        ).length > 3 && (
-                          <span className="studio-plan-preview-session-more">
-                            + {(
-                              selectedPlan.outline[activePlanWeekIndex]?.sessions ||
-                              selectedPlan.outline[0]?.sessions ||
-                              []
-                            ).length - 3} more
-                          </span>
-                        )}
                       </div>
                     </div>
                   ) : null}
-                    {(selectedPlan.outline || []).length > 2 && (
-                      <div className="studio-plan-preview-more">
-                        + {(selectedPlan.outline || []).length - 2} more weeks
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="studio-queue-actions studio-session-preview-actions">
@@ -2083,21 +2056,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 style={{ width: `${timerProgress * 100}%` }}
               />
             </div>
-            {isBreathPhase && (
-              <div className="studio-breath">
-                <div className="studio-breath-ring" />
-                <div className="studio-breath-label">{breathLabel}</div>
-                <div className="studio-breath-sub">{breathHint}</div>
-              </div>
-            )}
             {timerChecklistWeek?.sessions?.length ? (
               <div className="studio-floor-plan-checklist">
-                <div className="studio-floor-plan-checklist-title">Today Checklist</div>
+                <div className="studio-floor-plan-checklist-title">Session Objectives</div>
                 <div className="studio-floor-plan-checklist-week">
                   {timerChecklistWeek?.week || 'Week 1'}
                 </div>
                 <ul className="studio-floor-plan-checklist-list">
-                  {(timerChecklistWeek?.sessions || []).slice(0, 3).map((sessionItem, index) => (
+                  {(timerChecklistWeek?.sessions || []).map((sessionItem, index) => (
                     <li key={`timer-check-${index}`}>{sessionItem}</li>
                   ))}
                 </ul>
