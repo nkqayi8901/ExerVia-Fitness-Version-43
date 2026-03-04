@@ -13090,6 +13090,25 @@ code {
   font-size: 0.76rem;
   color: rgba(148, 163, 184, 0.92);
 }
+.logs-health-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.logs-health-block {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.22);
+}
+.logs-health-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.88);
+  font-weight: 700;
+}
 .logs-day-controls {
   display: grid;
   justify-items: end;
@@ -13121,9 +13140,14 @@ code {
 .mode-gym .journal-mood-label,
 .mode-gym .journal-tag-pill,
 .mode-gym .logs-trend-title,
+.mode-gym .logs-health-title,
 .mode-gym .logs-trend-label,
 .mode-gym .logs-goal-note {
   color: #1f2937;
+}
+.mode-gym .logs-health-block {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 244, 0.9));
+  border-color: rgba(15, 23, 42, 0.14);
 }
 .mode-gym .logs-viewing-day,
 .mode-gym .logs-viewing-day span {
@@ -13138,7 +13162,8 @@ code {
 
 @media (max-width: 900px) {
   .studio-progress-grid,
-  .logs-trend-grid {
+  .logs-trend-grid,
+  .logs-health-grid {
     grid-template-columns: 1fr;
   }
   .journal-history-top {

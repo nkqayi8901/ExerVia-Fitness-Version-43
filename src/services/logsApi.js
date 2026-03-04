@@ -1,3 +1,10 @@
+// This module provides functions for interacting with the Supabase backend to manage
+// daily logs, saved meals, and supplement library for the Exervia Fitness application.
+// It includes functions for fetching and upserting daily logs, managing saved meals,
+// and handling the supplement library. The module also includes utility functions
+// for normalizing log data, inferring insights, and formatting labels and units.
+// The functions are designed to handle errors gracefully and provide consistent
+// data structures for the frontend components to consume.
 import { supabase } from "../supabaseClient";
 
 const emptyDay = () => ({

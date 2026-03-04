@@ -1,3 +1,10 @@
+// This module provides functions for managing logs storage in localStorage,
+// including fetching and saving the logs store, managing saved meals, and
+// handling prefill data for training sessions. The logs store is structured
+// to include daily logs, a supplement library, and saved meals, and is 
+// keyed by user ID to allow for multiple users on the same device. The module
+// also includes utility functions for generating keys and handling localStorage
+// interactions safely.
 const buildUserKey = (prefix, userId) => `${prefix}_${userId || "guest"}`;
 
 const getTodayKey = () => {

@@ -185,7 +185,14 @@ export default function LogsPage({ mode = "gym" }) {
       if (timeoutHandle) clearTimeout(timeoutHandle);
     }
   };
-
+// The component includes various useEffect hooks for handling data fetching and state updates,
+// such as fetching daily logs, training sessions, and managing loading states and error handling.
+// The component also includes logic for computing derived data such
+//  as the training sessions for the selected day,
+// meal suggestions based on user input, and insights based on the logged data.
+// The component also handles user interactions for logging meals, supplements, 
+// extra activities, and viewing training session details, and 
+// provides feedback through banners and toasts.
   useEffect(() => {
     const dayParam = String(searchParams.get("day") || "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dayParam)) return;
@@ -1278,71 +1285,76 @@ export default function LogsPage({ mode = "gym" }) {
 
       <div className="grid-2 logs-grid">
         <div className="hud-card">
-          <div className="hud-card-title">Weight</div>
-          <div className="hud-dim">How is the weight looking today? Keep it honest and consistent.</div>
-          <div className="logs-goal-note">
-            {lastLoggedWeight ? `Last logged: ${lastLoggedWeight}` : "No previous weight logged yet."}
-          </div>
-          <div className="logs-goal-row">
-            <input
-              className="studio-form-input"
-              type="number"
-              value={weightGoalKg}
-              onChange={(event) => setWeightGoalKg(event.target.value)}
-              placeholder="Goal (kg)"
-            />
-            <div className="logs-goal-note">{weightGoalStatus}</div>
-          </div>
-          <div className="logs-row">
-            <input
-              className="studio-form-input"
-              type="number"
-              value={selectedLog.weightValue}
-              onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightValue: event.target.value }))}
-              placeholder={selectedLog.weightUnit === "lbs" ? "max 500" : "max 227"}
-            />
-            <select
-              className="studio-select"
-              value={selectedLog.weightUnit}
-              onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightUnit: event.target.value }))}
-            >
-              <option value="kg">kg</option>
-              <option value="lbs">lbs</option>
-            </select>
-            <button className="studio-back logs-action-btn" type="button" onClick={applyWeight}>Save</button>
-          </div>
-        </div>
+          <div className="hud-card-title">Body Metrics</div>
+          <div className="logs-health-grid">
+            <section className="logs-health-block">
+              <div className="logs-health-title">Weight</div>
+              <div className="hud-dim">How is the weight looking today? Keep it honest and consistent.</div>
+              <div className="logs-goal-note">
+                {lastLoggedWeight ? `Last logged: ${lastLoggedWeight}` : "No previous weight logged yet."}
+              </div>
+              <div className="logs-goal-row">
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={weightGoalKg}
+                  onChange={(event) => setWeightGoalKg(event.target.value)}
+                  placeholder="Goal (kg)"
+                />
+                <div className="logs-goal-note">{weightGoalStatus}</div>
+              </div>
+              <div className="logs-row">
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={selectedLog.weightValue}
+                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightValue: event.target.value }))}
+                  placeholder={selectedLog.weightUnit === "lbs" ? "max 500" : "max 227"}
+                />
+                <select
+                  className="studio-select"
+                  value={selectedLog.weightUnit}
+                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightUnit: event.target.value }))}
+                >
+                  <option value="kg">kg</option>
+                  <option value="lbs">lbs</option>
+                </select>
+                <button className="studio-back logs-action-btn" type="button" onClick={applyWeight}>Save</button>
+              </div>
+            </section>
 
-        <div className="hud-card">
-          <div className="hud-card-title">Water</div>
-          <div className="hud-dim">Were you able to hit at least 2000ml today?</div>
-          <div className="logs-goal-row">
-            <input
-              className="studio-form-input"
-              type="number"
-              value={waterGoalMl}
-              onChange={(event) => setWaterGoalMl(event.target.value)}
-              placeholder="Goal (ml)"
-            />
-            <div className="logs-goal-note">{waterGoalStatus}</div>
-          </div>
-          <div className="logs-row">
-            <input
-              className="studio-form-input"
-              type="number"
-              value={selectedLog.waterAmount}
-              onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterAmount: event.target.value }))}
-              placeholder="e.g. 2500"
-            />
-            <select
-              className="studio-select"
-              value={selectedLog.waterUnit}
-              onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterUnit: event.target.value }))}
-            >
-              <option value="ml">ml</option>
-              <option value="liters">liters</option>
-            </select>
-            <button className="studio-back logs-action-btn" type="button" onClick={applyWater}>Save</button>
+            <section className="logs-health-block">
+              <div className="logs-health-title">Water</div>
+              <div className="hud-dim">Were you able to hit at least 2000ml today?</div>
+              <div className="logs-goal-row">
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={waterGoalMl}
+                  onChange={(event) => setWaterGoalMl(event.target.value)}
+                  placeholder="Goal (ml)"
+                />
+                <div className="logs-goal-note">{waterGoalStatus}</div>
+              </div>
+              <div className="logs-row">
+                <input
+                  className="studio-form-input"
+                  type="number"
+                  value={selectedLog.waterAmount}
+                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterAmount: event.target.value }))}
+                  placeholder="e.g. 2500"
+                />
+                <select
+                  className="studio-select"
+                  value={selectedLog.waterUnit}
+                  onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, waterUnit: event.target.value }))}
+                >
+                  <option value="ml">ml</option>
+                  <option value="liters">liters</option>
+                </select>
+                <button className="studio-back logs-action-btn" type="button" onClick={applyWater}>Save</button>
+              </div>
+            </section>
           </div>
         </div>
 
