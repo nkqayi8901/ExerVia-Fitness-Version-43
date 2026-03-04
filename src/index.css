@@ -2687,6 +2687,13 @@ code {
 
 /* ====== FUEL PROTOCOL (NUTRITION) ====== */
 
+.fuel-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .fuel-compact-btn {
   width: auto;
   padding: 12px 14px;

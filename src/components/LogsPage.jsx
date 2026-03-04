@@ -1933,7 +1933,7 @@ export default function LogsPage({ mode = "gym" }) {
                         </div>
                         <div className="logs-program-report-body">
                           {(activeCompletionExercises || []).map((exercise, index) => (
-                            <div key={`${activeTrainingReport.id}-exercise-${exercise.id || index}`} className="logs-program-report-row">
+                            <div key={`${activeTrainingReport.id}-exercise-${index}-${exercise.id || "no-id"}`} className="logs-program-report-row">
                               <span className="logs-program-report-col exercise">
                                 {exercise.name || `Exercise ${index + 1}`}
                                 {(() => {
