@@ -421,22 +421,27 @@ export default function LogsPage({ mode = "gym" }) {
 
   const combinedTrainingItems = useMemo(
     () => {
-      const normalizedTrainingTitles = new Set(
+      const displayTrainingTitle =
         dayTraining
-          .map((row) => String(row.title || "").trim().toLowerCase())
-          .filter((value) => value && !/session$/i.test(value))
-      );
-
+          .map((row) => String(row.title || "").trim())
+          .find((value) => value && !/session$/i.test(value)) || "";
       let completionRows = sessionCompletionEntries
         .map((item) => {
+          const reportTitle = String(
+            item?.report?.title ||
+            item?.report?.programName ||
+            item?.report?.planName ||
+            item?.report?.details?.title ||
+            ""
+          ).trim();
           const inferred = inferCompletionTitle(item);
           const isGeneric = isGenericTrainingLabel(inferred) || /^completed session$/i.test(inferred);
-          const fallbackTitle = normalizedTrainingTitles.values().next().value || "Completed Session";
+          const fallbackTitle = reportTitle || displayTrainingTitle || "Completed Session";
           return {
             id: item.id,
             sourceType: "session_completion",
             created_at: item.created_at || null,
-            title: isGeneric ? fallbackTitle : inferred,
+            title: reportTitle || (isGeneric ? fallbackTitle : inferred),
             detail: `${item.minutes ? `${item.minutes} min` : "No duration"}${item.notes ? ` · ${item.notes}` : ""}`,
             report: {
               source: item.source || "session_completion",
@@ -459,9 +464,16 @@ export default function LogsPage({ mode = "gym" }) {
           const inferredTitle = titleFromNotes
             ? inferCompletionTitle({ notes: titleFromNotes, type: "Workout Program" })
             : "";
+          const normalizedExerciseNames = new Set(
+            sameDayStrength
+              .map((row) => String(row?.report?.exerciseName || row?.title || "").trim().toLowerCase())
+              .filter(Boolean)
+          );
+          const inferredIsExerciseName =
+            inferredTitle && normalizedExerciseNames.has(String(inferredTitle).trim().toLowerCase());
           const fallbackTitle =
-            normalizedTrainingTitles.values().next().value ||
-            inferredTitle ||
+            (!inferredIsExerciseName && inferredTitle) ||
+            displayTrainingTitle ||
             "Strength Session";
 
           const ordered = [...sameDayStrength].sort(
