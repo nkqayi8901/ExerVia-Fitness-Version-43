@@ -182,7 +182,7 @@ export default function TemplatesPanel({
                     templateDeckDragX > 24 ? "swipe-right" : templateDeckDragX < -24 ? "swipe-left" : ""
                   } ${templateDeckAnimating === "left" ? "animate-left" : ""} ${
                     templateDeckAnimating && templateDeckAnimating !== "left" ? "animate-right" : ""
-                  }`}
+                  } ${template.template_type === "recipe" ? "community-template-recipe-card" : ""}`}
                   style={{ transform: `translateX(${templateDeckDragX}px) rotate(${templateDeckDragX * 0.03}deg)` }}
                   onPointerDown={handleTemplateDeckPointerDown}
                   onPointerMove={handleTemplateDeckPointerMove}
@@ -384,7 +384,12 @@ export default function TemplatesPanel({
               const workoutRows = Array.isArray(payload.exercises) ? payload.exercises : [];
               const outlineRows = Array.isArray(payload.outline) ? payload.outline : [];
               return (
-                <div key={template.id} className="community-feed-card">
+                <div
+                  key={template.id}
+                  className={`community-feed-card ${
+                    template.template_type === "recipe" ? "community-template-recipe-card" : ""
+                  }`}
+                >
                   <div className="community-feed-title">{template.title}</div>
                   <div className="community-thread-meta">
                     <button
@@ -503,7 +508,7 @@ export default function TemplatesPanel({
                         type="button"
                         onClick={() => handleRateTemplate(template.id, value)}
                       >
-                        {value}â˜…
+                        {`${value}\u2605`}
                       </button>
                     ))}
                       <button

@@ -208,7 +208,8 @@ export default function LogsPage({ mode = "gym" }) {
       const compositeId = `${String(row?.sourceType || "").trim()}:${sourceRowId}`;
       return reportParam === rowId || reportParam === sourceRowId || reportParam === compositeId;
     });
-    if (match) setActiveTrainingReport(match);
+    if (match) openTrainingReport(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, trainingRows]);
 
   useEffect(() => {
@@ -656,12 +657,66 @@ export default function LogsPage({ mode = "gym" }) {
       return existing;
     }
 
+    const normalizeProgramToken = (value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\b(completed|completion|workout program|training program|program|session)\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
     const dayKey = toDayKeyLocal(reportRow.created_at);
     const sameDayStrength = (trainingByDay[dayKey] || []).filter((item) => item.sourceType === "strength_log");
-    if (sameDayStrength.length < 2) return existing;
+
+    const completionTitle = String(reportRow.title || details.title || "").trim().toLowerCase();
+    const completionNotes = String(reportRow.report?.notes || "").trim().toLowerCase();
+    const normalizedTokens = Array.from(
+      new Set(
+        [
+          completionTitle,
+          completionNotes,
+          String(details?.title || ""),
+          String(details?.programName || ""),
+          String(details?.planName || ""),
+        ]
+          .map(normalizeProgramToken)
+          .filter((value) => value.length >= 3)
+      )
+    );
+    const completionCreatedAtMs = new Date(reportRow.created_at || 0).getTime();
+    const byNoteOrTitle = trainingRows.filter((item) => {
+      if (item.sourceType !== "strength_log") return false;
+      const note = String(item?.report?.notes || "").trim().toLowerCase();
+      const normalizedNote = normalizeProgramToken(note);
+      const label = String(item?.title || item?.report?.exerciseName || "").trim().toLowerCase();
+      const createdAtMs = new Date(item.created_at || 0).getTime();
+      const closeInTime =
+        Number.isFinite(completionCreatedAtMs) && Number.isFinite(createdAtMs)
+          ? Math.abs(createdAtMs - completionCreatedAtMs) <= 24 * 60 * 60 * 1000
+          : false;
+      const noteMatch = !!normalizedNote && normalizedTokens.some((token) => normalizedNote.includes(token));
+      const labelHint = normalizedTokens.some((token) => token && label && token.includes(label));
+      return noteMatch || (closeInTime && labelHint);
+    });
+    const byTimeWindow = trainingRows.filter((item) => {
+      if (item.sourceType !== "strength_log") return false;
+      const createdAtMs = new Date(item.created_at || 0).getTime();
+      if (!Number.isFinite(completionCreatedAtMs) || !Number.isFinite(createdAtMs)) return false;
+      return Math.abs(createdAtMs - completionCreatedAtMs) <= 3 * 60 * 60 * 1000;
+    });
+
+    const candidateRows =
+      sameDayStrength.length >= 2
+        ? sameDayStrength
+        : byNoteOrTitle.length >= 2
+          ? byNoteOrTitle
+          : byTimeWindow.length >= 2
+            ? byTimeWindow
+          : sameDayStrength;
+    if (candidateRows.length < 2) return existing;
 
     const dedupedByName = new Map();
-    [...sameDayStrength]
+    [...candidateRows]
       .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
       .forEach((item, index) => {
         const name = String(item?.report?.exerciseName || item?.title || "").trim();
@@ -678,7 +733,7 @@ export default function LogsPage({ mode = "gym" }) {
 
     const rebuilt = Array.from(dedupedByName.values());
     return rebuilt.length > existing.length ? rebuilt : existing;
-  }, [trainingByDay]);
+  }, [trainingByDay, trainingRows]);
 
   const allSessionCompletions = useMemo(() => {
     const rows = [];
@@ -1169,7 +1224,7 @@ export default function LogsPage({ mode = "gym" }) {
     }
   };
 
-  const openTrainingReport = (row) => {
+  function openTrainingReport(row) {
     if (!row) return;
     if (row.sourceType === "strength_log") {
       const strengthDayKey = toDayKeyLocal(row.created_at);
@@ -1184,7 +1239,7 @@ export default function LogsPage({ mode = "gym" }) {
       }
     }
     setActiveTrainingReport(row);
-  };
+  }
 
   const backPath = mode === "athlete" ? `/athlete/${id}` : `/gym/${id}`;
   const isBootLoading = logsBootLoading || trainingBootLoading;
@@ -1280,9 +1335,15 @@ export default function LogsPage({ mode = "gym" }) {
           </button>
         </div>
 
-        <div className="logs-week-summary">
-          <div>Weight: {dayGlance.weight}</div>
-          <div>Water: {dayGlance.water}</div>
+        <div className="logs-week-summary logs-day-metrics">
+          <div className="logs-day-metric-card">
+            <span className="logs-day-metric-label">Weight</span>
+            <span className="logs-day-metric-value">{dayGlance.weight}</span>
+          </div>
+          <div className="logs-day-metric-card">
+            <span className="logs-day-metric-label">Water</span>
+            <span className="logs-day-metric-value">{dayGlance.water}</span>
+          </div>
         </div>
         <div className="logs-trend-grid">
           <div className="logs-trend-card">

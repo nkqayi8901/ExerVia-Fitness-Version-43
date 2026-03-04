@@ -2763,7 +2763,7 @@ the createPRogram helps resolve this problem  */}
           className="studio-swap-backdrop"
           onClick={(event) => event.target === event.currentTarget && setLastWorkoutOpen(false)}
         >
-          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
+          <div className="studio-swap-panel studio-last-workout-panel" onClick={(event) => event.stopPropagation()}>
             <div className="studio-swap-header">
               <div>
                 <div className="studio-panel-title">Last Workout</div>
@@ -2773,15 +2773,15 @@ the createPRogram helps resolve this problem  */}
                 Close
               </button>
             </div>
-            <div className="studio-swap-body">
+            <div className="studio-swap-body studio-last-workout-body">
               {!latestWorkoutSummary?.rows?.length ? (
                 <div className="studio-empty">No workout data yet.</div>
               ) : (
-                <div className="studio-guide-content">
+                <div className="studio-guide-content studio-last-workout-list">
                   {latestWorkoutSummary.rows.slice(0, 24).map((lift, index) => (
-                    <div key={`${lift.id || "lift"}-${index}`} className="studio-program-preview-row">
-                      <span>{lift.exercise_name || "Exercise"}</span>
-                      <span>
+                    <div key={`${lift.id || "lift"}-${index}`} className="studio-program-preview-row studio-last-workout-row">
+                      <span className="studio-last-workout-exercise">{lift.exercise_name || "Exercise"}</span>
+                      <span className="studio-last-workout-meta">
                         {Number(lift.sets || 0)} sets · {lift.reps || 0} reps
                         {Number(lift.weight || 0) > 0 ? ` · ${lift.weight} kg` : ""}
                       </span>
@@ -2794,9 +2794,7 @@ the createPRogram helps resolve this problem  */}
                       onClick={() => {
                         setLastWorkoutOpen(false);
                         if (userId && latestWorkoutSummary?.dayKey) {
-                          const latestLiftId = latestWorkoutSummary?.rows?.[0]?.id;
-                          const reportParam = latestLiftId ? `&report=${encodeURIComponent(`lift-${latestLiftId}`)}` : "";
-                          navigate(`/gym/${userId}/logs?day=${encodeURIComponent(latestWorkoutSummary.dayKey)}${reportParam}`);
+                          navigate(`/gym/${userId}/logs?day=${encodeURIComponent(latestWorkoutSummary.dayKey)}`);
                         }
                       }}
                     >

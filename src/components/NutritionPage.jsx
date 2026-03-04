@@ -1828,6 +1828,36 @@ export default function NutritionPage() {
       "custom_recipe"
     );
 
+    const customRecipeMeal = {
+      idMeal: `custom:${normalizeTextId(title) || Date.now()}`,
+      strMeal: title,
+      strCategory: payload.mealType || "Dinner",
+      source: "favorite",
+      __source: "custom_recipe",
+      __nutrition: payload.nutrition || {},
+      __slotTags: [String(payload.mealType || "").toLowerCase()].filter(Boolean),
+    };
+    const customRecipeKey = recipeIdentityKey(customRecipeMeal);
+    const customNameKey = `name:${normalizeTextId(title)}`;
+
+    if (customRecipeKey) {
+      setFavoriteRecipeKeys((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        const next = new Set(safePrev);
+        next.add(customRecipeKey);
+        next.add(customNameKey);
+        return Array.from(next).slice(-400);
+      });
+    }
+    setFavoriteMeals((prev) => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const exists = safePrev.some((item) => normalizeTextId(item?.strMeal) === normalizeTextId(title));
+      if (exists) return safePrev;
+      const snapshot = toFavoriteMealSnapshot(customRecipeMeal);
+      return snapshot ? [...safePrev, snapshot].slice(-400) : safePrev;
+    });
+    await saveMealToLibrary(storedId, title, "favorite");
+
     setCustomRecipeDraft({
       title: "",
       mealType: "Dinner",
@@ -2854,11 +2884,11 @@ export default function NutritionPage() {
                 value={customRecipeDraft.tags}
                 onChange={(event) => setCustomRecipeDraft((prev) => ({ ...prev, tags: event.target.value }))}
               />
-              <div className="community-modal-actions">
-                <button className="studio-back hud-secondary-btn" type="button" onClick={() => setCustomRecipeOpen(false)}>
+              <div className="community-modal-actions fuel-custom-actions">
+                <button className="studio-back hud-secondary-btn fuel-custom-action-btn" type="button" onClick={() => setCustomRecipeOpen(false)}>
                   Cancel
                 </button>
-                <button className="studio-back community-cta-btn" type="button" onClick={handleCreateCustomRecipe}>
+                <button className="studio-back community-cta-btn fuel-custom-action-btn" type="button" onClick={handleCreateCustomRecipe}>
                   Share + Add to Logs
                 </button>
               </div>

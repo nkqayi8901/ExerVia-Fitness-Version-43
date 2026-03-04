@@ -8659,8 +8659,10 @@ code {
   font-size: 13px;
   line-height: 1.45;
   color: rgba(226, 232, 240, 0.88);
-  border-left: 2px solid rgba(56, 189, 248, 0.45);
-  padding-left: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 8px 10px;
 }
 
 .community-template-program-report {
@@ -8800,6 +8802,11 @@ code {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.community-thread-select option {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
 .community-thread-select:hover {
   border-color: rgba(var(--community-accent-rgb), 0.5);
 }
@@ -8858,9 +8865,51 @@ code {
 }
 
 .community-rating-btn::after {
-  content: attr(data-rating) "★";
+  content: attr(data-rating) " \2605";
   font-size: 11px;
   line-height: 1;
+}
+
+.community-template-recipe-card {
+  padding: 14px 14px 12px;
+}
+
+.community-template-recipe-card .community-feed-title {
+  margin-bottom: 2px;
+}
+
+.community-template-recipe-card .community-thread-meta {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  row-gap: 6px;
+}
+
+.community-template-recipe-card .community-feed-sub {
+  margin-bottom: 8px;
+  line-height: 1.55;
+}
+
+.community-template-recipe-card .community-template-meta-row {
+  margin-top: 2px;
+  margin-bottom: 8px;
+}
+
+.community-template-recipe-card .community-template-preview {
+  margin-top: 6px;
+}
+
+.community-template-recipe-card .community-reaction-row {
+  margin-top: 10px;
+}
+
+.community-template-recipe-card .community-thread-actions {
+  margin-top: 10px;
+  align-items: center;
+}
+
+.community-template-recipe-card .community-thread-actions .community-action-btn {
+  min-width: 112px;
+  min-height: 36px;
 }
 
 .community-reaction-emoji {
@@ -9875,7 +9924,8 @@ code {
 }
 .mode-gym .community-template-preview-item {
   color: #0f172a;
-  border-left-color: rgba(16, 185, 129, 0.45);
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.82);
 }
 .mode-gym .community-template-program-report,
 .mode-gym .community-template-outline {
@@ -10322,6 +10372,17 @@ code {
   justify-content: flex-end;
   flex-wrap: wrap;
   padding-top: 8px;
+}
+
+.fuel-custom-actions {
+  align-items: stretch;
+}
+
+.fuel-custom-action-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .community-cta-btn:disabled {
@@ -11761,6 +11822,32 @@ code {
   font-weight: 600;
 }
 
+.logs-day-metrics {
+  gap: 12px;
+}
+
+.logs-day-metric-card {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.logs-day-metric-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(186, 230, 253, 0.84);
+  font-weight: 700;
+}
+
+.logs-day-metric-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #ecfeff;
+}
+
 .logs-grid {
   align-items: start;
 }
@@ -11901,6 +11988,12 @@ code {
   max-height: min(88vh, 860px);
   overflow: hidden;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0) 42%),
+    radial-gradient(120% 120% at 100% 0%, rgba(16, 185, 129, 0.14), rgba(16, 185, 129, 0) 38%),
+    linear-gradient(155deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.93));
+  box-shadow: 0 24px 46px rgba(2, 6, 23, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .logs-report-modal .logs-list {
@@ -11928,6 +12021,7 @@ code {
   font-size: 18px;
   font-weight: 800;
   color: rgba(248, 250, 252, 0.98);
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.2);
 }
 
 .logs-report-meta {
@@ -11960,6 +12054,23 @@ code {
   border-color: rgba(16, 185, 129, 0.24);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.94));
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.1);
+}
+
+.mode-gym .logs-day-metric-label {
+  color: rgba(15, 23, 42, 0.62);
+}
+
+.mode-gym .logs-day-metric-value {
+  color: #0f172a;
+}
+
+.mode-gym .logs-report-modal {
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(120% 110% at 0% 0%, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0) 40%),
+    radial-gradient(120% 110% at 100% 0%, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0) 38%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96));
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .mode-gym .logs-panel-title {
@@ -12560,6 +12671,53 @@ code {
 .studio-swap-body {
   padding: 16px;
   overflow-y: auto;
+}
+.studio-last-workout-panel {
+  width: min(760px, 94vw);
+  background:
+    radial-gradient(360px 160px at 8% -10%, rgba(56, 189, 248, 0.16), transparent 68%),
+    radial-gradient(300px 140px at 92% 110%, rgba(99, 102, 241, 0.14), transparent 70%),
+    rgba(15, 23, 42, 0.92);
+}
+.studio-last-workout-body {
+  padding-top: 14px;
+}
+.studio-last-workout-list {
+  display: grid;
+  gap: 10px;
+}
+.studio-last-workout-row {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.44);
+  padding: 10px 12px;
+}
+.studio-last-workout-exercise {
+  display: block;
+  font-weight: 700;
+  color: rgba(240, 249, 255, 0.98);
+  margin-bottom: 3px;
+}
+.studio-last-workout-meta {
+  display: block;
+  color: rgba(167, 243, 208, 0.82);
+  font-size: 12px;
+}
+.mode-gym .studio-last-workout-panel {
+  background:
+    radial-gradient(360px 160px at 8% -10%, rgba(16, 185, 129, 0.13), transparent 68%),
+    radial-gradient(300px 140px at 92% 110%, rgba(59, 130, 246, 0.1), transparent 70%),
+    rgba(248, 250, 252, 0.98);
+}
+.mode-gym .studio-last-workout-row {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+}
+.mode-gym .studio-last-workout-exercise {
+  color: #0f172a;
+}
+.mode-gym .studio-last-workout-meta {
+  color: rgba(15, 23, 42, 0.7);
 }
 .studio-pinned {
   margin-bottom: 14px;
