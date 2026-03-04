@@ -431,14 +431,12 @@ export default function LogsPage({ mode = "gym" }) {
         .map((item) => {
           const inferred = inferCompletionTitle(item);
           const isGeneric = isGenericTrainingLabel(inferred) || /^completed session$/i.test(inferred);
-          if (isGeneric && normalizedTrainingTitles.size > 0) {
-            return null;
-          }
+          const fallbackTitle = normalizedTrainingTitles.values().next().value || "Completed Session";
           return {
             id: item.id,
             sourceType: "session_completion",
             created_at: item.created_at || null,
-            title: inferred,
+            title: isGeneric ? fallbackTitle : inferred,
             detail: `${item.minutes ? `${item.minutes} min` : "No duration"}${item.notes ? ` · ${item.notes}` : ""}`,
             report: {
               source: item.source || "session_completion",
