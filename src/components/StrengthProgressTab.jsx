@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { emitToast } from '../utils/toast';
 import exerciseGuideDefaults from '../data/exerciseGuides.json';
+import PageWalkthroughModal from './PageWalkthroughModal';
 // adapted from https://supabase.com/docs/guides/getting-started/tutorials/with-react
 // this imports the Supabase client instance which was created in supabaseClient.js
 import { supabase } from '../supabaseClient';
@@ -473,6 +474,37 @@ const EXERCISE_LABEL_BY_VALUE = [...WEIGHT_EXERCISES, ...BODYWEIGHT_EXERCISES].r
   return acc;
 }, {});
 
+const PROGRESS_WALKTHROUGH_STEPS = [
+  {
+    id: 'pick_program',
+    title: 'Pick a Workout Program',
+    what: 'Use Program Library to choose a ready-made routine matched to your focus and level.',
+    why: 'Starting from a structured plan keeps your logging consistent and measurable.',
+    firstAction: 'Select one recommended program.',
+  },
+  {
+    id: 'edit_program',
+    title: 'Edit Existing Program',
+    what: 'Use swap/add/remove controls to tailor exercises, sets, reps, and weights.',
+    why: 'Small edits keep plans realistic so you stick to them.',
+    firstAction: 'Swap one exercise in your selected program.',
+  },
+  {
+    id: 'create_program',
+    title: 'Create Your Own Program',
+    what: 'Open Create program and build a custom structure from scratch.',
+    why: 'Custom plans let you train exactly for your goal and equipment.',
+    firstAction: 'Create a program with at least 4 exercises.',
+  },
+  {
+    id: 'share_program',
+    title: 'Share to Community',
+    what: 'Publish your workout program to shared templates for others to rate and try.',
+    why: 'Sharing increases accountability and helps other users discover quality plans.',
+    firstAction: 'Share one program to Community Templates.',
+  },
+];
+
 // StrengthProgressTab manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -528,11 +560,31 @@ const StrengthProgressTab = ({ userId }) => {
   const [guideDetails, setGuideDetails] = useState(null);
   const [guideLoading, setGuideLoading] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const pinnedProgramsStorageKey = userId ? `exervia_pinned_programs_${userId}` : null;
   const exerciseWeightsStorageKey = userId ? `exervia_exercise_weights_${userId}` : null;
   const [exerciseWeightMemory, setExerciseWeightMemory] = useState({});
   const [selectedStrengthTrendDay, setSelectedStrengthTrendDay] = useState('');
   const [selectedProgressExercise, setSelectedProgressExercise] = useState('');
+
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || '');
+    if (stepId === 'create_program') {
+      setShowCreateProgram(true);
+      return;
+    }
+    if (stepId === 'share_program') {
+      if (selectedProgram) {
+        shareProgramToCommunity(selectedProgram);
+      } else {
+        setBanner({ type: 'info', message: 'Pick a program first, then share it.' });
+      }
+      return;
+    }
+    if (stepId === 'pick_program' || stepId === 'edit_program') {
+      setShowProgramLibrary(true);
+    }
+  };
 
 // normalizeQuery manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1767,6 +1819,13 @@ const StrengthProgressTab = ({ userId }) => {
           </div>
           <div className="studio-header-actions">
             <button
+              className="studio-back studio-header-action-btn"
+              type="button"
+              onClick={() => setWalkthroughOpen(true)}
+            >
+              Walkthrough
+            </button>
+            <button
               className="studio-back studio-gym-link-btn studio-header-action-btn"
               type="button"
               onClick={() => setLastWorkoutOpen(true)}
@@ -2901,6 +2960,16 @@ the createPRogram helps resolve this problem  */}
           </div>
         </div>
       )}
+      <PageWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        mode="gym"
+        userId={userId}
+        pageKey="progress"
+        title="Progress Walkthrough"
+        steps={PROGRESS_WALKTHROUGH_STEPS}
+        onStepAction={handleWalkthroughAction}
+      />
     </div>
   );
 };

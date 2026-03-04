@@ -23,6 +23,7 @@ import GroupsPanel from "./community/GroupsPanel";
 import CirclePanel from "./community/CirclePanel";
 import TemplatesPanel from "./community/TemplatesPanel";
 import CommunityModal from "./community/CommunityModal";
+import PageWalkthroughModal from "./PageWalkthroughModal";
 import useCommunityModalState from "../hooks/useCommunityModalState";
 import useCommunityData from "../hooks/useCommunityData";
 import {
@@ -38,6 +39,44 @@ import {
 } from "./community/communityHelpers";
 
 const GROUP_ROOM_POST_BUFFER_LIMIT = 400;
+
+const COMMUNITY_WALKTHROUGH_STEPS = [
+  {
+    id: "forums",
+    title: "Forums",
+    what: "Use Forums to post discussion threads and reply to training topics.",
+    why: "Forums are best for long-form discussion and searchable knowledge.",
+    firstAction: "Open Forums tab.",
+  },
+  {
+    id: "feed",
+    title: "Feed",
+    what: "Use Feed for quick updates, status posts, and lightweight interaction.",
+    why: "Feed gives fast visibility into what your network is doing now.",
+    firstAction: "Open Feed tab.",
+  },
+  {
+    id: "templates",
+    title: "Templates",
+    what: "Browse shared plans, programs, and recipes, then add them to your own stack.",
+    why: "Templates let you reuse proven structures instead of starting from zero.",
+    firstAction: "Open Templates tab.",
+  },
+  {
+    id: "groups",
+    title: "Groups and Challenges",
+    what: "Join groups for accountability and enter challenges for weekly goals.",
+    why: "Group pressure and challenge targets improve follow-through.",
+    firstAction: "Open Groups tab.",
+  },
+  {
+    id: "friends",
+    title: "Friends",
+    what: "Add friends, accept requests, and keep training conversations active.",
+    why: "A connected circle increases retention and consistency.",
+    firstAction: "Open Friends tab.",
+  },
+];
 // Component: CommunityHub - UI layout and interactions.
 // This component renders the communityhub experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -116,6 +155,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [banner, setBanner] = useState("");
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [communityLoadError, setCommunityLoadError] = useState("");
   const [communityReloadToken, setCommunityReloadToken] = useState(0);
   const [blockedProfileIds, setBlockedProfileIds] = useState([]);
@@ -205,6 +245,28 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
   const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
   const retryCommunityLoad = () => setCommunityReloadToken((prev) => prev + 1);
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || "");
+    if (stepId === "forums") {
+      setActiveTab("forums");
+      return;
+    }
+    if (stepId === "feed") {
+      setActiveTab("feed");
+      return;
+    }
+    if (stepId === "templates") {
+      setActiveTab("templates");
+      return;
+    }
+    if (stepId === "groups") {
+      setActiveTab("groups");
+      return;
+    }
+    if (stepId === "friends") {
+      setActiveTab("friends");
+    }
+  };
   const templateDeckPointerRef = useRef({ active: false, startX: 0, moved: false });
   const completedChallengeAwardRef = useRef(new Set());
   const templateRefreshTimerRef = useRef(null);
@@ -2903,6 +2965,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               </p>
             </div>
             <div className="community-cta-row">
+              <button className="studio-back community-cta-btn" onClick={() => setWalkthroughOpen(true)}>
+                Walkthrough
+              </button>
               <button className="studio-back community-cta-btn" onClick={() => setCreateGroupOpen(true)}>
                 Create group
               </button>
@@ -3737,6 +3802,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             </div>
         </CommunityModal>
       )}
+      <PageWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        mode={routePrefix}
+        userId={userId}
+        pageKey="community"
+        title="Community Walkthrough"
+        steps={COMMUNITY_WALKTHROUGH_STEPS}
+        onStepAction={handleWalkthroughAction}
+      />
     </div>
   );
 }

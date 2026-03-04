@@ -6,6 +6,7 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
 import useModalA11y from "../hooks/useModalA11y";
+import PageWalkthroughModal from "./PageWalkthroughModal";
 // Component: JournalPage - UI layout and interactions.
 // This component renders the journalpage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -47,6 +48,37 @@ const emptyEvening = {
   mood: "",
   tags: "",
 };
+
+const JOURNAL_WALKTHROUGH_STEPS = [
+  {
+    id: "morning",
+    title: "Morning Preparation",
+    what: "Set intention, session focus, and your non-negotiable for today.",
+    why: "Starting with intent keeps training and recovery execution tighter.",
+    firstAction: "Open Morning slot.",
+  },
+  {
+    id: "evening",
+    title: "Evening Reflection",
+    what: "Capture wins, friction, and what to adjust tomorrow.",
+    why: "Reflection turns each day into actionable feedback.",
+    firstAction: "Open Evening slot.",
+  },
+  {
+    id: "mood_trend",
+    title: "Mood Trend",
+    what: "Review mood bars and inspect day-level patterns over time.",
+    why: "Mood changes often explain performance and recovery swings.",
+    firstAction: "Review Mood Trend.",
+  },
+  {
+    id: "history",
+    title: "History and Search",
+    what: "Use search and tags to revisit older entries and edit them.",
+    why: "Long-term context helps improve decision quality.",
+    firstAction: "Open Journal History.",
+  },
+];
 
 function formatDayKey(value) {
   const date = new Date(value);
@@ -463,6 +495,7 @@ export default function JournalPage({ mode = "gym" }) {
   const [savingSlot, setSavingSlot] = useState("");
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const confirmRef = useRef(null);
   const quoteRequestRef = useRef(0);
   const entriesRequestRef = useRef(0);
@@ -849,6 +882,26 @@ export default function JournalPage({ mode = "gym" }) {
     await saveSlot(slot, true);
   };
 
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || "");
+    if (stepId === "morning") {
+      setActiveSlot("morning");
+      return;
+    }
+    if (stepId === "evening") {
+      setActiveSlot("evening");
+      return;
+    }
+    if (stepId === "mood_trend") {
+      setSelectedMoodDay("");
+      return;
+    }
+    if (stepId === "history") {
+      setHistorySearch("");
+      setSelectedTag("all");
+    }
+  };
+
   return (
     <div className={`hud-bg mode-${pageMode}`}>
       <div className="page-shell journal-shell">
@@ -863,6 +916,11 @@ export default function JournalPage({ mode = "gym" }) {
             </button>
             <h2 className="page-title">Journal</h2>
             <div className="page-subtitle">Morning preparation. Evening reflection. Clear rhythm.</div>
+          </div>
+          <div className="studio-header-actions">
+            <button className="studio-back studio-header-action-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+              Walkthrough
+            </button>
           </div>
         </div>
         {banner ? <div className={`exervia-banner studio-banner ${bannerVariant}`}>{banner}</div> : null}
@@ -942,6 +1000,16 @@ export default function JournalPage({ mode = "gym" }) {
             />
           </>
         )}
+        <PageWalkthroughModal
+          open={walkthroughOpen}
+          onClose={() => setWalkthroughOpen(false)}
+          mode={pageMode}
+          userId={userId}
+          pageKey="journal"
+          title="Journal Walkthrough"
+          steps={JOURNAL_WALKTHROUGH_STEPS}
+          onStepAction={handleWalkthroughAction}
+        />
       </div>
     </div>
   );

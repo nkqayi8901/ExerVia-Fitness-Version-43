@@ -24,6 +24,7 @@ import {
   saveMealToLibrary,
   upsertDailyLog,
 } from "../services/logsApi";
+import PageWalkthroughModal from "./PageWalkthroughModal";
 
 // This component is responsible for rendering the Logs page, which 
 // includes daily logging of meals, supplements, extra activities, and 
@@ -112,6 +113,37 @@ const toMl = (value, unit) => {
   return String(unit || "ml").toLowerCase() === "liters" ? num * 1000 : num;
 };
 
+const LOGS_WALKTHROUGH_STEPS = [
+  {
+    id: "overview",
+    title: "Use Day In A Glance",
+    what: "Pick a day, then switch between Training, Meals, Supplements, and Extra Activities.",
+    why: "You can quickly validate what got logged and remove accidental entries.",
+    firstAction: "Open today's training details.",
+  },
+  {
+    id: "weight_water",
+    title: "Log Weight and Water",
+    what: "Update body weight and hydration each day for trend consistency.",
+    why: "Daily consistency gives cleaner trend lines over weekly windows.",
+    firstAction: "Review today's weight/water cards.",
+  },
+  {
+    id: "meals_supplements",
+    title: "Track Fuel and Supplements",
+    what: "Add meals and supplements for the selected day and save libraries for speed.",
+    why: "This keeps nutrition records synced with your training day.",
+    firstAction: "Add one meal or supplement.",
+  },
+  {
+    id: "training_report",
+    title: "Open Training Report",
+    what: "Tap a logged session to open the detailed report and compare context.",
+    why: "Reports are where set-level detail and progression checks are visible.",
+    firstAction: "Open a session report.",
+  },
+];
+
 // The LogsPage component is the main component for the logs page, which includes
 // the logic for fetching and displaying daily logs, training sessions, and
 // handling user interactions for logging meals, supplements, and extra activities.
@@ -146,6 +178,7 @@ export default function LogsPage({ mode = "gym" }) {
   const [logsBootLoading, setLogsBootLoading] = useState(true);
   const [trainingBootLoading, setTrainingBootLoading] = useState(true);
   const [glanceDetail, setGlanceDetail] = useState("training");
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [weightGoalKg, setWeightGoalKg] = useState("");
   const [waterGoalMl, setWaterGoalMl] = useState("2000");
   const logsRequestRef = useRef(0);
@@ -1246,6 +1279,29 @@ export default function LogsPage({ mode = "gym" }) {
 
   const backPath = mode === "athlete" ? `/athlete/${id}` : `/gym/${id}`;
   const isBootLoading = logsBootLoading || trainingBootLoading;
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || "");
+    if (stepId === "overview") {
+      setGlanceDetail("training");
+      return;
+    }
+    if (stepId === "training_report") {
+      const firstTraining = (dayTraining || [])[0];
+      if (firstTraining) {
+        openTrainingReport(firstTraining);
+        return;
+      }
+      setBanner("Log a training session first to open a report.");
+      return;
+    }
+    if (stepId === "weight_water") {
+      setBanner("Use the Weight and Water cards below to update daily values.");
+      return;
+    }
+    if (stepId === "meals_supplements") {
+      setBanner("Use Meals and Supplements sections below to log today's intake.");
+    }
+  };
 
   if (isBootLoading) {
     return (
@@ -1257,6 +1313,11 @@ export default function LogsPage({ mode = "gym" }) {
             </button>
             <h2 className="page-title">Logs</h2>
             <p className="page-subtitle">Your daily command center for body, fuel, hydration, and training.</p>
+          </div>
+          <div className="studio-header-actions">
+            <button className="studio-back studio-header-action-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+              Walkthrough
+            </button>
           </div>
         </div>
         <div className="logs-loading-skeleton" aria-hidden="true">
@@ -1289,6 +1350,11 @@ export default function LogsPage({ mode = "gym" }) {
           </button>
           <h2 className="page-title">Logs</h2>
           <p className="page-subtitle">Your daily command center for body, fuel, hydration, and training.</p>
+        </div>
+        <div className="studio-header-actions">
+          <button className="studio-back studio-header-action-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+            Walkthrough
+          </button>
         </div>
       </div>
 
@@ -1907,6 +1973,16 @@ export default function LogsPage({ mode = "gym" }) {
           </div>
         </div>
       )}
+      <PageWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        mode={mode}
+        userId={id}
+        pageKey="logs"
+        title="Logs Walkthrough"
+        steps={LOGS_WALKTHROUGH_STEPS}
+        onStepAction={handleWalkthroughAction}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import localRecipes from "../data/recipes.json";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
 import { emitToast } from "../utils/toast";
 import { isErrorBanner } from "../utils/banner";
+import PageWalkthroughModal from "./PageWalkthroughModal";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -62,6 +63,37 @@ const BOARD_SLOTS = [
   { key: "midday", label: "Midday" },
   { key: "pre_training", label: "Pre-Training" },
   { key: "recovery", label: "Recovery" },
+];
+
+const NUTRITION_WALKTHROUGH_STEPS = [
+  {
+    id: "generate",
+    title: "Generate Meals",
+    what: "Set protocol, prep time, and preference, then generate a fresh feed.",
+    why: "This gives you tailored meal options aligned to your current goal.",
+    firstAction: "Generate new meals.",
+  },
+  {
+    id: "today_intake",
+    title: "Review Today's Intake",
+    what: "Track calories and macros from your logged meals for the selected day.",
+    why: "You can quickly see if your intake matches your target direction.",
+    firstAction: "Open Today's Intake.",
+  },
+  {
+    id: "build_day",
+    title: "Build My Day",
+    what: "Fill Morning, Midday, Pre-Training, and Recovery slots with recommended meals.",
+    why: "Pre-building your day makes execution easier and more consistent.",
+    firstAction: "Open Build My Day.",
+  },
+  {
+    id: "favorites",
+    title: "Use Favorites",
+    what: "Switch to Favorites to reuse meals you trust and open faster repeats.",
+    why: "Favorites reduce decision fatigue and speed up daily logging.",
+    firstAction: "Open Favorites feed.",
+  },
 ];
 
 const MEALDB_SEARCH_TERMS = {
@@ -532,6 +564,7 @@ export default function NutritionPage() {
   const [feedFilter, setFeedFilter] = useState("all");
   const [curatedOnly, setCuratedOnly] = useState(true);
   const [activeFuelView, setActiveFuelView] = useState("overview");
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [activeBoardSlot, setActiveBoardSlot] = useState("");
@@ -1883,6 +1916,25 @@ export default function NutritionPage() {
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || "");
+    if (stepId === "generate") {
+      fetchProtocolMeals();
+      return;
+    }
+    if (stepId === "today_intake") {
+      setActiveFuelView("today");
+      return;
+    }
+    if (stepId === "build_day") {
+      setActiveFuelView("build");
+      return;
+    }
+    if (stepId === "favorites") {
+      setFeedFilter("favorites");
+    }
+  };
+
   // initial load
   useEffect(() => {
     fetchMealOfDay();
@@ -1934,6 +1986,13 @@ export default function NutritionPage() {
           </div>
 
           <div className="fuel-header-actions">
+            <button
+              className="studio-back fuel-compact-btn"
+              type="button"
+              onClick={() => setWalkthroughOpen(true)}
+            >
+              Walkthrough
+            </button>
             <button
               className="studio-back fuel-compact-btn fuel-generate-btn"
               onClick={fetchProtocolMeals}
@@ -2904,6 +2963,16 @@ export default function NutritionPage() {
             {saveBanner}
           </div>
         ) : null}
+        <PageWalkthroughModal
+          open={walkthroughOpen}
+          onClose={() => setWalkthroughOpen(false)}
+          mode={pageMode}
+          userId={storedId}
+          pageKey="nutrition"
+          title="Nutrition Walkthrough"
+          steps={NUTRITION_WALKTHROUGH_STEPS}
+          onStepAction={handleWalkthroughAction}
+        />
       </div>
     </div>
   );

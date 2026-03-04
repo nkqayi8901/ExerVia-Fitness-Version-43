@@ -10,6 +10,7 @@ import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
 import { trackDailyActivity } from '../services/activityTracker';
 import { grantXpEventSafe } from '../services/xpEvents';
+import PageWalkthroughModal from './PageWalkthroughModal';
 // Component: AthleteTrainingTab - UI layout and interactions.
 // This component renders the athletetrainingtab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -147,6 +148,37 @@ const emptyPlan = {
   outline: [{ week: 'Week 1', sessions: [''] }]
 };
 
+const TRAINING_WALKTHROUGH_STEPS = [
+  {
+    id: 'pick_world',
+    title: 'Pick a Training World',
+    what: 'Choose a world like Hybrid, Running, Cycling, Swim, or Trail to filter plans by sport.',
+    why: 'The world keeps your plan list focused so sessions match your current goal.',
+    firstAction: 'Select a training world.',
+  },
+  {
+    id: 'pick_plan',
+    title: 'Pick a Plan',
+    what: 'Open Plan Library and select one plan to preview weekly sessions.',
+    why: 'A selected plan powers checklist context and timer flow.',
+    firstAction: 'Open and select a plan.',
+  },
+  {
+    id: 'create_plan',
+    title: 'Create or Edit a Plan',
+    what: 'Use Create plan to build or adjust a program structure that fits your week.',
+    why: 'Custom plans let you adapt volume and focus without losing consistency.',
+    firstAction: 'Open Create plan.',
+  },
+  {
+    id: 'start_session',
+    title: 'Run the Session Timer',
+    what: 'Start your session from the selected plan and log it with reflections.',
+    why: 'Timer + completion logging keeps training data clean for reports and XP.',
+    firstAction: 'Start a session timer.',
+  },
+];
+
 // AthleteTrainingTab is the main training hub for athlete mode,
 // it manages selection, creation, and execution of plans,
 // it controls countdowns, timers, and session logging,
@@ -194,11 +226,37 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [sessionWeekSnapshot, setSessionWeekSnapshot] = useState(null);
   const [recentTrainingSessions, setRecentTrainingSessions] = useState([]);
   const [lastTrainingOpen, setLastTrainingOpen] = useState(false);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [draggingPin, setDraggingPin] = useState(null);
   const [newPlan, setNewPlan] = useState({ ...emptyPlan });
   const [apiStatus, setApiStatus] = useState('idle');
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
+
+  const handleWalkthroughAction = (step) => {
+    const stepId = String(step?.id || '');
+    if (stepId === 'pick_world') {
+      setPlanSportFilter((prev) => prev || 'running');
+      setShowPlanLibrary(true);
+      return;
+    }
+    if (stepId === 'pick_plan') {
+      setShowPlanLibrary(true);
+      return;
+    }
+    if (stepId === 'create_plan') {
+      setShowCreatePlan(true);
+      setShowPlanLibrary(true);
+      return;
+    }
+    if (stepId === 'start_session') {
+      if (!selectedPlan) {
+        setBanner({ type: 'info', message: 'Pick a plan first, then start your session timer.' });
+        return;
+      }
+      setTimerOpen(true);
+    }
+  };
 
   // focusOptions and sports drive filters + dropdowns,
   // trainingWorlds define the themed entry points,
@@ -1300,6 +1358,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           </div>
           <div className="studio-header-actions">
             <button
+              className="studio-back studio-header-action-btn"
+              type="button"
+              onClick={() => setWalkthroughOpen(true)}
+            >
+              Walkthrough
+            </button>
+            <button
               className="studio-back studio-gym-link-btn studio-header-action-btn"
               type="button"
               onClick={() => setLastTrainingOpen(true)}
@@ -2196,6 +2261,17 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           </div>
       )}
 
+      <PageWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        mode="athlete"
+        userId={userId}
+        pageKey="training"
+        title="Training Walkthrough"
+        steps={TRAINING_WALKTHROUGH_STEPS}
+        onStepAction={handleWalkthroughAction}
+      />
+      
       
     </div>
   );
