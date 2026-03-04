@@ -20,7 +20,11 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
   const [userState, setUserState] = useState(null);
   const [account, setAccount] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const accountRef = useRef(null);
+  const notifRef = useRef(null);
   const xp = userState?.xp ?? 0;
   const level = userState?.level ?? 1;
   const rank = userState?.rank ?? "E";
@@ -57,6 +61,133 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     const normalized = String(account?.username || "").trim().replace(/^@+/, "");
     return normalized ? `@${normalized}` : "@username";
   }, [account?.username]);
+  const notificationSeenKey = `exervia_notifications_seen_${resolvedUserId || ""}`;
+  const communityPath = mode === "gym"
+    ? `/gym/${resolvedUserId || ""}/community`
+    : `/athlete/${resolvedUserId || ""}/community`;
+
+  const fetchNotifications = async () => {
+    if (!resolvedUserId) {
+      setNotifications([]);
+      setUnreadNotifCount(0);
+      return;
+    }
+    try {
+      const [friendRes, messageRes, myPostsRes] = await Promise.all([
+        supabase
+          .from("community_friends")
+          .select("id,user_id,friend_user_id,status,created_at")
+          .or(`user_id.eq.${resolvedUserId},friend_user_id.eq.${resolvedUserId}`)
+          .in("status", ["pending_low", "pending_high"])
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("community_friend_messages")
+          .select("id,user_id,friend_user_id,body,created_at")
+          .eq("friend_user_id", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("community_posts")
+          .select("id")
+          .eq("created_by", resolvedUserId)
+          .limit(60),
+      ]);
+
+      const postIds = (myPostsRes.data || []).map((row) => row.id);
+      let replyRows = [];
+      if (postIds.length) {
+        const { data } = await supabase
+          .from("community_post_replies")
+          .select("id,post_id,created_by,body,created_at")
+          .in("post_id", postIds)
+          .neq("created_by", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        replyRows = data || [];
+      }
+
+      const profileIds = new Set();
+      (friendRes.data || []).forEach((row) => {
+        profileIds.add(Number(row.user_id));
+        profileIds.add(Number(row.friend_user_id));
+      });
+      (messageRes.data || []).forEach((row) => profileIds.add(Number(row.user_id)));
+      replyRows.forEach((row) => profileIds.add(Number(row.created_by)));
+      profileIds.delete(Number(resolvedUserId));
+
+      let profileMap = {};
+      if (profileIds.size) {
+        const { data: profileRows } = await supabase
+          .from("user_profiles")
+          .select("id,username,display_name,full_name")
+          .in("id", Array.from(profileIds));
+        profileMap = (profileRows || []).reduce((acc, row) => {
+          const label = row?.username ? `@${row.username}` : row?.display_name || row?.full_name || `User ${row?.id}`;
+          acc[Number(row.id)] = label;
+          return acc;
+        }, {});
+      }
+
+      const requestItems = (friendRes.data || [])
+        .filter((row) => {
+          const uid = Number(row.user_id);
+          const fid = Number(row.friend_user_id);
+          const me = Number(resolvedUserId);
+          return (row.status === "pending_low" && fid === me) || (row.status === "pending_high" && uid === me);
+        })
+        .map((row) => {
+          const senderId = Number(row.status === "pending_low" ? row.user_id : row.friend_user_id);
+          return {
+            id: `request-${row.id}`,
+            kind: "friend_request",
+            actorId: senderId,
+            actor: profileMap[senderId] || `User ${senderId}`,
+            text: "sent you a friend request",
+            created_at: row.created_at,
+            targetPath: messagesPath,
+          };
+        });
+
+      const messageItems = (messageRes.data || []).map((row) => {
+        const senderId = Number(row.user_id);
+        return {
+          id: `message-${row.id}`,
+          kind: "message",
+          actorId: senderId,
+          actor: profileMap[senderId] || `User ${senderId}`,
+          text: String(row.body || "sent a message"),
+          created_at: row.created_at,
+          targetPath: `${messagesPath}?friend=${senderId}`,
+        };
+      });
+
+      const replyItems = replyRows.map((row) => {
+        const senderId = Number(row.created_by);
+        return {
+          id: `reply-${row.id}`,
+          kind: "reply",
+          actorId: senderId,
+          actor: profileMap[senderId] || `User ${senderId}`,
+          text: "replied to your forum post",
+          created_at: row.created_at,
+          targetPath: communityPath,
+        };
+      });
+
+      const merged = [...requestItems, ...messageItems, ...replyItems]
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 25);
+      setNotifications(merged);
+
+      const seenAtRaw = localStorage.getItem(notificationSeenKey);
+      const seenAtMs = seenAtRaw ? new Date(seenAtRaw).getTime() : 0;
+      const unread = merged.filter((item) => new Date(item.created_at || 0).getTime() > seenAtMs).length;
+      setUnreadNotifCount(unread);
+    } catch (error) {
+      console.error("Notification fetch failed:", error);
+    }
+  };
 
 // fetchUserState manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -138,6 +269,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
 
   useEffect(() => {
     setMenuOpen(false);
+    setNotifOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -151,6 +283,25 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (!notifRef.current) return;
+      if (!notifRef.current.contains(event.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [notifOpen]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedUserId, location.pathname]);
 
 
   return (
@@ -195,6 +346,57 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
       <div className="hud-account" ref={accountRef}>
         {resolvedUserId ? (
           <>
+            <div className="hud-notif-wrap" ref={notifRef}>
+              <button
+                type="button"
+                className={`hud-notif-btn ${notifOpen ? "active" : ""}`}
+                onClick={() => {
+                  const next = !notifOpen;
+                  setNotifOpen(next);
+                  if (next) {
+                    const nowIso = new Date().toISOString();
+                    localStorage.setItem(notificationSeenKey, nowIso);
+                    setUnreadNotifCount(0);
+                  }
+                }}
+                aria-label="Open notifications"
+              >
+                <span className="hud-notif-icon" aria-hidden="true">🔔</span>
+                {unreadNotifCount > 0 ? (
+                  <span className="hud-notif-badge">{Math.min(unreadNotifCount, 99)}</span>
+                ) : null}
+              </button>
+              {notifOpen && (
+                <div className="hud-notif-menu" role="menu">
+                  <div className="hud-notif-title">Notifications</div>
+                  {!notifications.length ? (
+                    <div className="hud-notif-empty">No new activity.</div>
+                  ) : (
+                    <div className="hud-notif-list">
+                      {notifications.slice(0, 10).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="hud-notif-item"
+                          onClick={() => {
+                            setNotifOpen(false);
+                            navigate(item.targetPath);
+                          }}
+                        >
+                          <span className="hud-notif-item-main">
+                            <span className="hud-notif-item-actor">{item.actor}</span>
+                            <span className="hud-notif-item-text">{item.text}</span>
+                          </span>
+                          <span className="hud-notif-item-time">
+                            {new Date(item.created_at || 0).toLocaleDateString()}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               className="hud-account-trigger"

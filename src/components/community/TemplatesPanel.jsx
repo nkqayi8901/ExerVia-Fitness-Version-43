@@ -120,22 +120,7 @@ export default function TemplatesPanel({
           {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
         </div>
       </div>
-      <div className="community-tabs community-topic-tabs community-template-view-tabs">
-        <button
-          className={`community-tab ${templateViewMode === "swipe" ? "active" : ""}`}
-          type="button"
-          onClick={() => setTemplateViewMode("swipe")}
-        >
-          Swipe mode
-        </button>
-        <button
-          className={`community-tab ${templateViewMode === "forum" ? "active" : ""}`}
-          type="button"
-          onClick={() => setTemplateViewMode("forum")}
-        >
-          Forum mode
-        </button>
-      </div>
+      
       {templateViewMode === "swipe" && swipeTemplates.length > 0 && (
         <div className="community-template-deck-shell">
           <div className="community-template-deck-head">
@@ -382,8 +367,7 @@ export default function TemplatesPanel({
           title: "No shared templates yet",
           sub: "Share your best plan, program, or recipe and let others add it to their library.",
         })}
-      {(templateViewMode === "forum" || (templateViewMode === "swipe" && !swipeTemplates.length)) &&
-        filteredTemplates.length > 0 && (
+      {filteredTemplates.length > 0 && (
           <div className="community-thread-list">
             {filteredTemplates.map((template) => {
               const templateId = String(template.id || "");

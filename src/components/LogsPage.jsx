@@ -638,6 +638,12 @@ export default function LogsPage({ mode = "gym" }) {
     });
     return `${day.weightValue} ${day.weightUnit || "kg"} (${dateLabel})`;
   }, [dailyLogsByDate, normalizeDayLog, selectedDay]);
+  const weightInputSuggestions = useMemo(() => {
+    if (String(selectedLog?.weightUnit || "kg").toLowerCase() === "lbs") {
+      return [95, 115, 135, 155, 185, 205, 225, 245, 275, 315];
+    }
+    return [40, 50, 60, 70, 80, 90, 100, 110, 120, 130];
+  }, [selectedLog?.weightUnit]);
   
 
   const allSessionCompletions = useMemo(() => {
@@ -938,14 +944,6 @@ export default function LogsPage({ mode = "gym" }) {
     if (!id) return;
     const text = mealInput.trim();
     if (!text) return;
-    const alreadyLogged = (selectedLog.meals || []).some(
-      (meal) => String(meal?.text || "").trim().toLowerCase() === text.toLowerCase()
-    );
-    if (alreadyLogged) {
-      setBanner("Meal already logged for this day.");
-      setMealInput("");
-      return;
-    }
     const next = applyDayLogUpdate(selectedDay, (log) => ({
       ...log,
       meals: [...(log.meals || []), { id: `meal-${Date.now()}`, text }],
@@ -1363,10 +1361,16 @@ export default function LogsPage({ mode = "gym" }) {
             <input
               className="studio-form-input"
               type="number"
+              list="logs-weight-suggestions"
               value={selectedLog.weightValue}
               onChange={(event) => patchDayLogLocal(selectedDay, (log) => ({ ...log, weightValue: event.target.value }))}
               placeholder={selectedLog.weightUnit === "lbs" ? "max 500" : "max 227"}
             />
+            <datalist id="logs-weight-suggestions">
+              {weightInputSuggestions.map((value) => (
+                <option key={`weight-suggestion-${value}`} value={value} />
+              ))}
+            </datalist>
             <select
               className="studio-select"
               value={selectedLog.weightUnit}

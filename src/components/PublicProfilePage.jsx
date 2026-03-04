@@ -142,7 +142,7 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
             .limit(12),
           supabase
             .from("strength_logs")
-            .select("id, exercise_name, sets, reps, weight, created_at")
+            .select("id, exercise_name, sets, reps, weight, created_at, notes")
             .eq("user_id", viewedUserId)
             .order("created_at", { ascending: false })
             .limit(12),
@@ -167,24 +167,48 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
       setProfile(profileData || null);
       setUserState(stateData || null);
       setGroups(mappedGroups);
-      const combinedRecent = [
-        ...(sessions || []).map((row) => ({
+      const sessionRecent = (sessions || [])
+        .map((row) => ({
           id: String(row.id),
           sourceType: "training",
           title: String(row.sport || "Training").toUpperCase(),
           subtitle: `${Number(row.duration_minutes || 0)} min`,
           created_at: row.created_at,
-        })),
-        ...(strengthRows || []).map((row) => ({
-          id: String(row.id),
-          sourceType: "strength",
-          title: String(row.exercise_name || "Strength").toUpperCase(),
-          subtitle: `${Number(row.sets || 0)} sets · ${row.reps || 0} reps${
-            Number(row.weight || 0) > 0 ? ` · ${row.weight} kg` : ""
-          }`,
-          created_at: row.created_at,
-        })),
-      ]
+        }))
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, 3);
+
+      const strengthByDay = {};
+      (strengthRows || []).forEach((row) => {
+        const dayKey = String(row.created_at || "").slice(0, 10);
+        if (!dayKey) return;
+        if (!strengthByDay[dayKey]) strengthByDay[dayKey] = [];
+        strengthByDay[dayKey].push(row);
+      });
+
+      const derivedStrengthRecent = Object.values(strengthByDay)
+        .map((rows) => {
+          const ordered = [...rows].sort(
+            (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+          );
+          const latest = ordered[ordered.length - 1];
+          const titleFromNotes = ordered
+            .map((row) => String(row.notes || "").trim())
+            .find((value) => /completed|completion/i.test(value));
+          const summaryTitle = titleFromNotes
+            ? String(titleFromNotes)
+                .replace(/\s*completed\s*$/i, "")
+                .replace(/\s*completion\s*$/i, "")
+                .trim()
+            : "Strength Session";
+          return {
+            id: String(latest?.id || ""),
+            sourceType: "strength",
+            title: String(summaryTitle || "Strength Session").toUpperCase(),
+            subtitle: `${ordered.length} exercises`,
+            created_at: latest?.created_at || null,
+          };
+        })
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 3);
       const fallbackRecent = (activityRows || [])
@@ -210,7 +234,11 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
           };
         })
         .slice(0, 3);
-      const recentToShow = combinedRecent.length ? combinedRecent : fallbackRecent;
+      const recentToShow = sessionRecent.length
+        ? sessionRecent
+        : derivedStrengthRecent.length
+          ? derivedStrengthRecent
+          : fallbackRecent;
       setRecentSessions(recentToShow);
       localStorage.setItem(
         cacheKey,

@@ -129,14 +129,14 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
   }
 
   return (
-    <div className="page-shell">
+    <div className="page-shell public-session-page">
       <div className="page-header">
         <div>
           <button className="studio-back" onClick={() => navigate(backPath)} type="button">
             {"Back"}
           </button>
-          <h2 className="page-title">Session Detail</h2>
-          <p className="page-subtitle">Read-only training detail.</p>
+          <h2 className="page-title">Training Report</h2>
+          <p className="page-subtitle">Session summary and exercise breakdown.</p>
         </div>
       </div>
 
@@ -145,29 +145,25 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
       {!entry ? null : isStrength ? (
         <div className="hud-card">
           <div className="hud-card-title">TRAINING REPORT</div>
-          <div className="hud-big">{String(entry.exercise_name || "Strength").toUpperCase()}</div>
+          <div className="logs-report-title">{String(entry.exercise_name || "Strength").toUpperCase()}</div>
           <div className="hud-dim mt-2">{formatDateTime(strengthReportDate || entry.created_at)}</div>
-          <div className="table-shell mt-3">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Exercise</th>
-                  <th>Sets</th>
-                  <th>Rep Range</th>
-                  <th>Weight (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(sameDayStrength.length ? sameDayStrength : [entry]).map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.exercise_name || "Exercise"}</td>
-                    <td>{Number(row.sets || 0)}</td>
-                    <td>{row.reps || "-"}</td>
-                    <td>{Number(row.weight || 0) > 0 ? row.weight : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="logs-program-report mt-3">
+            <div className="logs-program-report-head">
+              <span className="logs-program-report-col exercise">Exercise</span>
+              <span className="logs-program-report-col">Sets</span>
+              <span className="logs-program-report-col">Rep Range</span>
+              <span className="logs-program-report-col">Weight (kg)</span>
+            </div>
+            <div className="logs-program-report-body">
+              {(sameDayStrength.length ? sameDayStrength : [entry]).map((row) => (
+                <div key={row.id} className="logs-program-report-row">
+                  <span className="logs-program-report-col exercise">{row.exercise_name || "Exercise"}</span>
+                  <span className="logs-program-report-col">{Number(row.sets || 0)}</span>
+                  <span className="logs-program-report-col">{row.reps || "-"}</span>
+                  <span className="logs-program-report-col">{Number(row.weight || 0) > 0 ? row.weight : "-"}</span>
+                </div>
+              ))}
+            </div>
           </div>
           {entry.notes ? <div className="mt-2">{entry.notes}</div> : null}
         </div>
@@ -186,15 +182,24 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
           {exerciseRows.length ? (
             <div className="hud-card mt-4">
               <div className="hud-card-title">EXERCISES</div>
-              {exerciseRows.map((exercise, index) => (
-                <div key={`${exercise?.id || exercise?.name || "exercise"}-${index}`} className="flex items-center justify-between mt-2">
-                  <span>{exercise?.name || `Exercise ${index + 1}`}</span>
-                  <span className="hud-dim">
-                    {Number(exercise?.sets || 0)} sets · {exercise?.reps || "-"} reps ·{" "}
-                    {Number(exercise?.weight || 0) > 0 ? `${exercise.weight} kg` : "-"}
-                  </span>
+              <div className="logs-program-report mt-3">
+                <div className="logs-program-report-head">
+                  <span className="logs-program-report-col exercise">Exercise</span>
+                  <span className="logs-program-report-col">Sets</span>
+                  <span className="logs-program-report-col">Rep Range</span>
+                  <span className="logs-program-report-col">Weight (kg)</span>
                 </div>
-              ))}
+                <div className="logs-program-report-body">
+                  {exerciseRows.map((exercise, index) => (
+                    <div key={`${exercise?.id || exercise?.name || "exercise"}-${index}`} className="logs-program-report-row">
+                      <span className="logs-program-report-col exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
+                      <span className="logs-program-report-col">{Number(exercise?.sets || 0)}</span>
+                      <span className="logs-program-report-col">{exercise?.reps || "-"}</span>
+                      <span className="logs-program-report-col">{Number(exercise?.weight || 0) > 0 ? exercise.weight : "-"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : null}
 
