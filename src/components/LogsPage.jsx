@@ -427,7 +427,7 @@ export default function LogsPage({ mode = "gym" }) {
           .filter((value) => value && !/session$/i.test(value))
       );
 
-      const completionRows = sessionCompletionEntries
+      let completionRows = sessionCompletionEntries
         .map((item) => {
           const inferred = inferCompletionTitle(item);
           const isGeneric = isGenericTrainingLabel(inferred) || /^completed session$/i.test(inferred);
@@ -448,6 +448,74 @@ export default function LogsPage({ mode = "gym" }) {
         })
         .filter(Boolean);
 
+      // If a day has only raw strength logs, synthesize one session-level completion row
+      // so the user still gets the classic report entry.
+      if (!completionRows.length) {
+        const sameDayStrength = dayTraining.filter((row) => row.sourceType === "strength_log");
+        if (sameDayStrength.length >= 2) {
+          const titleFromNotes = sameDayStrength
+            .map((row) => String(row?.report?.notes || "").trim())
+            .find((note) => /completed|completion/i.test(note));
+          const inferredTitle = titleFromNotes
+            ? inferCompletionTitle({ notes: titleFromNotes, type: "Workout Program" })
+            : "";
+          const fallbackTitle =
+            normalizedTrainingTitles.values().next().value ||
+            inferredTitle ||
+            "Strength Session";
+
+          const ordered = [...sameDayStrength].sort(
+            (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+          );
+          const startMs = new Date(ordered[0]?.created_at || 0).getTime();
+          const endMs = new Date(ordered[ordered.length - 1]?.created_at || 0).getTime();
+          const durationMinutes = Number.isFinite(startMs) && Number.isFinite(endMs)
+            ? Math.max(1, Math.round((endMs - startMs) / 60000))
+            : 1;
+
+          const exercises = ordered.map((row, index) => ({
+            id: row.sourceRowId || row.id || `exercise-${index}`,
+            name: row.report?.exerciseName || row.title || `Exercise ${index + 1}`,
+            sets: Number(row.report?.sets || 0),
+            reps: row.report?.reps || "",
+            weight: Number(row.report?.weight || 0),
+          }));
+
+          const totalTonnage = exercises.reduce((sum, exercise) => {
+            const sets = Number(exercise.sets || 0);
+            const repsRaw = String(exercise.reps || "").trim().toLowerCase();
+            if (!sets || repsRaw.includes("failure")) return sum;
+            const reps = Number(exercise.reps || 0);
+            const weight = Number(exercise.weight || 0);
+            if (!reps || !weight) return sum;
+            return sum + sets * reps * weight;
+          }, 0);
+
+          completionRows = [
+            {
+              id: `summary-${selectedDay}`,
+              sourceType: "session_completion",
+              created_at: ordered[ordered.length - 1]?.created_at || null,
+              title: fallbackTitle,
+              detail: `${durationMinutes} min · ${fallbackTitle} completed`,
+              report: {
+                source: "derived_strength_summary",
+                minutes: durationMinutes,
+                notes: `${fallbackTitle} completed`,
+                details: {
+                  category: "workout_program",
+                  title: fallbackTitle,
+                  duration: `${durationMinutes} min`,
+                  totalExercises: exercises.length,
+                  totalTonnage,
+                  exercises,
+                },
+              },
+            },
+          ];
+        }
+      }
+
       const completionExerciseNames = new Set(
         completionRows
           .flatMap((row) => (Array.isArray(row?.report?.details?.exercises) ? row.report.details.exercises : []))
@@ -465,6 +533,7 @@ export default function LogsPage({ mode = "gym" }) {
         : dayTraining;
 
       return [
+        ...completionRows,
         ...filteredDayTraining.map((row) => ({
           id: row.id,
           sourceType: row.sourceType,
@@ -473,10 +542,9 @@ export default function LogsPage({ mode = "gym" }) {
           detail: row.detail,
           report: row.report || {},
         })),
-        ...completionRows,
       ];
     },
-    [dayTraining, sessionCompletionEntries]
+    [dayTraining, selectedDay, sessionCompletionEntries]
   );
 
   const visibleSupplements = useMemo(
@@ -1009,6 +1077,10 @@ export default function LogsPage({ mode = "gym" }) {
   const removeTrainingEntry = async (row) => {
     if (!row || !id) return;
     if (row.sourceType === "session_completion") {
+      if (String(row.report?.source || "") === "derived_strength_summary") {
+        setBanner("Remove individual lift rows to edit this derived session summary.");
+        return;
+      }
       await removeExtraActivityEntry(row.id);
       return;
     }
