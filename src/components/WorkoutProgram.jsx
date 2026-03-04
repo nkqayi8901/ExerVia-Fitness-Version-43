@@ -36,6 +36,10 @@ const programs = [
 
 const REP_RANGE_OPTIONS = ["1-3", "4-6", "7-9", "10-12", "13-15", "Failure"];
 const MAX_SETS = 10;
+const WEIGHT_PICKER_OPTIONS = Array.from({ length: 121 }, (_, index) => {
+  const value = Number((index * 2.5).toFixed(1));
+  return Number.isInteger(value) ? String(value) : String(value);
+});
 const EMPTY_OBJECT = Object.freeze({});
 
 const estimateRepCount = (value) => {
@@ -361,18 +365,29 @@ function ProgramPreview({ backPath, backLabel }) {
                   <option value={exercise.reps}>{exercise.reps}</option>
                 )}
               </select>
-              <input
-                type="number"
-                min="0"
+              <select
                 className="program-preview-input"
-                value={exercise.weight ?? ""}
+                value={exercise.weight === "" || exercise.weight === null || exercise.weight === undefined ? "" : String(exercise.weight)}
                 onChange={(event) => {
                   const next = [...editedExercises];
                   const value = event.target.value === "" ? "" : Number(event.target.value);
                   next[index] = { ...next[index], weight: value };
                   setEditedExercises(next);
                 }}
-              />
+              >
+                <option value="">-</option>
+                {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
+                  <option key={`weight-${exercise.id}-${weightOption}`} value={weightOption}>
+                    {weightOption}
+                  </option>
+                ))}
+                {exercise.weight !== "" &&
+                  exercise.weight !== null &&
+                  exercise.weight !== undefined &&
+                  !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
+                    <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
+                  )}
+              </select>
             </div>
           ))}
         </div>

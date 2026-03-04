@@ -15,6 +15,8 @@ import ModeNav from "./ModeNav";
 // the menu provides options to view the user's profile, go to profile settings, or log out
 
 export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = null }) {
+  const NOTIFICATION_RETENTION_DAYS = 14;
+  const NOTIFICATION_DISPLAY_LIMIT = 15;
   const navigate = useNavigate();
   const location = useLocation();
   const [userState, setUserState] = useState(null);
@@ -62,6 +64,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     return normalized ? `@${normalized}` : "@username";
   }, [account?.username]);
   const notificationSeenKey = `exervia_notifications_seen_${resolvedUserId || ""}`;
+  const notificationClearedKey = `exervia_notifications_cleared_${resolvedUserId || ""}`;
   const communityPath = mode === "gym"
     ? `/gym/${resolvedUserId || ""}/community`
     : `/athlete/${resolvedUserId || ""}/community`;
@@ -175,9 +178,15 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
         };
       });
 
+      const retentionCutoffMs = Date.now() - (NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      const clearedAtRaw = localStorage.getItem(notificationClearedKey);
+      const clearedAtMs = clearedAtRaw ? new Date(clearedAtRaw).getTime() : 0;
+      const activeCutoffMs = Math.max(retentionCutoffMs, Number.isFinite(clearedAtMs) ? clearedAtMs : 0);
+
       const merged = [...requestItems, ...messageItems, ...replyItems]
+        .filter((item) => new Date(item.created_at || 0).getTime() > activeCutoffMs)
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-        .slice(0, 25);
+        .slice(0, NOTIFICATION_DISPLAY_LIMIT);
       setNotifications(merged);
 
       const seenAtRaw = localStorage.getItem(notificationSeenKey);
@@ -187,6 +196,14 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     } catch (error) {
       console.error("Notification fetch failed:", error);
     }
+  };
+
+  const clearNotifications = () => {
+    const nowIso = new Date().toISOString();
+    localStorage.setItem(notificationClearedKey, nowIso);
+    localStorage.setItem(notificationSeenKey, nowIso);
+    setNotifications([]);
+    setUnreadNotifCount(0);
   };
 
 // fetchUserState manages a focused piece of logic,
@@ -368,7 +385,12 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
               </button>
               {notifOpen && (
                 <div className="hud-notif-menu" role="menu">
-                  <div className="hud-notif-title">Notifications</div>
+                  <div className="hud-notif-title-row">
+                    <div className="hud-notif-title">Notifications</div>
+                    <button type="button" className="hud-notif-clear" onClick={clearNotifications}>
+                      Clear
+                    </button>
+                  </div>
                   {!notifications.length ? (
                     <div className="hud-notif-empty">No new activity.</div>
                   ) : (
@@ -454,3 +476,7 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
     </>
   );
 }
+
+
+
+

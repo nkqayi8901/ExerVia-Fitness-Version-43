@@ -819,6 +819,37 @@ code {
   color: rgba(226, 232, 240, 0.82);
 }
 
+.hud-notif-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 8px 10px;
+}
+
+.hud-notif-title-row .hud-notif-title {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.hud-notif-clear {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 9px;
+}
+
+.hud-notif-clear:hover {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: rgba(56, 189, 248, 0.12);
+}
+
 .hud-notif-empty {
   padding: 14px 12px;
   color: rgba(148, 163, 184, 0.9);
@@ -1530,6 +1561,9 @@ code {
   color: rgba(15, 23, 42, 0.76);
   border-bottom-color: rgba(15, 23, 42, 0.14);
 }
+.mode-gym .hud-notif-title-row {
+  border-bottom-color: rgba(15, 23, 42, 0.14);
+}
 .mode-gym .hud-notif-empty {
   color: rgba(15, 23, 42, 0.66);
 }
@@ -1548,6 +1582,15 @@ code {
 .mode-gym .hud-notif-item-text,
 .mode-gym .hud-notif-item-time {
   color: rgba(15, 23, 42, 0.72);
+}
+.mode-gym .hud-notif-clear {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(15, 23, 42, 0.9);
+}
+.mode-gym .hud-notif-clear:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.14);
 }
 .mode-gym .hud-message-fab {
   border-color: rgba(15, 23, 42, 0.14);
@@ -10365,6 +10408,7 @@ code {
     align-items: start;
     gap: 10px;
     padding: 10px 12px;
+    position: static;
   }
 
   .hud-brand {
@@ -10911,7 +10955,7 @@ code {
   }
 
   .hud-subtitle {
-    font-size: 10px;
+    display: none;
   }
 
   .mode-nav {
@@ -10929,6 +10973,10 @@ code {
   .hud-pill {
     padding: 6px 9px;
     font-size: 12px;
+  }
+
+  .hud-progress-inline {
+    display: none;
   }
 
   .hud-dim {
@@ -11358,7 +11406,7 @@ code {
 
 @media (max-width: 360px) {
   .mode-nav-btn {
-    width: calc(33.333% - 4px);
+    width: calc(25% - 4px);
     min-width: 0;
   }
 
@@ -11384,6 +11432,7 @@ code {
   .hud-topbar {
     padding: 6px 10px;
     gap: 6px;
+    position: static;
   }
 
   .hud-logo {
@@ -11397,7 +11446,7 @@ code {
   }
 
   .hud-subtitle {
-    font-size: 9px;
+    display: none;
   }
 
   .mode-nav {
@@ -11424,6 +11473,10 @@ code {
 
   .hud-account-trigger {
     min-height: 36px;
+  }
+
+  .hud-account-copy {
+    display: none;
   }
 
   .hud-notif-btn {
@@ -11507,6 +11560,16 @@ code {
   .mode-gym .community-modal-actions {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(248, 250, 252, 0.98) 40%);
     border-top-color: rgba(15, 23, 42, 0.12);
+  }
+}
+
+@media (max-height: 500px) {
+  .hud-topbar {
+    position: static;
+  }
+
+  .hud-progress-inline {
+    display: none;
   }
 }
 

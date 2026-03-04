@@ -14,7 +14,15 @@ const getTodayKey = () => {
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
-
+// This module provides functions for managing logs storage in localStorage,
+// including fetching and saving the logs store, managing saved meals, and
+// handling prefill data for training sessions. The logs store is structured
+// to include daily logs, a supplement library, and saved meals, and is 
+// keyed by user ID to allow for multiple users on the same device. The module
+// also includes utility functions for generating keys and handling localStorage
+// interactions safely. The logs store is designed to be flexible and extensible, allowing for future
+// additions such as new log fields or different types of entries without requiring
+// significant changes to the storage structure or access patterns.
 const defaultStore = () => ({
   byDate: {},
   supplementLibrary: [],
@@ -30,7 +38,13 @@ const safeSetItem = (key, value) => {
     return false;
   }
 };
-
+// This module provides functions for managing logs storage in localStorage,
+// including fetching and saving the logs store, managing saved meals, and
+// handling prefill data for training sessions. The logs store is structured
+// to include daily logs, a supplement library, and saved meals, and is 
+// keyed by user ID to allow for multiple users on the same device. The module
+// also includes utility functions for generating keys and handling localStorage
+// interactions safely.
 export const getLogsStore = (userId) => {
   const key = buildUserKey("exervia_logs_store", userId);
   const raw = localStorage.getItem(key);
@@ -52,6 +66,15 @@ export const saveLogsStore = (userId, store) => {
   safeSetItem(key, JSON.stringify(store));
 };
 
+// This module provides functions for managing logs storage in localStorage,
+// including fetching and saving the logs store, managing saved meals, and
+// handling prefill data for training sessions. The logs store is structured
+// to include daily logs, a supplement library, and saved meals, and is 
+// keyed by user ID to allow for multiple users on the same device. The module
+// also includes utility functions for generating keys and handling localStorage
+// interactions safely. The logs store is designed to be flexible and extensible, allowing for future
+// additions such as new log fields or different types of entries without requiring
+// significant changes to the storage structure or access patterns.
 export const addSavedMeal = (userId, mealName, source = "custom") => {
   const name = String(mealName || "").trim();
   if (!name) return;

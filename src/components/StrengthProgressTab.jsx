@@ -412,6 +412,10 @@ const exerciseGroups = {
 };
 
 const REP_RANGE_OPTIONS = ['1-3', '4-6', '7-9', '10-12', '13-15', 'Failure'];
+const WEIGHT_PICKER_OPTIONS = Array.from({ length: 121 }, (_, index) => {
+  const value = Number((index * 2.5).toFixed(1));
+  return Number.isInteger(value) ? String(value) : String(value);
+});
 
 const normalizeRepRange = (value) => {
   if (value === null || value === undefined) return '10-12';
@@ -2567,16 +2571,29 @@ the createPRogram helps resolve this problem  */}
                             </option>
                           ))}
                         </select>
-                        <input
+                        <select
                           className="studio-create-mini"
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          placeholder="-"
-                          value={exercise.weight ?? ''}
+                          value={
+                            exercise.weight === '' || exercise.weight === null || exercise.weight === undefined
+                              ? ''
+                              : String(exercise.weight)
+                          }
                           onChange={(event) => updateNewExercise(index, 'weight', event.target.value)}
                           onBlur={() => handleExerciseWeightBlur(index)}
-                        />
+                        >
+                          <option value="">-</option>
+                          {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
+                            <option key={`${index}-weight-${weightOption}`} value={weightOption}>
+                              {weightOption}
+                            </option>
+                          ))}
+                          {exercise.weight !== '' &&
+                            exercise.weight !== null &&
+                            exercise.weight !== undefined &&
+                            !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
+                              <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
+                            )}
+                        </select>
                         <button
                           className="studio-remove-btn"
                           onClick={() => removeNewExercise(index)}

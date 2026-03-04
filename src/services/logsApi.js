@@ -17,6 +17,10 @@ const emptyDay = () => ({
   extraActivities: [],
 });
 
+// Utility function to convert an array of daily log rows from the database into a map keyed by date for easier access in the frontend. Each log entry is normalized to ensure
+// consistent data structures, with default values for missing fields. This function
+// helps to abstract away the database schema and provide a clean interface for the
+// frontend components to work with daily logs.
 const toDayMap = (rows) => {
   const map = {};
   (rows || []).forEach((row) => {
@@ -34,6 +38,10 @@ const toDayMap = (rows) => {
   return map;
 };
 
+// Utility function to infer insights from a daily log entry. 
+// This function analyzes the log data to generate insights such as 
+// hydration status, meal patterns, and supplement usage. T
+// he insights are returned as an array of strings that can be displayed in the frontend to provide users with feedback and suggestions based on their logged data.
 export async function fetchDailyLogs(userId) {
   const { data, error } = await supabase
     .from("daily_logs")
@@ -48,6 +56,14 @@ export async function fetchDailyLogs(userId) {
   return toDayMap(data);
 }
 
+// Function to upsert (insert or update) a daily log entry for a specific user and date.
+// The function takes the user ID, date key, and log data as input, 
+// constructs the payload for the database, and performs the upsert operation 
+// using Supabase. It handles errors gracefully and returns a boolean indicating 
+// the success of the operation.
+// The log data is normalized to ensure that all fields are present
+//  and have consistent types, which helps to maintain data integrity in the database and
+//  simplifies the logic in the frontend components that consume this data.
 export async function upsertDailyLog(userId, dayKey, log) {
   const payload = {
     user_id: Number(userId),
