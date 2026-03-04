@@ -684,7 +684,24 @@ export default function LogsPage({ mode = "gym" }) {
     const details = reportRow.report?.details || null;
     if (!details || details.category !== "workout_program") return [];
 
-    const existing = Array.isArray(details.exercises) ? details.exercises : [];
+    const rawExercises = details.exercises;
+    let existing = [];
+    if (Array.isArray(rawExercises)) {
+      existing = rawExercises;
+    } else if (rawExercises && typeof rawExercises === "object") {
+      existing = Object.values(rawExercises);
+    } else if (typeof rawExercises === "string") {
+      try {
+        const parsed = JSON.parse(rawExercises);
+        if (Array.isArray(parsed)) {
+          existing = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          existing = Object.values(parsed);
+        }
+      } catch {
+        existing = [];
+      }
+    }
     const expectedCount = Number(details.totalExercises || 0);
     if (existing.length >= 2 && (!expectedCount || existing.length >= expectedCount)) {
       return existing;
@@ -748,24 +765,21 @@ export default function LogsPage({ mode = "gym" }) {
           : sameDayStrength;
     if (candidateRows.length < 2) return existing;
 
-    const dedupedByName = new Map();
-    [...candidateRows]
+    const rebuilt = [...candidateRows]
       .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
-      .forEach((item, index) => {
+      .map((item, index) => {
         const name = String(item?.report?.exerciseName || item?.title || "").trim();
-        if (!name) return;
-        const key = name.toLowerCase();
-        dedupedByName.set(key, {
+        return {
           id: item.sourceRowId || item.id || `exercise-${index}`,
-          name,
+          name: name || `Exercise ${index + 1}`,
           sets: Number(item?.report?.sets || 0),
           reps: item?.report?.reps || "",
           weight: Number(item?.report?.weight || 0),
-        });
+        };
       });
 
-    const rebuilt = Array.from(dedupedByName.values());
-    return rebuilt.length > existing.length ? rebuilt : existing;
+    const normalizedRebuilt = expectedCount > 0 ? rebuilt.slice(0, expectedCount) : rebuilt;
+    return normalizedRebuilt.length > existing.length ? normalizedRebuilt : existing;
   }, [trainingByDay, trainingRows]);
 
   const allSessionCompletions = useMemo(() => {
