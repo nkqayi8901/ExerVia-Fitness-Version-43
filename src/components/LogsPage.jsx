@@ -1080,6 +1080,7 @@ export default function LogsPage({ mode = "gym" }) {
   };
 
   const toggleSupplement = async (name) => {
+    const wasTaken = (selectedLog.supplementsTaken || []).includes(name);
     const next = applyDayLogUpdate(selectedDay, (log) => {
       const taken = new Set(log.supplementsTaken || []);
       if (taken.has(name)) taken.delete(name);
@@ -1088,7 +1089,9 @@ export default function LogsPage({ mode = "gym" }) {
     });
     try {
       await saveDayLog(selectedDay, next);
-      await markActivity("supplement", 8, selectedDay);
+      const xp = await markActivity("supplement", 8, selectedDay);
+      const actionLabel = wasTaken ? "Supplement removed." : "Supplement logged.";
+      setBanner(xp?.awardedXp > 0 ? `${actionLabel} +${xp.awardedXp} XP earned.` : actionLabel);
     } catch (error) {
       console.error("Supplement toggle failed:", error);
       setBanner("Could not update supplement right now.");
