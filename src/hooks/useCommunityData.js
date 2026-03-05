@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import {
-  STATUS_PREFIX,
-  getActivityLabel,
-  normalizeGroupFeedPreview,
-  toDayKey,
-} from "../components/community/communityHelpers";
+import { STATUS_PREFIX } from "../components/community/communityHelpers";
 
 const QUERY_TIMEOUT_MS = 7000;
 const CACHE_TTL_MS = 45000;
@@ -33,7 +28,6 @@ const runWithRetry = async (fn, retries = 1) => {
 export default function useCommunityData({
   userId,
   friends,
-  memberships,
   activeTab,
   leaderboardGroupId,
   loadProfiles,
@@ -242,180 +236,42 @@ export default function useCommunityData({
         .map((id) => normalizeId(id))
         .filter(Boolean);
       const actorIds = Array.from(new Set([normalizeId(userId), ...friendIds].filter(Boolean)));
-      const joinedGroupIds = Array.from(new Set((memberships || []).map((row) => normalizeId(row.group_id)).filter(Boolean)));
-
-      const requests = [
-        supabase
-          .from("daily_activity")
-          .select("id,user_id,activity_type,activity_date,created_at")
-          .in("user_id", actorIds)
-          .order("created_at", { ascending: false })
-          .limit(120),
-        joinedGroupIds.length
-          ? supabase
-              .from("community_group_posts")
-              .select("id,group_id,created_by,created_at,body,channel")
-              .in("group_id", joinedGroupIds)
-              .order("created_at", { ascending: false })
-              .limit(60)
-          : Promise.resolve({ data: [], error: null }),
-        supabase
-          .from("community_posts")
-          .select("id,forum_id,title,body,created_by,created_at")
-          .in("created_by", actorIds)
-          .order("created_at", { ascending: false })
-          .limit(40),
-      ];
-
-      const [activityRes, groupPostRes, forumPostRes] = await runWithRetry(() =>
-        withTimeout(Promise.all(requests), QUERY_TIMEOUT_MS + 1500)
-      );
-      let activityRows = activityRes.data || [];
-      let groupPostRows = groupPostRes.data || [];
-      let forumPostRows = forumPostRes.data || [];
-
-      // Resilient fallback path: if filtered feed queries fail, show latest global rows.
-      if (activityRes.error && forumPostRes.error) {
-        const [fallbackActivity, fallbackForum] = await Promise.all([
-          supabase
-            .from("daily_activity")
-            .select("id,user_id,activity_type,activity_date,created_at")
-            .order("created_at", { ascending: false })
-            .limit(80),
+      const statusRes = await runWithRetry(() =>
+        withTimeout(
           supabase
             .from("community_posts")
-            .select("id,forum_id,title,body,created_by,created_at")
+            .select("id,title,body,created_by,created_at")
+            .in("created_by", actorIds)
+            .like("title", `${STATUS_PREFIX}%`)
             .order("created_at", { ascending: false })
-            .limit(60),
-        ]);
-        activityRows = fallbackActivity.data || [];
-        forumPostRows = fallbackForum.data || [];
-      }
-      if (groupPostRes.error) {
-        const fallbackGroups = await supabase
-          .from("community_group_posts")
-          .select("id,group_id,created_by,created_at,body")
-          .order("created_at", { ascending: false })
-          .limit(60);
-        groupPostRows = fallbackGroups.data || [];
-      }
-
-      const groupIdSet = Array.from(new Set(groupPostRows.map((row) => String(row.group_id)).filter(Boolean)));
-      let groupNameById = {};
-      if (groupIdSet.length) {
-        const { data: groupRows } = await supabase.from("community_groups").select("id,name").in("id", groupIdSet);
-        groupNameById = (groupRows || []).reduce((acc, row) => {
-          acc[row.id] = row.name || "Group";
-          return acc;
-        }, {});
-      }
-
-      const actorProfileIds = [
-        ...activityRows.map((row) => row.user_id),
-        ...groupPostRows.map((row) => row.created_by),
-        ...forumPostRows.map((row) => row.created_by),
-      ];
-      loadProfiles(actorProfileIds);
-
-      const forumPostByActorDay = {};
-      const forumPostById = {};
-      forumPostRows.forEach((row) => {
-        const postId = normalizeId(row.id);
-        if (postId) {
-          forumPostById[postId] = row;
-        }
-        const actor = normalizeId(row.created_by);
-        const dayKey = toDayKey(row.created_at);
-        if (!actor || !dayKey) return;
-        const key = `${actor}:${dayKey}`;
-        if (!forumPostByActorDay[key]) {
-          forumPostByActorDay[key] = postId;
-        }
-      });
-
-      const activityCommunityPostByActorDay = new Set(
-        activityRows
-          .filter((row) => String(row.activity_type || "").toLowerCase() === "community_post")
-          .map((row) => {
-            const actor = normalizeId(row.user_id);
-            const dayKey = toDayKey(row.created_at || `${row.activity_date}T12:00:00`);
-            return actor && dayKey ? `${actor}:${dayKey}` : "";
-          })
-          .filter(Boolean)
+            .limit(80),
+          QUERY_TIMEOUT_MS + 1500
+        )
       );
+      let statusRows = statusRes?.data || [];
 
-      const normalized = [
-        ...activityRows.map((row) => {
-          const linkedPostId =
-            String(row.activity_type || "").toLowerCase() === "community_post" && row.activity_date
-              ? forumPostByActorDay[`${normalizeId(row.user_id)}:${String(row.activity_date)}`] || ""
-              : "";
-          const linkedPost = linkedPostId ? forumPostById[String(linkedPostId)] : null;
-          const linkedIsStatus = String(linkedPost?.title || "").startsWith(STATUS_PREFIX);
-          return {
-            id: `activity-${row.id}`,
-            created_at: row.created_at || `${row.activity_date}T12:00:00`,
-            actor_id: row.user_id,
-            title:
-              String(row.activity_type || "").toLowerCase() === "community_post" && linkedIsStatus
-                ? "posted a status"
-                : getActivityLabel(row.activity_type),
-            sub:
-              String(row.activity_type || "").toLowerCase() === "community_post" && linkedIsStatus
-                ? String(linkedPost?.body || linkedPost?.title || "").replace(STATUS_PREFIX, "").slice(0, 180)
-                : row.activity_date
-                ? `on ${row.activity_date}`
-                : "",
-            activityType: String(row.activity_type || ""),
-            activityDate: row.activity_date || "",
-            postId: linkedPostId,
-            type: "activity",
-          };
-        }),
-        ...groupPostRows.map((row) => ({
-          id: `group-post-${row.id}`,
+      if (statusRes?.error) {
+        const fallback = await supabase
+          .from("community_posts")
+          .select("id,title,body,created_by,created_at")
+          .like("title", `${STATUS_PREFIX}%`)
+          .order("created_at", { ascending: false })
+          .limit(80);
+        statusRows = fallback.data || [];
+      }
+
+      loadProfiles(statusRows.map((row) => row.created_by));
+
+      const finalItems = statusRows
+        .map((row) => ({
+          id: `status-${row.id}`,
           created_at: row.created_at,
           actor_id: row.created_by,
-          title: `posted in ${groupNameById[row.group_id] || "group chat"}`,
-          sub: normalizeGroupFeedPreview(row.body).slice(0, 180),
-          groupId: String(row.group_id || ""),
-          groupPostId: String(row.id || ""),
-          type: "group_post",
-        })),
-        ...forumPostRows
-          .filter((row) => {
-            const isStatus = String(row.title || "").startsWith(STATUS_PREFIX);
-            if (!isStatus) return true;
-            const actor = normalizeId(row.created_by);
-            const dayKey = toDayKey(row.created_at);
-            if (!actor || !dayKey) return true;
-            return !activityCommunityPostByActorDay.has(`${actor}:${dayKey}`);
-          })
-          .map((row) => ({
-            id: `forum-post-${row.id}`,
-            created_at: row.created_at,
-            actor_id: row.created_by,
-            title: String(row.title || "").startsWith(STATUS_PREFIX) ? "posted a status" : "created a forum thread",
-            sub: String(row.title || "").startsWith(STATUS_PREFIX)
-              ? String(row.body || row.title || "").replace(STATUS_PREFIX, "")
-              : row.title || "",
-            postId: String(row.id || ""),
-            type: "forum_post",
-          })),
-      ];
-
-      // Prevent duplicate status/forum entries when an activity row and forum row reference the same post.
-      const deduped = [];
-      const seenKeys = new Set();
-      normalized.forEach((item) => {
-        const postId = normalizeId(item.postId);
-        const key = postId ? `post:${postId}` : `${item.type}:${item.id}`;
-        if (seenKeys.has(key)) return;
-        seenKeys.add(key);
-        deduped.push(item);
-      });
-
-      const finalItems = deduped
+          title: "Status",
+          sub: String(row.body || row.title || "").replace(STATUS_PREFIX, "").trim(),
+          postId: String(row.id || ""),
+          type: "status_post",
+        }))
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 80);
 
@@ -428,7 +284,7 @@ export default function useCommunityData({
     } finally {
       setActivityFeedLoading(false);
     }
-  }, [friends, memberships, loadProfiles, userId]);
+  }, [friends, loadProfiles, userId]);
 
   useEffect(() => {
     if (activeTab !== "feed") return;

@@ -2309,7 +2309,7 @@ const StrengthProgressTab = ({ userId }) => {
                           </div>
                           <div className="studio-progress-value">
                             {item.weight > 0 ? `${item.weight}kg` : `${item.reps} reps`}
-                            {item.oneRm > 0 ? ` · ${item.oneRm.toFixed(1)} e1RM` : ''}
+                            {item.oneRm > 0 ? ` · ${item.oneRm.toFixed(1)} 1RM` : ''}
                           </div>
                         </div>
                       ))}
