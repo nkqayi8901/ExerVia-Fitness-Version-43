@@ -13998,6 +13998,11 @@ code {
   justify-content: space-between;
   gap: 8px;
 }
+.journal-trend-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .journal-mood-actions {
   display: flex;
   gap: 8px;
@@ -14007,16 +14012,60 @@ code {
   font-size: 0.82rem;
   color: rgba(148, 163, 184, 0.95);
 }
+.journal-trend-value-pill {
+  font-size: 0.72rem;
+  color: rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.1);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
 .journal-mood-bars {
   margin-top: 10px;
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
 }
-.journal-mood-col {
+.journal-trend-line-wrap {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.12);
+}
+.journal-trend-line-svg {
+  width: 100%;
+  height: 86px;
+  display: block;
+}
+.journal-trend-grid-fill {
+  fill: rgba(15, 23, 42, 0.1);
+}
+.journal-trend-grid-line {
+  stroke: rgba(148, 163, 184, 0.32);
+  stroke-width: 0.6;
+}
+.journal-trend-area-fill {
+  fill: rgba(59, 130, 246, 0.17);
+}
+.journal-trend-line-path {
+  fill: none;
+  stroke: rgba(59, 130, 246, 0.95);
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.journal-trend-point {
+  fill: rgba(59, 130, 246, 0.98);
+  stroke: rgba(15, 23, 42, 0.45);
+  stroke-width: 0.35;
+}
+.journal-trend-point.active {
+  stroke: rgba(15, 23, 42, 0.9);
+  stroke-width: 0.6;
+}
+.journal-trend-axis {
   display: grid;
-  justify-items: center;
-  gap: 5px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
 }
 .journal-mood-col-btn {
   border: 1px solid transparent;
@@ -14027,6 +14076,31 @@ code {
   cursor: pointer;
   transition: border-color 0.18s ease, background 0.18s ease;
 }
+.journal-trend-axis-btn {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.journal-trend-tip {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: rgba(226, 232, 240, 0.96);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  padding: 2px 8px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.journal-trend-axis-btn:hover .journal-trend-tip,
+.journal-trend-axis-btn.active .journal-trend-tip {
+  opacity: 1;
+}
 .journal-mood-col-btn:hover {
   border-color: rgba(59, 130, 246, 0.35);
   background: rgba(59, 130, 246, 0.08);
@@ -14035,22 +14109,6 @@ code {
   border-color: rgba(16, 185, 129, 0.45);
   background: rgba(16, 185, 129, 0.1);
 }
-.journal-mood-track {
-  width: 100%;
-  max-width: 26px;
-  height: 70px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(15, 23, 42, 0.22);
-  overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-}
-.journal-mood-fill {
-  width: 100%;
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(16, 185, 129, 0.95));
-}
-.journal-mood-score,
 .journal-mood-label {
   font-size: 0.72rem;
   color: rgba(226, 232, 240, 0.88);
@@ -14127,16 +14185,97 @@ code {
   letter-spacing: 0.08em;
   color: rgba(226, 232, 240, 0.85);
 }
-.logs-trend-bars {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+.logs-trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
-.logs-trend-col {
+.logs-trend-value-pill {
+  font-size: 0.72rem;
+  color: rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.1);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.logs-trend-line-wrap {
+  margin-top: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.12);
+}
+.logs-trend-line-svg {
+  display: block;
+  width: 100%;
+  height: 86px;
+}
+.logs-trend-grid-fill {
+  fill: rgba(15, 23, 42, 0.1);
+}
+.logs-trend-grid-line {
+  stroke: rgba(148, 163, 184, 0.32);
+  stroke-width: 0.6;
+}
+.logs-trend-line-path {
+  fill: none;
+  stroke: rgba(56, 189, 248, 0.95);
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.logs-trend-line-path.alt {
+  stroke: rgba(16, 185, 129, 0.95);
+}
+.logs-trend-area-fill {
+  fill: rgba(56, 189, 248, 0.16);
+}
+.logs-trend-area-fill.alt {
+  fill: rgba(16, 185, 129, 0.16);
+}
+.logs-trend-point {
+  fill: rgba(56, 189, 248, 0.98);
+  stroke: rgba(15, 23, 42, 0.45);
+  stroke-width: 0.35;
+}
+.logs-trend-point.alt {
+  fill: rgba(16, 185, 129, 0.98);
+}
+.logs-trend-point.active {
+  stroke: rgba(15, 23, 42, 0.9);
+  stroke-width: 0.6;
+}
+.logs-trend-axis {
+  margin-top: 8px;
   display: grid;
-  justify-items: center;
-  gap: 5px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.logs-trend-axis-btn {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.logs-trend-tip {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: rgba(226, 232, 240, 0.96);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  padding: 2px 8px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.logs-trend-axis-btn:hover .logs-trend-tip,
+.logs-trend-axis-btn.active .logs-trend-tip {
+  opacity: 1;
 }
 .logs-trend-col-btn {
   width: 100%;
@@ -14154,24 +14293,6 @@ code {
 .logs-trend-col-btn.active {
   border-color: rgba(16, 185, 129, 0.45);
   background: rgba(16, 185, 129, 0.1);
-}
-.logs-trend-track {
-  width: 100%;
-  max-width: 22px;
-  height: 64px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(15, 23, 42, 0.22);
-  overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-}
-.logs-trend-fill {
-  width: 100%;
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.94), rgba(99, 102, 241, 0.9));
-}
-.logs-trend-fill.alt {
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(14, 165, 233, 0.9));
 }
 .logs-trend-label {
   font-size: 0.7rem;
@@ -14203,8 +14324,8 @@ code {
 .mode-gym .studio-progress-card,
 .mode-gym .studio-progress-drilldown,
 .mode-gym .logs-trend-card,
-.mode-gym .journal-mood-track,
-.mode-gym .logs-trend-track,
+.mode-gym .journal-trend-line-wrap,
+.mode-gym .logs-trend-line-wrap,
 .mode-gym .journal-tag-pill {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 253, 244, 0.88));
   border-color: rgba(15, 23, 42, 0.14);
@@ -14213,7 +14334,6 @@ code {
 .mode-gym .studio-progress-label,
 .mode-gym .studio-progress-value,
 .mode-gym .journal-mood-average,
-.mode-gym .journal-mood-score,
 .mode-gym .journal-mood-label,
 .mode-gym .journal-tag-pill,
 .mode-gym .logs-trend-title,
@@ -14221,9 +14341,33 @@ code {
 .mode-gym .logs-goal-note {
   color: #1f2937;
 }
+.mode-gym .logs-trend-value-pill,
+.mode-gym .journal-trend-value-pill {
+  color: #0f172a;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
 .mode-gym .logs-viewing-day,
 .mode-gym .logs-viewing-day span {
   color: #1f2937;
+}
+.mode-gym .journal-trend-grid-fill,
+.mode-gym .logs-trend-grid-fill {
+  fill: rgba(255, 255, 255, 0.42);
+}
+.mode-gym .journal-trend-grid-line,
+.mode-gym .logs-trend-grid-line {
+  stroke: rgba(15, 23, 42, 0.24);
+}
+.mode-gym .journal-trend-point,
+.mode-gym .logs-trend-point,
+.mode-gym .logs-trend-point.alt {
+  stroke: rgba(255, 255, 255, 0.75);
+}
+.mode-gym .logs-trend-tip,
+.mode-gym .journal-trend-tip {
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
 }
 .mode-gym .studio-progress-row-btn:hover,
 .mode-gym .journal-mood-col-btn:hover,

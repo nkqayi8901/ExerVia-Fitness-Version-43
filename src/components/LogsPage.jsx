@@ -113,6 +113,50 @@ const toMl = (value, unit) => {
   return String(unit || "ml").toLowerCase() === "liters" ? num * 1000 : num;
 };
 
+const createLogsTrendLine = (rows, valueKey, selectedDay) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const values = safeRows.map((row) => Number(row?.[valueKey] || 0));
+  const nonZeroValues = values.filter((value) => value > 0);
+  const hasData = nonZeroValues.length > 0;
+  const minValue = hasData ? Math.min(...nonZeroValues) : 0;
+  const maxValue = hasData ? Math.max(...nonZeroValues) : 1;
+  const range = Math.max(1, maxValue - minValue);
+  const usableWidth = 88;
+  const xOffset = 6;
+  const yBottom = 34;
+  const yTop = 8;
+  const step = safeRows.length > 1 ? usableWidth / (safeRows.length - 1) : 0;
+
+  const points = safeRows.map((row, index) => {
+    const value = Number(row?.[valueKey] || 0);
+    const x = xOffset + step * index;
+    let y = yBottom;
+    if (value > 0 && hasData) {
+      const normalized = nonZeroValues.length === 1 ? 0.5 : (value - minValue) / range;
+      y = yBottom - normalized * (yBottom - yTop);
+    }
+    return {
+      key: row?.key || `${valueKey}-${index}`,
+      label: row?.label || "",
+      dayKey: row?.key || "",
+      value,
+      x: Number(x.toFixed(2)),
+      y: Number(y.toFixed(2)),
+      active: selectedDay === row?.key,
+    };
+  });
+
+  return {
+    hasData,
+    polylinePoints: points.map((point) => `${point.x},${point.y}`).join(" "),
+    areaPath:
+      hasData && points.length
+        ? `M ${points[0].x} ${yBottom} L ${points.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${points[points.length - 1].x} ${yBottom} Z`
+        : "",
+    points,
+  };
+};
+
 const LOGS_WALKTHROUGH_STEPS = [
   {
     id: "overview",
@@ -652,8 +696,22 @@ export default function LogsPage({ mode = "gym" }) {
     return result;
   }, [dailyLogsByDate, normalizeDayLog]);
 
-  const maxWeightInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.weightKg || 0));
-  const maxWaterInTrend = Math.max(1, ...sevenDayTrend.map((row) => row.waterMl || 0));
+  const weightTrendLine = useMemo(
+    () => createLogsTrendLine(sevenDayTrend, "weightKg", selectedDay),
+    [sevenDayTrend, selectedDay]
+  );
+  const waterTrendLine = useMemo(
+    () => createLogsTrendLine(sevenDayTrend, "waterMl", selectedDay),
+    [sevenDayTrend, selectedDay]
+  );
+  const selectedWeightPoint = useMemo(
+    () => weightTrendLine.points.find((point) => point.active) || null,
+    [weightTrendLine]
+  );
+  const selectedWaterPoint = useMemo(
+    () => waterTrendLine.points.find((point) => point.active) || null,
+    [waterTrendLine]
+  );
   const lastLoggedWeight = useMemo(() => {
     const entries = Object.entries(dailyLogsByDate || {})
       .filter(([dayKey, log]) => {
@@ -1462,43 +1520,89 @@ export default function LogsPage({ mode = "gym" }) {
         </div>
         <div className="logs-trend-grid">
           <div className="logs-trend-card">
-            <div className="logs-trend-title">Weight trend (7 days)</div>
-            <div className="logs-trend-bars">
-              {sevenDayTrend.map((row) => (
+            <div className="logs-trend-head">
+              <div className="logs-trend-title">Weight trend (7 days)</div>
+              <div className="logs-trend-value-pill">
+                {selectedWeightPoint?.value > 0 ? `${selectedWeightPoint.value.toFixed(1)} kg` : "No data"}
+              </div>
+            </div>
+            <div className="logs-trend-line-wrap">
+              <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                {weightTrendLine.hasData ? (
+                  <>
+                    <path className="logs-trend-area-fill" d={weightTrendLine.areaPath} />
+                    <polyline className="logs-trend-line-path" points={weightTrendLine.polylinePoints} />
+                  </>
+                ) : null}
+                {weightTrendLine.points.map((point) => (
+                  <circle
+                    key={`weight-point-${point.key}`}
+                    className={`logs-trend-point${point.active ? " active" : ""}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r={point.active ? 1.9 : 1.5}
+                  />
+                ))}
+              </svg>
+            </div>
+            <div className="logs-trend-axis">
+              {weightTrendLine.points.map((point) => (
                 <button
                   type="button"
-                  key={`weight-${row.key}`}
-                  className={`logs-trend-col logs-trend-col-btn${selectedDay === row.key ? " active" : ""}`}
-                  onClick={() => setSelectedDay(row.key)}
+                  key={`weight-axis-${point.key}`}
+                  className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                  onClick={() => setSelectedDay(point.dayKey)}
                 >
-                  <div className="logs-trend-track">
-                    <div
-                      className="logs-trend-fill"
-                      style={{ height: `${row.weightKg > 0 ? Math.max(6, (row.weightKg / maxWeightInTrend) * 100) : 0}%` }}
-                    />
-                  </div>
-                  <div className="logs-trend-label">{row.label}</div>
+                  <div className="logs-trend-label">{point.label}</div>
+                  <span className="logs-trend-tip">
+                    {point.value > 0 ? `${point.value.toFixed(1)} kg` : "No data"}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
           <div className="logs-trend-card">
-            <div className="logs-trend-title">Hydration trend (7 days)</div>
-            <div className="logs-trend-bars">
-              {sevenDayTrend.map((row) => (
+            <div className="logs-trend-head">
+              <div className="logs-trend-title">Hydration trend (7 days)</div>
+              <div className="logs-trend-value-pill">
+                {selectedWaterPoint?.value > 0 ? `${Math.round(selectedWaterPoint.value)} ml` : "No data"}
+              </div>
+            </div>
+            <div className="logs-trend-line-wrap">
+              <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                {waterTrendLine.hasData ? (
+                  <>
+                    <path className="logs-trend-area-fill alt" d={waterTrendLine.areaPath} />
+                    <polyline className="logs-trend-line-path alt" points={waterTrendLine.polylinePoints} />
+                  </>
+                ) : null}
+                {waterTrendLine.points.map((point) => (
+                  <circle
+                    key={`water-point-${point.key}`}
+                    className={`logs-trend-point alt${point.active ? " active" : ""}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r={point.active ? 1.9 : 1.5}
+                  />
+                ))}
+              </svg>
+            </div>
+            <div className="logs-trend-axis">
+              {waterTrendLine.points.map((point) => (
                 <button
                   type="button"
-                  key={`water-${row.key}`}
-                  className={`logs-trend-col logs-trend-col-btn${selectedDay === row.key ? " active" : ""}`}
-                  onClick={() => setSelectedDay(row.key)}
+                  key={`water-axis-${point.key}`}
+                  className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                  onClick={() => setSelectedDay(point.dayKey)}
                 >
-                  <div className="logs-trend-track">
-                    <div
-                      className="logs-trend-fill alt"
-                      style={{ height: `${row.waterMl > 0 ? Math.max(6, (row.waterMl / maxWaterInTrend) * 100) : 0}%` }}
-                    />
-                  </div>
-                  <div className="logs-trend-label">{row.label}</div>
+                  <div className="logs-trend-label">{point.label}</div>
+                  <span className="logs-trend-tip">
+                    {point.value > 0 ? `${Math.round(point.value)} ml` : "No data"}
+                  </span>
                 </button>
               ))}
             </div>

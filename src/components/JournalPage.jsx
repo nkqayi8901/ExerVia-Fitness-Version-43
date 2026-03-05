@@ -172,11 +172,60 @@ function JournalMetaCards({ isDayComplete, dayInOneGlance, thisMonthEntries, quo
   );
 }
 
+const createMoodTrendLine = (rows, selectedMoodDay) => {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const yBottom = 34;
+  const yTop = 8;
+  const xOffset = 6;
+  const usableWidth = 88;
+  const step = safeRows.length > 1 ? usableWidth / (safeRows.length - 1) : 0;
+
+  const points = safeRows.map((item, index) => {
+    const mood = Number(item?.mood || 0);
+    const clampedMood = Math.min(5, Math.max(1, mood || 1));
+    const x = xOffset + index * step;
+    const y = yBottom - ((clampedMood - 1) / 4) * (yBottom - yTop);
+    return {
+      key: item?.dayKey || `mood-${index}`,
+      dayKey: item?.dayKey || "",
+      label: item?.label || "",
+      mood: clampedMood,
+      x: Number(x.toFixed(2)),
+      y: Number(y.toFixed(2)),
+      active: selectedMoodDay === item?.dayKey,
+    };
+  });
+
+  return {
+    hasData: points.length > 0,
+    points,
+    polylinePoints: points.map((point) => `${point.x},${point.y}`).join(" "),
+    areaPath:
+      points.length > 0
+        ? `M ${points[0].x} ${yBottom} L ${points.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${points[points.length - 1].x} ${yBottom} Z`
+        : "",
+  };
+};
+
 function JournalMoodCard({ averageMood, selectedMoodDay, setSelectedMoodDay, moodTrend }) {
+  const moodLine = useMemo(
+    () => createMoodTrendLine(moodTrend, selectedMoodDay),
+    [moodTrend, selectedMoodDay]
+  );
+  const activeMoodPoint = useMemo(
+    () => moodLine.points.find((point) => point.active) || null,
+    [moodLine]
+  );
+
   return (
     <div className="hud-card journal-mood-card">
       <div className="journal-mood-top">
-        <div className="hud-card-title">MOOD TREND</div>
+        <div className="journal-trend-head">
+          <div className="hud-card-title">MOOD TREND</div>
+          <div className="journal-trend-value-pill">
+            {activeMoodPoint ? `${activeMoodPoint.mood}/5` : averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}
+          </div>
+        </div>
         <div className="journal-mood-actions">
           <div className="journal-mood-average">{averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}</div>
           {selectedMoodDay && (
@@ -188,20 +237,42 @@ function JournalMoodCard({ averageMood, selectedMoodDay, setSelectedMoodDay, moo
       </div>
       <div className="journal-mood-bars">
         {moodTrend.length ? (
-          moodTrend.map((item) => (
-            <button
-              type="button"
-              key={item.dayKey}
-              className={`journal-mood-col journal-mood-col-btn${selectedMoodDay === item.dayKey ? " active" : ""}`}
-              onClick={() => setSelectedMoodDay(item.dayKey)}
-            >
-              <div className="journal-mood-track">
-                <div className="journal-mood-fill" style={{ height: `${(item.mood / 5) * 100}%` }} />
-              </div>
-              <div className="journal-mood-score">{item.mood}</div>
-              <div className="journal-mood-label">{item.label}</div>
-            </button>
-          ))
+          <>
+            <div className="journal-trend-line-wrap">
+              <svg className="journal-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                <rect className="journal-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                <line className="journal-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                {moodLine.hasData ? (
+                  <>
+                    <path className="journal-trend-area-fill" d={moodLine.areaPath} />
+                    <polyline className="journal-trend-line-path" points={moodLine.polylinePoints} />
+                  </>
+                ) : null}
+                {moodLine.points.map((point) => (
+                  <circle
+                    key={`mood-point-${point.key}`}
+                    className={`journal-trend-point${point.active ? " active" : ""}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r={point.active ? 1.9 : 1.5}
+                  />
+                ))}
+              </svg>
+            </div>
+            <div className="journal-trend-axis">
+              {moodLine.points.map((point) => (
+                <button
+                  type="button"
+                  key={point.key}
+                  className={`journal-mood-col-btn journal-trend-axis-btn${point.active ? " active" : ""}`}
+                  onClick={() => setSelectedMoodDay(point.dayKey)}
+                >
+                  <div className="journal-mood-label">{point.label}</div>
+                  <span className="journal-trend-tip">{point.mood}/5</span>
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="hud-dim">Log evening mood to unlock your trend.</div>
         )}
