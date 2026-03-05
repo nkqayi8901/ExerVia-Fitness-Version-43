@@ -954,7 +954,7 @@ const StrengthProgressTab = ({ userId }) => {
     }
   };
 
-  const handleRemixProgram = (program) => {
+  const handleEditProgram = (program) => {
     if (!program) return;
     const remixedExercises = (program.exercises || []).map((exercise) => ({
       name: exercise.name || '',
@@ -966,7 +966,7 @@ const StrengthProgressTab = ({ userId }) => {
     }));
 
     setNewProgram({
-      name: `Remix · ${program.name || 'Custom Program'}`,
+      name: `Edit - ${program.name || 'Custom Program'}`,
       level: program.level || 'Beginner',
       focus: program.focus || 'Full Body',
       description: program.description || '',
@@ -2154,10 +2154,10 @@ const StrengthProgressTab = ({ userId }) => {
                     </button>
                     <button
                       className="studio-queue-btn ghost"
-                      onClick={() => handleRemixProgram(selectedProgram)}
+                      onClick={() => handleEditProgram(selectedProgram)}
                       type="button"
                     >
-                      Remix plan
+                      Edit program
                     </button>
                     <button
                       className="studio-queue-btn ghost"

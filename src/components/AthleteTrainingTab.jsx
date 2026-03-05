@@ -10,6 +10,7 @@ import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
 import { trackDailyActivity } from '../services/activityTracker';
 import { grantXpEventSafe } from '../services/xpEvents';
+import { emitToast } from '../utils/toast';
 import PageWalkthroughModal from './PageWalkthroughModal';
 // Component: AthleteTrainingTab - UI layout and interactions.
 // This component renders the athletetrainingtab experience and wires up its local UI state.
@@ -151,10 +152,10 @@ const emptyPlan = {
 const TRAINING_WALKTHROUGH_STEPS = [
   {
     id: 'pick_world',
-    title: 'Pick a Training World',
-    what: 'Choose a world like Hybrid, Running, Cycling, Swim, or Trail to filter plans by sport.',
-    why: 'The world keeps your plan list focused so sessions match your current goal.',
-    firstAction: 'Select a training world.',
+    title: 'Pick a Training Category',
+    what: 'Choose a category like Hybrid, Running, Cycling, Swim, or Trail to filter plans by sport.',
+    why: 'The category keeps your plan list focused so sessions match your current goal.',
+    firstAction: 'Select a training category.',
   },
   {
     id: 'pick_plan',
@@ -176,6 +177,247 @@ const TRAINING_WALKTHROUGH_STEPS = [
     what: 'Start your session from the selected plan and log it with reflections.',
     why: 'Timer + completion logging keeps training data clean for reports and XP.',
     firstAction: 'Start a session timer.',
+  },
+];
+
+const worldFallbackPlans = [
+  {
+    id: 'hybrid-threshold-builder',
+    name: 'Hybrid Threshold Builder',
+    sport: 'hybrid',
+    goal: 'Raise threshold and station repeatability',
+    summary: 'Race-specific pacing under fatigue over 4 weeks.',
+    defaultFocus: 'Tempo',
+    durationTarget: 58,
+    distanceTarget: 7,
+    outline: [
+      { week: 'Week 1', sessions: ['Tempo run 20 min', 'Sled push intervals', 'Row + carry combo'] },
+      { week: 'Week 2', sessions: ['Wall balls density', 'Run 45 min', 'Burpee broad jumps'] },
+      { week: 'Week 3', sessions: ['Station circuit 5 rounds', 'Tempo 25 min', 'Recovery mobility'] },
+      { week: 'Week 4', sessions: ['Simulation effort', 'Easy zone 2 35 min', 'Reset day'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'hybrid-race-primer',
+    name: 'Hybrid Race Primer',
+    sport: 'hybrid',
+    goal: 'Peak for event day confidence',
+    summary: 'Short focused block to sharpen transitions and pace control.',
+    defaultFocus: 'Race Prep',
+    durationTarget: 52,
+    distanceTarget: 6,
+    outline: [
+      { week: 'Week 1', sessions: ['Run + ski erg bricks', 'Farmer carry ladders', 'Recovery spin 30 min'] },
+      { week: 'Week 2', sessions: ['Wall balls + row repeats', 'Tempo run 30 min', 'Mobility reset'] },
+      { week: 'Week 3', sessions: ['Mini simulation', 'Easy endurance 40 min', 'Drill + transitions'] },
+      { week: 'Week 4', sessions: ['Race tune-up', 'Easy shakeout', 'Event prep'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'running-5k-blueprint',
+    name: 'Running 5K Blueprint',
+    sport: 'running',
+    goal: 'Build speed and pacing for 5K',
+    summary: 'Simple 4-week build for controlled 5K performance.',
+    defaultFocus: 'Speed',
+    durationTarget: 42,
+    distanceTarget: 5,
+    outline: [
+      { week: 'Week 1', sessions: ['Strides 10x20s', 'Tempo 15 min', 'Recovery 25 min'] },
+      { week: 'Week 2', sessions: ['Intervals 8x400m', 'Base run 35 min', 'Mobility + drills'] },
+      { week: 'Week 3', sessions: ['Threshold 18 min', 'Long easy 50 min', 'Recovery jog 25 min'] },
+      { week: 'Week 4', sessions: ['5K test', 'Easy run 30 min', 'Reset day'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'running-10k-steady-build',
+    name: 'Running 10K Steady Build',
+    sport: 'running',
+    goal: 'Progress to a confident 10K',
+    summary: 'Balanced endurance and tempo progression for 10K prep.',
+    defaultFocus: 'Base',
+    durationTarget: 58,
+    distanceTarget: 10,
+    outline: [
+      { week: 'Week 1', sessions: ['Base run 45 min', 'Tempo 20 min', 'Recovery 30 min'] },
+      { week: 'Week 2', sessions: ['Intervals 5x1k', 'Easy run 40 min', 'Long run 70 min'] },
+      { week: 'Week 3', sessions: ['Tempo 25 min', 'Base run 50 min', 'Recovery jog 30 min'] },
+      { week: 'Week 4', sessions: ['10K simulation', 'Easy run 35 min', 'Mobility reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'running-marathon-foundation',
+    name: 'Running Marathon Foundation',
+    sport: 'running',
+    goal: 'Introduce 42K base structure',
+    summary: 'Entry marathon base with long-run rhythm and recovery control.',
+    defaultFocus: 'Base',
+    durationTarget: 75,
+    distanceTarget: 42,
+    outline: [
+      { week: 'Week 1', sessions: ['Base run 50 min', 'Tempo 20 min', 'Long run 90 min'] },
+      { week: 'Week 2', sessions: ['Intervals 6x800m', 'Easy run 45 min', 'Long run 100 min'] },
+      { week: 'Week 3', sessions: ['Steady run 60 min', 'Recovery jog 30 min', 'Long run 110 min'] },
+      { week: 'Week 4', sessions: ['Progression run', 'Easy run 40 min', 'Mobility + reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'cycling-endurance-foundation',
+    name: 'Cycling Endurance Foundation',
+    sport: 'cycling',
+    goal: 'Build repeatable aerobic power',
+    summary: 'Steady base block for stronger week-to-week volume.',
+    defaultFocus: 'Base',
+    durationTarget: 70,
+    distanceTarget: 28,
+    outline: [
+      { week: 'Week 1', sessions: ['Zone 2 70 min', 'Cadence drills 35 min', 'Recovery spin 25 min'] },
+      { week: 'Week 2', sessions: ['Tempo 25 min', 'Zone 2 80 min', 'Mobility reset'] },
+      { week: 'Week 3', sessions: ['Hill repeats 5x5 min', 'Endurance 90 min', 'Easy spin 30 min'] },
+      { week: 'Week 4', sessions: ['Threshold check', 'Zone 2 60 min', 'Recovery day'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'cycling-climb-focus',
+    name: 'Cycling Climb Focus',
+    sport: 'cycling',
+    goal: 'Improve climbing cadence and torque',
+    summary: 'Hill-specific sessions with recovery balance.',
+    defaultFocus: 'Tempo',
+    durationTarget: 62,
+    distanceTarget: 20,
+    outline: [
+      { week: 'Week 1', sessions: ['Hill repeats 6x3 min', 'Easy spin 35 min', 'Cadence drills'] },
+      { week: 'Week 2', sessions: ['Tempo climb 20 min', 'Zone 2 70 min', 'Recovery spin'] },
+      { week: 'Week 3', sessions: ['Over-under climbs', 'Long endurance 85 min', 'Mobility'] },
+      { week: 'Week 4', sessions: ['Climb benchmark', 'Easy spin 30 min', 'Reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'cycling-threshold-ramp',
+    name: 'Cycling Threshold Ramp',
+    sport: 'cycling',
+    goal: 'Lift sustainable race pace',
+    summary: 'Progressive threshold work across 4 weeks.',
+    defaultFocus: 'Race Prep',
+    durationTarget: 64,
+    distanceTarget: 24,
+    outline: [
+      { week: 'Week 1', sessions: ['Threshold 3x8 min', 'Zone 2 60 min', 'Recovery spin 25 min'] },
+      { week: 'Week 2', sessions: ['Threshold 2x12 min', 'Tempo 30 min', 'Easy spin'] },
+      { week: 'Week 3', sessions: ['Threshold 3x10 min', 'Endurance 80 min', 'Mobility'] },
+      { week: 'Week 4', sessions: ['Race pace simulation', 'Easy ride 35 min', 'Recovery day'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'swim-sprint-control',
+    name: 'Swim Sprint Control',
+    sport: 'swimming',
+    goal: 'Improve top-end speed mechanics',
+    summary: 'Short sprint sets with strict form quality.',
+    defaultFocus: 'Speed',
+    durationTarget: 40,
+    distanceTarget: 1.5,
+    outline: [
+      { week: 'Week 1', sessions: ['8x25m sprint', 'Technique drills 25 min', 'Recovery swim'] },
+      { week: 'Week 2', sessions: ['10x25m sprint', 'Tempo 10x50m', 'Kick set'] },
+      { week: 'Week 3', sessions: ['12x25m sprint', 'Steady 30 min', 'Breath control'] },
+      { week: 'Week 4', sessions: ['Sprint test set', 'Easy technique', 'Mobility reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'swim-distance-builder',
+    name: 'Swim Distance Builder',
+    sport: 'swimming',
+    goal: 'Extend steady-distance capacity',
+    summary: 'Longer continuous sets with controlled pacing.',
+    defaultFocus: 'Base',
+    durationTarget: 50,
+    distanceTarget: 2.5,
+    outline: [
+      { week: 'Week 1', sessions: ['Steady 30 min', 'Pull set 6x100m', 'Easy recovery'] },
+      { week: 'Week 2', sessions: ['Steady 35 min', 'Pace 8x100m', 'Kick + drill'] },
+      { week: 'Week 3', sessions: ['Steady 40 min', 'Threshold 5x200m', 'Recovery laps'] },
+      { week: 'Week 4', sessions: ['Distance test', 'Easy technique', 'Reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'swim-race-readiness',
+    name: 'Swim Race Readiness',
+    sport: 'swimming',
+    goal: 'Prepare for race pacing and control',
+    summary: 'Race-pace reps and sharpened form work.',
+    defaultFocus: 'Race Prep',
+    durationTarget: 48,
+    distanceTarget: 2,
+    outline: [
+      { week: 'Week 1', sessions: ['Race pace 10x100m', 'Technique 25 min', 'Recovery'] },
+      { week: 'Week 2', sessions: ['Race pace 6x200m', 'Easy swim 30 min', 'Drill set'] },
+      { week: 'Week 3', sessions: ['Broken race set', 'Steady 35 min', 'Mobility'] },
+      { week: 'Week 4', sessions: ['Time trial', 'Easy flush', 'Reset day'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'trail-5k-starter',
+    name: 'Trail 5K Starter',
+    sport: 'trail',
+    goal: 'Simple entry trail 5K structure',
+    summary: 'Beginner-friendly trail rhythm with climb control.',
+    defaultFocus: 'Base',
+    durationTarget: 46,
+    distanceTarget: 5,
+    outline: [
+      { week: 'Week 1', sessions: ['Trail easy 30 min', 'Hill reps 6x45s', 'Recovery walk'] },
+      { week: 'Week 2', sessions: ['Tempo trail 18 min', 'Trail run 35 min', 'Mobility'] },
+      { week: 'Week 3', sessions: ['Hill reps 8x45s', 'Trail endurance 45 min', 'Recovery jog'] },
+      { week: 'Week 4', sessions: ['5K trail effort', 'Easy trail 25 min', 'Reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'trail-10k-builder',
+    name: 'Trail 10K Builder',
+    sport: 'trail',
+    goal: 'Build durable trail 10K output',
+    summary: 'Elevation and tempo progression for 10K efforts.',
+    defaultFocus: 'Tempo',
+    durationTarget: 62,
+    distanceTarget: 10,
+    outline: [
+      { week: 'Week 1', sessions: ['Trail base 45 min', 'Hill repeats 6x2 min', 'Recovery walk'] },
+      { week: 'Week 2', sessions: ['Tempo trail 25 min', 'Long trail 80 min', 'Mobility'] },
+      { week: 'Week 3', sessions: ['Climb repeats 7x2 min', 'Trail base 55 min', 'Recovery jog'] },
+      { week: 'Week 4', sessions: ['10K trail simulation', 'Easy trail 35 min', 'Reset'] },
+    ],
+    source: 'fallback'
+  },
+  {
+    id: 'trail-ultra-base',
+    name: 'Trail Ultra Base',
+    sport: 'trail',
+    goal: 'Long-form mountain endurance',
+    summary: 'Long climbs, controlled descents, and recovery rhythm.',
+    defaultFocus: 'Race Prep',
+    durationTarget: 85,
+    distanceTarget: 42,
+    outline: [
+      { week: 'Week 1', sessions: ['Long trail 95 min', 'Hill reps 8x90s', 'Recovery hike'] },
+      { week: 'Week 2', sessions: ['Steady trail 70 min', 'Tempo climb 22 min', 'Mobility'] },
+      { week: 'Week 3', sessions: ['Long trail 110 min', 'Easy trail 40 min', 'Recovery walk'] },
+      { week: 'Week 4', sessions: ['Ultra simulation block', 'Easy flush', 'Reset day'] },
+    ],
+    source: 'fallback'
   },
 ];
 
@@ -265,11 +507,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const focusOptions = ['Base', 'Tempo', 'Speed', 'Recovery', 'Race Prep'];
   const sports = ['running', 'cycling', 'swimming', 'hybrid', 'trail'];
   const trainingWorlds = [
-    { id: 'hybrid', title: 'Hybrid Arena', subtitle: 'Carry, sled, engine', sport: 'hybrid' },
-    { id: 'running', title: 'Velocity Lab', subtitle: 'Tempo and pace craft', sport: 'running' },
-    { id: 'cycling', title: 'Torque Studio', subtitle: 'Cadence and climbs', sport: 'cycling' },
-    { id: 'swimming', title: 'Flow Pool', subtitle: 'Form and oxygen', sport: 'swimming' },
-    { id: 'trail', title: 'Trail Forge', subtitle: 'Elevation resilience', sport: 'trail' }
+    { id: 'hybrid', title: 'Hybrid Arena (Hybrid Training)', subtitle: 'Carry, sled, engine', sport: 'hybrid' },
+    { id: 'running', title: 'Velocity Lab (Running)', subtitle: 'Tempo and pace craft', sport: 'running' },
+    { id: 'cycling', title: 'Torque Studio (Cycling)', subtitle: 'Cadence and climbs', sport: 'cycling' },
+    { id: 'swimming', title: 'Flow Pool (Swimming)', subtitle: 'Form and oxygen', sport: 'swimming' },
+    { id: 'trail', title: 'Trail Forge (Trail Running)', subtitle: 'Elevation resilience', sport: 'trail' }
   ];
   // outlinePresets provide quick session templates by sport,
   // they accelerate plan creation with curated weeks,
@@ -561,7 +803,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
 
     if (collected.length === 0) {
-      collected.push(...fallbackPlans);
+      collected.push(...fallbackPlans, ...worldFallbackPlans);
     }
 
     setPlans(dedupePlans(collected));
@@ -787,6 +1029,12 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => clearTimeout(timeout);
   }, [banner]);
 
+  useEffect(() => {
+    if (!banner?.message) return;
+    const type = banner.type === 'error' ? 'error' : banner.type || 'info';
+    emitToast(String(banner.message), type, type === 'error' ? 3600 : 3200);
+  }, [banner]);
+
   // pulse panel effect for a quick visual cue,
   // auto-closes the pulse after a short duration,
   // prevents repeated pulses from lingering,
@@ -933,6 +1181,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       sessionIntention.trim() ? `Intention: ${sessionIntention.trim()}` : ''
     ].filter(Boolean).join('\n');
     const loggedLabel = selectedPlan?.name || `${String(session.sport || 'training').toUpperCase()} session`;
+    const resolvedWeekSnapshot = sessionWeekSnapshot || selectedPlan?.outline?.[activePlanWeekIndex] || null;
+    const resolvedPlanWeekLabel = String(resolvedWeekSnapshot?.week || '').trim() || null;
+    const resolvedPlanSessions = Array.isArray(resolvedWeekSnapshot?.sessions)
+      ? resolvedWeekSnapshot.sessions.filter((item) => String(item || '').trim().length > 0)
+      : [];
 
     const sessionData = {
       user_id: resolvedUserId,
@@ -948,7 +1201,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         efficiency_factor: efficiencyData ? efficiencyData.value : null,
         focus: sessionFocus,
         plan_id: selectedPlan ? selectedPlan.id : null,
-        plan_name: selectedPlan ? selectedPlan.name : null
+        plan_name: selectedPlan ? selectedPlan.name : null,
+        plan_week: resolvedPlanWeekLabel,
+        plan_sessions: resolvedPlanSessions
       },
       efficiency_factor: efficiencyData ? efficiencyData.value : null,
     };
@@ -980,6 +1235,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             duration_minutes: durationBaseXp,
             plan_id: selectedPlan ? selectedPlan.id : null,
             plan_name: selectedPlan ? selectedPlan.name : null,
+            plan_week: resolvedPlanWeekLabel,
           },
         });
         awardedXp = Number(xpResult.awardedXp || 0);
@@ -1238,6 +1494,30 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     selectedPlanOutline[activePlanWeekIndex] || selectedPlanOutline[0] || null;
   const timerChecklistWeek = sessionWeekSnapshot || selectedPlanWeek;
   const lastTraining = recentTrainingSessions[0] || null;
+  const parsePlanNameFromNotes = (notesValue = '') => {
+    const notesText = String(notesValue || '');
+    const match = notesText.match(/Plan:\s*(.+?)\s*(?:\(|-|$)/i);
+    return match ? String(match[1] || '').trim() : '';
+  };
+  const getRecentPlanName = (row) =>
+    String(row?.metrics?.plan_name || '').trim() ||
+    parsePlanNameFromNotes(row?.notes || '') ||
+    String(row?.sport || 'training').toUpperCase();
+  const getRecentPlanWeek = (row) => {
+    const metricsWeek = String(row?.metrics?.plan_week || '').trim();
+    if (metricsWeek) return metricsWeek;
+    const notesText = String(row?.notes || '');
+    const weekMatch = notesText.match(/\((Week\s+\d+)\)/i);
+    return weekMatch ? String(weekMatch[1] || '').trim() : '';
+  };
+  const getRecentObjectives = (row) => {
+    const fromMetrics = Array.isArray(row?.metrics?.plan_sessions)
+      ? row.metrics.plan_sessions.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+    if (fromMetrics.length) return fromMetrics;
+    return [];
+  };
+  const lastTrainingTitle = lastTraining ? getRecentPlanName(lastTraining) : '';
   const holdTimerRef = useRef(null);
   const sessionLoggedPulseTimerRef = useRef(null);
 
@@ -1277,14 +1557,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   // remixPlan clones an existing plan into the editor,
-  // prefixes the name to signal it is a remix,
+  // prefixes the name to signal editable copy context,
   // resets editing id to avoid overwriting originals,
   // opens the create plan modal with prefilled values
   const remixPlan = (plan) => {
     if (!plan) return;
     setEditingPlanId(null);
     setNewPlan({
-      name: `Remix \u00B7 ${plan.name}`,
+      name: `Edit \u00B7 ${plan.name}`,
       sport: plan.sport || 'running',
       goal: plan.goal || '',
       summary: plan.summary || '',
@@ -1364,17 +1644,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             >
               Last training
             </button>
-            {selectedPlanWeek?.sessions?.length ? (
-              <div className="studio-header-checklist">
-                <div className="studio-header-checklist-title">Today Checklist</div>
-                <div className="studio-header-checklist-week">{selectedPlanWeek.week || "Week 1"}</div>
-                <ul className="studio-header-checklist-list">
-                  {(selectedPlanWeek.sessions || []).slice(0, 3).map((item, index) => (
-                    <li key={`header-check-${index}`}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </div>
         </header>
 
@@ -1427,7 +1696,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             {/* clicking again clears the filter, */}
             {/* provides a fast entry into plan browsing */}
             <div className="studio-worlds">
-              <div className="studio-panel-title">Training Worlds</div>
+              <div className="studio-panel-title">Training Categories</div>
               <div className="studio-world-grid">
                 {trainingWorlds.map((world) => (
                   <div
@@ -1452,7 +1721,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               <>
                 <input
                   className="studio-search"
-                  placeholder={planSportFilter ? 'Search plans' : 'Select a training world to unlock plans'}
+                  placeholder={planSportFilter ? 'Search plans' : 'Select a training category to unlock plans'}
                   value={planSearch}
                   onChange={(event) => setPlanSearch(event.target.value)}
                   disabled={!planSportFilter}
@@ -1509,7 +1778,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                       }}
                       type="button"
                     >
-                      Choose a world
+                      Choose a category
                     </button>
                   </div>
                 )}
@@ -1595,21 +1864,24 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             {selectedPlan ? (
               <>
                 <div className="studio-plan-preview">
-                  <div className="studio-plan-preview-title">{selectedPlan.name}</div>
-                  <div className="studio-plan-preview-sub">{selectedPlan.goal}</div>
+                <div className="studio-plan-preview-title">{selectedPlan.name}</div>
+                <div className="studio-plan-preview-sub">{selectedPlan.goal}</div>
                 {(selectedPlan.outline || []).length > 1 && (
-                  <div className="studio-week-selector">
-                    {(selectedPlan.outline || []).map((block, index) => (
-                      <button
-                        key={`week-tab-${block.week}-${index}`}
-                        type="button"
-                        className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
-                        onClick={() => setActivePlanWeekIndex(index)}
-                      >
-                        {block.week || `Week ${index + 1}`}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="hud-dim" style={{ marginBottom: 8 }}>Select a week before starting your session.</div>
+                    <div className="studio-week-selector">
+                      {(selectedPlan.outline || []).map((block, index) => (
+                        <button
+                          key={`week-tab-${block.week}-${index}`}
+                          type="button"
+                          className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
+                          onClick={() => setActivePlanWeekIndex(index)}
+                        >
+                          {block.week || `Week ${index + 1}`}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
                 <div className="studio-plan-preview-list">
                   {(selectedPlan.outline || []).length > 0 ? (
@@ -1689,18 +1961,21 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               <div className="studio-swap-body">
                 <div className="studio-plan-detail">{selectedPlan.summary}</div>
                 {(selectedPlan.outline || []).length > 1 && (
-                  <div className="studio-week-selector" style={{ marginTop: 0 }}>
-                    {(selectedPlan.outline || []).map((block, index) => (
-                      <button
-                        key={`plan-open-week-tab-${block.week}-${index}`}
-                        type="button"
-                        className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
-                        onClick={() => setActivePlanWeekIndex(index)}
-                      >
-                        {block.week || `Week ${index + 1}`}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="hud-dim" style={{ marginBottom: 8 }}>Select a week before starting.</div>
+                    <div className="studio-week-selector" style={{ marginTop: 0 }}>
+                      {(selectedPlan.outline || []).map((block, index) => (
+                        <button
+                          key={`plan-open-week-tab-${block.week}-${index}`}
+                          type="button"
+                          className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
+                          onClick={() => setActivePlanWeekIndex(index)}
+                        >
+                          {block.week || `Week ${index + 1}`}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
                 <div className="studio-plan-timeline">
                   {(selectedPlan.outline || [])
@@ -1758,7 +2033,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                     }}
                     type="button"
                   >
-                    Remix plan
+                    Edit plan
                   </button>
                   <button
                     className="studio-queue-btn ghost"
@@ -2126,7 +2401,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-panel-title">Last training</div>
                 <div className="studio-swap-sub">
                   {lastTraining
-                    ? `${String(lastTraining.sport || 'training').toUpperCase()} - ${lastTraining.duration_minutes || 0} min`
+                    ? `${lastTrainingTitle} - ${lastTraining.duration_minutes || 0} min`
                     : 'No training logged yet'}
                 </div>
               </div>
@@ -2140,13 +2415,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                   {recentTrainingSessions.slice(0, 3).map((row) => (
                     <div key={`recent-ath-${row.id}`} className="studio-plan-week">
                       <div className="studio-plan-week-title">
-                        {String(row.sport || 'training').toUpperCase()} - {row.duration_minutes || 0} min
+                        {getRecentPlanName(row)} - {row.duration_minutes || 0} min
                       </div>
                       <ul className="studio-plan-week-list">
                         <li>{new Date(row.created_at).toLocaleString()}</li>
-                        {row?.metrics?.plan_name ? <li>Plan: {row.metrics.plan_name}</li> : null}
-                        {row?.metrics?.distance ? <li>Distance: {row.metrics.distance}</li> : null}
-                        {row?.metrics?.focus ? <li>Focus: {row.metrics.focus}</li> : null}
+                        {getRecentPlanWeek(row) ? <li>{getRecentPlanWeek(row)}</li> : null}
+                        {getRecentObjectives(row).map((objective, objectiveIndex) => (
+                          <li key={`recent-objective-${row.id}-${objectiveIndex}`}>{objective}</li>
+                        ))}
+                        {!getRecentObjectives(row).length && row?.metrics?.distance ? <li>Distance: {row.metrics.distance}</li> : null}
+                        {!getRecentObjectives(row).length && row?.metrics?.focus ? <li>Focus: {row.metrics.focus}</li> : null}
                       </ul>
                     </div>
                   ))}

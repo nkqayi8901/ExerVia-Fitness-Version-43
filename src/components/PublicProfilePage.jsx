@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { emitToast } from "../utils/toast";
 // Component: PublicProfilePage - UI layout and interactions.
 // This component renders the publicprofilepage experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -266,6 +267,21 @@ export default function PublicProfilePage({ mode = "athlete", viewerId }) {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewedUserId, currentUserId]);
+
+  useEffect(() => {
+    if (!banner) return undefined;
+    const timeout = setTimeout(() => setBanner(""), 2800);
+    return () => clearTimeout(timeout);
+  }, [banner]);
+
+  useEffect(() => {
+    if (!banner) return;
+    const lower = String(banner).toLowerCase();
+    const type = lower.includes("could not") || lower.includes("failed") || lower.includes("error")
+      ? "error"
+      : "info";
+    emitToast(String(banner), type, type === "error" ? 3600 : 2800);
+  }, [banner]);
 
   const handleAddFriend = async () => {
     if (!currentUserId || !viewedUserId || isSelf) return;

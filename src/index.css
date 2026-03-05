@@ -3233,6 +3233,17 @@ code {
   display: grid;
   gap: 8px;
 }
+.fuel-slot-search-row {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.fuel-slot-custom-row {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
 .fuel-slot-item {
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -10383,7 +10394,11 @@ code {
 }
 
 .fuel-custom-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   align-items: stretch;
+  width: 100%;
 }
 
 .fuel-custom-action-btn {
@@ -10391,6 +10406,8 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  margin: 0;
 }
 
 .community-cta-btn:disabled {

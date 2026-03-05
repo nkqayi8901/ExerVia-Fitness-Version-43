@@ -514,17 +514,6 @@ const sumMacros = (entries) =>
     emptyMacros()
   );
 
-const formatNudgeAge = (timestampMs) => {
-  const ageMs = Math.max(0, Date.now() - Number(timestampMs || 0));
-  const minutes = Math.round(ageMs / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
-};
-
 export default function NutritionPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -568,13 +557,14 @@ export default function NutritionPage() {
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [activeBoardSlot, setActiveBoardSlot] = useState("");
+  const [boardMealSearch, setBoardMealSearch] = useState("");
+  const [customBoardMealName, setCustomBoardMealName] = useState("");
   const [fuelBoard, setFuelBoard] = useState({
     morning: null,
     midday: null,
     pre_training: null,
     recovery: null,
   });
-  const [recoveryNudge, setRecoveryNudge] = useState(null);
   const [customRecipeDraft, setCustomRecipeDraft] = useState({
     title: "",
     mealType: "Dinner",
@@ -606,10 +596,6 @@ export default function NutritionPage() {
     () => `exervia_fuel_board_${storedId || "guest"}_${getTodayLogKey()}`,
     [storedId]
   );
-  const recoveryNudgeStorageKey = useMemo(
-    () => `exervia_recovery_nudge_${storedId || "guest"}`,
-    [storedId]
-  );
   const protocolCacheKey = useMemo(
     () =>
       `exervia_protocol_cache_${storedId || "guest"}_${preference}_${goal}_${timeWindow}_${curatedOnly ? "curated" : "all"}`,
@@ -619,11 +605,6 @@ export default function NutritionPage() {
   const favoritesHydratedRef = useRef(false);
 
   useEffect(() => {
-    const raw = String(searchParams.get("tab") || "").trim().toLowerCase();
-    if (raw === "recovery" || raw === "intake" || raw === "build" || raw === "overview") {
-      setActiveFuelView(raw);
-      return;
-    }
     setActiveFuelView("overview");
   }, [searchParams]);
 
@@ -769,31 +750,6 @@ export default function NutritionPage() {
       setFuelBoard({ morning: null, midday: null, pre_training: null, recovery: null });
     }
   }, [fuelBoardStorageKey]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(recoveryNudgeStorageKey);
-      if (!raw) {
-        setRecoveryNudge(null);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      const ageMs = Math.max(0, Date.now() - Number(parsed?.at || 0));
-      if (!parsed || ageMs > 1000 * 60 * 60 * 8) {
-        localStorage.removeItem(recoveryNudgeStorageKey);
-        setRecoveryNudge(null);
-        return;
-      }
-      setRecoveryNudge({
-        type: String(parsed?.type || "training_session"),
-        label: String(parsed?.label || "Session"),
-        minutes: Number(parsed?.minutes || 0),
-        at: Number(parsed?.at || Date.now()),
-      });
-    } catch {
-      setRecoveryNudge(null);
-    }
-  }, [recoveryNudgeStorageKey]);
 
   useEffect(() => {
     localStorage.setItem(fuelBoardStorageKey, JSON.stringify(fuelBoard));
@@ -1082,38 +1038,19 @@ export default function NutritionPage() {
     return Array.from(dedup.values()).slice(0, 12);
   }, [activeBoardSlot, protocolMeals, favoriteMeals, goal]);
 
-  const recoveryNudgeMeal = useMemo(() => {
-    if (!recoveryNudge) return null;
-    const localRecovery = getLocalRecipePool(preference, timeWindow, goal).filter((meal) =>
-      getMealSlotTags(meal).includes("recovery")
+  const filteredSlotCandidates = useMemo(() => {
+    const query = String(boardMealSearch || "").trim().toLowerCase();
+    if (!query) return activeSlotCandidates;
+    return activeSlotCandidates.filter((meal) =>
+      String(meal?.strMeal || "").toLowerCase().includes(query)
     );
-    const pool = [...(protocolMeals || []), ...(favoriteMeals || []), ...localRecovery];
-    const dedup = new Map();
-    for (const meal of pool) {
-      const key = recipeIdentityKey(meal);
-      if (!key) continue;
-      if (!getMealSlotTags(meal).includes("recovery")) continue;
-      if (!looksHealthyEnough(meal?.strMeal, goal)) continue;
-      if (!dedup.has(key)) dedup.set(key, meal);
-    }
-    const list = Array.from(dedup.values());
-    if (!list.length) return null;
-    const curated = list.find((meal) => isCuratedMeal(meal) && toMacroNumber(meal?.__nutrition?.protein) > 0);
-    return curated || list[0];
-  }, [recoveryNudge, protocolMeals, favoriteMeals, preference, timeWindow, goal]);
+  }, [activeSlotCandidates, boardMealSearch]);
 
-  const dismissRecoveryNudge = () => {
-    localStorage.removeItem(recoveryNudgeStorageKey);
-    setRecoveryNudge(null);
-  };
-
-  const handleApplyRecoveryNudge = () => {
-    if (!recoveryNudgeMeal?.strMeal) return;
-    handleAssignMealToBoardSlot("recovery", recoveryNudgeMeal);
-    setActiveMeal(recoveryNudgeMeal);
-    setSaveBanner(`${recoveryNudgeMeal.strMeal} added to Recovery slot.`);
-    dismissRecoveryNudge();
-  };
+  useEffect(() => {
+    if (activeBoardSlot) return;
+    setBoardMealSearch("");
+    setCustomBoardMealName("");
+  }, [activeBoardSlot]);
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -1654,6 +1591,30 @@ export default function NutritionPage() {
         },
       },
     }));
+    setBoardMealSearch("");
+    setCustomBoardMealName("");
+    setActiveBoardSlot("");
+  };
+
+  const handleAssignCustomMealToBoardSlot = () => {
+    const slotKey = String(activeBoardSlot || "").trim();
+    const title = String(customBoardMealName || "").trim();
+    if (!slotKey) return;
+    if (!title) {
+      setSaveBanner("Type a meal name first.");
+      return;
+    }
+    setFuelBoard((prev) => ({
+      ...prev,
+      [slotKey]: {
+        idMeal: `custom-${Date.now()}`,
+        text: title,
+        source: "build_custom",
+        nutrition: emptyMacros(),
+      },
+    }));
+    setBoardMealSearch("");
+    setCustomBoardMealName("");
     setActiveBoardSlot("");
   };
 
@@ -1923,11 +1884,11 @@ export default function NutritionPage() {
       return;
     }
     if (stepId === "today_intake") {
-      setActiveFuelView("today");
+      setActiveFuelView("overview");
       return;
     }
     if (stepId === "build_day") {
-      setActiveFuelView("build");
+      setActiveFuelView("overview");
       return;
     }
     if (stepId === "favorites") {
@@ -1956,10 +1917,9 @@ export default function NutritionPage() {
   }, [curatedOnly]);
 
   const showOverview = activeFuelView === "overview";
-  const showRecovery = activeFuelView === "recovery";
-  const showIntake = activeFuelView === "intake";
-  const showBuild = activeFuelView === "build";
-  const showProtocolSettings = showOverview || showRecovery;
+  const showIntake = true;
+  const showBuild = true;
+  const showProtocolSettings = true;
 
   // Render
   // The return statement below manages the UI layout and interactions,
@@ -2042,9 +2002,9 @@ export default function NutritionPage() {
         ) : null}
 
         <div className="hud-card" style={{ marginBottom: 12 }}>
-          <div className="hud-card-title">FUEL PRIORITY</div>
+          <div className="hud-card-title">INTAKE + BUILD</div>
           <div className="hud-dim" style={{ marginBottom: 10 }}>
-            Start here first: recovery, intake targets, and Build My Day.
+            One combined flow: set targets, build slots, and track intake in one place.
           </div>
           <div className="fuel-feed-toggle-row">
             <button
@@ -2052,30 +2012,7 @@ export default function NutritionPage() {
               className={`studio-back fuel-compact-btn ${activeFuelView === "overview" ? "fuel-chip-active" : ""}`}
               onClick={() => setFuelView("overview")}
             >
-              Overview
-            </button>
-            {recoveryNudge ? (
-              <button
-                type="button"
-                className={`studio-back fuel-compact-btn ${activeFuelView === "recovery" ? "fuel-chip-active" : ""}`}
-                onClick={() => setFuelView("recovery")}
-              >
-                Recovery window
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className={`studio-back fuel-compact-btn ${activeFuelView === "intake" ? "fuel-chip-active" : ""}`}
-              onClick={() => setFuelView("intake")}
-            >
-              Today's intake
-            </button>
-            <button
-              type="button"
-              className={`studio-back fuel-compact-btn ${activeFuelView === "build" ? "fuel-chip-active" : ""}`}
-              onClick={() => setFuelView("build")}
-            >
-              Build My Day
+              Fuel Hub
             </button>
           </div>
         </div>
@@ -2135,50 +2072,6 @@ export default function NutritionPage() {
             </div>
 
             <div className="hud-divider" style={{ display: showProtocolSettings ? undefined : "none" }} />
-
-            {showRecovery && recoveryNudge ? (
-              <div className="fuel-recovery-nudge" id="fuel-recovery-section">
-                <div className="fuel-recovery-nudge-kicker">RECOVERY WINDOW OPEN</div>
-                <div className="fuel-recovery-nudge-title">
-                  {recoveryNudge.label} finished{recoveryNudge.minutes > 0 ? ` (${recoveryNudge.minutes} min)` : ""}
-                </div>
-                <div className="fuel-recovery-nudge-sub">
-                  Add a recovery meal to your Build My Day board while momentum is high. Triggered {formatNudgeAge(recoveryNudge.at)}.
-                </div>
-                {recoveryNudgeMeal ? (
-                  <div className="fuel-recovery-nudge-meal">
-                    <div className="fuel-recovery-nudge-name">{recoveryNudgeMeal.strMeal}</div>
-                    <div className="fuel-recovery-nudge-meta">
-                      {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.calories))} kcal | P {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.protein))} | C {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.carbs))} | F {Math.round(toMacroNumber(recoveryNudgeMeal?.__nutrition?.fat))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="fuel-recovery-nudge-meta">Generate meals to load a recovery recommendation.</div>
-                )}
-                <div className="fuel-recovery-nudge-actions">
-                  <button
-                    type="button"
-                    className="studio-back fuel-compact-btn"
-                    onClick={handleApplyRecoveryNudge}
-                    disabled={!recoveryNudgeMeal}
-                  >
-                    Fill Recovery Slot
-                  </button>
-                  <button
-                    type="button"
-                    className="studio-back fuel-compact-btn"
-                    onClick={dismissRecoveryNudge}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {showRecovery && !recoveryNudge ? (
-              <div className="hud-dim" id="fuel-recovery-section">
-                No active recovery window right now. Complete a session to trigger recovery recommendations.
-              </div>
-            ) : null}
 
             <div style={{ display: showIntake ? undefined : "none" }}>
               <div className="hud-card-title" id="fuel-intake-section">TODAY'S INTAKE</div>
@@ -2315,11 +2208,23 @@ export default function NutritionPage() {
                 <div className="fuel-slot-picker-sub">
                   Showing slot-matched meals first so you can fill the board fast.
                 </div>
+                <div className="fuel-slot-search-row">
+                  <input
+                    className="studio-form-input"
+                    placeholder={`Search ${getSlotLabel(activeBoardSlot)} meals...`}
+                    value={boardMealSearch}
+                    onChange={(event) => setBoardMealSearch(event.target.value)}
+                  />
+                </div>
                 <div className="fuel-slot-list">
-                  {activeSlotCandidates.length === 0 ? (
-                    <div className="fuel-board-empty">No slot-matched meals yet. Try Generate New Meals.</div>
+                  {filteredSlotCandidates.length === 0 ? (
+                    <div className="fuel-board-empty">
+                      {activeSlotCandidates.length === 0
+                        ? "No slot-matched meals yet. Try Generate New Meals."
+                        : "No meals match your search. Add a custom meal below."}
+                    </div>
                   ) : (
-                    activeSlotCandidates.map((meal) => (
+                    filteredSlotCandidates.map((meal) => (
                       <button
                         key={`pick-${meal.idMeal}`}
                         type="button"
@@ -2333,6 +2238,21 @@ export default function NutritionPage() {
                       </button>
                     ))
                   )}
+                </div>
+                <div className="fuel-slot-custom-row">
+                  <input
+                    className="studio-form-input"
+                    placeholder="Meal not listed? Add custom meal"
+                    value={customBoardMealName}
+                    onChange={(event) => setCustomBoardMealName(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="studio-back fuel-compact-btn"
+                    onClick={handleAssignCustomMealToBoardSlot}
+                  >
+                    Add to slot
+                  </button>
                 </div>
               </div>
             ) : (
