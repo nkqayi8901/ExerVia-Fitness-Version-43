@@ -14992,3 +14992,51 @@ code {
   border-color: rgba(236, 72, 153, 0.35);
   background: rgba(236, 72, 153, 0.1);
 }
+
+/* Mobile overflow + popover alignment fixes */
+html, body, #root {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .hud-bg,
+  .hud-topbar,
+  .page-shell,
+  .community-shell,
+  .community-group-room-shell,
+  .community-group-room-layout {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .hud-account {
+    min-width: 0;
+  }
+
+  .hud-account-menu,
+  .hud-notif-menu {
+    left: auto !important;
+    right: 0 !important;
+    width: min(92vw, 340px);
+    max-width: calc(100vw - 14px);
+  }
+
+  .mode-nav,
+  .mode-nav-inline {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mode-nav-btn {
+    min-width: 0;
+  }
+}
+
+/* Athlete training stats block spacing */
+.studio-training-stats-panel {
+  margin-bottom: 12px;
+}
+
+.studio-training-stats-panel .logs-list-sub {
+  margin-top: 8px;
+}

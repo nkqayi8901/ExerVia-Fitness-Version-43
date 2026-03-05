@@ -1518,6 +1518,16 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return [];
   };
   const lastTrainingTitle = lastTraining ? getRecentPlanName(lastTraining) : '';
+  const latestDurationMinutes = Number(lastTraining?.duration_minutes || 0);
+  const timedSessionDurations = recentTrainingSessions
+    .map((row) => Number(row?.duration_minutes || 0))
+    .filter((minutes) => Number.isFinite(minutes) && minutes > 0);
+  const bestDurationMinutes = timedSessionDurations.length ? Math.min(...timedSessionDurations) : 0;
+  const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const sevenDaySessionCount = recentTrainingSessions.filter((row) => {
+    const createdAtMs = new Date(row?.created_at || 0).getTime();
+    return Number.isFinite(createdAtMs) && createdAtMs >= sevenDaysAgoMs;
+  }).length;
   const holdTimerRef = useRef(null);
   const sessionLoggedPulseTimerRef = useRef(null);
 
@@ -1656,6 +1666,42 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             {banner.message}
           </div>
         )}
+
+        <section className="studio-panel studio-reveal studio-training-stats-panel">
+          <div className="studio-panel-title">Training Stats</div>
+          <div className="studio-pr-grid">
+            <div className="studio-pr-card">
+              <div className="studio-pr-top">
+                <div className="studio-pr-title">Latest</div>
+              </div>
+              <div className="studio-pr-value">
+                {latestDurationMinutes > 0 ? `${latestDurationMinutes} min` : "Untimed"}
+              </div>
+              <div className="studio-pr-sub">Most recent session duration</div>
+            </div>
+            <div className="studio-pr-card">
+              <div className="studio-pr-top">
+                <div className="studio-pr-title">Best</div>
+              </div>
+              <div className="studio-pr-value">
+                {bestDurationMinutes > 0 ? `${bestDurationMinutes} min` : "Untimed"}
+              </div>
+              <div className="studio-pr-sub">Best timed completion</div>
+            </div>
+            <div className="studio-pr-card">
+              <div className="studio-pr-top">
+                <div className="studio-pr-title">7D</div>
+              </div>
+              <div className="studio-pr-value">{sevenDaySessionCount}</div>
+              <div className="studio-pr-sub">Sessions in last 7 days</div>
+            </div>
+          </div>
+          <div className="logs-list-sub">
+            {lastTraining
+              ? `Latest: ${lastTrainingTitle} · ${new Date(lastTraining.created_at).toLocaleString()}`
+              : "No recent sessions logged yet."}
+          </div>
+        </section>
 
         {/* main content grid for library + preview, */}
         {/* left panel focuses on plan discovery, */}
