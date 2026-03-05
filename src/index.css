@@ -14901,3 +14901,94 @@ code {
   background: rgba(255, 255, 255, 0.82);
   border-color: rgba(15, 118, 110, 0.26);
 }
+
+/* UI polish pass: readability + macro line-chart colors */
+.community-activity-title {
+  font-size: 15px;
+}
+
+.community-activity-detail {
+  font-size: 16px;
+}
+
+.studio-swap-header .studio-panel-title {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.studio-swap-sub {
+  font-size: 13px;
+}
+
+.program-preview .logs-list-title {
+  font-size: 15px;
+}
+
+.program-preview .logs-list-sub {
+  font-size: 13px;
+}
+
+.mode-gym .program-strava-metric {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.mode-gym .program-strava-label {
+  color: rgba(71, 85, 105, 0.9);
+}
+
+.mode-gym .program-strava-metric strong {
+  color: #0f172a;
+}
+
+.fuel-trend-line-protein {
+  stroke: rgba(16, 185, 129, 0.95);
+}
+
+.fuel-trend-area-protein {
+  fill: rgba(16, 185, 129, 0.16);
+}
+
+.fuel-trend-point-protein {
+  fill: rgba(16, 185, 129, 0.98);
+}
+
+.fuel-trend-pill-protein {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.fuel-trend-line-carbs {
+  stroke: rgba(245, 158, 11, 0.95);
+}
+
+.fuel-trend-area-carbs {
+  fill: rgba(245, 158, 11, 0.16);
+}
+
+.fuel-trend-point-carbs {
+  fill: rgba(245, 158, 11, 0.98);
+}
+
+.fuel-trend-pill-carbs {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.fuel-trend-line-fat {
+  stroke: rgba(236, 72, 153, 0.95);
+}
+
+.fuel-trend-area-fat {
+  fill: rgba(236, 72, 153, 0.16);
+}
+
+.fuel-trend-point-fat {
+  fill: rgba(236, 72, 153, 0.98);
+}
+
+.fuel-trend-pill-fat {
+  border-color: rgba(236, 72, 153, 0.35);
+  background: rgba(236, 72, 153, 0.1);
+}

@@ -156,6 +156,50 @@ function buildIngredients(meal) {
   return list;
 }
 
+function createFuelTrendLine(rows, valueGetter, selectedDay) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const values = safeRows.map((row) => Number(valueGetter(row) || 0));
+  const nonZeroValues = values.filter((value) => value > 0);
+  const hasData = nonZeroValues.length > 0;
+  const minValue = hasData ? Math.min(...nonZeroValues) : 0;
+  const maxValue = hasData ? Math.max(...nonZeroValues) : 1;
+  const range = Math.max(1, maxValue - minValue);
+  const usableWidth = 88;
+  const xOffset = 6;
+  const yBottom = 34;
+  const yTop = 8;
+  const step = safeRows.length > 1 ? usableWidth / (safeRows.length - 1) : 0;
+
+  const points = safeRows.map((row, index) => {
+    const value = Number(valueGetter(row) || 0);
+    const x = xOffset + step * index;
+    let y = yBottom;
+    if (value > 0 && hasData) {
+      const normalized = nonZeroValues.length === 1 ? 0.5 : (value - minValue) / range;
+      y = yBottom - normalized * (yBottom - yTop);
+    }
+    return {
+      key: row?.key || `macro-${index}`,
+      label: row?.label || "",
+      dayKey: row?.key || "",
+      value,
+      x: Number(x.toFixed(2)),
+      y: Number(y.toFixed(2)),
+      active: selectedDay === row?.key,
+    };
+  });
+
+  return {
+    hasData,
+    polylinePoints: points.map((point) => `${point.x},${point.y}`).join(" "),
+    areaPath:
+      hasData && points.length
+        ? `M ${points[0].x} ${yBottom} L ${points.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${points[points.length - 1].x} ${yBottom} Z`
+        : "",
+    points,
+  };
+}
+
 /**
  * Health bias:
  * - Always block desserts + obvious junk
@@ -887,14 +931,21 @@ export default function NutritionPage() {
     }
     return rows;
   }, [logMealsByDate, mergedTodayMeals, todayLogKey]);
-  const weeklyMax = useMemo(
-    () => ({
-      calories: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.calories || 0)),
-      protein: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.protein || 0)),
-      carbs: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.carbs || 0)),
-      fat: Math.max(1, ...weeklyMacroTrend.map((row) => row.totals.fat || 0)),
-    }),
-    [weeklyMacroTrend]
+  const caloriesTrendLine = useMemo(
+    () => createFuelTrendLine(weeklyMacroTrend, (row) => row?.totals?.calories, selectedMacroDay),
+    [weeklyMacroTrend, selectedMacroDay]
+  );
+  const proteinTrendLine = useMemo(
+    () => createFuelTrendLine(weeklyMacroTrend, (row) => row?.totals?.protein, selectedMacroDay),
+    [weeklyMacroTrend, selectedMacroDay]
+  );
+  const carbsTrendLine = useMemo(
+    () => createFuelTrendLine(weeklyMacroTrend, (row) => row?.totals?.carbs, selectedMacroDay),
+    [weeklyMacroTrend, selectedMacroDay]
+  );
+  const fatTrendLine = useMemo(
+    () => createFuelTrendLine(weeklyMacroTrend, (row) => row?.totals?.fat, selectedMacroDay),
+    [weeklyMacroTrend, selectedMacroDay]
   );
   const visibleProtocolMeals = useMemo(() => {
     if (feedFilter === "favorites") return favoriteMeals;
@@ -1947,100 +1998,215 @@ export default function NutritionPage() {
               </button>
               </div>
               <div className="fuel-weekly-grid">
-              <div className="fuel-weekly-card">
-                <div className="fuel-macro-label">Calories Â· 7 days</div>
-                <div className="fuel-weekly-bars">
-                  {weeklyMacroTrend.map((row) => (
-                    <button
-                      type="button"
-                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
-                      key={`wk-cal-${row.key}`}
-                      onClick={() => setSelectedMacroDay(row.key)}
-                    >
-                      <div className="fuel-weekly-track">
-                        <div
-                          className="fuel-weekly-fill"
-                          style={{
-                            height: `${row.totals.calories > 0 ? Math.max(5, (row.totals.calories / weeklyMax.calories) * 100) : 0}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="fuel-weekly-label">{row.label}</div>
-                    </button>
-                  ))}
+                <div className="fuel-weekly-card">
+                  <div className="logs-trend-head">
+                    <div className="fuel-macro-label">Calories · 7 days</div>
+                    <div className="logs-trend-value-pill">
+                      {caloriesTrendLine.points.find((point) => point.active)?.value > 0
+                        ? `${Math.round(caloriesTrendLine.points.find((point) => point.active)?.value || 0)} kcal`
+                        : "No data"}
+                    </div>
+                  </div>
+                  <div className="logs-trend-line-wrap">
+                    <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                      <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                      {caloriesTrendLine.hasData ? (
+                        <>
+                          <path className="logs-trend-area-fill" d={caloriesTrendLine.areaPath} />
+                          <polyline className="logs-trend-line-path" points={caloriesTrendLine.polylinePoints} />
+                        </>
+                      ) : null}
+                      {caloriesTrendLine.points.map((point) => (
+                        <g key={`cal-point-${point.key}`}>
+                          <circle
+                            className="logs-trend-hit"
+                            cx={point.x}
+                            cy={point.y}
+                            r={4.2}
+                            onClick={() => setSelectedMacroDay(point.dayKey)}
+                          />
+                          <circle
+                            className={`logs-trend-point${point.active ? " active" : ""}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r={point.active ? 1.9 : 1.5}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                  <div className="logs-trend-axis">
+                    {caloriesTrendLine.points.map((point) => (
+                      <button
+                        type="button"
+                        key={`cal-axis-${point.key}`}
+                        className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                        onClick={() => setSelectedMacroDay(point.dayKey)}
+                      >
+                        <div className="logs-trend-label">{point.label}</div>
+                        {point.value > 0 ? <span className="logs-trend-tip">{`${Math.round(point.value)} kcal`}</span> : null}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="fuel-weekly-card">
-                <div className="fuel-macro-label">Protein Â· 7 days</div>
-                <div className="fuel-weekly-bars">
-                  {weeklyMacroTrend.map((row) => (
-                    <button
-                      type="button"
-                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
-                      key={`wk-pro-${row.key}`}
-                      onClick={() => setSelectedMacroDay(row.key)}
-                    >
-                      <div className="fuel-weekly-track">
-                        <div
-                          className="fuel-weekly-fill protein"
-                          style={{
-                            height: `${row.totals.protein > 0 ? Math.max(5, (row.totals.protein / weeklyMax.protein) * 100) : 0}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="fuel-weekly-label">{row.label}</div>
-                    </button>
-                  ))}
+                <div className="fuel-weekly-card">
+                  <div className="logs-trend-head">
+                    <div className="fuel-macro-label">Protein · 7 days</div>
+                    <div className="logs-trend-value-pill fuel-trend-pill-protein">
+                      {proteinTrendLine.points.find((point) => point.active)?.value > 0
+                        ? `${Math.round(proteinTrendLine.points.find((point) => point.active)?.value || 0)} g`
+                        : "No data"}
+                    </div>
+                  </div>
+                  <div className="logs-trend-line-wrap">
+                    <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                      <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                      {proteinTrendLine.hasData ? (
+                        <>
+                          <path className="logs-trend-area-fill fuel-trend-area-protein" d={proteinTrendLine.areaPath} />
+                          <polyline className="logs-trend-line-path fuel-trend-line-protein" points={proteinTrendLine.polylinePoints} />
+                        </>
+                      ) : null}
+                      {proteinTrendLine.points.map((point) => (
+                        <g key={`pro-point-${point.key}`}>
+                          <circle
+                            className="logs-trend-hit"
+                            cx={point.x}
+                            cy={point.y}
+                            r={4.2}
+                            onClick={() => setSelectedMacroDay(point.dayKey)}
+                          />
+                          <circle
+                            className={`logs-trend-point fuel-trend-point-protein${point.active ? " active" : ""}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r={point.active ? 1.9 : 1.5}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                  <div className="logs-trend-axis">
+                    {proteinTrendLine.points.map((point) => (
+                      <button
+                        type="button"
+                        key={`pro-axis-${point.key}`}
+                        className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                        onClick={() => setSelectedMacroDay(point.dayKey)}
+                      >
+                        <div className="logs-trend-label">{point.label}</div>
+                        {point.value > 0 ? <span className="logs-trend-tip">{`${Math.round(point.value)} g`}</span> : null}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="fuel-weekly-card">
-                <div className="fuel-macro-label">Carbs Â· 7 days</div>
-                <div className="fuel-weekly-bars">
-                  {weeklyMacroTrend.map((row) => (
-                    <button
-                      type="button"
-                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
-                      key={`wk-carb-${row.key}`}
-                      onClick={() => setSelectedMacroDay(row.key)}
-                    >
-                      <div className="fuel-weekly-track">
-                        <div
-                          className="fuel-weekly-fill carbs"
-                          style={{
-                            height: `${row.totals.carbs > 0 ? Math.max(5, (row.totals.carbs / weeklyMax.carbs) * 100) : 0}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="fuel-weekly-label">{row.label}</div>
-                    </button>
-                  ))}
+                <div className="fuel-weekly-card">
+                  <div className="logs-trend-head">
+                    <div className="fuel-macro-label">Carbs · 7 days</div>
+                    <div className="logs-trend-value-pill fuel-trend-pill-carbs">
+                      {carbsTrendLine.points.find((point) => point.active)?.value > 0
+                        ? `${Math.round(carbsTrendLine.points.find((point) => point.active)?.value || 0)} g`
+                        : "No data"}
+                    </div>
+                  </div>
+                  <div className="logs-trend-line-wrap">
+                    <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                      <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                      {carbsTrendLine.hasData ? (
+                        <>
+                          <path className="logs-trend-area-fill fuel-trend-area-carbs" d={carbsTrendLine.areaPath} />
+                          <polyline className="logs-trend-line-path fuel-trend-line-carbs" points={carbsTrendLine.polylinePoints} />
+                        </>
+                      ) : null}
+                      {carbsTrendLine.points.map((point) => (
+                        <g key={`carb-point-${point.key}`}>
+                          <circle
+                            className="logs-trend-hit"
+                            cx={point.x}
+                            cy={point.y}
+                            r={4.2}
+                            onClick={() => setSelectedMacroDay(point.dayKey)}
+                          />
+                          <circle
+                            className={`logs-trend-point fuel-trend-point-carbs${point.active ? " active" : ""}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r={point.active ? 1.9 : 1.5}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                  <div className="logs-trend-axis">
+                    {carbsTrendLine.points.map((point) => (
+                      <button
+                        type="button"
+                        key={`carb-axis-${point.key}`}
+                        className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                        onClick={() => setSelectedMacroDay(point.dayKey)}
+                      >
+                        <div className="logs-trend-label">{point.label}</div>
+                        {point.value > 0 ? <span className="logs-trend-tip">{`${Math.round(point.value)} g`}</span> : null}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="fuel-weekly-card">
-                <div className="fuel-macro-label">Fat Â· 7 days</div>
-                <div className="fuel-weekly-bars">
-                  {weeklyMacroTrend.map((row) => (
-                    <button
-                      type="button"
-                      className={`fuel-weekly-col fuel-weekly-col-btn${selectedMacroDay === row.key ? " active" : ""}`}
-                      key={`wk-fat-${row.key}`}
-                      onClick={() => setSelectedMacroDay(row.key)}
-                    >
-                      <div className="fuel-weekly-track">
-                        <div
-                          className="fuel-weekly-fill fat"
-                          style={{
-                            height: `${row.totals.fat > 0 ? Math.max(5, (row.totals.fat / weeklyMax.fat) * 100) : 0}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="fuel-weekly-label">{row.label}</div>
-                    </button>
-                  ))}
+                <div className="fuel-weekly-card">
+                  <div className="logs-trend-head">
+                    <div className="fuel-macro-label">Fat · 7 days</div>
+                    <div className="logs-trend-value-pill fuel-trend-pill-fat">
+                      {fatTrendLine.points.find((point) => point.active)?.value > 0
+                        ? `${Math.round(fatTrendLine.points.find((point) => point.active)?.value || 0)} g`
+                        : "No data"}
+                    </div>
+                  </div>
+                  <div className="logs-trend-line-wrap">
+                    <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+                      <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
+                      <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
+                      {fatTrendLine.hasData ? (
+                        <>
+                          <path className="logs-trend-area-fill fuel-trend-area-fat" d={fatTrendLine.areaPath} />
+                          <polyline className="logs-trend-line-path fuel-trend-line-fat" points={fatTrendLine.polylinePoints} />
+                        </>
+                      ) : null}
+                      {fatTrendLine.points.map((point) => (
+                        <g key={`fat-point-${point.key}`}>
+                          <circle
+                            className="logs-trend-hit"
+                            cx={point.x}
+                            cy={point.y}
+                            r={4.2}
+                            onClick={() => setSelectedMacroDay(point.dayKey)}
+                          />
+                          <circle
+                            className={`logs-trend-point fuel-trend-point-fat${point.active ? " active" : ""}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r={point.active ? 1.9 : 1.5}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                  <div className="logs-trend-axis">
+                    {fatTrendLine.points.map((point) => (
+                      <button
+                        type="button"
+                        key={`fat-axis-${point.key}`}
+                        className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
+                        onClick={() => setSelectedMacroDay(point.dayKey)}
+                      >
+                        <div className="logs-trend-label">{point.label}</div>
+                        {point.value > 0 ? <span className="logs-trend-tip">{`${Math.round(point.value)} g`}</span> : null}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              </div>
-              <div className="fuel-intake-top">
+              </div>              <div className="fuel-intake-top">
               <div className="fuel-macro-label">
                 Intake for{" "}
                 {new Date(selectedMacroDay).toLocaleDateString(undefined, {
@@ -2542,6 +2708,7 @@ export default function NutritionPage() {
     </div>
   );
 }
+
 
 
 
