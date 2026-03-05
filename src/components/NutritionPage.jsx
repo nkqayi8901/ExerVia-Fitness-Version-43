@@ -1,6 +1,6 @@
 // src/components/NutritionPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { emptyDay, fetchDailyLogs, fetchSavedMeals, removeMealFromLibrary, saveMealToLibrary, upsertDailyLog } from "../services/logsApi";
 import { getLogsStore, getTodayLogKey, saveLogsStore } from "../services/logsStorage";
@@ -516,7 +516,6 @@ const sumMacros = (entries) =>
 
 export default function NutritionPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const storedId = localStorage.getItem("exervia_user_id");
   const storedMode = localStorage.getItem("exervia_active_mode") || "athlete";
   const pageMode = storedMode === "gym" ? "gym" : "athlete";
@@ -552,13 +551,10 @@ export default function NutritionPage() {
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
   const [curatedOnly, setCuratedOnly] = useState(true);
-  const [activeFuelView, setActiveFuelView] = useState("overview");
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [activeBoardSlot, setActiveBoardSlot] = useState("");
-  const [boardMealSearch, setBoardMealSearch] = useState("");
-  const [customBoardMealName, setCustomBoardMealName] = useState("");
   const [fuelBoard, setFuelBoard] = useState({
     morning: null,
     midday: null,
@@ -603,21 +599,6 @@ export default function NutritionPage() {
   );
   const protocolRequestRef = useRef(0);
   const favoritesHydratedRef = useRef(false);
-
-  useEffect(() => {
-    setActiveFuelView("overview");
-  }, [searchParams]);
-
-  const setFuelView = (view) => {
-    const nextView = ["overview", "recovery", "intake", "build"].includes(String(view || ""))
-      ? String(view)
-      : "overview";
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", nextView);
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (!saveBanner) return;
@@ -1037,20 +1018,6 @@ export default function NutritionPage() {
     }
     return Array.from(dedup.values()).slice(0, 12);
   }, [activeBoardSlot, protocolMeals, favoriteMeals, goal]);
-
-  const filteredSlotCandidates = useMemo(() => {
-    const query = String(boardMealSearch || "").trim().toLowerCase();
-    if (!query) return activeSlotCandidates;
-    return activeSlotCandidates.filter((meal) =>
-      String(meal?.strMeal || "").toLowerCase().includes(query)
-    );
-  }, [activeSlotCandidates, boardMealSearch]);
-
-  useEffect(() => {
-    if (activeBoardSlot) return;
-    setBoardMealSearch("");
-    setCustomBoardMealName("");
-  }, [activeBoardSlot]);
 
   const loadTodayMeals = async () => {
     if (!storedId) return;
@@ -1591,30 +1558,6 @@ export default function NutritionPage() {
         },
       },
     }));
-    setBoardMealSearch("");
-    setCustomBoardMealName("");
-    setActiveBoardSlot("");
-  };
-
-  const handleAssignCustomMealToBoardSlot = () => {
-    const slotKey = String(activeBoardSlot || "").trim();
-    const title = String(customBoardMealName || "").trim();
-    if (!slotKey) return;
-    if (!title) {
-      setSaveBanner("Type a meal name first.");
-      return;
-    }
-    setFuelBoard((prev) => ({
-      ...prev,
-      [slotKey]: {
-        idMeal: `custom-${Date.now()}`,
-        text: title,
-        source: "build_custom",
-        nutrition: emptyMacros(),
-      },
-    }));
-    setBoardMealSearch("");
-    setCustomBoardMealName("");
     setActiveBoardSlot("");
   };
 
@@ -1884,11 +1827,9 @@ export default function NutritionPage() {
       return;
     }
     if (stepId === "today_intake") {
-      setActiveFuelView("overview");
       return;
     }
     if (stepId === "build_day") {
-      setActiveFuelView("overview");
       return;
     }
     if (stepId === "favorites") {
@@ -1916,7 +1857,7 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curatedOnly]);
 
-  const showOverview = activeFuelView === "overview";
+  const showOverview = true;
   const showIntake = true;
   const showBuild = true;
   const showProtocolSettings = true;
@@ -2002,18 +1943,14 @@ export default function NutritionPage() {
         ) : null}
 
         <div className="hud-card" style={{ marginBottom: 12 }}>
-          <div className="hud-card-title">INTAKE + BUILD</div>
+          <div className="hud-card-title">FUEL PRIORITY</div>
           <div className="hud-dim" style={{ marginBottom: 10 }}>
-            One combined flow: set targets, build slots, and track intake in one place.
+            Start here first: intake targets and Build My Day.
           </div>
           <div className="fuel-feed-toggle-row">
-            <button
-              type="button"
-              className={`studio-back fuel-compact-btn ${activeFuelView === "overview" ? "fuel-chip-active" : ""}`}
-              onClick={() => setFuelView("overview")}
-            >
-              Fuel Hub
-            </button>
+            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Overview</button>
+            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Today's intake</button>
+            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Build My Day</button>
           </div>
         </div>
 
@@ -2208,23 +2145,13 @@ export default function NutritionPage() {
                 <div className="fuel-slot-picker-sub">
                   Showing slot-matched meals first so you can fill the board fast.
                 </div>
-                <div className="fuel-slot-search-row">
-                  <input
-                    className="studio-form-input"
-                    placeholder={`Search ${getSlotLabel(activeBoardSlot)} meals...`}
-                    value={boardMealSearch}
-                    onChange={(event) => setBoardMealSearch(event.target.value)}
-                  />
-                </div>
                 <div className="fuel-slot-list">
-                  {filteredSlotCandidates.length === 0 ? (
+                  {activeSlotCandidates.length === 0 ? (
                     <div className="fuel-board-empty">
-                      {activeSlotCandidates.length === 0
-                        ? "No slot-matched meals yet. Try Generate New Meals."
-                        : "No meals match your search. Add a custom meal below."}
+                      No slot-matched meals yet. Try Generate New Meals.
                     </div>
                   ) : (
-                    filteredSlotCandidates.map((meal) => (
+                    activeSlotCandidates.map((meal) => (
                       <button
                         key={`pick-${meal.idMeal}`}
                         type="button"
@@ -2238,21 +2165,6 @@ export default function NutritionPage() {
                       </button>
                     ))
                   )}
-                </div>
-                <div className="fuel-slot-custom-row">
-                  <input
-                    className="studio-form-input"
-                    placeholder="Meal not listed? Add custom meal"
-                    value={customBoardMealName}
-                    onChange={(event) => setCustomBoardMealName(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="studio-back fuel-compact-btn"
-                    onClick={handleAssignCustomMealToBoardSlot}
-                  >
-                    Add to slot
-                  </button>
                 </div>
               </div>
             ) : (

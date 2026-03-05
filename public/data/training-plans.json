@@ -32,6 +32,22 @@
     ]
   },
   {
+    "id": "5k-speed-ladder",
+    "name": "5K Speed Ladder",
+    "sport": "running",
+    "goal": "Build 5K speed + pacing",
+    "summary": "4-week 5K progression with strides, tempo, and controlled recovery.",
+    "defaultFocus": "Speed",
+    "durationTarget": 40,
+    "distanceTarget": 5,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Strides 10x20s", "Tempo 15 min", "Recovery 25 min"] },
+      { "week": "Week 2", "sessions": ["Intervals 8x400m", "Base run 35 min", "Mobility + drills"] },
+      { "week": "Week 3", "sessions": ["Threshold 18 min", "Long easy 50 min", "Recovery jog 25 min"] },
+      { "week": "Week 4", "sessions": ["5K test", "Easy run 30 min", "Reset day"] }
+    ]
+  },
+  {
     "id": "10k-build",
     "name": "10K Build",
     "sport": "running",
@@ -45,6 +61,22 @@
       { "week": "Week 2", "sessions": ["Tempo 20 min", "Hills 8x30", "Long run 60 min"] },
       { "week": "Week 3", "sessions": ["Speed ladder", "Base 45 min", "Long run 70 min"] },
       { "week": "Week 4", "sessions": ["Race simulation", "Recovery 25 min", "Shakeout 20 min"] }
+    ]
+  },
+  {
+    "id": "marathon-foundation",
+    "name": "Marathon Foundation",
+    "sport": "running",
+    "goal": "Build 42K base safely",
+    "summary": "Entry marathon structure with long-run rhythm and recovery control.",
+    "defaultFocus": "Base",
+    "durationTarget": 75,
+    "distanceTarget": 42,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Base run 50 min", "Tempo 20 min", "Long run 90 min"] },
+      { "week": "Week 2", "sessions": ["Intervals 6x800m", "Easy run 45 min", "Long run 100 min"] },
+      { "week": "Week 3", "sessions": ["Steady run 60 min", "Recovery jog 30 min", "Long run 110 min"] },
+      { "week": "Week 4", "sessions": ["Progression run", "Easy run 40 min", "Mobility + reset"] }
     ]
   },
   {
@@ -64,6 +96,38 @@
     ]
   },
   {
+    "id": "trail-5k-starter",
+    "name": "Trail 5K Starter",
+    "sport": "trail",
+    "goal": "Simple entry trail 5K structure",
+    "summary": "Beginner-friendly trail rhythm with climb control.",
+    "defaultFocus": "Base",
+    "durationTarget": 46,
+    "distanceTarget": 5,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Trail easy 30 min", "Hill reps 6x45s", "Recovery walk"] },
+      { "week": "Week 2", "sessions": ["Tempo trail 18 min", "Trail run 35 min", "Mobility"] },
+      { "week": "Week 3", "sessions": ["Hill reps 8x45s", "Trail endurance 45 min", "Recovery jog"] },
+      { "week": "Week 4", "sessions": ["5K trail effort", "Easy trail 25 min", "Reset"] }
+    ]
+  },
+  {
+    "id": "trail-10k-builder",
+    "name": "Trail 10K Builder",
+    "sport": "trail",
+    "goal": "Build durable trail 10K output",
+    "summary": "Elevation and tempo progression for 10K efforts.",
+    "defaultFocus": "Tempo",
+    "durationTarget": 62,
+    "distanceTarget": 10,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Trail base 45 min", "Hill repeats 6x2 min", "Recovery walk"] },
+      { "week": "Week 2", "sessions": ["Tempo trail 25 min", "Long trail 80 min", "Mobility"] },
+      { "week": "Week 3", "sessions": ["Climb repeats 7x2 min", "Trail base 55 min", "Recovery jog"] },
+      { "week": "Week 4", "sessions": ["10K trail simulation", "Easy trail 35 min", "Reset"] }
+    ]
+  },
+  {
     "id": "swim-economy",
     "name": "Swim Economy",
     "sport": "swimming",
@@ -80,6 +144,38 @@
     ]
   },
   {
+    "id": "swim-sprint-control",
+    "name": "Swim Sprint Control",
+    "sport": "swimming",
+    "goal": "Improve top-end speed mechanics",
+    "summary": "Short sprint sets with strict form quality.",
+    "defaultFocus": "Speed",
+    "durationTarget": 40,
+    "distanceTarget": 1.5,
+    "outline": [
+      { "week": "Week 1", "sessions": ["8x25m sprint", "Technique drills 25 min", "Recovery swim"] },
+      { "week": "Week 2", "sessions": ["10x25m sprint", "Tempo 10x50m", "Kick set"] },
+      { "week": "Week 3", "sessions": ["12x25m sprint", "Steady 30 min", "Breath control"] },
+      { "week": "Week 4", "sessions": ["Sprint test set", "Easy technique", "Mobility reset"] }
+    ]
+  },
+  {
+    "id": "swim-distance-builder",
+    "name": "Swim Distance Builder",
+    "sport": "swimming",
+    "goal": "Extend steady-distance capacity",
+    "summary": "Longer continuous sets with controlled pacing.",
+    "defaultFocus": "Base",
+    "durationTarget": 50,
+    "distanceTarget": 2.5,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Steady 30 min", "Pull set 6x100m", "Easy recovery"] },
+      { "week": "Week 2", "sessions": ["Steady 35 min", "Pace 8x100m", "Kick + drill"] },
+      { "week": "Week 3", "sessions": ["Steady 40 min", "Threshold 5x200m", "Recovery laps"] },
+      { "week": "Week 4", "sessions": ["Distance test", "Easy technique", "Reset"] }
+    ]
+  },
+  {
     "id": "cycling-power-base",
     "name": "Cycling Power Base",
     "sport": "cycling",
@@ -93,6 +189,38 @@
       { "week": "Week 2", "sessions": ["Zone 2 60 min", "Tempo 20 min", "Core reset"] },
       { "week": "Week 3", "sessions": ["Power sprints 8x30s", "Endurance 75 min", "Recovery 30 min"] },
       { "week": "Week 4", "sessions": ["Test ride 45 min", "Recovery 30 min", "Easy spin 35 min"] }
+    ]
+  },
+  {
+    "id": "cycling-climb-focus",
+    "name": "Cycling Climb Focus",
+    "sport": "cycling",
+    "goal": "Improve climbing cadence and torque",
+    "summary": "Hill-specific sessions with recovery balance.",
+    "defaultFocus": "Tempo",
+    "durationTarget": 62,
+    "distanceTarget": 20,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Hill repeats 6x3 min", "Easy spin 35 min", "Cadence drills"] },
+      { "week": "Week 2", "sessions": ["Tempo climb 20 min", "Zone 2 70 min", "Recovery spin"] },
+      { "week": "Week 3", "sessions": ["Over-under climbs", "Long endurance 85 min", "Mobility"] },
+      { "week": "Week 4", "sessions": ["Climb benchmark", "Easy spin 30 min", "Reset"] }
+    ]
+  },
+  {
+    "id": "cycling-threshold-ramp",
+    "name": "Cycling Threshold Ramp",
+    "sport": "cycling",
+    "goal": "Lift sustainable race pace",
+    "summary": "Progressive threshold work across 4 weeks.",
+    "defaultFocus": "Race Prep",
+    "durationTarget": 64,
+    "distanceTarget": 24,
+    "outline": [
+      { "week": "Week 1", "sessions": ["Threshold 3x8 min", "Zone 2 60 min", "Recovery spin 25 min"] },
+      { "week": "Week 2", "sessions": ["Threshold 2x12 min", "Tempo 30 min", "Easy spin"] },
+      { "week": "Week 3", "sessions": ["Threshold 3x10 min", "Endurance 80 min", "Mobility"] },
+      { "week": "Week 4", "sessions": ["Race pace simulation", "Easy ride 35 min", "Recovery day"] }
     ]
   },
   {

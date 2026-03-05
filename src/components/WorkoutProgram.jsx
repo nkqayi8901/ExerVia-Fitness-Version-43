@@ -41,6 +41,35 @@ const WEIGHT_PICKER_OPTIONS = Array.from({ length: 121 }, (_, index) => {
   return Number.isInteger(value) ? String(value) : String(value);
 });
 const EMPTY_OBJECT = Object.freeze({});
+const PROGRAM_HISTORY_LIMIT = 40;
+
+const getProgramHistoryStorageKey = (userId) =>
+  userId ? `exervia_program_history_${String(userId).trim()}` : "";
+
+const readProgramHistory = (userId) => {
+  const key = getProgramHistoryStorageKey(userId);
+  if (!key) return {};
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const pushProgramHistoryEntry = (userId, programKey, entry) => {
+  const key = getProgramHistoryStorageKey(userId);
+  if (!key || !programKey) return;
+  const current = readProgramHistory(userId);
+  const existing = Array.isArray(current[programKey]) ? current[programKey] : [];
+  const next = [entry, ...existing].slice(0, PROGRAM_HISTORY_LIMIT);
+  const updated = {
+    ...current,
+    [programKey]: next,
+  };
+  localStorage.setItem(key, JSON.stringify(updated));
+};
 
 const estimateRepCount = (value) => {
   const raw = String(value || "").trim().toLowerCase();
@@ -114,6 +143,22 @@ const parseRestSeconds = (restValue) => {
   return 0;
 };
 
+const formatCompletionDateTime = (value) => {
+  if (!value) return "Unknown time";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return "Unknown time";
+  }
+};
+
+const formatMinuteDelta = (value) => {
+  const rounded = Math.round(Number(value || 0));
+  if (!Number.isFinite(rounded) || rounded === 0) return "No time change vs previous";
+  if (rounded < 0) return `${Math.abs(rounded)} min faster vs previous`;
+  return `${rounded} min slower vs previous`;
+};
+
 // findProgram manages a focused piece of logic,
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
@@ -176,6 +221,7 @@ function ProgramPreview({ backPath, backLabel }) {
   const [guideDetails, setGuideDetails] = useState(null);
   const [guideLoading, setGuideLoading] = useState(false);
   const [guideError, setGuideError] = useState("");
+  const [completionHistory, setCompletionHistory] = useState([]);
   const guideCacheRef = useRef({});
   const guideRequestRef = useRef(0);
 
@@ -278,6 +324,43 @@ function ProgramPreview({ backPath, backLabel }) {
   }, [program, exerciseWeightsStorageKey]);
 
   useEffect(() => {
+    const programKey = String(program?.id || "").trim();
+    if (!resolvedUserId || !programKey) {
+      setCompletionHistory([]);
+      return;
+    }
+    const allHistory = readProgramHistory(resolvedUserId);
+    const historyRows = Array.isArray(allHistory[programKey]) ? allHistory[programKey] : [];
+    setCompletionHistory(historyRows);
+  }, [program?.id, resolvedUserId]);
+
+  const recentCompletionRows = useMemo(
+    () =>
+      completionHistory
+        .filter((row) => row && row.completedAt)
+        .slice(0, 3),
+    [completionHistory]
+  );
+
+  const lastCompletion = recentCompletionRows[0] || null;
+  const previousCompletion = recentCompletionRows[1] || null;
+
+  const completionDeltaLabel = useMemo(() => {
+    const lastMinutes = Number(lastCompletion?.minutes || 0);
+    const previousMinutes = Number(previousCompletion?.minutes || 0);
+    if (!(lastMinutes > 0) || !(previousMinutes > 0)) return "Need two timed completions for comparison";
+    return formatMinuteDelta(lastMinutes - previousMinutes);
+  }, [lastCompletion, previousCompletion]);
+
+  const bestMinutes = useMemo(() => {
+    const timed = completionHistory
+      .map((row) => Number(row?.minutes || 0))
+      .filter((value) => value > 0);
+    if (!timed.length) return 0;
+    return Math.min(...timed);
+  }, [completionHistory]);
+
+  useEffect(() => {
     if (!guideOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key === "Escape") {
@@ -315,6 +398,46 @@ function ProgramPreview({ backPath, backLabel }) {
       <div className="hud-card program-preview">
         <div className="hud-card-title">Program Overview</div>
         <div className="program-preview-meta">{program.exercises.length} exercises</div>
+        {false ? (
+          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+            <div className="logs-list-title">Latest Attempt</div>
+            <div className="logs-list-sub">
+              {new Date(completionHistory[0]?.completedAt || Date.now()).toLocaleString()}
+              {Number(completionHistory[0]?.minutes || 0) > 0 ? ` · ${completionHistory[0].minutes} min` : ""}
+            </div>
+          </div>
+        ) : (
+          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+            <div className="logs-list-title">Latest Attempt</div>
+            <div className="logs-list-sub">No previous completion found for this program yet.</div>
+          </div>
+        )}
+        {completionHistory.length ? (
+          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+            <div className="logs-list-title">Performance Snapshot (Strava Style)</div>
+            <div className="logs-list-sub">
+              Latest: {formatCompletionDateTime(lastCompletion?.completedAt)}
+              {Number(lastCompletion?.minutes || 0) > 0 ? ` · ${lastCompletion.minutes} min` : ""}
+            </div>
+            <div className="logs-list-sub">{completionDeltaLabel}</div>
+            {bestMinutes > 0 ? (
+              <div className="logs-list-sub" style={{ marginTop: 4 }}>Best time: {bestMinutes} min</div>
+            ) : null}
+            <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+              {recentCompletionRows.map((row, index) => (
+                <div key={`recent-completion-${index}`} className="logs-list-sub">
+                  {index + 1}. {formatCompletionDateTime(row.completedAt)}
+                  {Number(row?.minutes || 0) > 0 ? ` · ${row.minutes} min` : ""}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+            <div className="logs-list-title">Performance Snapshot (Strava Style)</div>
+            <div className="logs-list-sub">No previous completion found for this program yet.</div>
+          </div>
+        )}
         <div className="program-preview-head">
           <span />
           <span className="program-preview-head-label">Sets</span>
@@ -1105,6 +1228,9 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         notes: `${planName} completed`,
         report: {
           category: "workout_program",
+          programId: String(program?.id || programId || ""),
+          programName: planName,
+          completedAt: new Date().toISOString(),
           duration: durationText || "",
           durationSeconds: sessionDurationSeconds || null,
           totalExercises: reportExercises.length,
@@ -1113,6 +1239,17 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
           exercises: reportExercises,
         },
       });
+
+      const historyProgramKey = String(program?.id || programId || "").trim();
+      if (historyProgramKey) {
+        pushProgramHistoryEntry(resolvedUserId, historyProgramKey, {
+          completedAt: new Date().toISOString(),
+          minutes: Number(minutes || 0),
+          duration: String(durationText || ""),
+          totalExercises: Number(reportExercises.length || 0),
+          totalSets: Number(totalSets || 0),
+        });
+      }
 
       const nudgeUserId = localStorage.getItem("exervia_user_id") || resolvedUserId || "guest";
       localStorage.setItem(
@@ -1144,9 +1281,11 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     logsPath,
     mode,
     navigate,
+    program?.id,
     program?.name,
     program?.duration,
     program?.exercises,
+    programId,
     resolvedUserId,
     sessionDurationSeconds,
     sessionPerformance,
