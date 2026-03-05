@@ -65,13 +65,6 @@ const JOURNAL_WALKTHROUGH_STEPS = [
     firstAction: "Open Evening slot.",
   },
   {
-    id: "mood_trend",
-    title: "Mood Trend",
-    what: "Review mood bars and inspect day-level patterns over time.",
-    why: "Mood changes often explain performance and recovery swings.",
-    firstAction: "Review Mood Trend.",
-  },
-  {
     id: "history",
     title: "History and Search",
     what: "Use search and tags to revisit older entries and edit them.",
@@ -167,123 +160,6 @@ function JournalMetaCards({ isDayComplete, dayInOneGlance, thisMonthEntries, quo
           <div className="quote-text">"{quote?.content || "..."}"</div>
           <div className="quote-author">- {quote?.author || "ExerVia"}</div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-const createMoodTrendLine = (rows, selectedMoodDay) => {
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const yBottom = 34;
-  const yTop = 8;
-  const xOffset = 6;
-  const usableWidth = 88;
-  const step = safeRows.length > 1 ? usableWidth / (safeRows.length - 1) : 0;
-
-  const points = safeRows.map((item, index) => {
-    const mood = Number(item?.mood || 0);
-    const clampedMood = Math.min(5, Math.max(1, mood || 1));
-    const x = xOffset + index * step;
-    const y = yBottom - ((clampedMood - 1) / 4) * (yBottom - yTop);
-    return {
-      key: item?.dayKey || `mood-${index}`,
-      dayKey: item?.dayKey || "",
-      label: item?.label || "",
-      mood: clampedMood,
-      x: Number(x.toFixed(2)),
-      y: Number(y.toFixed(2)),
-      active: selectedMoodDay === item?.dayKey,
-    };
-  });
-
-  return {
-    hasData: points.length > 0,
-    points,
-    polylinePoints: points.map((point) => `${point.x},${point.y}`).join(" "),
-    areaPath:
-      points.length > 0
-        ? `M ${points[0].x} ${yBottom} L ${points.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${points[points.length - 1].x} ${yBottom} Z`
-        : "",
-  };
-};
-
-function JournalMoodCard({ averageMood, selectedMoodDay, setSelectedMoodDay, moodTrend }) {
-  const moodLine = useMemo(
-    () => createMoodTrendLine(moodTrend, selectedMoodDay),
-    [moodTrend, selectedMoodDay]
-  );
-  const activeMoodPoint = useMemo(
-    () => moodLine.points.find((point) => point.active) || null,
-    [moodLine]
-  );
-
-  return (
-    <div className="hud-card journal-mood-card">
-      <div className="journal-mood-top">
-        <div className="logs-trend-head">
-          <div className="logs-trend-title">Mood trend (7 days)</div>
-          <div className="logs-trend-value-pill">
-            {activeMoodPoint ? `${activeMoodPoint.mood}/5` : averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}
-          </div>
-        </div>
-        <div className="journal-mood-actions">
-          <div className="journal-mood-average">{averageMood ? `${averageMood}/5 avg` : "No mood logs yet"}</div>
-          {selectedMoodDay && (
-            <button className="studio-back journal-action-btn" type="button" onClick={() => setSelectedMoodDay("")}>
-              Clear day filter
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="journal-mood-bars">
-        {moodTrend.length ? (
-          <>
-            <div className="logs-trend-line-wrap">
-              <svg className="logs-trend-line-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
-                <rect className="logs-trend-grid-fill" x="0" y="0" width="100" height="42" rx="8" />
-                <line className="logs-trend-grid-line" x1="6" y1="34" x2="94" y2="34" />
-                {moodLine.hasData ? (
-                  <>
-                    <path className="logs-trend-area-fill" d={moodLine.areaPath} />
-                    <polyline className="logs-trend-line-path" points={moodLine.polylinePoints} />
-                  </>
-                ) : null}
-                {moodLine.points.map((point) => (
-                  <g key={`mood-point-${point.key}`}>
-                    <circle
-                      className="logs-trend-hit"
-                      cx={point.x}
-                      cy={point.y}
-                      r={4.2}
-                      onClick={() => setSelectedMoodDay(point.dayKey)}
-                    />
-                    <circle
-                      className={`logs-trend-point${point.active ? " active" : ""}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r={point.active ? 1.9 : 1.5}
-                    />
-                  </g>
-                ))}
-              </svg>
-            </div>
-            <div className="logs-trend-axis">
-              {moodLine.points.map((point) => (
-                <button
-                  type="button"
-                  key={point.key}
-                  className={`logs-trend-col-btn logs-trend-axis-btn${point.active ? " active" : ""}`}
-                  onClick={() => setSelectedMoodDay(point.dayKey)}
-                >
-                  <div className="logs-trend-label">{point.label}</div>
-                  <span className="logs-trend-tip">{point.mood}/5</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="hud-dim">Log evening mood to unlock your trend.</div>
-        )}
       </div>
     </div>
   );
@@ -569,7 +445,6 @@ export default function JournalPage({ mode = "gym" }) {
   const [editingTarget, setEditingTarget] = useState(null);
   const [historySearch, setHistorySearch] = useState("");
   const [selectedTag, setSelectedTag] = useState("all");
-  const [selectedMoodDay, setSelectedMoodDay] = useState("");
 
   const [savingSlot, setSavingSlot] = useState("");
   const [bannerState, setBannerState] = useState({ message: "", type: "info" });
@@ -674,28 +549,6 @@ export default function JournalPage({ mode = "gym" }) {
       .sort((a, b) => new Date(b.dayKey) - new Date(a.dayKey));
   }, [structuredEntries]);
 
-  const moodTrend = useMemo(() => {
-    return historyDays
-      .map((day) => {
-        const mood = Number(day.evening?.data?.mood || 0);
-        if (!mood || mood < 1 || mood > 5) return null;
-        return {
-          dayKey: day.dayKey,
-          label: new Date(day.dayKey).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-          mood,
-        };
-      })
-      .filter(Boolean)
-      .slice(0, 7)
-      .reverse();
-  }, [historyDays]);
-
-  const averageMood = useMemo(() => {
-    if (!moodTrend.length) return null;
-    const total = moodTrend.reduce((sum, row) => sum + row.mood, 0);
-    return (total / moodTrend.length).toFixed(1);
-  }, [moodTrend]);
-
   const availableTags = useMemo(() => {
     const tags = new Set();
     historyDays.forEach((day) => {
@@ -717,10 +570,9 @@ export default function JournalPage({ mode = "gym" }) {
       const tagsBlob = String(day.evening?.data?.tags || "").toLowerCase();
       const passesSearch = !query || morningBlob.includes(query) || eveningBlob.includes(query) || tagsBlob.includes(query);
       const passesTag = selectedTag === "all" || tagsBlob.split(",").map((tag) => tag.trim()).includes(selectedTag);
-      const passesMoodDay = !selectedMoodDay || day.dayKey === selectedMoodDay;
-      return passesSearch && passesTag && passesMoodDay;
+      return passesSearch && passesTag;
     });
-  }, [historyDays, historySearch, selectedTag, selectedMoodDay]);
+  }, [historyDays, historySearch, selectedTag]);
 
   const dayInOneGlance = useMemo(() => {
     const morningData = todayMorningEntry ? parseStructuredEntry(todayMorningEntry)?.data : null;
@@ -971,10 +823,6 @@ export default function JournalPage({ mode = "gym" }) {
       setActiveSlot("evening");
       return;
     }
-    if (stepId === "mood_trend") {
-      setSelectedMoodDay("");
-      return;
-    }
     if (stepId === "history") {
       setHistorySearch("");
       setSelectedTag("all");
@@ -1044,13 +892,6 @@ export default function JournalPage({ mode = "gym" }) {
               dayInOneGlance={dayInOneGlance}
               thisMonthEntries={thisMonthEntries}
               quote={quote}
-            />
-
-            <JournalMoodCard
-              averageMood={averageMood}
-              selectedMoodDay={selectedMoodDay}
-              setSelectedMoodDay={setSelectedMoodDay}
-              moodTrend={moodTrend}
             />
 
             <JournalDailyCheckinCard
