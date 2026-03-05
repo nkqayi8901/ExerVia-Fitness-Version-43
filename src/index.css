@@ -736,9 +736,6 @@ code {
 .hud-account {
   position: relative;
   justify-self: end;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .hud-notif-wrap {
@@ -774,6 +771,11 @@ code {
 }
 
 .hud-settings-btn {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
   width: 40px;
   height: 40px;
   border-radius: 999px;
@@ -799,7 +801,11 @@ code {
 }
 
 .hud-settings-btn:active {
-  transform: translateY(1px);
+  transform: translateX(-50%) translateY(1px);
+}
+
+.hud-settings-btn.hidden {
+  display: none;
 }
 
 .hud-notif-icon {

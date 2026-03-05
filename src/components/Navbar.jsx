@@ -383,6 +383,23 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
                   <span className="hud-notif-badge">{Math.min(unreadNotifCount, 99)}</span>
                 ) : null}
               </button>
+              <button
+                type="button"
+                className={`hud-settings-btn ${notifOpen ? "hidden" : ""}`}
+                onClick={() => navigate("/settings")}
+                aria-label="Open profile settings"
+                title="Profile settings"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.2 3.8a7.6 7.6 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8.2 8.2 0 0 0-1.8-1l-.3-2.6h-4l-.3 2.6a8.2 8.2 0 0 0-1.8 1l-2.4-1-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a8.2 8.2 0 0 0 1.8 1l.3 2.6h4l.3-2.6a8.2 8.2 0 0 0 1.8-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
               {notifOpen && (
                 <div className="hud-notif-menu" role="menu">
                   <div className="hud-notif-title-row">
@@ -419,23 +436,6 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              className="hud-settings-btn"
-              onClick={() => navigate("/settings")}
-              aria-label="Open profile settings"
-              title="Profile settings"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.2 3.8a7.6 7.6 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8.2 8.2 0 0 0-1.8-1l-.3-2.6h-4l-.3 2.6a8.2 8.2 0 0 0-1.8 1l-2.4-1-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a8.2 8.2 0 0 0 1.8 1l.3 2.6h4l.3-2.6a8.2 8.2 0 0 0 1.8-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
             <button
               type="button"
               className="hud-account-trigger"
