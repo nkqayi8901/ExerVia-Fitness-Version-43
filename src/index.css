@@ -14246,6 +14246,10 @@ code {
   stroke: rgba(15, 23, 42, 0.9);
   stroke-width: 0.6;
 }
+.logs-trend-hit {
+  fill: transparent;
+  cursor: pointer;
+}
 .logs-trend-axis {
   margin-top: 8px;
   display: grid;

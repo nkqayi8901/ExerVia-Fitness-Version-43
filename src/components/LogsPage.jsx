@@ -1537,13 +1537,21 @@ export default function LogsPage({ mode = "gym" }) {
                   </>
                 ) : null}
                 {weightTrendLine.points.map((point) => (
-                  <circle
-                    key={`weight-point-${point.key}`}
-                    className={`logs-trend-point${point.active ? " active" : ""}`}
-                    cx={point.x}
-                    cy={point.y}
-                    r={point.active ? 1.9 : 1.5}
-                  />
+                  <g key={`weight-point-${point.key}`}>
+                    <circle
+                      className="logs-trend-hit"
+                      cx={point.x}
+                      cy={point.y}
+                      r={4.2}
+                      onClick={() => setSelectedDay(point.dayKey)}
+                    />
+                    <circle
+                      className={`logs-trend-point${point.active ? " active" : ""}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r={point.active ? 1.9 : 1.5}
+                    />
+                  </g>
                 ))}
               </svg>
             </div>
@@ -1556,9 +1564,7 @@ export default function LogsPage({ mode = "gym" }) {
                   onClick={() => setSelectedDay(point.dayKey)}
                 >
                   <div className="logs-trend-label">{point.label}</div>
-                  <span className="logs-trend-tip">
-                    {point.value > 0 ? `${point.value.toFixed(1)} kg` : "No data"}
-                  </span>
+                  {point.value > 0 ? <span className="logs-trend-tip">{`${point.value.toFixed(1)} kg`}</span> : null}
                 </button>
               ))}
             </div>
@@ -1581,13 +1587,21 @@ export default function LogsPage({ mode = "gym" }) {
                   </>
                 ) : null}
                 {waterTrendLine.points.map((point) => (
-                  <circle
-                    key={`water-point-${point.key}`}
-                    className={`logs-trend-point alt${point.active ? " active" : ""}`}
-                    cx={point.x}
-                    cy={point.y}
-                    r={point.active ? 1.9 : 1.5}
-                  />
+                  <g key={`water-point-${point.key}`}>
+                    <circle
+                      className="logs-trend-hit"
+                      cx={point.x}
+                      cy={point.y}
+                      r={4.2}
+                      onClick={() => setSelectedDay(point.dayKey)}
+                    />
+                    <circle
+                      className={`logs-trend-point alt${point.active ? " active" : ""}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r={point.active ? 1.9 : 1.5}
+                    />
+                  </g>
                 ))}
               </svg>
             </div>
@@ -1600,9 +1614,7 @@ export default function LogsPage({ mode = "gym" }) {
                   onClick={() => setSelectedDay(point.dayKey)}
                 >
                   <div className="logs-trend-label">{point.label}</div>
-                  <span className="logs-trend-tip">
-                    {point.value > 0 ? `${Math.round(point.value)} ml` : "No data"}
-                  </span>
+                  {point.value > 0 ? <span className="logs-trend-tip">{`${Math.round(point.value)} ml`}</span> : null}
                 </button>
               ))}
             </div>
