@@ -39,6 +39,22 @@ import {
 } from "./community/communityHelpers";
 
 const GROUP_ROOM_POST_BUFFER_LIMIT = 400;
+const FORUM_TRACK_ORDER = forumTracks.reduce((acc, track, index) => {
+  acc[track.id] = index;
+  return acc;
+}, {});
+
+const sortForumsByTrackOrder = (list) => {
+  const rows = Array.isArray(list) ? [...list] : [];
+  return rows.sort((a, b) => {
+    const aSlug = String(a?.topic_slug || a?.id || "");
+    const bSlug = String(b?.topic_slug || b?.id || "");
+    const aOrder = Number.isFinite(FORUM_TRACK_ORDER[aSlug]) ? FORUM_TRACK_ORDER[aSlug] : 999;
+    const bOrder = Number.isFinite(FORUM_TRACK_ORDER[bSlug]) ? FORUM_TRACK_ORDER[bSlug] : 999;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return String(a?.title || aSlug).localeCompare(String(b?.title || bSlug));
+  });
+};
 
 const COMMUNITY_WALKTHROUGH_STEPS = [
   {
@@ -655,25 +671,22 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       setBanner("");
       setCommunityLoadError("");
       try {
-        let forumRes = await supabase.from("community_forums").select("*").order("created_at", { ascending: true });
-        if (!forumRes?.data?.length) {
-          await Promise.all(
-            forumTracks.map((forum) =>
-              supabase
-                .from("community_forums")
-                .upsert(
-                  {
-                    title: forum.title,
-                    subtitle: forum.subtitle,
-                    topic_slug: forum.id,
-                    created_by: userId
-                  },
-                  { onConflict: "topic_slug" }
-                )
-            )
-          );
-          forumRes = await supabase.from("community_forums").select("*").order("created_at", { ascending: true });
-        }
+        await Promise.all(
+          forumTracks.map((forum) =>
+            supabase
+              .from("community_forums")
+              .upsert(
+                {
+                  title: forum.title,
+                  subtitle: forum.subtitle,
+                  topic_slug: forum.id,
+                  created_by: userId
+                },
+                { onConflict: "topic_slug" }
+              )
+          )
+        );
+        const forumRes = await supabase.from("community_forums").select("*").order("created_at", { ascending: true });
         const [
           groupRes,
           challengeRes,
@@ -701,7 +714,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           supabase.from("community_challenge_participants").select("challenge_id,user_id,progress")
         ]);
         if (!mounted) return;
-        setForums(forumRes.data || []);
+        setForums(sortForumsByTrackOrder(forumRes.data || []));
         setGroups(groupRes.data || []);
         setChallenges(challengeRes.data || []);
         setMemberships(membershipRes.data || []);
@@ -907,7 +920,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 // these values update only when their dependencies change,
 // and help keep scrolling + search snappy for large lists
   const filteredForums = useMemo(() => {
-    return forums.length ? forums : forumTracks;
+    return forums.length ? sortForumsByTrackOrder(forums) : forumTracks;
   }, [forums]);
 
   const forumTitleById = useMemo(() => {
@@ -929,7 +942,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   }, [filteredForums, forumThreadCounts]);
 
   const forumSelectOptions = useMemo(() => {
-    return forums.length ? forums : forumTracks;
+    return forums.length ? sortForumsByTrackOrder(forums) : forumTracks;
   }, [forums]);
 
   const tabOrder = ["forums", "feed", "leaderboard", "templates", "groups", "challenges", "friends", "circle"];

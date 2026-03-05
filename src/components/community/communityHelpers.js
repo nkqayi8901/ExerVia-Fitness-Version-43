@@ -1,8 +1,13 @@
 export const forumTracks = [
-  { id: "hyrox", title: "Hyrox", subtitle: "Race prep, stations, engine" },
-  { id: "running", title: "Running", subtitle: "Tempo, pacing, endurance" },
-  { id: "nutrition", title: "Nutrition", subtitle: "Fueling, recovery, habits" },
   { id: "strength", title: "Strength", subtitle: "Progressions, form, PRs" },
+  { id: "running", title: "Running", subtitle: "Tempo, pacing, endurance" },
+  { id: "hyrox", title: "Hyrox", subtitle: "Race prep, stations, engine" },
+  { id: "recovery", title: "Recovery", subtitle: "Sleep, deloads, and reset strategy" },
+  { id: "nutrition", title: "Nutrition", subtitle: "Fueling, recovery, habits" },
+  { id: "wellbeing", title: "Wellbeing", subtitle: "Mental health, balance, and longevity" },
+  { id: "accountability", title: "Accountability", subtitle: "Check-ins, consistency, and habit execution" },
+  { id: "general-fitness", title: "General Fitness", subtitle: "All-round training for everyday fitness" },
+  { id: "aesthetics-physique", title: "Aesthetics & Physique", subtitle: "Body composition, symmetry, and look goals" },
   { id: "mindset", title: "Mindset", subtitle: "Consistency, discipline, recovery" },
 ];
 
