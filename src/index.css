@@ -1040,6 +1040,17 @@ code {
   }
 }
 
+@media (max-width: 1680px) and (min-width: 1200px) {
+  .hud-account-trigger {
+    min-width: 42px;
+    padding: 6px;
+  }
+
+  .hud-account-copy {
+    display: none;
+  }
+}
+
 .hud-account-menu {
   position: absolute;
   top: calc(100% + 8px);
