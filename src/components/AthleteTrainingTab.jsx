@@ -4,7 +4,7 @@
 // and coordinates UI state with Supabase data,
 // comments below explain each major block
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
@@ -469,11 +469,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [recentTrainingSessions, setRecentTrainingSessions] = useState([]);
   const [lastTrainingOpen, setLastTrainingOpen] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [view, setView] = useState('log');
   const [draggingPin, setDraggingPin] = useState(null);
   const [newPlan, setNewPlan] = useState({ ...emptyPlan });
   const [apiStatus, setApiStatus] = useState('idle');
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
+  const [selectedTrainingTrendDay, setSelectedTrainingTrendDay] = useState('');
 
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || '');
@@ -679,7 +681,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   // savePinnedOrder stores the custom ordering of pinned plans,
-  // ensures the pinned list renders in the user’s order,
+  // ensures the pinned list renders in the userâ€™s order,
   // persists the ordering in local storage,
   // used when dragging or reordering pins
   const savePinnedOrder = (items) => {
@@ -1413,6 +1415,18 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   }, [userId]);
 
   useEffect(() => {
+    if (!recentTrainingSessions.length) {
+      setSelectedTrainingTrendDay('');
+      return;
+    }
+    if (selectedTrainingTrendDay) return;
+    const latestSessionDay = String(recentTrainingSessions[0]?.created_at || '').slice(0, 10);
+    if (latestSessionDay) {
+      setSelectedTrainingTrendDay(latestSessionDay);
+    }
+  }, [recentTrainingSessions, selectedTrainingTrendDay]);
+
+  useEffect(() => {
     const weekCount = (selectedPlan?.outline || []).length;
     if (!weekCount) {
       setActivePlanWeekIndex(0);
@@ -1518,16 +1532,64 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return [];
   };
   const lastTrainingTitle = lastTraining ? getRecentPlanName(lastTraining) : '';
-  const latestDurationMinutes = Number(lastTraining?.duration_minutes || 0);
   const timedSessionDurations = recentTrainingSessions
     .map((row) => Number(row?.duration_minutes || 0))
     .filter((minutes) => Number.isFinite(minutes) && minutes > 0);
   const bestDurationMinutes = timedSessionDurations.length ? Math.min(...timedSessionDurations) : 0;
-  const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const sevenDaySessionCount = recentTrainingSessions.filter((row) => {
-    const createdAtMs = new Date(row?.created_at || 0).getTime();
-    return Number.isFinite(createdAtMs) && createdAtMs >= sevenDaysAgoMs;
-  }).length;
+  const avgDurationMinutes = timedSessionDurations.length
+    ? Math.round(
+        timedSessionDurations.reduce((sum, minutes) => sum + Number(minutes || 0), 0) /
+          timedSessionDurations.length
+      )
+    : 0;
+  const totalSessionsLogged = recentTrainingSessions.length;
+  const uniqueSportsTracked = new Set(
+    recentTrainingSessions.map((row) => String(row?.sport || '').trim()).filter(Boolean)
+  ).size;
+  const recentSessionDurationByDay = useMemo(() => {
+    const now = new Date();
+    const rows = [];
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - offset);
+      const key = date.toISOString().slice(0, 10);
+      const dayRows = recentTrainingSessions.filter(
+        (row) => String(row?.created_at || '').slice(0, 10) === key
+      );
+      const totalMinutes = dayRows.reduce(
+        (sum, row) => sum + Math.max(0, Number(row?.duration_minutes || 0)),
+        0
+      );
+      rows.push({
+        key,
+        label: date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+        minutes: totalMinutes,
+      });
+    }
+    return rows;
+  }, [recentTrainingSessions]);
+  const maxTrainingMinutesByDay = Math.max(
+    1,
+    ...recentSessionDurationByDay.map((item) => Number(item.minutes || 0))
+  );
+  const topSportsTrend = useMemo(() => {
+    const counts = {};
+    recentTrainingSessions.forEach((row) => {
+      const key = String(row?.sport || '').trim();
+      if (!key) return;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([sport, count]) => ({ sport: sport.toUpperCase(), count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [recentTrainingSessions]);
+  const maxSportCount = Math.max(1, ...topSportsTrend.map((item) => Number(item.count || 0)));
+  const selectedTrainingTrendDayKey =
+    selectedTrainingTrendDay || recentSessionDurationByDay[recentSessionDurationByDay.length - 1]?.key || '';
+  const selectedDaySessions = recentTrainingSessions
+    .filter((row) => String(row?.created_at || '').slice(0, 10) === selectedTrainingTrendDayKey)
+    .slice(0, 8);
   const holdTimerRef = useRef(null);
   const sessionLoggedPulseTimerRef = useRef(null);
 
@@ -1654,6 +1716,20 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             >
               Last training
             </button>
+            <button
+              className={`studio-toggle-btn studio-header-action-btn ${view === 'log' ? 'active' : ''}`}
+              type="button"
+              onClick={() => setView('log')}
+            >
+              Log
+            </button>
+            <button
+              className={`studio-toggle-btn studio-header-action-btn ${view === 'stats' ? 'active' : ''}`}
+              type="button"
+              onClick={() => setView('stats')}
+            >
+              Stats
+            </button>
           </div>
         </header>
 
@@ -1667,46 +1743,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           </div>
         )}
 
-        <section className="studio-panel studio-reveal studio-training-stats-panel">
-          <div className="studio-panel-title">Training Stats</div>
-          <div className="studio-pr-grid">
-            <div className="studio-pr-card">
-              <div className="studio-pr-top">
-                <div className="studio-pr-title">Latest</div>
-              </div>
-              <div className="studio-pr-value">
-                {latestDurationMinutes > 0 ? `${latestDurationMinutes} min` : "Untimed"}
-              </div>
-              <div className="studio-pr-sub">Most recent session duration</div>
-            </div>
-            <div className="studio-pr-card">
-              <div className="studio-pr-top">
-                <div className="studio-pr-title">Best</div>
-              </div>
-              <div className="studio-pr-value">
-                {bestDurationMinutes > 0 ? `${bestDurationMinutes} min` : "Untimed"}
-              </div>
-              <div className="studio-pr-sub">Best timed completion</div>
-            </div>
-            <div className="studio-pr-card">
-              <div className="studio-pr-top">
-                <div className="studio-pr-title">7D</div>
-              </div>
-              <div className="studio-pr-value">{sevenDaySessionCount}</div>
-              <div className="studio-pr-sub">Sessions in last 7 days</div>
-            </div>
-          </div>
-          <div className="logs-list-sub">
-            {lastTraining
-              ? `Latest: ${lastTrainingTitle} · ${new Date(lastTraining.created_at).toLocaleString()}`
-              : "No recent sessions logged yet."}
-          </div>
-        </section>
+        
 
         {/* main content grid for library + preview, */}
         {/* left panel focuses on plan discovery, */}
         {/* right panel focuses on session preview, */}
         {/* layout stays consistent across states */}
+        {view === 'log' ? (
         <div className="studio-grid">
           {/* plan library panel with filters + actions, */}
           {/* controls create/collapse and search behaviors, */}
@@ -1982,6 +2025,115 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             )}
           </section>
         </div>
+        ) : (
+          <div className="studio-stats">
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Stats Snapshot</div>
+              <div className="studio-pr-grid">
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Sessions Logged</div>
+                  <div className="studio-pr-value">{totalSessionsLogged}</div>
+                  <div className="studio-pr-sub">Recent training sessions</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Sports Tracked</div>
+                  <div className="studio-pr-value">{uniqueSportsTracked}</div>
+                  <div className="studio-pr-sub">Unique sports in log</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Best Time</div>
+                  <div className="studio-pr-value">{bestDurationMinutes > 0 ? `${bestDurationMinutes} min` : "Untimed"}</div>
+                  <div className="studio-pr-sub">Best timed completion</div>
+                </div>
+                <div className="studio-pr-card">
+                  <div className="studio-pr-title">Avg Duration</div>
+                  <div className="studio-pr-value">{avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : "Untimed"}</div>
+                  <div className="studio-pr-sub">Average timed session</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-title">Progress Trends</div>
+              <div className="studio-progress-grid">
+                <div className="studio-progress-card">
+                  <div className="studio-progress-title">7-Day Training Minutes</div>
+                  <div className="studio-progress-list">
+                    {recentSessionDurationByDay.map((item) => (
+                      <button
+                        type="button"
+                        className={`studio-progress-row studio-progress-row-btn${selectedTrainingTrendDayKey === item.key ? ' active' : ''}`}
+                        key={`ath-trend-${item.key}`}
+                        onClick={() => setSelectedTrainingTrendDay(item.key)}
+                      >
+                        <div className="studio-progress-label">{item.label}</div>
+                        <div className="studio-progress-bar-shell">
+                          <div
+                            className="studio-progress-bar"
+                            style={{ width: `${Math.max(6, (item.minutes / maxTrainingMinutesByDay) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="studio-progress-value">{Math.round(item.minutes)}m</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="studio-progress-card">
+                  <div className="studio-progress-title">Most Trained Sports</div>
+                  <div className="studio-progress-list">
+                    {topSportsTrend.length ? (
+                      topSportsTrend.map((item) => (
+                        <div className="studio-progress-row" key={`ath-sport-${item.sport}`}>
+                          <div className="studio-progress-label">{item.sport}</div>
+                          <div className="studio-progress-bar-shell">
+                            <div
+                              className="studio-progress-bar alt"
+                              style={{ width: `${Math.max(8, (item.count / maxSportCount) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="studio-progress-value">{item.count}x</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="studio-empty">Log sessions to unlock sport trends.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="studio-panel studio-reveal">
+              <div className="studio-panel-row">
+                <div className="studio-panel-title">Day Breakdown</div>
+                <div className="studio-hud-date">{selectedTrainingTrendDayKey || 'No day selected'}</div>
+              </div>
+              <div className="studio-progress-list">
+                {selectedDaySessions.length ? (
+                  selectedDaySessions.map((row) => (
+                    <div className="studio-progress-row" key={`ath-day-${row.id}`}>
+                      <div className="studio-progress-label">{getRecentPlanName(row)}</div>
+                      <div className="studio-progress-bar-shell">
+                        <div
+                          className="studio-progress-bar"
+                          style={{ width: `${Math.max(8, (Number(row.duration_minutes || 0) / Math.max(1, maxTrainingMinutesByDay)) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="studio-progress-value">{Number(row.duration_minutes || 0)}m</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="studio-empty">No sessions logged for this day.</div>
+                )}
+              </div>
+              <div className="logs-list-sub">
+                {lastTraining
+                  ? `Latest: ${lastTrainingTitle} · ${new Date(lastTraining.created_at).toLocaleString()}`
+                  : "No recent sessions logged yet."}
+              </div>
+            </section>
+          </div>
+        )}
       </div>
 
       {/* plan detail modal with full outline, */}
@@ -2568,6 +2720,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 };
 
 export default AthleteTrainingTab;
+
+
+
+
+
+
+
+
 
 
 
