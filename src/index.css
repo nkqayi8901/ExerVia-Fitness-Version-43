@@ -736,14 +736,17 @@ code {
 .hud-account {
   position: relative;
   justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .hud-notif-wrap {
   position: relative;
   display: inline-flex;
-  margin-right: 8px;
+  margin-right: 0;
   vertical-align: middle;
-  top: -7px;
+  top: 0;
 }
 
 .hud-notif-btn {
@@ -772,11 +775,7 @@ code {
 }
 
 .hud-settings-btn {
-  position: absolute;
-  top: calc(100% - 1px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
+  position: relative;
   width: 40px;
   height: 40px;
   border-radius: 999px;
@@ -802,11 +801,7 @@ code {
 }
 
 .hud-settings-btn:active {
-  transform: translateX(-50%) translateY(1px);
-}
-
-.hud-settings-btn.hidden {
-  display: none;
+  transform: translateY(1px);
 }
 
 .hud-notif-icon {
