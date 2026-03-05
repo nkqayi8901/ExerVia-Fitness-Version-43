@@ -743,6 +743,7 @@ code {
   display: inline-flex;
   margin-right: 8px;
   vertical-align: middle;
+  top: -2px;
 }
 
 .hud-notif-btn {
@@ -772,7 +773,7 @@ code {
 
 .hud-settings-btn {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
