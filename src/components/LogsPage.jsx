@@ -113,6 +113,16 @@ const toMl = (value, unit) => {
   return String(unit || "ml").toLowerCase() === "liters" ? num * 1000 : num;
 };
 
+const formatRepRangeDisplay = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "custom";
+  if (raw.includes("-") || /[a-zA-Z]/.test(raw)) return raw;
+  const reps = Number(raw);
+  if (!Number.isFinite(reps) || reps <= 0) return raw;
+  if (reps <= 2) return `${Math.max(1, reps)}`;
+  return `${Math.max(1, reps - 1)}-${reps + 1}`;
+};
+
 const createLogsTrendLine = (rows, valueKey, selectedDay) => {
   const safeRows = Array.isArray(rows) ? rows : [];
   const values = safeRows.map((row) => Number(row?.[valueKey] || 0));
@@ -2142,7 +2152,9 @@ export default function LogsPage({ mode = "gym" }) {
                                 })()}
                               </span>
                               <span className="logs-program-report-col">{Number(exercise.sets) || 0}</span>
-                              <span className="logs-program-report-col">{exercise.reps || "custom"}</span>
+                              <span className="logs-program-report-col">
+                                {formatRepRangeDisplay(exercise.repRange || exercise.reps)}
+                              </span>
                               <span className="logs-program-report-col">
                                 {Number(exercise.weight) > 0 ? exercise.weight : "-"}
                                 {(() => {

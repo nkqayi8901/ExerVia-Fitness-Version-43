@@ -739,6 +739,8 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .hud-notif-wrap {
@@ -1004,7 +1006,7 @@ code {
   gap: 2px;
   text-align: left;
   min-width: 0;
-  max-width: 160px;
+  max-width: 130px;
 }
 
 .hud-account-name {
@@ -1022,6 +1024,20 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (min-width: 1200px) {
+  .hud-topbar {
+    flex-wrap: nowrap;
+  }
+
+  .hud-stats {
+    flex: 0 0 auto;
+  }
+
+  .hud-account-copy {
+    max-width: 118px;
+  }
 }
 
 .hud-account-menu {
