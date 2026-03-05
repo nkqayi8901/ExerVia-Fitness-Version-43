@@ -410,25 +410,42 @@ export default function LogsPage({ mode = "gym" }) {
         if (trainingRequestRef.current !== requestId) return;
 
         const combined = [
-        ...(trainingRes.data || []).map((row) => ({
+        ...(trainingRes.data || []).map((row) => {
+          const metrics =
+            row?.metrics && typeof row.metrics === "object"
+              ? row.metrics
+              : (() => {
+                  try {
+                    return row?.metrics ? JSON.parse(row.metrics) : {};
+                  } catch {
+                    return {};
+                  }
+                })();
+          const planSessions = Array.isArray(metrics?.plan_sessions)
+            ? metrics.plan_sessions.filter((item) => String(item || "").trim().length > 0)
+            : [];
+          const planWeek = String(metrics?.plan_week || "").trim();
+          return ({
           id: `train-${row.id}`,
           sourceRowId: row.id,
           sourceType: "training_session",
           created_at: row.created_at,
           title:
-            String(row?.metrics?.plan_name || row?.metrics?.program_name || "").trim() ||
+            String(metrics?.plan_name || metrics?.program_name || "").trim() ||
             `${String(row.sport || "Training").toUpperCase()} session`,
           detail: `${row.duration_minutes || 0} min`,
           report: {
             sport: row.sport || "training",
             durationMinutes: row.duration_minutes || 0,
-            distanceKm: row?.distance_km || row?.metrics?.distance || row?.metrics?.distance_km || "",
-            heartRate: row?.heart_rate || row?.metrics?.heart_rate || row?.metrics?.heartRate || "",
-            mood: row?.mood || row?.mood_emoji || row?.metrics?.mood || row?.metrics?.mood_emoji || "",
-            planName: row?.metrics?.plan_name || row?.metrics?.program_name || "",
-            notes: row?.notes || row?.metrics?.notes || "",
+            distanceKm: row?.distance_km || metrics?.distance || metrics?.distance_km || "",
+            heartRate: row?.heart_rate || metrics?.heart_rate || metrics?.heartRate || "",
+            mood: row?.mood || row?.mood_emoji || metrics?.mood || metrics?.mood_emoji || "",
+            planName: metrics?.plan_name || metrics?.program_name || "",
+            planWeek,
+            planSessions,
+            notes: row?.notes || metrics?.notes || "",
           },
-        })),
+        })}),
         ...(strengthRes.data || []).map((row) => ({
           id: `lift-${row.id}`,
           sourceRowId: row.id,
@@ -1934,6 +1951,27 @@ export default function LogsPage({ mode = "gym" }) {
                       <div className="logs-list-main">
                         <div className="logs-list-title">Plan / Program</div>
                         <div className="logs-list-sub">{activeTrainingReport.report.planName}</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {activeTrainingReport.report?.planWeek ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Selected Week</div>
+                        <div className="logs-list-sub">{activeTrainingReport.report.planWeek}</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {Array.isArray(activeTrainingReport.report?.planSessions) &&
+                  activeTrainingReport.report.planSessions.length ? (
+                    <div className="logs-list-row">
+                      <div className="logs-list-main">
+                        <div className="logs-list-title">Week Checklist</div>
+                        <div className="logs-list-sub" style={{ display: "grid", gap: 4 }}>
+                          {activeTrainingReport.report.planSessions.map((item, idx) => (
+                            <span key={`session-check-${idx}`}>- {String(item)}</span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : null}

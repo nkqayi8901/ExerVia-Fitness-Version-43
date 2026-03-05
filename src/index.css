@@ -736,6 +736,9 @@ code {
 .hud-account {
   position: relative;
   justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .hud-notif-wrap {
@@ -767,6 +770,35 @@ code {
 }
 
 .hud-notif-btn:active {
+  transform: translateY(1px);
+}
+
+.hud-settings-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(226, 232, 240, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.hud-settings-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hud-settings-btn:hover,
+.hud-settings-btn:focus-visible {
+  border-color: rgba(56, 189, 248, 0.46);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.hud-settings-btn:active {
   transform: translateY(1px);
 }
 
@@ -1548,8 +1580,18 @@ code {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 244, 0.82));
   color: #0f172a;
 }
+.mode-gym .hud-settings-btn {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 244, 0.82));
+  color: #0f172a;
+}
 .mode-gym .hud-notif-btn:hover,
 .mode-gym .hud-notif-btn.active {
+  border-color: rgba(16, 185, 129, 0.48);
+  background: rgba(16, 185, 129, 0.14);
+}
+.mode-gym .hud-settings-btn:hover,
+.mode-gym .hud-settings-btn:focus-visible {
   border-color: rgba(16, 185, 129, 0.48);
   background: rgba(16, 185, 129, 0.14);
 }
@@ -11666,6 +11708,7 @@ code {
   }
 
   .hud-notif-btn,
+  .hud-settings-btn,
   .hud-account-trigger {
     min-height: 34px;
     height: 34px;
@@ -11998,6 +12041,7 @@ code {
   }
 
   .hud-notif-btn,
+  .hud-settings-btn,
   .hud-account-trigger,
   .studio-swap-close,
   .studio-remove-btn,

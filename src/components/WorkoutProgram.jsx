@@ -428,7 +428,7 @@ function ProgramPreview({ backPath, backLabel }) {
         )}
         {completionHistory.length ? (
           <div className="logs-inline-card" style={{ marginBottom: 10 }}>
-            <div className="logs-list-title">Performance Snapshot (Strava Style)</div>
+            <div className="logs-list-title">Performance Snapshot </div>
             <div className="program-strava-metrics">
               <div className="program-strava-metric">
                 <span className="program-strava-label">Latest</span>
@@ -465,7 +465,7 @@ function ProgramPreview({ backPath, backLabel }) {
           </div>
         ) : (
           <div className="logs-inline-card" style={{ marginBottom: 10 }}>
-            <div className="logs-list-title">Performance Snapshot (Strava Style)</div>
+            <div className="logs-list-title">Performance Snapshot </div>
             <div className="logs-list-sub">No previous completion found for this program yet.</div>
           </div>
         )}
