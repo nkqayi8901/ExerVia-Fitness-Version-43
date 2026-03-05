@@ -551,6 +551,7 @@ export default function NutritionPage() {
   const [customRecipeOpen, setCustomRecipeOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
   const [curatedOnly, setCuratedOnly] = useState(true);
+  const [activeFuelView, setActiveFuelView] = useState("intake");
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [favoriteRecipeKeys, setFavoriteRecipeKeys] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
@@ -1823,13 +1824,16 @@ export default function NutritionPage() {
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || "");
     if (stepId === "generate") {
+      setActiveFuelView("overview");
       fetchProtocolMeals();
       return;
     }
     if (stepId === "today_intake") {
+      setActiveFuelView("intake");
       return;
     }
     if (stepId === "build_day") {
+      setActiveFuelView("build");
       return;
     }
     if (stepId === "favorites") {
@@ -1857,10 +1861,10 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curatedOnly]);
 
-  const showOverview = true;
-  const showIntake = true;
-  const showBuild = true;
-  const showProtocolSettings = true;
+  const showOverview = activeFuelView === "overview";
+  const showIntake = activeFuelView === "intake";
+  const showBuild = activeFuelView === "build";
+  const showProtocolSettings = showOverview;
 
   // Render
   // The return statement below manages the UI layout and interactions,
@@ -1948,9 +1952,27 @@ export default function NutritionPage() {
             Start here first: intake targets and Build My Day.
           </div>
           <div className="fuel-feed-toggle-row">
-            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Overview</button>
-            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Today's intake</button>
-            <button type="button" className="studio-back fuel-compact-btn fuel-chip-active">Build My Day</button>
+            <button
+              type="button"
+              className={`studio-back fuel-compact-btn ${showOverview ? "fuel-chip-active" : ""}`}
+              onClick={() => setActiveFuelView("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              className={`studio-back fuel-compact-btn ${showIntake ? "fuel-chip-active" : ""}`}
+              onClick={() => setActiveFuelView("intake")}
+            >
+              Today's intake
+            </button>
+            <button
+              type="button"
+              className={`studio-back fuel-compact-btn ${showBuild ? "fuel-chip-active" : ""}`}
+              onClick={() => setActiveFuelView("build")}
+            >
+              Build My Day
+            </button>
           </div>
         </div>
 

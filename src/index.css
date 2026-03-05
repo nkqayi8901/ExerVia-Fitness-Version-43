@@ -2449,6 +2449,30 @@ code {
   font-weight: 600;
 }
 
+.program-strava-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.program-strava-metric {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.35);
+  padding: 8px 10px;
+  display: grid;
+  gap: 2px;
+}
+
+.program-strava-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.92);
+}
+
 .program-finish {
   display: grid;
   gap: 14px;

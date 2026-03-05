@@ -360,6 +360,20 @@ function ProgramPreview({ backPath, backLabel }) {
     return Math.min(...timed);
   }, [completionHistory]);
 
+  const weeklyCompletionCount = useMemo(() => {
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    return completionHistory.filter((row) => {
+      const createdAtMs = new Date(row?.completedAt || 0).getTime();
+      return Number.isFinite(createdAtMs) && now - createdAtMs <= weekMs;
+    }).length;
+  }, [completionHistory]);
+
+  const isLatestBest = useMemo(() => {
+    const latest = Number(lastCompletion?.minutes || 0);
+    return latest > 0 && bestMinutes > 0 && latest === bestMinutes;
+  }, [lastCompletion, bestMinutes]);
+
   useEffect(() => {
     if (!guideOpen) return undefined;
     const handleEscape = (event) => {
@@ -399,7 +413,7 @@ function ProgramPreview({ backPath, backLabel }) {
         <div className="hud-card-title">Program Overview</div>
         <div className="program-preview-meta">{program.exercises.length} exercises</div>
         {false ? (
-          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+          <div className="logs-inline-card" style={{ marginBottom: 10, display: "none" }}>
             <div className="logs-list-title">Latest Attempt</div>
             <div className="logs-list-sub">
               {new Date(completionHistory[0]?.completedAt || Date.now()).toLocaleString()}
@@ -407,7 +421,7 @@ function ProgramPreview({ backPath, backLabel }) {
             </div>
           </div>
         ) : (
-          <div className="logs-inline-card" style={{ marginBottom: 10 }}>
+          <div className="logs-inline-card" style={{ marginBottom: 10, display: "none" }}>
             <div className="logs-list-title">Latest Attempt</div>
             <div className="logs-list-sub">No previous completion found for this program yet.</div>
           </div>
@@ -415,6 +429,23 @@ function ProgramPreview({ backPath, backLabel }) {
         {completionHistory.length ? (
           <div className="logs-inline-card" style={{ marginBottom: 10 }}>
             <div className="logs-list-title">Performance Snapshot (Strava Style)</div>
+            <div className="program-strava-metrics">
+              <div className="program-strava-metric">
+                <span className="program-strava-label">Latest</span>
+                <strong>{Number(lastCompletion?.minutes || 0) > 0 ? `${lastCompletion.minutes} min` : "Untimed"}</strong>
+              </div>
+              <div className="program-strava-metric">
+                <span className="program-strava-label">Best</span>
+                <strong>{bestMinutes > 0 ? `${bestMinutes} min` : "Untimed"}</strong>
+              </div>
+              <div className="program-strava-metric">
+                <span className="program-strava-label">7D</span>
+                <strong>{weeklyCompletionCount} sessions</strong>
+              </div>
+            </div>
+            {isLatestBest ? (
+              <div className="logs-list-sub" style={{ marginTop: 4 }}>PR: fastest completion so far</div>
+            ) : null}
             <div className="logs-list-sub">
               Latest: {formatCompletionDateTime(lastCompletion?.completedAt)}
               {Number(lastCompletion?.minutes || 0) > 0 ? ` · ${lastCompletion.minutes} min` : ""}
