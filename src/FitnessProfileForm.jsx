@@ -416,14 +416,15 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         }
       } catch {
         if (active) {
-          navigate("/auth", { replace: true });
+          hasAutoRedirectedRef.current = false;
+          setBanner("Could not finish loading your account. Please try again.", "error");
         }
       }
     })();
     return () => {
       active = false;
     };
-  }, [settingsOnly, loading, session, profile, resolveHomePath, navigate, fetchProfileByAuthUser]);
+  }, [settingsOnly, loading, session, profile, resolveHomePath, navigate, fetchProfileByAuthUser, setBanner]);
 
   useEffect(() => {
     if (settingsOnly) return;

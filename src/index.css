@@ -15040,3 +15040,339 @@ html, body, #root {
 .studio-training-stats-panel .logs-list-sub {
   margin-top: 8px;
 }
+
+@media (max-width: 768px) {
+  .page-shell,
+  .community-shell,
+  .messages-page,
+  .messages-page .messages-layout,
+  .messages-page .community-panel,
+  .messages-page .community-friend-chat,
+  .community-grid,
+  .community-panel,
+  .community-forum-item,
+  .community-friend-chat-bubble,
+  .community-group-room-msg {
+    min-width: 0;
+  }
+
+  .page-shell {
+    overflow-x: clip;
+  }
+
+  .messages-page .community-panel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .messages-page .community-friend-chat {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .messages-page .community-friend-chat-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .messages-scroll-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .messages-page .community-friend-chat-list {
+    max-height: min(36vh, 280px);
+    padding-right: 0;
+  }
+
+  .messages-start-chat-row,
+  .community-friend-chat-input,
+  .community-group-room-inputbar {
+    grid-template-columns: 1fr;
+  }
+
+  .messages-start-chat-row {
+    display: grid;
+    gap: 8px;
+  }
+
+  .messages-page .community-friend-chat-input .community-modal-input,
+  .community-group-room-input,
+  .community-friend-chat-input .community-modal-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .community-chat-send-btn,
+  .messages-start-chat-row .community-cta-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .community-group-room-msg,
+  .community-friend-chat-bubble {
+    width: 100%;
+    max-width: 100%;
+    padding: 10px 11px;
+  }
+
+  .community-forum-item,
+  .community-friend-card,
+  .community-group-square,
+  .hud-card {
+    padding: 12px;
+  }
+
+  .community-group-square {
+    min-height: 104px;
+  }
+
+  .page-title,
+  .community-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .messages-page .community-panel,
+  .messages-page .community-friend-chat,
+  .community-panel,
+  .hud-card {
+    padding: 11px;
+    border-radius: 14px;
+  }
+
+  .messages-page .community-friend-chat-list {
+    max-height: min(34vh, 240px);
+  }
+
+  .community-group-square {
+    min-height: 96px;
+    padding: 10px;
+  }
+
+  .community-panel-title,
+  .hud-card-title {
+    letter-spacing: 0.1em;
+  }
+}
+
+/* Global small-device hardening pass */
+@media (max-width: 768px) {
+  .studio-wrap,
+  .logs-shell,
+  .program-shell,
+  .community-shell,
+  .page-shell {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .studio-header,
+  .studio-panel-row,
+  .studio-header-actions,
+  .logs-top-row,
+  .fuel-header-actions,
+  .community-cta-row,
+  .community-forum-topbar,
+  .community-thread-sort-row,
+  .community-friend-chat-head,
+  .logs-report-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .studio-header-actions,
+  .fuel-header-actions,
+  .community-cta-row {
+    width: 100%;
+  }
+
+  .studio-header-actions > *,
+  .fuel-header-actions > *,
+  .community-cta-row > *,
+  .logs-top-row > *,
+  .studio-panel-row > * {
+    max-width: 100%;
+  }
+
+  .studio-header-actions .studio-back,
+  .studio-header-actions .studio-toggle-btn,
+  .fuel-header-actions .studio-back,
+  .fuel-header-actions .fuel-compact-btn,
+  .community-cta-row .community-cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .studio-panel,
+  .hud-card,
+  .community-panel,
+  .logs-top-card,
+  .logs-trend-card,
+  .fuel-macro-card,
+  .fuel-weekly-card,
+  .fuel-slot-picker,
+  .fuel-board-slot,
+  .program-card,
+  .program-preview,
+  .program-list-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .studio-swap-panel,
+  .community-modal,
+  .logs-report-modal,
+  .fuel-modal,
+  .walkthrough-modal,
+  .community-friends-sheet {
+    width: min(calc(100vw - 16px), 100%);
+    max-width: calc(100vw - 16px);
+    border-radius: 16px;
+  }
+
+  .studio-swap-body,
+  .community-modal,
+  .fuel-modal,
+  .walkthrough-modal {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .program-strava-metrics,
+  .fuel-macro-grid,
+  .fuel-weekly-grid,
+  .studio-pr-grid,
+  .studio-progress-grid,
+  .logs-trend-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .logs-glance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fuel-quick-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fuel-quick-row > :first-child,
+  .fuel-quick-row > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .fuel-slot-search-row,
+  .fuel-slot-custom-row,
+  .fuel-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .fuel-modal-actions > *,
+  .community-modal-actions > *,
+  .logs-report-modal .community-modal-actions > * {
+    width: 100%;
+  }
+
+  .logs-list-row,
+  .journal-entry-row,
+  .community-friend-card,
+  .community-forum-item {
+    padding: 10px 12px;
+  }
+
+  .logs-list-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .logs-row-delete {
+    width: 100%;
+    text-align: center;
+  }
+
+  .logs-program-report {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .logs-program-report-head,
+  .logs-program-report-row {
+    min-width: 440px;
+  }
+
+  .program-list {
+    grid-template-columns: 1fr;
+  }
+
+  .program-timer-main,
+  .program-status-main,
+  .studio-title,
+  .community-title,
+  .page-title {
+    font-size: clamp(22px, 5.4vw, 30px);
+  }
+
+  .program-set-row,
+  .logs-day-controls,
+  .logs-week-summary,
+  .fuel-intake-top {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .studio-panel,
+  .hud-card,
+  .community-panel,
+  .logs-top-card,
+  .logs-trend-card,
+  .fuel-macro-card,
+  .fuel-weekly-card,
+  .fuel-slot-picker,
+  .fuel-board-slot,
+  .program-card,
+  .program-preview,
+  .program-list-card {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .studio-swap-panel,
+  .community-modal,
+  .logs-report-modal,
+  .fuel-modal,
+  .walkthrough-modal,
+  .community-friends-sheet {
+    width: min(calc(100vw - 12px), 100%);
+    max-width: calc(100vw - 12px);
+  }
+
+  .logs-glance-grid,
+  .fuel-quick-row {
+    grid-template-columns: 1fr;
+  }
+
+  .logs-program-report-head,
+  .logs-program-report-row {
+    min-width: 400px;
+  }
+
+  .studio-title,
+  .community-title,
+  .page-title,
+  .program-timer-main,
+  .program-status-main {
+    font-size: clamp(20px, 7vw, 26px);
+  }
+
+  .studio-panel-title,
+  .logs-panel-title,
+  .community-panel-title,
+  .fuel-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+}
