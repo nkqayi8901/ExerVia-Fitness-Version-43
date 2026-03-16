@@ -10575,9 +10575,9 @@ code {
   }
 
   .community-group-room-shell {
-    max-height: calc(100dvh - 64px);
-    max-height: calc(100vh - 64px);
-    max-height: calc(100dvh - 64px);
+    max-height: none;
+    height: auto;
+    min-height: 0;
   }
 }
 
@@ -11259,15 +11259,13 @@ code {
     border-radius: 0;
     border-left: 0;
     border-right: 0;
-    max-height: calc(100vh - 54px);
-    max-height: calc(100dvh - 54px);
+    max-height: none;
+    height: auto;
   }
 
   .community-group-room-shell.route-mode {
-    height: calc(100vh - 54px);
-    height: calc(100dvh - 54px);
-    max-height: calc(100vh - 54px);
-    max-height: calc(100dvh - 54px);
+    height: auto;
+    max-height: none;
     min-height: 0;
   }
 
@@ -11340,12 +11338,52 @@ code {
   }
 
   .logs-program-report {
-    overflow-x: auto;
+    overflow-x: visible;
   }
 
-  .logs-program-report-head,
+  .logs-program-report-head {
+    display: none;
+  }
+
   .logs-program-report-row {
-    min-width: 420px;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+    align-items: start;
+  }
+
+  .logs-program-report-col {
+    min-width: 0;
+  }
+
+  .logs-program-report-col.exercise {
+    grid-column: 1 / -1;
+  }
+
+  .logs-program-report-row .logs-program-report-col:not(.exercise) {
+    display: grid;
+    gap: 2px;
+  }
+
+  .logs-program-report-row .logs-program-report-col:nth-child(2)::before,
+  .logs-program-report-row .logs-program-report-col:nth-child(3)::before,
+  .logs-program-report-row .logs-program-report-col:nth-child(4)::before {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.86);
+  }
+
+  .logs-program-report-row .logs-program-report-col:nth-child(2)::before {
+    content: "Sets";
+  }
+
+  .logs-program-report-row .logs-program-report-col:nth-child(3)::before {
+    content: "Rep Range";
+  }
+
+  .logs-program-report-row .logs-program-report-col:nth-child(4)::before {
+    content: "Weight";
   }
 
   .logs-date-input {
@@ -15355,6 +15393,11 @@ html, body, #root {
     grid-template-columns: 1fr;
   }
 
+  .fuel-weekly-bars {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px 8px;
+  }
+
   .logs-program-report-head,
   .logs-program-report-row {
     min-width: 400px;
@@ -15374,5 +15417,108 @@ html, body, #root {
   .fuel-label {
     font-size: 11px;
     letter-spacing: 0.1em;
+  }
+
+  .mode-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .mode-nav-btn {
+    min-height: 48px;
+    padding: 5px 2px;
+    gap: 2px;
+  }
+
+  .mode-nav-label {
+    font-size: 8px;
+    line-height: 1.05;
+    letter-spacing: 0;
+    white-space: normal;
+    text-wrap: balance;
+  }
+
+  .community-group-room-route-panel,
+  .community-group-room-shell,
+  .community-group-room-layout,
+  .community-group-room-left,
+  .community-group-room-center,
+  .community-group-room-right,
+  .community-group-room-messages,
+  .community-group-room-msg-row,
+  .community-group-room-msg,
+  .community-group-room-inputbar,
+  .community-friend-msg-row,
+  .community-friend-chat-bubble {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .community-group-room-head-left,
+  .community-group-room-head-meta,
+  .community-group-room-members,
+  .community-question-compose-meta {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .community-group-room-title,
+  .community-group-room-sub,
+  .community-group-room-author,
+  .community-group-room-body,
+  .community-group-room-question-title,
+  .community-group-room-question-details,
+  .community-friend-msg-author,
+  .community-friend-msg-body,
+  .community-room-note,
+  .community-room-channel,
+  .community-group-room-member {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .community-group-room-question-wrap,
+  .community-question-replies,
+  .community-group-room-members {
+    min-width: 0;
+  }
+
+  .community-group-room-msg::after,
+  .community-friend-chat-bubble::after {
+    display: none;
+  }
+
+  .community-group-room-inputbar,
+  .community-friend-chat-input {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .community-group-room-input,
+  .community-friend-chat-input .community-modal-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .community-group-room-shell,
+  .community-group-room-shell.route-mode {
+    max-height: none;
+    height: auto;
+    min-height: 0;
+  }
+
+  .community-group-room-messages {
+    max-height: none;
+    overflow-x: hidden;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 480px) and (orientation: portrait) {
+    .hud-topbar {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    }
   }
 }
