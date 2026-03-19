@@ -67,8 +67,7 @@ export default function FeaturesPage() {
           <div className="landing-card text-left">
             <h3 className="text-2xl font-bold text-white mb-4">Community and Groups</h3>
             <p className="text-gray-300">
-              Topic threads, groups, statuses, and shared templates that make the social side of the app more useful
-              and accountable.
+              Topic threads, groups, and statuses that make the social side of the app more useful and accountable.
             </p>
           </div>
           <div className="landing-card text-left">

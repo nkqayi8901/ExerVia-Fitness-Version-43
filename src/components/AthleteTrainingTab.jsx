@@ -974,52 +974,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     fetchPlans();
   };
 
-  const sharePlanToCommunity = async (plan = selectedPlan) => {
-    if (!userId || !plan) return;
-    const sourceId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      String(plan.id || '')
-    )
-      ? String(plan.id)
-      : null;
-    const tags = [
-      plan.sport || '',
-      plan.defaultFocus || '',
-      plan.goal || ''
-    ]
-      .map((item) => String(item || '').trim().toLowerCase())
-      .filter(Boolean)
-      .slice(0, 6);
-    const payload = {
-      name: plan.name,
-      sport: plan.sport || 'running',
-      goal: plan.goal || '',
-      summary: plan.summary || '',
-      defaultFocus: plan.defaultFocus || 'Base',
-      durationTarget: plan.durationTarget ?? null,
-      distanceTarget: plan.distanceTarget ?? null,
-      outline: Array.isArray(plan.outline) ? plan.outline : []
-    };
-    const { error } = await supabase.from('shared_templates').insert([{
-      template_type: 'training_plan',
-      source_id: sourceId,
-      title: plan.name,
-      subtitle: plan.goal || 'Training plan',
-      goal: plan.goal || '',
-      summary: plan.summary || '',
-      sport: plan.sport || null,
-      duration_target: plan.durationTarget ? Number(plan.durationTarget) : null,
-      distance_target: plan.distanceTarget ? Number(plan.distanceTarget) : null,
-      tags,
-      payload,
-      created_by: Number(userId)
-    }]);
-    if (error) {
-      setBanner({ type: 'error', message: 'Could not share plan.' });
-      return;
-    }
-    setBanner({ type: 'success', message: 'Plan shared to Community Templates.' });
-  };
-
   // auto-dismiss banner after a short delay,
   // keeps notifications visible but non-blocking,
   // clears timeout on re-render,
@@ -2011,13 +1965,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                   >
                     View plan
                   </button>
-                  <button
-                    className="studio-queue-btn ghost"
-                    onClick={() => sharePlanToCommunity(selectedPlan)}
-                    type="button"
-                  >
-                    Share to community
-                  </button>
                 </div>
               </>
             ) : (
@@ -2232,13 +2179,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                     type="button"
                   >
                     Edit plan
-                  </button>
-                  <button
-                    className="studio-queue-btn ghost"
-                    onClick={() => sharePlanToCommunity(selectedPlan)}
-                    type="button"
-                  >
-                    Share to community
                   </button>
                 </div>
                 {selectedPlan.source === 'user' ? (

@@ -21,7 +21,6 @@ import ChallengesPanel from "./community/ChallengesPanel";
 import ForumsPanel from "./community/ForumsPanel";
 import GroupsPanel from "./community/GroupsPanel";
 import CirclePanel from "./community/CirclePanel";
-import TemplatesPanel from "./community/TemplatesPanel";
 import CommunityModal from "./community/CommunityModal";
 import PageWalkthroughModal from "./PageWalkthroughModal";
 import useCommunityModalState from "../hooks/useCommunityModalState";
@@ -70,13 +69,6 @@ const COMMUNITY_WALKTHROUGH_STEPS = [
     what: "Use Feed for quick updates, status posts, and lightweight interaction.",
     why: "Feed gives fast visibility into what your network is doing now.",
     firstAction: "Open Feed tab.",
-  },
-  {
-    id: "templates",
-    title: "Templates",
-    what: "Browse shared plans, programs, and recipes, then add them to your own stack.",
-    why: "Templates let you reuse proven structures instead of starting from zero.",
-    firstAction: "Open Templates tab.",
   },
   {
     id: "groups",
@@ -260,6 +252,13 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
   const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
+  void templateTriedByMe;
+  void templateComments;
+  void setTemplateSearch;
+  void setTemplateTypeFilter;
+  void setTemplateSort;
+  void templateViewMode;
+  void setTemplateViewMode;
   const retryCommunityLoad = () => setCommunityReloadToken((prev) => prev + 1);
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || "");
@@ -269,10 +268,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     if (stepId === "feed") {
       setActiveTab("feed");
-      return;
-    }
-    if (stepId === "templates") {
-      setActiveTab("templates");
       return;
     }
     if (stepId === "groups") {
@@ -945,7 +940,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     return forums.length ? sortForumsByTrackOrder(forums) : forumTracks;
   }, [forums]);
 
-  const tabOrder = ["forums", "feed", "leaderboard", "templates", "groups", "challenges", "friends", "circle"];
+  const tabOrder = ["forums", "feed", "leaderboard", "groups", "challenges", "friends", "circle"];
   const activeTabIndex = Math.max(tabOrder.indexOf(activeTab), 0);
 
   useEffect(() => {
@@ -2715,6 +2710,16 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     }
     setTemplateDeckDragX(0);
   };
+  void handleTryTemplate;
+  void handleCommentTemplate;
+  void likedTemplates;
+  void visibleSwipeQueue;
+  void getTemplatePreviewRows;
+  void getTemplateMetaBadges;
+  void handleTemplateDeckKeyDown;
+  void handleTemplateDeckPointerDown;
+  void handleTemplateDeckPointerMove;
+  void handleTemplateDeckPointerEnd;
 
   useEffect(() => {
     if (!groupRoomId) return;
@@ -3014,13 +3019,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               type="button"
             >
               Leaderboard
-            </button>
-            <button
-              className={`community-tab ${activeTab === "templates" ? "active" : ""}`}
-              onClick={() => setActiveTab("templates")}
-              type="button"
-            >
-              Templates
             </button>
             <button
               className={`community-tab ${activeTab === "groups" ? "active" : ""}`}
@@ -3391,54 +3389,6 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
             />
           )}
 
-          {activeTab === "templates" && (
-            <TemplatesPanel
-              templateSearch={templateSearch}
-              setTemplateSearch={setTemplateSearch}
-              setCreateRecipeTemplateOpen={setCreateRecipeTemplateOpen}
-              templateTypeFilter={templateTypeFilter}
-              setTemplateTypeFilter={setTemplateTypeFilter}
-              templateFocusFilter={templateFocusFilter}
-              setTemplateFocusFilter={setTemplateFocusFilter}
-              templateSort={templateSort}
-              setTemplateSort={setTemplateSort}
-              filteredTemplates={filteredTemplates}
-              templateViewMode={templateViewMode}
-              setTemplateViewMode={setTemplateViewMode}
-              swipeTemplates={swipeTemplates}
-              templateDeckIndex={templateDeckIndex}
-              visibleSwipeQueue={visibleSwipeQueue}
-              setTemplateDeckIndex={setTemplateDeckIndex}
-              setTemplateDeckDragX={setTemplateDeckDragX}
-              setTemplateDeckAnimating={setTemplateDeckAnimating}
-              templateQueueExpanded={templateQueueExpanded}
-              setTemplateQueueExpanded={setTemplateQueueExpanded}
-              templateDeckDragX={templateDeckDragX}
-              templateDeckAnimating={templateDeckAnimating}
-              handleTemplateDeckPointerDown={handleTemplateDeckPointerDown}
-              handleTemplateDeckPointerMove={handleTemplateDeckPointerMove}
-              handleTemplateDeckPointerEnd={handleTemplateDeckPointerEnd}
-              handleTemplateDeckKeyDown={handleTemplateDeckKeyDown}
-              templateRatings={templateRatings}
-              templateTryCounts={templateTryCounts}
-              templateComments={templateComments}
-              profiles={profiles}
-              getTemplatePreviewRows={getTemplatePreviewRows}
-              getTemplateMetaBadges={getTemplateMetaBadges}
-              openUserProfile={openUserProfile}
-              formatTime={formatTime}
-              handleTemplateDeckAction={handleTemplateDeckAction}
-              likedTemplates={likedTemplates}
-              handleAddTemplateToMine={handleAddTemplateToMine}
-              renderEmptyState={renderEmptyState}
-              templateTriedByMe={templateTriedByMe}
-              handleRateTemplate={handleRateTemplate}
-              handleTryTemplate={handleTryTemplate}
-              templateCommentDrafts={templateCommentDrafts}
-              setTemplateCommentDrafts={setTemplateCommentDrafts}
-              handleCommentTemplate={handleCommentTemplate}
-            />
-          )}
 {/* groups discovery + joined sections */}
           {/* discover list comes first */}
           {/* joined groups are shown below */}

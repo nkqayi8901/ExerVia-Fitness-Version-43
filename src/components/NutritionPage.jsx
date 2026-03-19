@@ -779,7 +779,7 @@ export default function NutritionPage() {
   const protocolLabel = useMemo(() => {
     const g = GOALS.find((x) => x.key === goal)?.label || "Protocol";
     const p = PREFERENCES.find((x) => x.key === preference)?.label || "Fuel";
-    return `${g} • ${p} • ${timeWindow}m`;
+    return `${g} â€¢ ${p} â€¢ ${timeWindow}m`;
   }, [goal, preference, timeWindow]);
 
   const cap = useMemo(() => {
@@ -1061,7 +1061,7 @@ export default function NutritionPage() {
 
     try {
       /**
-       * preference → sources (category if possible; fallback to name search)
+       * preference â†’ sources (category if possible; fallback to name search)
        * Then: goal health-filter + shuffle + pick cap
        */
       const localMeals = getLocalRecipePool(preference, timeWindow, goal);
@@ -1504,61 +1504,6 @@ export default function NutritionPage() {
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
-  const handleShareRecipeTemplate = async () => {
-    if (!storedId) {
-      setSaveBanner("Sign in to share recipes.");
-      return;
-    }
-    if (!activeMeal?.strMeal) return;
-    const ingredients = buildIngredients(activeMeal).map((item) => ({
-      ingredient: item.ingredient,
-      measure: item.measure || ""
-    }));
-    const payload = {
-      name: activeMeal.strMeal,
-      mealType: String(activeMeal.strCategory || "meal"),
-      servings: "",
-      prepMinutes: "",
-      cookMinutes: "",
-      ingredients,
-      steps: String(activeMeal.strInstructions || "")
-        .split(/\r?\n/)
-        .map((step) => step.trim())
-        .filter(Boolean),
-      tags: [activeMeal.strCategory, activeMeal.strArea]
-        .map((item) => String(item || "").trim().toLowerCase())
-        .filter(Boolean)
-    };
-    const { data: existing } = await supabase
-      .from("shared_templates")
-      .select("id")
-      .eq("template_type", "recipe")
-      .eq("created_by", Number(storedId))
-      .ilike("title", String(activeMeal.strMeal || "").trim())
-      .limit(1);
-
-    if (!existing?.length) {
-      const { error } = await supabase.from("shared_templates").insert([{
-        template_type: "recipe",
-        title: activeMeal.strMeal,
-        subtitle: activeMeal.strCategory || "Recipe",
-        goal: activeMeal.strCategory || "",
-        summary: "Community-shared recipe template",
-        tags: payload.tags,
-        payload,
-        created_by: Number(storedId)
-      }]);
-      if (error) {
-        setSaveBanner("Could not share recipe template.");
-        return;
-      }
-    } else {
-      setSaveBanner("Recipe already shared. Keeping your existing template.");
-      return;
-    }
-    setSaveBanner(`${activeMeal.strMeal} shared to Community Templates.`);
-  };
-
   const handleCreateCustomRecipe = async () => {
     if (!storedId) {
       setSaveBanner("Sign in to create custom recipes.");
@@ -1588,12 +1533,6 @@ export default function NutritionPage() {
       .map((line) => line.trim())
       .filter(Boolean);
 
-    const tags = String(customRecipeDraft.tags || "")
-      .split(",")
-      .map((tag) => tag.trim().toLowerCase())
-      .filter(Boolean)
-      .slice(0, 12);
-
     const payload = {
       name: title,
       mealType: customRecipeDraft.mealType || "Dinner",
@@ -1608,35 +1547,7 @@ export default function NutritionPage() {
       },
       ingredients,
       steps,
-      tags,
     };
-
-    const { data: existingTemplate } = await supabase
-      .from("shared_templates")
-      .select("id")
-      .eq("template_type", "recipe")
-      .eq("created_by", Number(storedId))
-      .ilike("title", title)
-      .limit(1);
-
-    let sharedOk = true;
-    if (!existingTemplate?.length) {
-      const { error: shareError } = await supabase.from("shared_templates").insert([
-        {
-          template_type: "recipe",
-          title,
-          subtitle: `${payload.mealType} recipe`,
-          goal: payload.mealType,
-          summary: steps[0] || "Community recipe",
-          tags,
-          payload,
-          created_by: Number(storedId),
-        },
-      ]);
-      if (shareError) {
-        sharedOk = false;
-      }
-    }
 
     const { savedLibrary, savedCloud } = await saveMealEntryToToday(
       {
@@ -1692,12 +1603,10 @@ export default function NutritionPage() {
       fat: "",
     });
     setCustomRecipeOpen(false);
-    if (!sharedOk) {
-      setSaveBanner("Could not share recipe template.");
-    } else if (!savedLibrary || !savedCloud) {
-      setSaveBanner(`${title} shared. Logs saved locally; cloud sync pending.`);
+    if (!savedLibrary || !savedCloud) {
+      setSaveBanner(`${title} saved as a favorite. Cloud sync pending.`);
     } else {
-      setSaveBanner(`${title} shared and added to today's Logs.`);
+      setSaveBanner(`${title} saved as a favorite and added to today's Logs.`);
     }
     navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
@@ -1705,7 +1614,6 @@ export default function NutritionPage() {
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || "");
     if (stepId === "generate") {
-      setActiveFuelView("overview");
       fetchProtocolMeals();
       return;
     }
@@ -1726,7 +1634,7 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When user changes protocol settings, we *don’t* auto-refetch (keeps UX controlled),
+  // When user changes protocol settings, we *donâ€™t* auto-refetch (keeps UX controlled),
   // but we do update Meal of Day to match goal strictness.
   useEffect(() => {
     fetchMealOfDay();
@@ -1762,7 +1670,7 @@ export default function NutritionPage() {
             </button>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
-              Pick a protocol → Pick a time → Pick a preference → Get meals
+              Pick a protocol â†’ Pick a time â†’ Pick a preference â†’ Get meals
             </p>
           </div>
 
@@ -1779,7 +1687,7 @@ export default function NutritionPage() {
               onClick={fetchProtocolMeals}
               disabled={loading}
             >
-              {loading ? "Generating…" : "Generate New Meals"}
+              {loading ? "Generatingâ€¦" : "Generate New Meals"}
             </button>
             <button
               className="studio-back fuel-compact-btn"
@@ -1895,7 +1803,7 @@ export default function NutritionPage() {
                 ))}
               </div>
               <div className="hud-dim" style={{ marginTop: 10 }}>
-                Tip: Change settings → hit <b>Generate New Meals</b>.
+                Tip: Change settings â†’ hit <b>Generate New Meals</b>.
               </div>
             </div>
 
@@ -2000,7 +1908,7 @@ export default function NutritionPage() {
               <div className="fuel-weekly-grid">
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Calories � 7 days</div>
+                    <div className="fuel-macro-label">Calories · 7 days</div>
                     <div className="logs-trend-value-pill">
                       {caloriesTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(caloriesTrendLine.points.find((point) => point.active)?.value || 0)} kcal`
@@ -2052,7 +1960,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Protein � 7 days</div>
+                    <div className="fuel-macro-label">Protein · 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-protein">
                       {proteinTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(proteinTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2104,7 +2012,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Carbs � 7 days</div>
+                    <div className="fuel-macro-label">Carbs · 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-carbs">
                       {carbsTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(carbsTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2156,7 +2064,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Fat � 7 days</div>
+                    <div className="fuel-macro-label">Fat · 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-fat">
                       {fatTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(fatTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2229,7 +2137,7 @@ export default function NutritionPage() {
                     <div className="fuel-intake-row" key={`${meal.id || meal.text}-${index}`}>
                       <div className="fuel-intake-name">{meal.text}</div>
                       <div className="fuel-intake-macros">
-                        {Math.round(macros.calories)} kcal · P {Math.round(macros.protein)} · C {Math.round(macros.carbs)} · F {Math.round(macros.fat)}
+                        {Math.round(macros.calories)} kcal Â· P {Math.round(macros.protein)} Â· C {Math.round(macros.carbs)} Â· F {Math.round(macros.fat)}
                       </div>
                     </div>
                   );
@@ -2306,7 +2214,7 @@ export default function NutritionPage() {
                 <div className="hud-dim">
                   {curatedOnly
                     ? "No curated daily pick for this filter yet. Try another preference/time."
-                    : "Loading daily pick…"}
+                    : "Loading daily pickâ€¦"}
                 </div>
               )
             )}
@@ -2451,14 +2359,7 @@ export default function NutritionPage() {
                   >
                     More like this
                   </button>
-                  <button
-                    className="studio-back fuel-save-btn"
-                    onClick={handleShareRecipeTemplate}
-                    type="button"
-                  >
-                    Share template
-                  </button>
-                  <button
+<button
                     className={`studio-back fuel-save-btn ${isRecipeFavorite(activeMeal) ? "active" : ""}`}
                     type="button"
                     onClick={() => toggleRecipeFavorite(activeMeal)}
@@ -2473,13 +2374,13 @@ export default function NutritionPage() {
                       setOffQuery("");
                     }}
                   >
-                    ✕ Close
+                    âœ• Close
                   </button>
                 </div>
               </div>
 
               {detailLoading ? (
-                <div className="hud-dim">Opening recipe…</div>
+                <div className="hud-dim">Opening recipeâ€¦</div>
               ) : (
                 <div className="fuel-modal-body">
                   <div className="fuel-modal-left">
@@ -2496,7 +2397,7 @@ export default function NutritionPage() {
                         <div key={`${x.ingredient}-${idx}`} className="fuel-shopping-row">
                           <div>
                             <div className="fuel-ing">{x.ingredient}</div>
-                            <div className="hud-dim">{x.measure || "—"}</div>
+                            <div className="hud-dim">{x.measure || "â€”"}</div>
                           </div>
                           <button
                             className="fuel-off-btn"
@@ -2534,7 +2435,7 @@ export default function NutritionPage() {
                           className="fuel-off-input"
                           value={offQuery}
                           onChange={(e) => setOffQuery(e.target.value)}
-                          placeholder="Search packaged foods (e.g., greek yogurt, oats)…"
+                          placeholder="Search packaged foods (e.g., greek yogurt, oats)â€¦"
                           onKeyDown={(e) => e.key === "Enter" && searchOpenFoodFacts()}
                         />
                         <button
@@ -2542,7 +2443,7 @@ export default function NutritionPage() {
                           onClick={() => searchOpenFoodFacts()}
                           disabled={offLoading}
                         >
-                          {offLoading ? "…" : "Search"}
+                          {offLoading ? "â€¦" : "Search"}
                         </button>
                       </div>
 
@@ -2554,10 +2455,10 @@ export default function NutritionPage() {
                                 {p.product_name || "Unnamed product"}
                               </div>
                               <div className="hud-dim">
-                                kcal: {p.nutriments?.["energy-kcal"] ?? "—"} • protein:{" "}
-                                {p.nutriments?.proteins ?? "—"}g • carbs:{" "}
-                                {p.nutriments?.carbohydrates ?? "—"}g • fat:{" "}
-                                {p.nutriments?.fat ?? "—"}g
+                                kcal: {p.nutriments?.["energy-kcal"] ?? "â€”"} â€¢ protein:{" "}
+                                {p.nutriments?.proteins ?? "â€”"}g â€¢ carbs:{" "}
+                                {p.nutriments?.carbohydrates ?? "â€”"}g â€¢ fat:{" "}
+                                {p.nutriments?.fat ?? "â€”"}g
                               </div>
                               <button
                                 className="studio-back fuel-compact-btn fuel-off-add-btn"
@@ -2679,7 +2580,7 @@ export default function NutritionPage() {
                   Cancel
                 </button>
                 <button className="studio-back community-cta-btn fuel-custom-action-btn" type="button" onClick={handleCreateCustomRecipe}>
-                  Share + Add to Logs
+                  Save + Add to Logs
                 </button>
               </div>
             </div>
@@ -2708,6 +2609,10 @@ export default function NutritionPage() {
     </div>
   );
 }
+
+
+
+
 
 
 

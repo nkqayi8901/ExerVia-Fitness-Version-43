@@ -496,13 +496,6 @@ const PROGRESS_WALKTHROUGH_STEPS = [
     why: 'Custom plans let you train exactly for your goal and equipment.',
     firstAction: 'Create a program with at least 4 exercises.',
   },
-  {
-    id: 'share_program',
-    title: 'Share to Community',
-    what: 'Publish your workout program to shared templates for others to rate and try.',
-    why: 'Sharing increases accountability and helps other users discover quality plans.',
-    firstAction: 'Share one program to Community Templates.',
-  },
 ];
 
 // StrengthProgressTab manages a focused piece of logic,
@@ -571,14 +564,6 @@ const StrengthProgressTab = ({ userId }) => {
     const stepId = String(step?.id || '');
     if (stepId === 'create_program') {
       setShowCreateProgram(true);
-      return;
-    }
-    if (stepId === 'share_program') {
-      if (selectedProgram) {
-        shareProgramToCommunity(selectedProgram);
-      } else {
-        setBanner({ type: 'info', message: 'Pick a program first, then share it.' });
-      }
       return;
     }
     if (stepId === 'pick_program' || stepId === 'edit_program') {
@@ -976,48 +961,6 @@ const StrengthProgressTab = ({ userId }) => {
     setCreatorResults([]);
     setCreatorFocusedIndex(0);
     setShowCreateProgram(true);
-  };
-
-  const shareProgramToCommunity = async (program = selectedProgram) => {
-    if (!userId || !program) return;
-    const sourceId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      String(program.id || '')
-    )
-      ? String(program.id)
-      : null;
-    const tags = [
-      program.focus || '',
-      program.level || '',
-      (program.exercises || []).length ? `${(program.exercises || []).length}-exercises` : ''
-    ]
-      .map((item) => String(item || '').trim().toLowerCase())
-      .filter(Boolean)
-      .slice(0, 6);
-    const payload = {
-      name: program.name,
-      level: program.level || 'All levels',
-      focus: program.focus || 'Mixed',
-      description: program.description || '',
-      exercises: Array.isArray(program.exercises) ? program.exercises : []
-    };
-    const { error } = await supabase.from('shared_templates').insert([{
-      template_type: 'workout_program',
-      source_id: sourceId,
-      title: program.name,
-      subtitle: program.focus || 'Workout program',
-      goal: program.focus || '',
-      summary: program.description || '',
-      level: program.level || null,
-      focus: program.focus || null,
-      tags,
-      payload,
-      created_by: Number(userId)
-    }]);
-    if (error) {
-      setBanner({ type: 'error', message: 'Could not share program.' });
-      return;
-    }
-    setBanner({ type: 'success', message: 'Program shared to Community Templates.' });
   };
 
 // closeSwap manages a focused piece of logic,
@@ -2158,13 +2101,6 @@ const StrengthProgressTab = ({ userId }) => {
                       type="button"
                     >
                       Edit program
-                    </button>
-                    <button
-                      className="studio-queue-btn ghost"
-                      onClick={() => shareProgramToCommunity(selectedProgram)}
-                      type="button"
-                    >
-                      Share to community
                     </button>
                   </div>
                 </>
