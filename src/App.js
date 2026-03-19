@@ -17,6 +17,12 @@ const resolveEagerModule = (loader) => {
 const LandingPage = isTestEnv
   ? resolveEagerModule(() => require("./components/LandingPage"))
   : lazy(() => import("./components/LandingPage"));
+const AboutPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/AboutPage"))
+  : lazy(() => import("./components/AboutPage"));
+const FeaturesPage = isTestEnv
+  ? resolveEagerModule(() => require("./components/FeaturesPage"))
+  : lazy(() => import("./components/FeaturesPage"));
 const FitnessProfileForm = isTestEnv
   ? resolveEagerModule(() => require("./FitnessProfileForm"))
   : lazy(() => import("./FitnessProfileForm"));
@@ -161,6 +167,8 @@ function App() {
         <div className="min-h-screen">
           <Routes>
             <Route path="/" element={withRouteBoundary(<HomeEntryRoute />)} />
+            <Route path="/about" element={withRouteBoundary(<AboutPage />)} />
+            <Route path="/features" element={withRouteBoundary(<FeaturesPage />)} />
             <Route path="/auth" element={withRouteBoundary(<FitnessProfileForm />)} />
             <Route
               path="/settings"
