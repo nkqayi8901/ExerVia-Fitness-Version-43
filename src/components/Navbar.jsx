@@ -42,13 +42,6 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
   const messagesPath = mode === "gym"
     ? `/gym/${resolvedUserId || ""}/messages`
     : `/athlete/${resolvedUserId || ""}/messages`;
-  const messageFabInlineStyle = {
-    position: "fixed",
-    right: "16px",
-    bottom: "max(4px, env(safe-area-inset-bottom, 0px))",
-    top: "auto",
-    left: "auto",
-  };
   const initials = useMemo(() => {
     const source = account?.display_name || account?.username || "Athlete";
     return String(source)
@@ -474,7 +467,6 @@ export default function Navbar({ modeLabel = "SYSTEM", mode = null, userId = nul
       <button
         type="button"
         className="hud-message-fab"
-        style={messageFabInlineStyle}
         onClick={() => navigate(messagesPath)}
         aria-label="Open messages"
         title="Messages"
