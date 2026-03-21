@@ -7254,8 +7254,9 @@ code {
 }
 
 .community-forum-topbar .community-search {
-  flex: 0 1 480px;
-  min-width: 240px;
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: 0;
 }
 
@@ -7417,7 +7418,7 @@ code {
 }
 
 .community-group-square-grid {
-  grid-template-columns: repeat(auto-fill, minmax(184px, 184px));
+  grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
   justify-content: start;
   max-height: none;
   padding-right: 0;
@@ -7425,7 +7426,7 @@ code {
 }
 
 .community-group-square {
-  width: 184px;
+  width: 100%;
   min-height: 162px;
   display: flex;
   flex-direction: column;
@@ -8109,6 +8110,7 @@ code {
   .community-leaderboard-row {
     grid-template-columns: auto 1fr;
     gap: 8px 10px;
+    align-items: center;
   }
   .community-leaderboard-meta-stack {
     grid-column: 1 / -1;
@@ -8133,6 +8135,10 @@ code {
   text-align: left;
   font-size: 13px;
   letter-spacing: 0.03em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .community-leaderboard-meta-stack {
@@ -15946,17 +15952,44 @@ html, body, #root {
     justify-content: stretch;
   }
 
-  .community-main-tabs,
-  .community-tabs,
-  .community-topic-tabs {
+  .community-main-tabs {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     overflow: visible;
-    flex-wrap: wrap;
   }
 
-  .community-main-tabs .community-tab,
-  .community-tabs .community-tab {
-    flex: 1 1 calc(50% - 6px);
+  .community-main-tabs .community-tab {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding-inline: 10px;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .community-topic-tabs {
+    width: calc(100% + 4px);
+    margin-right: -4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .community-topic-tabs .community-tab {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding-inline: 12px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .community-forum-count-pill {
+    white-space: nowrap;
   }
 
   .community-group-room-shell,
@@ -16002,10 +16035,33 @@ html, body, #root {
 }
 
 @media (max-width: 480px) {
-  .community-main-tabs .community-tab,
-  .community-tabs .community-tab,
+  .community-main-tabs {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .community-main-tabs .community-tab {
+    min-height: 48px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+
   .community-topic-tabs .community-tab {
-    flex-basis: 100%;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .community-group-square-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .journal-trend-axis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .logs-dot-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .mode-nav-btn {
@@ -16029,7 +16085,6 @@ html, body, #root {
   .studio-header-actions,
   .logs-top-row,
   .fuel-header-actions,
-  .community-cta-row,
   .community-forum-topbar,
   .community-thread-sort-row,
   .community-friend-chat-head,
@@ -16042,6 +16097,12 @@ html, body, #root {
   .fuel-header-actions,
   .community-cta-row {
     width: 100%;
+  }
+
+  .community-cta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .studio-header-actions > *,
@@ -16059,6 +16120,37 @@ html, body, #root {
   .community-cta-row .community-cta-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .community-cta-row > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .community-thread-toolbar-left {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .community-thread-select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .community-thread-count {
+    align-self: flex-start;
+    max-width: 100%;
+  }
+
+  .community-group-square-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .logs-dot-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .studio-panel,

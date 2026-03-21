@@ -53,8 +53,10 @@ export default function LeaderboardPanel({
                 >
                   {profiles[row.user_id] || `User ${row.user_id}`}
                 </button>
-                <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
-                <span className="community-meta-pill">{row.rank || "-"}</span>
+                <div className="community-leaderboard-meta-stack">
+                  <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
+                  <span className="community-meta-pill">{row.rank || "-"}</span>
+                </div>
               </div>
             ))}
           {!leaderboardLoading && globalLeaderboardLoaded && !globalLeaderboard.length ? (
@@ -79,8 +81,10 @@ export default function LeaderboardPanel({
                 >
                   {profiles[row.user_id] || `User ${row.user_id}`}
                 </button>
-                <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
-                <span className="community-meta-pill">{row.rank || "-"}</span>
+                <div className="community-leaderboard-meta-stack">
+                  <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
+                  <span className="community-meta-pill">{row.rank || "-"}</span>
+                </div>
               </div>
             ))}
           {!!leaderboardGroupId && !groupLeaderboardLoading && groupLeaderboardLoaded && !groupLeaderboard.length && (
