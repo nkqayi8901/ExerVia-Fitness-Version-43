@@ -107,7 +107,7 @@ test("shows guide retry banner when exercise guide request fails", async () => {
   render(<WorkoutProgram mode="gym" />);
   fireEvent.click(screen.getByRole("button", { name: "Deadlift" }));
   await waitFor(() => {
-    expect(screen.getByText(/Could not load guide details right now/i)).toBeInTheDocument();
+    expect(screen.getByText(/Guide details are unavailable right now/i)).toBeInTheDocument();
   });
   expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
   consoleErrorSpy.mockRestore();

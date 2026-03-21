@@ -4,6 +4,7 @@ import { queueLogsTrainingPrefill } from "../services/logsStorage";
 import { supabase } from "../supabaseClient";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
+import exerciseGuideDefaults from "../data/exerciseGuides.json";
 // Component: WorkoutProgram - UI layout and interactions.
 // This component renders the workoutprogram experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -42,6 +43,16 @@ const WEIGHT_PICKER_OPTIONS = Array.from({ length: 121 }, (_, index) => {
 });
 const EMPTY_OBJECT = Object.freeze({});
 const PROGRAM_HISTORY_LIMIT = 40;
+const DEFAULT_GUIDE_STEPS = [
+  "Set your stance and brace core.",
+  "Move with control through full range.",
+  "Keep form tight and breathe steadily."
+];
+
+const getExerciseGuideDefaults = (name) => {
+  const key = String(name || "").trim();
+  return key ? exerciseGuideDefaults[key] || [] : [];
+};
 
 const getProgramHistoryStorageKey = (userId) =>
   userId ? `exervia_program_history_${String(userId).trim()}` : "";
@@ -243,10 +254,15 @@ function ProgramPreview({ backPath, backLabel }) {
   const handleExerciseGuide = async (exercise) => {
     if (!exercise?.name) return;
     const cacheKey = String(exercise.name || "").trim().toLowerCase();
+    const fallbackSteps = getExerciseGuideDefaults(exercise.name);
+    const fallbackGuide = {
+      description: "",
+      steps: fallbackSteps.length ? fallbackSteps : DEFAULT_GUIDE_STEPS,
+    };
     setGuideExercise(exercise);
     setGuideOpen(true);
     setGuideLoading(true);
-    setGuideDetails(null);
+    setGuideDetails(fallbackGuide);
     setGuideError("");
     if (guideCacheRef.current[cacheKey]) {
       setGuideDetails(guideCacheRef.current[cacheKey]);
@@ -264,20 +280,28 @@ function ProgramPreview({ backPath, backLabel }) {
         "Guide request timed out"
       );
       if (guideRequestRef.current !== requestId) return;
+      if (!response.ok) {
+        throw new Error(`Guide request failed with status ${response.status}`);
+      }
       const data = await withTimeout(response.json(), 2000, "Guide decode timed out");
       const result = data?.results?.[0];
       const description = result?.description
         ? result.description.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
         : '';
-      const steps = description
+      const apiSteps = description
         ? description.split('.').map((part) => part.trim()).filter(Boolean).slice(0, 4)
         : [];
-      const nextGuide = { description, steps };
+      const nextGuide = {
+        description,
+        steps: apiSteps.length ? apiSteps : fallbackGuide.steps,
+      };
       guideCacheRef.current[cacheKey] = nextGuide;
       setGuideDetails(nextGuide);
     } catch (error) {
       console.error('Guide fetch failed:', error);
-      setGuideError("Could not load guide details right now.");
+      guideCacheRef.current[cacheKey] = fallbackGuide;
+      setGuideDetails(fallbackGuide);
+      setGuideError("");
     } finally {
       if (guideRequestRef.current === requestId) {
         setGuideLoading(false);
@@ -439,7 +463,7 @@ function ProgramPreview({ backPath, backLabel }) {
                 <strong>{bestMinutes > 0 ? `${bestMinutes} min` : "Untimed"}</strong>
               </div>
               <div className="program-strava-metric">
-                <span className="program-strava-label">7D</span>
+                <span className="program-strava-label">Last 7 Days</span>
                 <strong>{weeklyCompletionCount} sessions</strong>
               </div>
             </div>
@@ -611,7 +635,7 @@ function ProgramPreview({ backPath, backLabel }) {
                   ) : (
                     <>
                       {guideError ? (
-                        <div className="exervia-banner warn">
+                        <div className="exervia-banner info">
                           {guideError}
                           <div className="exervia-banner-actions">
                             <button
@@ -625,14 +649,14 @@ function ProgramPreview({ backPath, backLabel }) {
                         </div>
                       ) : null}
                       <div className="studio-guide-text">
-                        {guideDetails?.description || 'No guide yet. Focus on control and form.'}
+                        {guideDetails?.description || 'Standard movement reminders are ready. Focus on control and form.'}
                       </div>
                       <div className="studio-guide-section">
                         <div className="studio-guide-label">Step by step</div>
                         <ol className="studio-guide-steps">
                           {(guideDetails?.steps?.length
                             ? guideDetails.steps
-                            : ['Set your stance and brace core.', 'Move with control through full range.', 'Keep form tight and breathe steadily.']
+                            : DEFAULT_GUIDE_STEPS
                           ).map((item, idx) => (
                             <li key={`preview-step-${idx}`}>{item}</li>
                           ))}
@@ -1381,5 +1405,3 @@ export default function WorkoutProgram({ mode }) {
     </Routes>
   );
 }
-
-

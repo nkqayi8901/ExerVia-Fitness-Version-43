@@ -554,6 +554,7 @@ export default function NutritionPage() {
   const [offQuery, setOffQuery] = useState("");
   const [offResults, setOffResults] = useState([]);
   const [offLoading, setOffLoading] = useState(false);
+  const [mealAction, setMealAction] = useState("");
   const [saveBanner, setSaveBanner] = useState("");
   const [logsSyncError, setLogsSyncError] = useState("");
   const [todayMeals, setTodayMeals] = useState([]);
@@ -779,7 +780,7 @@ export default function NutritionPage() {
   const protocolLabel = useMemo(() => {
     const g = GOALS.find((x) => x.key === goal)?.label || "Protocol";
     const p = PREFERENCES.find((x) => x.key === preference)?.label || "Fuel";
-    return `${g} â€¢ ${p} â€¢ ${timeWindow}m`;
+    return `${g} / ${p} / ${timeWindow}m`;
   }, [goal, preference, timeWindow]);
 
   const cap = useMemo(() => {
@@ -824,44 +825,49 @@ export default function NutritionPage() {
     const nameKey = name ? `name:${name}` : "";
     const removing = isRecipeFavorite(meal);
     if (!key) return;
-    setFavoriteRecipeKeys((prev) => {
-      const safePrev = Array.isArray(prev) ? prev : [];
-      const exists =
-        safePrev.includes(key) ||
-        (nameKey ? safePrev.includes(nameKey) : false) ||
-        (id ? safePrev.some((item) => item === id || item.endsWith(`:${id}`)) : false);
-      const next = exists
-        ? safePrev.filter((item) => item !== key && item !== nameKey && (!id || (item !== id && !item.endsWith(`:${id}`))))
-        : [...safePrev, key, ...(nameKey ? [nameKey] : []), ...(id ? [id] : [])];
-      localStorage.setItem(favoriteStorageKey, JSON.stringify(next.slice(-400)));
-      return next;
-    });
-    setFavoriteMeals((prev) => {
-      const safePrev = Array.isArray(prev) ? prev : [];
-      const exists = safePrev.some((item) => {
-        const itemKey = recipeIdentityKey(item);
-        const itemName = normalizeTextId(item?.strMeal);
-        return itemKey === key || (name && itemName === name);
+    setMealAction(`favorite:${key}`);
+    try {
+      setFavoriteRecipeKeys((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        const exists =
+          safePrev.includes(key) ||
+          (nameKey ? safePrev.includes(nameKey) : false) ||
+          (id ? safePrev.some((item) => item === id || item.endsWith(`:${id}`)) : false);
+        const next = exists
+          ? safePrev.filter((item) => item !== key && item !== nameKey && (!id || (item !== id && !item.endsWith(`:${id}`))))
+          : [...safePrev, key, ...(nameKey ? [nameKey] : []), ...(id ? [id] : [])];
+        localStorage.setItem(favoriteStorageKey, JSON.stringify(next.slice(-400)));
+        return next;
       });
-      const next = exists
-        ? safePrev.filter((item) => {
-            const itemKey = recipeIdentityKey(item);
-            const itemName = normalizeTextId(item?.strMeal);
-            return itemKey !== key && (!name || itemName !== name);
-          })
-        : (() => {
-            const snapshot = toFavoriteMealSnapshot(meal);
-            return snapshot ? [...safePrev, snapshot] : safePrev;
-          })();
-      localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(next.slice(-400)));
-      return next;
-    });
-    if (storedId && meal?.strMeal) {
-      if (removing) {
-        await removeMealFromLibrary(storedId, meal.strMeal);
-      } else {
-        await saveMealToLibrary(storedId, meal.strMeal, "favorite");
+      setFavoriteMeals((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        const exists = safePrev.some((item) => {
+          const itemKey = recipeIdentityKey(item);
+          const itemName = normalizeTextId(item?.strMeal);
+          return itemKey === key || (name && itemName === name);
+        });
+        const next = exists
+          ? safePrev.filter((item) => {
+              const itemKey = recipeIdentityKey(item);
+              const itemName = normalizeTextId(item?.strMeal);
+              return itemKey !== key && (!name || itemName !== name);
+            })
+          : (() => {
+              const snapshot = toFavoriteMealSnapshot(meal);
+              return snapshot ? [...safePrev, snapshot] : safePrev;
+            })();
+        localStorage.setItem(favoriteMealsStorageKey, JSON.stringify(next.slice(-400)));
+        return next;
+      });
+      if (storedId && meal?.strMeal) {
+        if (removing) {
+          await removeMealFromLibrary(storedId, meal.strMeal);
+        } else {
+          await saveMealToLibrary(storedId, meal.strMeal, "favorite");
+        }
       }
+    } finally {
+      setMealAction("");
     }
   };
 
@@ -1061,7 +1067,7 @@ export default function NutritionPage() {
 
     try {
       /**
-       * preference â†’ sources (category if possible; fallback to name search)
+       * preference -> sources (category if possible; fallback to name search)
        * Then: goal health-filter + shuffle + pick cap
        */
       const localMeals = getLocalRecipePool(preference, timeWindow, goal);
@@ -1317,6 +1323,7 @@ export default function NutritionPage() {
     const rawName = String(activeMeal.strMeal || "").trim();
     const keyword = rawName.split(" ").find((part) => part.length > 3) || rawName;
     if (!keyword) return;
+    setMealAction("more");
     setLoading(true);
     setError("");
     try {
@@ -1356,6 +1363,7 @@ export default function NutritionPage() {
       setError("Could not load similar meals right now.");
     } finally {
       setLoading(false);
+      setMealAction("");
     }
   };
 
@@ -1488,20 +1496,25 @@ export default function NutritionPage() {
       carbs: toMacroNumber(activeMeal?.__nutrition?.carbs),
       fat: toMacroNumber(activeMeal?.__nutrition?.fat),
     };
-    const { savedLibrary, savedCloud } = await saveMealEntryToToday(
-      {
-        text: mealName,
-        nutrition,
-      },
-      "recipe"
-    );
+    setMealAction("save");
+    try {
+      const { savedLibrary, savedCloud } = await saveMealEntryToToday(
+        {
+          text: mealName,
+          nutrition,
+        },
+        "recipe"
+      );
 
-    if (!savedLibrary || !savedCloud) {
-      setSaveBanner(`${mealName} saved locally. Cloud sync pending.`);
-    } else {
-      setSaveBanner(`${mealName} saved to Logs.`);
+      if (!savedLibrary || !savedCloud) {
+        setSaveBanner(`${mealName} saved locally. Cloud sync pending.`);
+      } else {
+        setSaveBanner(`${mealName} saved to Logs.`);
+      }
+      navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
+    } finally {
+      setMealAction("");
     }
-    navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
   };
 
   const handleCreateCustomRecipe = async () => {
@@ -1634,7 +1647,7 @@ export default function NutritionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When user changes protocol settings, we *donâ€™t* auto-refetch (keeps UX controlled),
+  // When user changes protocol settings, we do not auto-refetch (keeps UX controlled),
   // but we do update Meal of Day to match goal strictness.
   useEffect(() => {
     fetchMealOfDay();
@@ -1670,7 +1683,7 @@ export default function NutritionPage() {
             </button>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
-              Pick a protocol â†’ Pick a time â†’ Pick a preference â†’ Get meals
+              Pick a protocol -> Pick a time -> Pick a preference -> Get meals
             </p>
           </div>
 
@@ -1687,7 +1700,7 @@ export default function NutritionPage() {
               onClick={fetchProtocolMeals}
               disabled={loading}
             >
-              {loading ? "Generatingâ€¦" : "Generate New Meals"}
+              {loading ? "Generating..." : "Generate New Meals"}
             </button>
             <button
               className="studio-back fuel-compact-btn"
@@ -1803,7 +1816,7 @@ export default function NutritionPage() {
                 ))}
               </div>
               <div className="hud-dim" style={{ marginTop: 10 }}>
-                Tip: Change settings â†’ hit <b>Generate New Meals</b>.
+                Tip: Change settings -> hit <b>Generate New Meals</b>.
               </div>
             </div>
 
@@ -1908,7 +1921,7 @@ export default function NutritionPage() {
               <div className="fuel-weekly-grid">
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Calories · 7 days</div>
+                    <div className="fuel-macro-label">Calories Â· 7 days</div>
                     <div className="logs-trend-value-pill">
                       {caloriesTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(caloriesTrendLine.points.find((point) => point.active)?.value || 0)} kcal`
@@ -1960,7 +1973,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Protein · 7 days</div>
+                    <div className="fuel-macro-label">Protein Â· 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-protein">
                       {proteinTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(proteinTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2012,7 +2025,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Carbs · 7 days</div>
+                    <div className="fuel-macro-label">Carbs Â· 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-carbs">
                       {carbsTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(carbsTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2064,7 +2077,7 @@ export default function NutritionPage() {
                 </div>
                 <div className="fuel-weekly-card">
                   <div className="logs-trend-head">
-                    <div className="fuel-macro-label">Fat · 7 days</div>
+                    <div className="fuel-macro-label">Fat Â· 7 days</div>
                     <div className="logs-trend-value-pill fuel-trend-pill-fat">
                       {fatTrendLine.points.find((point) => point.active)?.value > 0
                         ? `${Math.round(fatTrendLine.points.find((point) => point.active)?.value || 0)} g`
@@ -2137,7 +2150,7 @@ export default function NutritionPage() {
                     <div className="fuel-intake-row" key={`${meal.id || meal.text}-${index}`}>
                       <div className="fuel-intake-name">{meal.text}</div>
                       <div className="fuel-intake-macros">
-                        {Math.round(macros.calories)} kcal Â· P {Math.round(macros.protein)} Â· C {Math.round(macros.carbs)} Â· F {Math.round(macros.fat)}
+                        {Math.round(macros.calories)} kcal / P {Math.round(macros.protein)} / C {Math.round(macros.carbs)} / F {Math.round(macros.fat)}
                       </div>
                     </div>
                   );
@@ -2214,7 +2227,7 @@ export default function NutritionPage() {
                 <div className="hud-dim">
                   {curatedOnly
                     ? "No curated daily pick for this filter yet. Try another preference/time."
-                    : "Loading daily pickâ€¦"}
+                    : "Loading daily pick..."}
                 </div>
               )
             )}
@@ -2349,22 +2362,29 @@ export default function NutritionPage() {
                     className="studio-back fuel-save-btn"
                     onClick={handleSaveMealToLogs}
                     type="button"
+                    disabled={mealAction === "save"}
                   >
-                    Save to logs
+                    {mealAction === "save" ? "Saving..." : "Save to logs"}
                   </button>
                   <button
                     className="studio-back fuel-save-btn"
                     onClick={handleMoreLikeThis}
                     type="button"
+                    disabled={mealAction === "more"}
                   >
-                    More like this
+                    {mealAction === "more" ? "Loading..." : "More like this"}
                   </button>
 <button
                     className={`studio-back fuel-save-btn ${isRecipeFavorite(activeMeal) ? "active" : ""}`}
                     type="button"
                     onClick={() => toggleRecipeFavorite(activeMeal)}
+                    disabled={mealAction === `favorite:${recipeIdentityKey(activeMeal)}`}
                   >
-                    {isRecipeFavorite(activeMeal) ? "Favorited" : "Save favorite"}
+                    {mealAction === `favorite:${recipeIdentityKey(activeMeal)}`
+                      ? "Saving..."
+                      : isRecipeFavorite(activeMeal)
+                        ? "Favorited"
+                        : "Save favorite"}
                   </button>
                   <button
                     className="hud-secondary-btn"
@@ -2374,13 +2394,13 @@ export default function NutritionPage() {
                       setOffQuery("");
                     }}
                   >
-                    âœ• Close
+                    Close
                   </button>
                 </div>
               </div>
 
               {detailLoading ? (
-                <div className="hud-dim">Opening recipeâ€¦</div>
+                <div className="hud-dim">Opening recipe...</div>
               ) : (
                 <div className="fuel-modal-body">
                   <div className="fuel-modal-left">
@@ -2397,7 +2417,7 @@ export default function NutritionPage() {
                         <div key={`${x.ingredient}-${idx}`} className="fuel-shopping-row">
                           <div>
                             <div className="fuel-ing">{x.ingredient}</div>
-                            <div className="hud-dim">{x.measure || "â€”"}</div>
+                            <div className="hud-dim">{x.measure || "-"}</div>
                           </div>
                           <button
                             className="fuel-off-btn"
@@ -2435,7 +2455,7 @@ export default function NutritionPage() {
                           className="fuel-off-input"
                           value={offQuery}
                           onChange={(e) => setOffQuery(e.target.value)}
-                          placeholder="Search packaged foods (e.g., greek yogurt, oats)â€¦"
+                          placeholder="Search packaged foods (e.g., greek yogurt, oats)..."
                           onKeyDown={(e) => e.key === "Enter" && searchOpenFoodFacts()}
                         />
                         <button
@@ -2443,7 +2463,7 @@ export default function NutritionPage() {
                           onClick={() => searchOpenFoodFacts()}
                           disabled={offLoading}
                         >
-                          {offLoading ? "â€¦" : "Search"}
+                          {offLoading ? "..." : "Search"}
                         </button>
                       </div>
 
@@ -2455,10 +2475,10 @@ export default function NutritionPage() {
                                 {p.product_name || "Unnamed product"}
                               </div>
                               <div className="hud-dim">
-                                kcal: {p.nutriments?.["energy-kcal"] ?? "â€”"} â€¢ protein:{" "}
-                                {p.nutriments?.proteins ?? "â€”"}g â€¢ carbs:{" "}
-                                {p.nutriments?.carbohydrates ?? "â€”"}g â€¢ fat:{" "}
-                                {p.nutriments?.fat ?? "â€”"}g
+                                kcal: {p.nutriments?.["energy-kcal"] ?? "-"} / protein:{" "}
+                                {p.nutriments?.proteins ?? "-"}g / carbs:{" "}
+                                {p.nutriments?.carbohydrates ?? "-"}g / fat:{" "}
+                                {p.nutriments?.fat ?? "-"}g
                               </div>
                               <button
                                 className="studio-back fuel-compact-btn fuel-off-add-btn"
@@ -2609,6 +2629,7 @@ export default function NutritionPage() {
     </div>
   );
 }
+
 
 
 

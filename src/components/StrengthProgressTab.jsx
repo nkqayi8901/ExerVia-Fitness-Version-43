@@ -2831,14 +2831,14 @@ the createPRogram helps resolve this problem  */}
                     {guideExercise.sets} sets · {guideExercise.reps} reps
                   </div>
                   {!guideLoading && (
-                    <div className={`studio-guide-status ${guideHasCoachCues ? 'ready' : 'missing'}`}>
-                      <span className={`studio-guide-status-icon ${guideHasCoachCues ? 'ready' : 'missing'}`}>
+                    <div className={`studio-guide-status ${guideHasCoachCues ? 'ready' : 'fallback'}`}>
+                      <span className={`studio-guide-status-icon ${guideHasCoachCues ? 'ready' : 'fallback'}`}>
                         {guideHasCoachCues ? '✓' : '!'}
                       </span>
                       <span>
                         {guideHasCoachCues
                           ? 'Coach cues loaded'
-                          : 'Coach cues unavailable. Showing baseline form reminders.'}
+                          : 'Standard movement reminders loaded.'}
                       </span>
                     </div>
                   )}

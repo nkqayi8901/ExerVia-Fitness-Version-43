@@ -38,9 +38,24 @@ test("auto dismisses toast after duration", () => {
   });
   expect(screen.getByText("Temporary")).toBeInTheDocument();
   act(() => {
-    jest.advanceTimersByTime(1300);
+    jest.advanceTimersByTime(2300);
   });
   expect(screen.queryByText("Temporary")).not.toBeInTheDocument();
+});
+
+test("keeps error toasts visible longer even when a shorter duration is requested", () => {
+  render(<ToastHost />);
+  act(() => {
+    pushToast("Network error", "error", 1200);
+  });
+  act(() => {
+    jest.advanceTimersByTime(4000);
+  });
+  expect(screen.getByText("Network error")).toBeInTheDocument();
+  act(() => {
+    jest.advanceTimersByTime(1400);
+  });
+  expect(screen.queryByText("Network error")).not.toBeInTheDocument();
 });
 
 test("keeps only the latest four toasts", () => {

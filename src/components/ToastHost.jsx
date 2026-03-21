@@ -12,11 +12,17 @@ export default function ToastHost() {
       const detail = event?.detail || {};
       const message = String(detail.message || "").trim();
       if (!message) return;
+      const type = String(detail.type || "info");
+      const requestedDuration = Number(detail.duration) || 3200;
+      const minDuration =
+        type === "error" ? 5200 :
+        type === "warn" ? 4200 :
+        2200;
       const toast = {
         id: nextId(),
         message,
-        type: String(detail.type || "info"),
-        duration: Math.max(1200, Number(detail.duration) || 3200),
+        type,
+        duration: Math.max(minDuration, requestedDuration),
       };
       setToasts((prev) => [...prev, toast].slice(-4));
       window.setTimeout(() => {
@@ -40,4 +46,3 @@ export default function ToastHost() {
     </div>
   );
 }
-

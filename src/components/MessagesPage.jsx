@@ -55,7 +55,10 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   const [banner, setBanner] = useState("");
   const [blockedUserIds, setBlockedUserIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendPending, setSendPending] = useState(false);
+  const [friendActionKey, setFriendActionKey] = useState("");
   const listRef = useRef(null);
+  const chatPanelRef = useRef(null);
   const bootRequestRef = useRef(0);
   const messagesRequestRef = useRef(0);
   const cacheRef = useRef({
@@ -335,6 +338,13 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
     list.scrollTop = list.scrollHeight;
   }, [messages]);
 
+  useEffect(() => {
+    if (!selectedFriendId) return;
+    if (typeof window === "undefined") return;
+    if (window.innerWidth > 768) return;
+    chatPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedFriendId]);
+
   const acceptedByOtherId = useMemo(() => {
     const map = {};
     friends.forEach((row) => {
@@ -426,39 +436,54 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
   };
 
   const handleApprove = async (row) => {
-    const { error } = await supabase.from("community_friends").update({ status: "accepted" }).eq("id", row.id);
-    if (error) {
-      setBanner(error.message || "Could not approve request.");
-      return;
+    setFriendActionKey(`approve-${row.id}`);
+    try {
+      const { error } = await supabase.from("community_friends").update({ status: "accepted" }).eq("id", row.id);
+      if (error) {
+        setBanner(error.message || "Could not approve request.");
+        return;
+      }
+      setBanner("Friend request approved.");
+      await Promise.all([loadFriends(), loadConversationHeads()]);
+    } finally {
+      setFriendActionKey("");
     }
-    setBanner("Friend request approved.");
-    await Promise.all([loadFriends(), loadConversationHeads()]);
   };
 
   const handleReject = async (row) => {
-    const { error } = await supabase.from("community_friends").delete().eq("id", row.id);
-    if (error) {
-      setBanner(error.message || "Could not reject request.");
-      return;
+    setFriendActionKey(`reject-${row.id}`);
+    try {
+      const { error } = await supabase.from("community_friends").delete().eq("id", row.id);
+      if (error) {
+        setBanner(error.message || "Could not reject request.");
+        return;
+      }
+      setBanner("Friend request rejected.");
+      await Promise.all([loadFriends(), loadConversationHeads()]);
+    } finally {
+      setFriendActionKey("");
     }
-    setBanner("Friend request rejected.");
-    await Promise.all([loadFriends(), loadConversationHeads()]);
   };
 
   const handleRemove = async (row) => {
-    const { error } = await supabase.from("community_friends").delete().eq("id", row.id);
-    if (error) {
-      setBanner(error.message || "Could not remove connection.");
-      return;
+    setFriendActionKey(`remove-${row.id}`);
+    try {
+      const { error } = await supabase.from("community_friends").delete().eq("id", row.id);
+      if (error) {
+        setBanner(error.message || "Could not remove connection.");
+        return;
+      }
+      setBanner("Connection removed.");
+      const removedId = otherIdFromRow(row);
+      if (Number(selectedFriendId) === Number(removedId)) {
+        setSelectedFriendId(null);
+        setMessages([]);
+        setDraft("");
+      }
+      await Promise.all([loadFriends(), loadConversationHeads()]);
+    } finally {
+      setFriendActionKey("");
     }
-    setBanner("Connection removed.");
-    const removedId = otherIdFromRow(row);
-    if (Number(selectedFriendId) === Number(removedId)) {
-      setSelectedFriendId(null);
-      setMessages([]);
-      setDraft("");
-    }
-    await Promise.all([loadFriends(), loadConversationHeads()]);
   };
 
   const handleSend = async () => {
@@ -471,25 +496,30 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
     const other = Number(selectedFriendId);
     const low = Math.min(current, other);
     const high = Math.max(current, other);
-    const { error } = await supabase.from("community_friend_messages").insert([
-      {
-        user_id: current,
-        friend_user_id: other,
-        body: draft.trim()
+    setSendPending(true);
+    try {
+      const { error } = await supabase.from("community_friend_messages").insert([
+        {
+          user_id: current,
+          friend_user_id: other,
+          body: draft.trim()
+        }
+      ]);
+      if (error) {
+        setBanner(error.message || "Could not send message.");
+        return;
       }
-    ]);
-    if (error) {
-      setBanner(error.message || "Could not send message.");
-      return;
+      setDraft("");
+      const { data } = await supabase
+        .from("community_friend_messages")
+        .select("*")
+        .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
+        .order("created_at", { ascending: true });
+      setMessages(data || []);
+      await loadConversationHeads();
+    } finally {
+      setSendPending(false);
     }
-    setDraft("");
-    const { data } = await supabase
-      .from("community_friend_messages")
-      .select("*")
-      .or(`and(user_id.eq.${low},friend_user_id.eq.${high}),and(user_id.eq.${high},friend_user_id.eq.${low})`)
-      .order("created_at", { ascending: true });
-    setMessages(data || []);
-    await loadConversationHeads();
   };
 
   const handleStartNewChat = async () => {
@@ -516,8 +546,8 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
         </div>
       </div>
       {banner ? <div className="hud-card">{banner}</div> : null}
-      <div className="community-grid messages-layout">
-        <aside className="community-panel">
+      <div className={`community-grid messages-layout ${selectedFriendId ? "has-active-conversation" : ""}`}>
+        <aside className={`community-panel messages-sidebar ${selectedFriendId ? "conversation-hidden-mobile" : ""}`}>
           <div className="community-panel-title">Requests</div>
           {!incomingRequests.length && <div className="community-empty">No incoming requests.</div>}
           {incomingRequests.map((row) => {
@@ -531,16 +561,27 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                   <div className="community-friend-sub">Friend request received</div>
                 </div>
                 <div className="community-friend-actions">
-                  <button className="studio-back community-cta-btn" type="button" onClick={() => handleApprove(row)}>
-                    Approve
+                  <button
+                    className="studio-back community-cta-btn"
+                    type="button"
+                    onClick={() => handleApprove(row)}
+                    disabled={friendActionKey === `approve-${row.id}` || friendActionKey === `reject-${row.id}`}
+                  >
+                    {friendActionKey === `approve-${row.id}` ? "Approving..." : "Approve"}
                   </button>
-                  <button className="hud-secondary-btn danger" type="button" onClick={() => handleReject(row)}>
-                    Reject
+                  <button
+                    className="hud-secondary-btn danger"
+                    type="button"
+                    onClick={() => handleReject(row)}
+                    disabled={friendActionKey === `approve-${row.id}` || friendActionKey === `reject-${row.id}`}
+                  >
+                    {friendActionKey === `reject-${row.id}` ? "Rejecting..." : "Reject"}
                   </button>
                   <button
                     className="studio-back community-cta-btn"
                     type="button"
                     onClick={() => handleToggleBlock(otherId, profiles[otherId] || `User ${otherId}`)}
+                    disabled={Boolean(friendActionKey)}
                   >
                     {isBlockedUser(otherId) ? "Unblock" : "Block"}
                   </button>
@@ -599,13 +640,19 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                 </div>
                 <div className="community-friend-sub">{formatTime(latest?.created_at)}</div>
                 <div className="community-group-item-actions">
-                  <button className="studio-back community-cta-btn" type="button" onClick={() => handleRemove(row)}>
-                    Remove
+                  <button
+                    className="studio-back community-cta-btn"
+                    type="button"
+                    onClick={() => handleRemove(row)}
+                    disabled={friendActionKey === `remove-${row.id}`}
+                  >
+                    {friendActionKey === `remove-${row.id}` ? "Removing..." : "Remove"}
                   </button>
                   <button
                     className="studio-back community-cta-btn"
                     type="button"
                     onClick={() => handleToggleBlock(otherId, profiles[otherId] || `User ${otherId}`)}
+                    disabled={friendActionKey === `remove-${row.id}`}
                   >
                     {isBlockedUser(otherId) ? "Unblock" : "Block"}
                   </button>
@@ -614,11 +661,21 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
             );
           })}
         </aside>
-        <section className="community-panel">
+        <section
+          ref={chatPanelRef}
+          className={`community-panel messages-chat-panel ${selectedFriendId ? "conversation-open" : ""}`}
+        >
           {!selectedFriendId && <div className="community-empty">Select a conversation to open messages.</div>}
           {selectedFriendId && (
             <div className="community-friend-chat">
               <div className="community-friend-chat-head">
+                <button
+                  className="studio-back messages-conversation-back"
+                  type="button"
+                  onClick={() => setSelectedFriendId(null)}
+                >
+                  Back to conversations
+                </button>
                 <div className="community-friend-title">{profiles[selectedFriendId] || "Athlete"}</div>
                 <div className="messages-scroll-actions">
                   <button
@@ -657,7 +714,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                     }}
                     title="Scroll up"
                   >
-                    ↑
+                    Up
                   </button>
                   <button
                     className="studio-back community-cta-btn messages-scroll-btn"
@@ -669,7 +726,7 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                     }}
                     title="Jump to latest"
                   >
-                    ↓
+                    Latest
                   </button>
                 </div>
               </div>
@@ -721,9 +778,9 @@ export default function MessagesPage({ userId, mode = "athlete" }) {
                   className="studio-back community-cta-btn community-primary-btn community-chat-send-btn"
                   type="button"
                   onClick={handleSend}
-                  disabled={isBlockedUser(selectedFriendId)}
+                  disabled={isBlockedUser(selectedFriendId) || sendPending || !draft.trim()}
                 >
-                  Send
+                  {sendPending ? "Sending..." : "Send"}
                 </button>
               </div>
             </div>
