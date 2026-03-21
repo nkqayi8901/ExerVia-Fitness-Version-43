@@ -123,6 +123,24 @@ const formatRepRangeDisplay = (value) => {
   return `${Math.max(1, reps - 1)}-${reps + 1}`;
 };
 
+const isCardioReportExercise = (exercise) => String(exercise?.type || "").toLowerCase() === "cardio";
+
+const formatCardioTargetSummary = (exercise) => {
+  if (!exercise) return "-";
+  const bits = [];
+  const duration = String(exercise?.reps || "").trim();
+  const distance = String(exercise?.distance || "").trim();
+  const incline = String(exercise?.incline || "").trim();
+  const calories = String(exercise?.calories || "").trim();
+  if (duration) bits.push(duration);
+  if (distance) bits.push(`${distance} km`);
+  if (incline) bits.push(`${incline}% incline`);
+  if (calories) bits.push(`${calories} cal`);
+  return bits.length ? bits.join(" · ") : "-";
+};
+const renderCardioBadge = (exercise) =>
+  isCardioReportExercise(exercise) ? <span className="exervia-cardio-badge">Cardio</span> : null;
+
 const createLogsTrendLine = (rows, valueKey, selectedDay) => {
   const safeRows = Array.isArray(rows) ? rows : [];
   const values = safeRows.map((row) => Number(row?.[valueKey] || 0));
@@ -596,6 +614,10 @@ export default function LogsPage({ mode = "gym" }) {
             sets: Number(row.report?.sets || 0),
             reps: row.report?.reps || "",
             weight: Number(row.report?.weight || 0),
+            type: row.report?.exercise_type || "",
+            distance: row.report?.distance || "",
+            incline: row.report?.incline || "",
+            calories: row.report?.calories || "",
           }));
 
           const totalTonnage = exercises.reduce((sum, exercise) => {
@@ -2132,20 +2154,27 @@ export default function LogsPage({ mode = "gym" }) {
                               return "";
                             })()}
                           </div>
+                          {(() => {
+                            const cardioCount = (activeCompletionExercises || []).filter((exercise) => isCardioReportExercise(exercise)).length;
+                            return cardioCount > 0 ? (
+                              <div className="logs-list-sub">{`${cardioCount} cardio block${cardioCount === 1 ? "" : "s"} included`}</div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                       <div className="logs-program-report">
                         <div className="logs-program-report-head">
                           <span className="logs-program-report-col exercise">Exercise</span>
                           <span className="logs-program-report-col">Sets</span>
-                          <span className="logs-program-report-col">Rep Range</span>
-                          <span className="logs-program-report-col">Weight (kg)</span>
+                          <span className="logs-program-report-col">Target</span>
+                          <span className="logs-program-report-col">Load / Metric</span>
                         </div>
                         <div className="logs-program-report-body">
                           {(activeCompletionExercises || []).map((exercise, index) => (
                             <div key={`${activeTrainingReport.id}-exercise-${index}-${exercise.id || "no-id"}`} className="logs-program-report-row">
                               <span className="logs-program-report-col exercise">
                                 {exercise.name || `Exercise ${index + 1}`}
+                                {renderCardioBadge(exercise)}
                                 {(() => {
                                   const key = String(exercise?.name || "").trim().toLowerCase();
                                   return reportInsights?.prs?.exerciseWeight?.[key] ? " · PR" : "";
@@ -2153,20 +2182,33 @@ export default function LogsPage({ mode = "gym" }) {
                               </span>
                               <span className="logs-program-report-col">{Number(exercise.sets) || 0}</span>
                               <span className="logs-program-report-col">
-                                {formatRepRangeDisplay(exercise.repRange || exercise.reps)}
+                                {isCardioReportExercise(exercise)
+                                  ? formatCardioTargetSummary(exercise)
+                                  : formatRepRangeDisplay(exercise.repRange || exercise.reps)}
                               </span>
                               <span className="logs-program-report-col">
-                                {Number(exercise.weight) > 0 ? exercise.weight : "-"}
-                                {(() => {
-                                  const key = String(exercise?.name || "").trim().toLowerCase();
-                                  const prev = reportInsights?.previousByExercise?.[key];
-                                  const prevWeight = Number(prev?.weight || 0);
-                                  const currentWeight = Number(exercise?.weight || 0);
-                                  if (prevWeight <= 0 || currentWeight <= 0) return "";
-                                  const delta = currentWeight - prevWeight;
-                                  if (delta === 0) return "";
-                                  return ` (${delta >= 0 ? "+" : ""}${delta})`;
-                                })()}
+                                {isCardioReportExercise(exercise) ? (
+                                  formatCardioTargetSummary({
+                                    distance: exercise.distance,
+                                    incline: exercise.incline,
+                                    calories: exercise.calories,
+                                    reps: "",
+                                  })
+                                ) : (
+                                  <>
+                                    {Number(exercise.weight) > 0 ? exercise.weight : "-"}
+                                    {(() => {
+                                      const key = String(exercise?.name || "").trim().toLowerCase();
+                                      const prev = reportInsights?.previousByExercise?.[key];
+                                      const prevWeight = Number(prev?.weight || 0);
+                                      const currentWeight = Number(exercise?.weight || 0);
+                                      if (prevWeight <= 0 || currentWeight <= 0) return "";
+                                      const delta = currentWeight - prevWeight;
+                                      if (delta === 0) return "";
+                                      return ` (${delta >= 0 ? "+" : ""}${delta})`;
+                                    })()}
+                                  </>
+                                )}
                               </span>
                             </div>
                           ))}

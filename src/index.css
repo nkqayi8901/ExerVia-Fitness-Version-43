@@ -13801,6 +13801,54 @@ button:disabled,
   align-items: center;
   justify-content: start;
 }
+.studio-create-cardio-meta {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.studio-create-name-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+}
+.studio-create-name-wrap .studio-create-name {
+  max-width: 100%;
+}
+.exervia-cardio-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  background: rgba(56, 189, 248, 0.12);
+  color: rgba(125, 211, 252, 0.98);
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.studio-plan-preview-row .exervia-cardio-badge,
+.studio-swap-name .exervia-cardio-badge,
+.logs-program-report-col.exercise .exervia-cardio-badge,
+.program-card-head .exervia-cardio-badge,
+.program-preview-row .exervia-cardio-badge {
+  margin-left: 8px;
+}
+.studio-create-name-wrap .exervia-cardio-badge {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.mode-gym .exervia-cardio-badge {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: rgba(16, 185, 129, 0.12);
+  color: rgba(5, 150, 105, 0.98);
+}
 .studio-create-head {
   display: grid;
   grid-template-columns: minmax(220px, 340px) 72px 88px 88px auto;
@@ -13857,6 +13905,7 @@ button:disabled,
       "name name"
       "sets reps"
       "weight weight"
+      "cardio cardio"
       "remove remove";
   }
   .studio-create-row > :nth-child(1) { grid-area: name; }
@@ -13864,6 +13913,7 @@ button:disabled,
   .studio-create-row > :nth-child(3) { grid-area: reps; }
   .studio-create-row > :nth-child(4) { grid-area: weight; }
   .studio-create-row > :nth-child(5) { grid-area: remove; }
+  .studio-create-cardio-meta { grid-area: cardio; grid-template-columns: 1fr; }
   .studio-remove-btn { justify-self: end; }
 }
 .studio-create-name,

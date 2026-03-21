@@ -48,6 +48,21 @@ const DEFAULT_GUIDE_STEPS = [
   "Move with control through full range.",
   "Keep form tight and breathe steadily."
 ];
+const isCardioExercise = (exercise) => String(exercise?.type || "").toLowerCase() === "cardio";
+const formatExercisePrescription = (exercise) => {
+  if (!exercise) return "";
+  if (isCardioExercise(exercise)) return String(exercise.reps || "12 min");
+  const sets = Math.max(Number(exercise.sets) || 1, 1);
+  const reps = normalizeRepTarget(exercise.reps);
+  const weight = Number(exercise.weight || 0);
+  return `${sets} sets · ${reps} rep range${weight > 0 ? ` · ${weight}kg` : ""}`;
+};
+const formatExerciseRestLabel = (exercise) => {
+  const rest = String(exercise?.rest || "0s");
+  return isCardioExercise(exercise) ? `Recovery ${rest}` : `Rest ${rest}`;
+};
+const renderCardioBadge = (exercise) =>
+  isCardioExercise(exercise) ? <span className="exervia-cardio-badge">Cardio</span> : null;
 
 const getExerciseGuideDefaults = (name) => {
   const key = String(name || "").trim();
@@ -421,10 +436,12 @@ function ProgramPreview({ backPath, backLabel }) {
       program.exercises.map((exercise, index) => ({
         ...exercise,
         id: exercise.id || `${program.id}-${index}`,
-        sets: Number(exercise.sets) || 1,
+        sets: isCardioExercise(exercise) ? 1 : (Number(exercise.sets) || 1),
         reps: normalizeRepTarget(exercise.reps),
         weight:
-          Number(exercise.weight || 0) > 0
+          isCardioExercise(exercise)
+            ? ""
+            : Number(exercise.weight || 0) > 0
             ? Number(exercise.weight)
             : getRememberedWeight(exercise.name),
       }))
@@ -580,8 +597,8 @@ function ProgramPreview({ backPath, backLabel }) {
         <div className="program-preview-head">
           <span />
           <span className="program-preview-head-label">Sets</span>
-          <span className="program-preview-head-label">Rep Range</span>
-          <span className="program-preview-head-label">Weight (kg)</span>
+          <span className="program-preview-head-label">Prescription</span>
+          <span className="program-preview-head-label">Load</span>
         </div>
         <div className="program-preview-list">
           {editedExercises.map((exercise, index) => (
@@ -593,11 +610,13 @@ function ProgramPreview({ backPath, backLabel }) {
               >
                 {exercise.name}
               </button>
+              {renderCardioBadge(exercise)}
               <input
                 type="number"
                 min="1"
                 max={MAX_SETS}
                 className="program-preview-input"
+                disabled={isCardioExercise(exercise)}
                 value={exercise.sets}
                 onChange={(event) => {
                   const rawValue = Number(event.target.value);
@@ -609,47 +628,64 @@ function ProgramPreview({ backPath, backLabel }) {
                   setEditedExercises(next);
                 }}
               />
-              <select
-                className="program-preview-input"
-                value={exercise.reps}
-                onChange={(event) => {
-                  const next = [...editedExercises];
-                  next[index] = { ...next[index], reps: event.target.value };
-                  setEditedExercises(next);
-                }}
-              >
-                {REP_RANGE_OPTIONS.map((rangeOption) => (
-                  <option key={rangeOption} value={rangeOption}>
-                    {rangeOption}
-                  </option>
-                ))}
-                {!REP_RANGE_OPTIONS.includes(exercise.reps) && (
-                  <option value={exercise.reps}>{exercise.reps}</option>
-                )}
-              </select>
-              <select
-                className="program-preview-input"
-                value={exercise.weight === "" || exercise.weight === null || exercise.weight === undefined ? "" : String(exercise.weight)}
-                onChange={(event) => {
-                  const next = [...editedExercises];
-                  const value = event.target.value === "" ? "" : Number(event.target.value);
-                  next[index] = { ...next[index], weight: value };
-                  setEditedExercises(next);
-                }}
-              >
-                <option value="">-</option>
-                {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
-                  <option key={`weight-${exercise.id}-${weightOption}`} value={weightOption}>
-                    {weightOption}
-                  </option>
-                ))}
-                {exercise.weight !== "" &&
-                  exercise.weight !== null &&
-                  exercise.weight !== undefined &&
-                  !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
-                    <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
-                  )}
-              </select>
+              {isCardioExercise(exercise) ? (
+                <>
+                  <input
+                    className="program-preview-input"
+                    value={exercise.reps}
+                    onChange={(event) => {
+                      const next = [...editedExercises];
+                      next[index] = { ...next[index], reps: event.target.value };
+                      setEditedExercises(next);
+                    }}
+                  />
+                  <input className="program-preview-input" value="Timed" disabled readOnly />
+                </>
+              ) : (
+                <>
+                  <select
+                    className="program-preview-input"
+                    value={exercise.reps}
+                    onChange={(event) => {
+                      const next = [...editedExercises];
+                      next[index] = { ...next[index], reps: event.target.value };
+                      setEditedExercises(next);
+                    }}
+                  >
+                    {REP_RANGE_OPTIONS.map((rangeOption) => (
+                      <option key={rangeOption} value={rangeOption}>
+                        {rangeOption}
+                      </option>
+                    ))}
+                    {!REP_RANGE_OPTIONS.includes(exercise.reps) && (
+                      <option value={exercise.reps}>{exercise.reps}</option>
+                    )}
+                  </select>
+                  <select
+                    className="program-preview-input"
+                    value={exercise.weight === "" || exercise.weight === null || exercise.weight === undefined ? "" : String(exercise.weight)}
+                    onChange={(event) => {
+                      const next = [...editedExercises];
+                      const value = event.target.value === "" ? "" : Number(event.target.value);
+                      next[index] = { ...next[index], weight: value };
+                      setEditedExercises(next);
+                    }}
+                  >
+                    <option value="">-</option>
+                    {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
+                      <option key={`weight-${exercise.id}-${weightOption}`} value={weightOption}>
+                        {weightOption}
+                      </option>
+                    ))}
+                    {exercise.weight !== "" &&
+                      exercise.weight !== null &&
+                      exercise.weight !== undefined &&
+                      !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
+                        <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
+                      )}
+                  </select>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -663,7 +699,7 @@ function ProgramPreview({ backPath, backLabel }) {
                 const next = { ...(existing && typeof existing === "object" ? existing : {}) };
                 editedExercises.forEach((exercise) => {
                   const key = String(exercise?.name || "").trim().toLowerCase();
-                  const weight = Number(exercise?.weight || 0);
+                  const weight = isCardioExercise(exercise) ? 0 : Number(exercise?.weight || 0);
                   if (!key || weight <= 0) return;
                   next[key] = weight;
                 });
@@ -711,9 +747,7 @@ function ProgramPreview({ backPath, backLabel }) {
               {guideExercise ? (
                 <div className="studio-guide-content">
                   <div className="studio-guide-title">{guideExercise.name}</div>
-                  <div className="studio-guide-meta">
-                    {guideExercise.sets} sets · {normalizeRepTarget(guideExercise.reps)} rep range
-                  </div>
+                  <div className="studio-guide-meta">{formatExercisePrescription(guideExercise)}</div>
                   {guideLoading ? (
                     <div className="studio-empty">Loading guide...</div>
                   ) : (
@@ -1105,13 +1139,19 @@ function ProgramSession({ backPath, backLabel, mode, userId }) {
                 : "Stay smooth and control the tempo."}
             </div>
             <div className="program-set-row">
-              <div className="program-set-label">Set {Math.min(currentSet, targetSets)} of {targetSets}</div>
+              <div className="program-set-label">
+                {isCardioExercise(currentExercise)
+                  ? `Timed block ${currentIndex + 1} of ${exercises.length}`
+                  : `Set ${Math.min(currentSet, targetSets)} of ${targetSets}`}
+              </div>
               <span className={`program-card-badge ${restOpen ? "" : "muted"}`}>
-                {restOpen ? `Rest ${formatTime(restSeconds)}` : `Rest ${currentExercise.rest || "0s"}`}
+                {restOpen ? `Rest ${formatTime(restSeconds)}` : formatExerciseRestLabel(currentExercise)}
               </span>
             </div>
             <div className="program-status-sub">
-              Completed {sessionPerformance[currentExercise.id]?.completedSets || 0} / {targetSets} sets
+              {isCardioExercise(currentExercise)
+                ? `${sessionPerformance[currentExercise.id]?.completedSets ? "Timed block complete." : "One timed block to finish."}`
+                : `Completed ${sessionPerformance[currentExercise.id]?.completedSets || 0} / ${targetSets} sets`}
             </div>
             <div className="program-set-track" aria-hidden="true">
               <div className="program-set-fill" style={{ width: `${setProgressPercent}%` }} />
@@ -1134,12 +1174,10 @@ function ProgramSession({ backPath, backLabel, mode, userId }) {
               <button className="program-card-title" onClick={handleExerciseInfo} type="button">
                 {currentExercise.name}
               </button>
+              {renderCardioBadge(currentExercise)}
               <span className="program-card-badge">Active</span>
             </div>
-            <div className="program-card-meta">
-              {currentExercise.sets} sets · {currentExercise.reps} rep range
-              {Number(currentExercise.weight) > 0 ? ` · ${currentExercise.weight}kg` : ""} · {currentExercise.rest} rest
-            </div>
+            <div className="program-card-meta">{formatExercisePrescription(currentExercise)} · {formatExerciseRestLabel(currentExercise)}</div>
             <div className="program-card-focus">{currentExercise.focus}</div>
             <div className="program-session-actions">
               <button
@@ -1155,7 +1193,7 @@ function ProgramSession({ backPath, backLabel, mode, userId }) {
                     Rest
                   </button>
                   <button className="studio-back program-action-btn program-done" onClick={handleDone}>
-                    Complete set
+                    {isCardioExercise(currentExercise) ? "Complete block" : "Complete set"}
                   </button>
                   <button className="studio-back program-action-btn program-done" onClick={handleCompleteExercise}>
                     {currentIndex >= exercises.length - 1 ? "Finish session" : "Complete exercise"}
@@ -1340,19 +1378,24 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     const planName = program?.name || "Program";
     const reportExercises = (program?.exercises || []).map((exercise, index) => {
       const entry = sessionPerformance[String(exercise?.id || "")] || null;
+      const isCardio = isCardioExercise(exercise);
       const targetSets = Number(exercise?.sets) || 0;
       const sets = Number(entry?.completedSets ?? targetSets) || 0;
       const reps = normalizeRepTarget(exercise?.reps);
-      const weight = Number(exercise?.weight) || 0;
+      const weight = isCardio ? 0 : Number(exercise?.weight) || 0;
       const repCount = estimateRepCount(reps);
-      const tonnage = sets > 0 && repCount > 0 && weight > 0 ? sets * repCount * weight : 0;
+      const tonnage = !isCardio && sets > 0 && repCount > 0 && weight > 0 ? sets * repCount * weight : 0;
       return {
         id: exercise?.id || `${planName}-${index + 1}`,
         name: exercise?.name || `Exercise ${index + 1}`,
+        type: exercise?.type || "",
         sets,
         targetSets,
         reps,
         weight: exercise?.weight ?? "",
+        distance: exercise?.distance ?? "",
+        incline: exercise?.incline ?? "",
+        calories: exercise?.calories ?? "",
         rest: exercise?.rest || "",
         tonnage,
       };
@@ -1363,7 +1406,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
       let awardedXp = 0;
       let hadSyncIssue = false;
       const validStrengthRows = reportExercises
-        .filter((exercise) => exercise?.name && Number(exercise.sets || 0) > 0)
+        .filter((exercise) => exercise?.name && !isCardioExercise(exercise) && Number(exercise.sets || 0) > 0)
         .map((exercise) => ({
           user_id: Number(resolvedUserId),
           exercise_name: String(exercise.name),

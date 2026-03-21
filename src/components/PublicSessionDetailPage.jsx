@@ -23,6 +23,22 @@ const endOfDayIso = (value) => {
   return date.toISOString();
 };
 
+const isCardioExercise = (exercise) => String(exercise?.type || "").toLowerCase() === "cardio";
+const formatCardioSummary = (exercise) => {
+  const bits = [];
+  const duration = String(exercise?.reps || "").trim();
+  const distance = String(exercise?.distance || "").trim();
+  const incline = String(exercise?.incline || "").trim();
+  const calories = String(exercise?.calories || "").trim();
+  if (duration) bits.push(duration);
+  if (distance) bits.push(`${distance} km`);
+  if (incline) bits.push(`${incline}% incline`);
+  if (calories) bits.push(`${calories} cal`);
+  return bits.length ? bits.join(" · ") : "-";
+};
+const renderCardioBadge = (exercise) =>
+  isCardioExercise(exercise) ? <span className="exervia-cardio-badge">Cardio</span> : null;
+
 export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) {
   const navigate = useNavigate();
   const { id, targetId, sessionType, sessionId } = useParams();
@@ -186,16 +202,20 @@ export default function PublicSessionDetailPage({ mode = "athlete", viewerId }) 
                 <div className="logs-program-report-head">
                   <span className="logs-program-report-col exercise">Exercise</span>
                   <span className="logs-program-report-col">Sets</span>
-                  <span className="logs-program-report-col">Rep Range</span>
-                  <span className="logs-program-report-col">Weight (kg)</span>
+                  <span className="logs-program-report-col">Target</span>
+                  <span className="logs-program-report-col">Load / Metric</span>
                 </div>
                 <div className="logs-program-report-body">
                   {exerciseRows.map((exercise, index) => (
                     <div key={`${exercise?.id || exercise?.name || "exercise"}-${index}`} className="logs-program-report-row">
-                      <span className="logs-program-report-col exercise">{exercise?.name || `Exercise ${index + 1}`}</span>
+                      <span className="logs-program-report-col exercise">{exercise?.name || `Exercise ${index + 1}`}{renderCardioBadge(exercise)}</span>
                       <span className="logs-program-report-col">{Number(exercise?.sets || 0)}</span>
-                      <span className="logs-program-report-col">{exercise?.reps || "-"}</span>
-                      <span className="logs-program-report-col">{Number(exercise?.weight || 0) > 0 ? exercise.weight : "-"}</span>
+                      <span className="logs-program-report-col">{isCardioExercise(exercise) ? formatCardioSummary(exercise) : (exercise?.reps || "-")}</span>
+                      <span className="logs-program-report-col">
+                        {isCardioExercise(exercise)
+                          ? formatCardioSummary({ distance: exercise?.distance, incline: exercise?.incline, calories: exercise?.calories })
+                          : (Number(exercise?.weight || 0) > 0 ? exercise.weight : "-")}
+                      </span>
                     </div>
                   ))}
                 </div>

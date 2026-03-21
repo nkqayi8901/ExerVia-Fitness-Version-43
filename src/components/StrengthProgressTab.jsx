@@ -276,7 +276,16 @@ const exerciseLibrary = [
   'Suitcase Carry',
   'Yoke Carry',
   'Kettlebell Swing',
-  'Battle Ropes'
+  'Battle Ropes',
+  'Stairmaster',
+  'Incline Treadmill Walk',
+  'Treadmill Walk',
+  'Treadmill Run',
+  'Elliptical',
+  'Jump Rope',
+  'Punching Bag',
+  'Bike Erg',
+  'Row Erg'
 ];
 
 const exerciseGroups = {
@@ -409,10 +418,22 @@ const exerciseGroups = {
     'Sled Pull',
     'Kettlebell Swing',
     'Battle Ropes'
+  ],
+  Cardio: [
+    'Stairmaster',
+    'Incline Treadmill Walk',
+    'Treadmill Walk',
+    'Treadmill Run',
+    'Elliptical',
+    'Jump Rope',
+    'Punching Bag',
+    'Bike Erg',
+    'Row Erg'
   ]
 };
 
 const REP_RANGE_OPTIONS = ['1-3', '4-6', '7-9', '10-12', '13-15', 'Failure'];
+const CARDIO_DURATION_OPTIONS = ['5 min', '8 min', '10 min', '12 min', '15 min', '20 min', '25 min', '30 min', '40 min'];
 const WEIGHT_PICKER_OPTIONS = Array.from({ length: 121 }, (_, index) => {
   const value = Number((index * 2.5).toFixed(1));
   return Number.isInteger(value) ? String(value) : String(value);
@@ -424,6 +445,7 @@ const normalizeRepRange = (value) => {
   if (!raw) return '10-12';
   if (/failure/i.test(raw)) return 'Failure';
   if (REP_RANGE_OPTIONS.includes(raw)) return raw;
+  if (/[a-z]/i.test(raw)) return raw;
   if (/^\d+$/.test(raw)) {
     const parsed = Number(raw);
     if (parsed <= 3) return '1-3';
@@ -592,6 +614,17 @@ const StrengthProgressTab = ({ userId }) => {
 // and output feeds the UI state or data flow
   const getExerciseTypeForName = (name) => {
     const normalized = name?.toLowerCase() || '';
+    if (
+      normalized.includes('treadmill') ||
+      normalized.includes('stairmaster') ||
+      normalized.includes('elliptical') ||
+      normalized.includes('jump rope') ||
+      normalized.includes('punching bag') ||
+      normalized.includes('bike erg') ||
+      normalized.includes('row erg')
+    ) {
+      return 'cardio';
+    }
     if (normalized.includes('push-up') || normalized.includes('pull-up') || normalized.includes('chin-up')) {
       return 'bodyweight';
     }
@@ -616,10 +649,43 @@ const StrengthProgressTab = ({ userId }) => {
   };
 
   const normalizeExerciseName = (value) => String(value || '').trim().toLowerCase();
+  const isCardioType = (type) => String(type || '').toLowerCase() === 'cardio';
+  const getDefaultPrescriptionForType = (type) => {
+    const normalized = String(type || '').toLowerCase();
+    if (normalized === 'cardio') {
+      return {
+        sets: 1,
+        reps: '12 min',
+        weight: '',
+        distance: '',
+        incline: '',
+        calories: '',
+      };
+    }
+    return {
+      sets: 3,
+      reps: '10-12',
+      weight: '',
+      distance: '',
+      incline: '',
+      calories: '',
+    };
+  };
+  const formatExercisePrescription = (exercise) => {
+    if (!exercise) return '';
+    if (isCardioType(exercise.type)) {
+      return normalizeRepRange(exercise.reps || '12 min');
+    }
+    const sets = Number(exercise.sets) || 3;
+    return `${sets} sets · ${normalizeRepRange(exercise.reps)} reps`;
+  };
+  const renderCardioBadge = (exercise) =>
+    isCardioType(exercise?.type) ? <span className="exervia-cardio-badge">Cardio</span> : null;
   const getDefaultRestForType = (type) => {
     const normalized = String(type || '').toLowerCase();
     if (normalized === 'bodyweight') return '60s';
     if (normalized === 'conditioning') return '75s';
+    if (normalized === 'cardio') return '45s';
     return '90s';
   };
   const normalizeExerciseRest = (rest, type) => {
@@ -643,14 +709,21 @@ const StrengthProgressTab = ({ userId }) => {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-  const buildExerciseTemplate = (name, sets, reps) => ({
-    name,
-    type: getExerciseTypeForName(name),
-    sets: sets || 3,
-    reps: normalizeRepRange(reps || '10-12'),
-    weight: getSavedWeightForExercise(name),
-    rest: normalizeExerciseRest('', getExerciseTypeForName(name)),
-  });
+  const buildExerciseTemplate = (name, sets, reps) => {
+    const type = getExerciseTypeForName(name);
+    const defaults = getDefaultPrescriptionForType(type);
+    return {
+      name,
+      type,
+      sets: isCardioType(type) ? 1 : (sets || defaults.sets),
+      reps: normalizeRepRange(reps || defaults.reps),
+      weight: isCardioType(type) ? '' : getSavedWeightForExercise(name),
+      distance: defaults.distance,
+      incline: defaults.incline,
+      calories: defaults.calories,
+      rest: normalizeExerciseRest('', type),
+    };
+  };
 
 
 // searchLocalExercises manages a focused piece of logic,
@@ -856,13 +929,16 @@ const StrengthProgressTab = ({ userId }) => {
           const resolvedType = exercise?.type || getExerciseTypeForName(name);
           const fallbackWeight = getSavedWeightForExercise(name);
           const parsedWeight = Number(exercise?.weight || 0);
+          const defaults = getDefaultPrescriptionForType(resolvedType);
           return {
             ...exercise,
             name,
-            sets: Number(exercise?.sets) || 3,
-            reps: normalizeRepRange(exercise?.reps),
-            weight: parsedWeight > 0 ? parsedWeight : fallbackWeight
-            ,
+            sets: isCardioType(resolvedType) ? 1 : (Number(exercise?.sets) || defaults.sets),
+            reps: normalizeRepRange(exercise?.reps || defaults.reps),
+            weight: isCardioType(resolvedType) ? '' : (parsedWeight > 0 ? parsedWeight : fallbackWeight),
+            distance: isCardioType(resolvedType) ? String(exercise?.distance || '') : '',
+            incline: isCardioType(resolvedType) ? String(exercise?.incline || '') : '',
+            calories: isCardioType(resolvedType) ? String(exercise?.calories || '') : '',
             type: resolvedType,
             rest: normalizeExerciseRest(exercise?.rest, resolvedType),
           };
@@ -941,14 +1017,21 @@ const StrengthProgressTab = ({ userId }) => {
 
   const handleEditProgram = (program) => {
     if (!program) return;
-    const remixedExercises = (program.exercises || []).map((exercise) => ({
-      name: exercise.name || '',
-      sets: Number(exercise.sets) || 3,
-      reps: normalizeRepRange(exercise.reps),
-      weight: Number(exercise.weight) > 0 ? Number(exercise.weight) : getSavedWeightForExercise(exercise.name),
-      type: exercise.type || getExerciseTypeForName(exercise.name),
-      rest: normalizeExerciseRest(exercise.rest, exercise.type || getExerciseTypeForName(exercise.name)),
-    }));
+    const remixedExercises = (program.exercises || []).map((exercise) => {
+      const resolvedType = exercise.type || getExerciseTypeForName(exercise.name);
+      const defaults = getDefaultPrescriptionForType(resolvedType);
+      return {
+        name: exercise.name || '',
+        sets: isCardioType(resolvedType) ? 1 : (Number(exercise.sets) || defaults.sets),
+        reps: normalizeRepRange(exercise.reps || defaults.reps),
+        weight: isCardioType(resolvedType) ? '' : (Number(exercise.weight) > 0 ? Number(exercise.weight) : getSavedWeightForExercise(exercise.name)),
+        distance: isCardioType(resolvedType) ? String(exercise.distance || '') : '',
+        incline: isCardioType(resolvedType) ? String(exercise.incline || '') : '',
+        calories: isCardioType(resolvedType) ? String(exercise.calories || '') : '',
+        type: resolvedType,
+        rest: normalizeExerciseRest(exercise.rest, resolvedType),
+      };
+    });
 
     setNewProgram({
       name: `Edit - ${program.name || 'Custom Program'}`,
@@ -1435,9 +1518,22 @@ const StrengthProgressTab = ({ userId }) => {
     if (field === 'name') {
       current.type = getExerciseTypeForName(value);
       current.rest = normalizeExerciseRest(current.rest, current.type);
-      const remembered = getSavedWeightForExercise(value);
-      if (!Number(current.weight) && remembered) {
-        current.weight = remembered;
+      const defaults = getDefaultPrescriptionForType(current.type);
+      current.sets = isCardioType(current.type) ? 1 : (Number(current.sets) || defaults.sets);
+      current.reps = normalizeRepRange(current.reps || defaults.reps);
+      if (isCardioType(current.type)) {
+        current.weight = '';
+        current.distance = String(current.distance || defaults.distance || '');
+        current.incline = String(current.incline || defaults.incline || '');
+        current.calories = String(current.calories || defaults.calories || '');
+      } else {
+        current.distance = '';
+        current.incline = '';
+        current.calories = '';
+        const remembered = getSavedWeightForExercise(value);
+        if (!Number(current.weight) && remembered) {
+          current.weight = remembered;
+        }
       }
     }
     if (field === 'reps') {
@@ -1446,6 +1542,9 @@ const StrengthProgressTab = ({ userId }) => {
     if (field === 'weight') {
       const normalizedWeight = Number(value);
       current.weight = Number.isFinite(normalizedWeight) && normalizedWeight > 0 ? normalizedWeight : '';
+    }
+    if (field === 'distance' || field === 'incline' || field === 'calories') {
+      current[field] = value;
     }
     next[index] = current;
     setNewProgram(prev => ({ ...prev, exercises: next }));
@@ -1479,7 +1578,17 @@ const StrengthProgressTab = ({ userId }) => {
       return;
     }
     const newExercise = buildExerciseTemplate(name, 3, '10-12');
-    if (typeOverride) newExercise.type = typeOverride;
+    if (typeOverride) {
+      newExercise.type = typeOverride;
+      const defaults = getDefaultPrescriptionForType(typeOverride);
+      newExercise.sets = isCardioType(typeOverride) ? 1 : defaults.sets;
+      newExercise.reps = normalizeRepRange(defaults.reps);
+      newExercise.weight = isCardioType(typeOverride) ? '' : newExercise.weight;
+      newExercise.distance = isCardioType(typeOverride) ? defaults.distance : '';
+      newExercise.incline = isCardioType(typeOverride) ? defaults.incline : '';
+      newExercise.calories = isCardioType(typeOverride) ? defaults.calories : '';
+      newExercise.rest = normalizeExerciseRest('', typeOverride);
+    }
     setNewProgram(prev => {
       const nextIndex = prev.exercises.length;
       setLastAddedExerciseIndex(nextIndex);
@@ -1509,7 +1618,7 @@ const StrengthProgressTab = ({ userId }) => {
         ...prev,
         exercises: [
           ...prev.exercises,
-          { name: '', sets: 3, reps: '10-12', weight: '', type: 'weights', rest: getDefaultRestForType('weights') }
+          { name: '', sets: 3, reps: '10-12', weight: '', distance: '', incline: '', calories: '', type: 'weights', rest: getDefaultRestForType('weights') }
         ]
       };
     });
@@ -1556,9 +1665,12 @@ const StrengthProgressTab = ({ userId }) => {
     const cleanedExercises = newProgram.exercises
       .map(ex => ({
         name: ex.name.trim(),
-        sets: Number(ex.sets) || 3,
-        reps: normalizeRepRange(ex.reps),
-        weight: Number(ex.weight) > 0 ? Number(ex.weight) : '',
+        sets: isCardioType(ex.type) ? 1 : (Number(ex.sets) || 3),
+        reps: normalizeRepRange(ex.reps || getDefaultPrescriptionForType(ex.type || 'weights').reps),
+        weight: isCardioType(ex.type) ? '' : (Number(ex.weight) > 0 ? Number(ex.weight) : ''),
+        distance: isCardioType(ex.type) ? String(ex.distance || '') : '',
+        incline: isCardioType(ex.type) ? String(ex.incline || '') : '',
+        calories: isCardioType(ex.type) ? String(ex.calories || '') : '',
         type: ex.type || 'weights',
         rest: normalizeExerciseRest(ex.rest, ex.type || 'weights')
       }))
@@ -2051,7 +2163,8 @@ const StrengthProgressTab = ({ userId }) => {
                           >
                             {exercise.name}
                           </button>
-                          <span>{exercise.sets} x {exercise.reps}</span>
+                          {renderCardioBadge(exercise)}
+                          <span>{formatExercisePrescription(exercise)}</span>
                         </div>
                       ))}
                       {(selectedProgram.exercises || []).length > 3 && (
@@ -2067,14 +2180,22 @@ const StrengthProgressTab = ({ userId }) => {
                       onClick={() => {
                         const normalizedExercises = (selectedProgram.exercises || []).map((exercise) => {
                           const resolvedType = exercise.type || getExerciseTypeForName(exercise.name);
+                          const defaults = getDefaultPrescriptionForType(resolvedType);
                           return {
                             ...exercise,
-                            sets: Number(exercise.sets) || 3,
-                            reps: normalizeRepRange(exercise.reps),
+                            sets: isCardioType(resolvedType) ? 1 : (Number(exercise.sets) || defaults.sets),
+                            reps: normalizeRepRange(exercise.reps || defaults.reps),
                             weight:
-                              Number(exercise.weight) > 0
-                                ? Number(exercise.weight)
-                                : getSavedWeightForExercise(exercise.name),
+                              isCardioType(resolvedType)
+                                ? ''
+                                : (
+                                    Number(exercise.weight) > 0
+                                      ? Number(exercise.weight)
+                                      : getSavedWeightForExercise(exercise.name)
+                                  ),
+                            distance: isCardioType(resolvedType) ? String(exercise.distance || '') : '',
+                            incline: isCardioType(resolvedType) ? String(exercise.incline || '') : '',
+                            calories: isCardioType(resolvedType) ? String(exercise.calories || '') : '',
                             type: resolvedType,
                             rest: normalizeExerciseRest(exercise.rest, resolvedType),
                           };
@@ -2496,9 +2617,10 @@ the createPRogram helps resolve this problem  */}
                       >
                         <div className="studio-swap-name">
                           {result.name}
+                          {renderCardioBadge(result)}
                           {isExerciseInDraft(result.name) && <span className="studio-swap-selected-pill">Added</span>}
                         </div>
-                        <div className="studio-swap-meta">{result.sets} sets · {result.reps} reps</div>
+                        <div className="studio-swap-meta">{formatExercisePrescription(result)}</div>
                         <div className="studio-swap-actions">
                           <button
                             className={`studio-queue-swap ${favorites.includes(result.name) ? 'active' : ''}`}
@@ -2523,8 +2645,8 @@ the createPRogram helps resolve this problem  */}
                     <div className="studio-create-head">
                       <span>Exercise</span>
                       <span>Sets</span>
-                      <span>Rep Range</span>
-                      <span>Weight (kg)</span>
+                      <span>Prescription</span>
+                      <span>Load</span>
                       <span>Remove</span>
                     </div>
                     {newProgram.exercises.map((exercise, index) => (
@@ -2536,59 +2658,85 @@ the createPRogram helps resolve this problem  */}
                         onTouchEnd={() => handleProgramRowTouchEnd(index, exercise.name)}
                         title="Double tap to remove this exercise"
                       >
-                        <input
-                          className="studio-create-name"
-                          placeholder="Exercise name"
-                          value={exercise.name}
-                          onDoubleClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            removeExerciseFromDraft(index, exercise.name);
-                          }}
-                          onFocus={() => setCreatorFocusedIndex(index)}
-                          onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
-                        />
+                        <div className="studio-create-name-wrap">
+                          <input
+                            className="studio-create-name"
+                            placeholder="Exercise name"
+                            value={exercise.name}
+                            onDoubleClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              removeExerciseFromDraft(index, exercise.name);
+                            }}
+                            onFocus={() => setCreatorFocusedIndex(index)}
+                            onChange={(event) => updateNewExercise(index, 'name', event.target.value)}
+                          />
+                          {renderCardioBadge(exercise)}
+                        </div>
                         <input
                           className="studio-create-mini"
                           type="number"
                           min="1"
+                          disabled={isCardioType(exercise.type)}
                           value={exercise.sets}
                           onChange={(event) => updateNewExercise(index, 'sets', event.target.value)}
                         />
-                        <select
-                          className="studio-create-mini"
-                          value={normalizeRepRange(exercise.reps)}
-                          onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
-                        >
-                          {REP_RANGE_OPTIONS.map((range) => (
-                            <option key={`${index}-range-${range}`} value={range}>
-                              {range}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          className="studio-create-mini"
-                          value={
-                            exercise.weight === '' || exercise.weight === null || exercise.weight === undefined
-                              ? ''
-                              : String(exercise.weight)
-                          }
-                          onChange={(event) => updateNewExercise(index, 'weight', event.target.value)}
-                          onBlur={() => handleExerciseWeightBlur(index)}
-                        >
-                          <option value="">-</option>
-                          {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
-                            <option key={`${index}-weight-${weightOption}`} value={weightOption}>
-                              {weightOption}
-                            </option>
-                          ))}
-                          {exercise.weight !== '' &&
-                            exercise.weight !== null &&
-                            exercise.weight !== undefined &&
-                            !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
-                              <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
-                            )}
-                        </select>
+                        {isCardioType(exercise.type) ? (
+                          <>
+                            <select
+                              className="studio-create-mini"
+                              value={normalizeRepRange(exercise.reps)}
+                              onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                            >
+                              {CARDIO_DURATION_OPTIONS.map((option) => (
+                                <option key={`${index}-cardio-${option}`} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                              {!CARDIO_DURATION_OPTIONS.includes(normalizeRepRange(exercise.reps)) && (
+                                <option value={normalizeRepRange(exercise.reps)}>{normalizeRepRange(exercise.reps)}</option>
+                              )}
+                            </select>
+                            <input className="studio-create-mini" value="Timed" disabled readOnly />
+                          </>
+                        ) : (
+                          <>
+                            <select
+                              className="studio-create-mini"
+                              value={normalizeRepRange(exercise.reps)}
+                              onChange={(event) => updateNewExercise(index, 'reps', event.target.value)}
+                            >
+                              {REP_RANGE_OPTIONS.map((range) => (
+                                <option key={`${index}-range-${range}`} value={range}>
+                                  {range}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              className="studio-create-mini"
+                              value={
+                                exercise.weight === '' || exercise.weight === null || exercise.weight === undefined
+                                  ? ''
+                                  : String(exercise.weight)
+                              }
+                              onChange={(event) => updateNewExercise(index, 'weight', event.target.value)}
+                              onBlur={() => handleExerciseWeightBlur(index)}
+                            >
+                              <option value="">-</option>
+                              {WEIGHT_PICKER_OPTIONS.map((weightOption) => (
+                                <option key={`${index}-weight-${weightOption}`} value={weightOption}>
+                                  {weightOption}
+                                </option>
+                              ))}
+                              {exercise.weight !== '' &&
+                                exercise.weight !== null &&
+                                exercise.weight !== undefined &&
+                                !WEIGHT_PICKER_OPTIONS.includes(String(exercise.weight)) && (
+                                  <option value={String(exercise.weight)}>{String(exercise.weight)}</option>
+                                )}
+                            </select>
+                          </>
+                        )}
                         <button
                           className="studio-remove-btn"
                           onClick={() => removeNewExercise(index)}
@@ -2596,6 +2744,28 @@ the createPRogram helps resolve this problem  */}
                         >
                           Remove
                         </button>
+                        {isCardioType(exercise.type) ? (
+                          <div className="studio-create-cardio-meta">
+                            <input
+                              className="studio-create-mini"
+                              placeholder="Distance km"
+                              value={exercise.distance || ''}
+                              onChange={(event) => updateNewExercise(index, 'distance', event.target.value)}
+                            />
+                            <input
+                              className="studio-create-mini"
+                              placeholder="Incline %"
+                              value={exercise.incline || ''}
+                              onChange={(event) => updateNewExercise(index, 'incline', event.target.value)}
+                            />
+                            <input
+                              className="studio-create-mini"
+                              placeholder="Calories"
+                              value={exercise.calories || ''}
+                              onChange={(event) => updateNewExercise(index, 'calories', event.target.value)}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </>
@@ -2911,6 +3081,7 @@ the createPRogram helps resolve this problem  */}
 };
 
 export default StrengthProgressTab;
+
 
 
 
