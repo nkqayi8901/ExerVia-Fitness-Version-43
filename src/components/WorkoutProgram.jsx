@@ -57,6 +57,9 @@ const getExerciseGuideDefaults = (name) => {
 const getProgramHistoryStorageKey = (userId) =>
   userId ? `exervia_program_history_${String(userId).trim()}` : "";
 
+const getActiveProgramSessionStorageKey = (userId, mode, programId) =>
+  userId && programId ? `exervia_active_program_session_${String(mode || "gym").trim()}_${String(userId).trim()}_${String(programId).trim()}` : "";
+
 const readProgramHistory = (userId) => {
   const key = getProgramHistoryStorageKey(userId);
   if (!key) return {};
@@ -80,6 +83,87 @@ const pushProgramHistoryEntry = (userId, programKey, entry) => {
     [programKey]: next,
   };
   localStorage.setItem(key, JSON.stringify(updated));
+};
+
+const readActiveProgramSession = (userId, mode, programId) => {
+  const key = getActiveProgramSessionStorageKey(userId, mode, programId);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeActiveProgramSession = (userId, mode, programId, payload) => {
+  const key = getActiveProgramSessionStorageKey(userId, mode, programId);
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(payload));
+};
+
+const clearActiveProgramSession = (userId, mode, programId) => {
+  const key = getActiveProgramSessionStorageKey(userId, mode, programId);
+  if (!key) return;
+  localStorage.removeItem(key);
+};
+
+const buildInitialProgramPerformance = (list) =>
+  (list || []).reduce((acc, exercise) => {
+    const id = String(exercise?.id || "");
+    if (!id) return acc;
+    acc[id] = {
+      targetSets: Math.max(Number(exercise?.sets) || 1, 1),
+      completedSets: 0,
+      completedAt: [],
+    };
+    return acc;
+  }, {});
+
+const hydratePersistedProgramSession = (snapshot) => {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const now = Date.now();
+  const savedAt = Number(snapshot.savedAt || now);
+  const elapsedSeconds = Math.max(0, Math.floor((now - savedAt) / 1000));
+  let countdownOpen = Boolean(snapshot.countdownOpen);
+  let countdown = Math.max(Number(snapshot.countdown || 0), 0);
+  let timerRunning = Boolean(snapshot.timerRunning);
+  let timerSeconds = Math.max(Number(snapshot.timerSeconds || 0), 0);
+  let restOpen = Boolean(snapshot.restOpen);
+  let restSeconds = Math.max(Number(snapshot.restSeconds || 0), 0);
+
+  if (countdownOpen) {
+    if (elapsedSeconds >= countdown) {
+      const remainingElapsed = Math.max(elapsedSeconds - countdown, 0);
+      countdownOpen = false;
+      countdown = 0;
+      timerRunning = true;
+      timerSeconds += remainingElapsed;
+    } else {
+      countdown -= elapsedSeconds;
+    }
+  } else if (timerRunning) {
+    timerSeconds += elapsedSeconds;
+  }
+
+  if (restOpen) {
+    restSeconds = Math.max(restSeconds - elapsedSeconds, 0);
+    if (restSeconds <= 0) {
+      restOpen = false;
+      restSeconds = 0;
+    }
+  }
+
+  return {
+    ...snapshot,
+    countdownOpen,
+    countdown,
+    timerRunning,
+    timerSeconds,
+    restOpen,
+    restSeconds,
+  };
 };
 
 const estimateRepCount = (value) => {
@@ -680,22 +764,16 @@ function ProgramPreview({ backPath, backLabel }) {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-function ProgramSession({ backPath, backLabel }) {
+function ProgramSession({ backPath, backLabel, mode, userId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { programId } = useParams();
+  const persistedSession = useMemo(
+    () => hydratePersistedProgramSession(readActiveProgramSession(userId, mode, programId)),
+    [mode, programId, userId]
+  );
   const injectedProgram = location.state?.program;
-  const program = injectedProgram || findProgram(programId);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [countdownOpen, setCountdownOpen] = useState(true);
-  const [countdown, setCountdown] = useState(3);
-  const [restOpen, setRestOpen] = useState(false);
-  const [restSeconds, setRestSeconds] = useState(0);
-  const [restContext, setRestContext] = useState("set");
-  const [currentSet, setCurrentSet] = useState(1);
-  const [sessionPerformance, setSessionPerformance] = useState({});
+  const program = injectedProgram || persistedSession?.program || findProgram(programId);
 
   const exercises = useMemo(
     () =>
@@ -705,27 +783,40 @@ function ProgramSession({ backPath, backLabel }) {
       })),
     [program]
   );
+  const [currentIndex, setCurrentIndex] = useState(() => Math.max(Number(persistedSession?.currentIndex || 0), 0));
+  const [timerSeconds, setTimerSeconds] = useState(() => Math.max(Number(persistedSession?.timerSeconds || 0), 0));
+  const [timerRunning, setTimerRunning] = useState(() => Boolean(persistedSession?.timerRunning));
+  const [countdownOpen, setCountdownOpen] = useState(() => (persistedSession ? Boolean(persistedSession.countdownOpen) : true));
+  const [countdown, setCountdown] = useState(() => (persistedSession ? Math.max(Number(persistedSession.countdown || 0), 0) : 3));
+  const [restOpen, setRestOpen] = useState(() => Boolean(persistedSession?.restOpen));
+  const [restSeconds, setRestSeconds] = useState(() => Math.max(Number(persistedSession?.restSeconds || 0), 0));
+  const [restContext, setRestContext] = useState(() => String(persistedSession?.restContext || "set"));
+  const [currentSet, setCurrentSet] = useState(() => Math.max(Number(persistedSession?.currentSet || 1), 1));
+  const [sessionPerformance, setSessionPerformance] = useState(() => (
+    persistedSession?.sessionPerformance && typeof persistedSession.sessionPerformance === "object"
+      ? persistedSession.sessionPerformance
+      : buildInitialProgramPerformance(exercises)
+  ));
+  const restoredNoticeShownRef = useRef(false);
+  const initializedRef = useRef(false);
+  const previousProgramIdRef = useRef(programId);
   const currentExercise = exercises[currentIndex];
   const targetSets = Math.max(Number(currentExercise?.sets) || 1, 1);
   const setProgressPercent = Math.min((currentSet / targetSets) * 100, 100);
-
-  const buildInitialPerformance = (list) =>
-    (list || []).reduce((acc, exercise) => {
-      const id = String(exercise?.id || "");
-      if (!id) return acc;
-      acc[id] = {
-        targetSets: Math.max(Number(exercise?.sets) || 1, 1),
-        completedSets: 0,
-        completedAt: [],
-      };
-      return acc;
-    }, {});
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
 // keeps data and UI in sync,
 // cleans up to prevent leaks
   useEffect(() => {
+    if (!program) return;
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      previousProgramIdRef.current = programId;
+      return;
+    }
+    if (previousProgramIdRef.current === programId) return;
+    previousProgramIdRef.current = programId;
     setCountdownOpen(true);
     setCountdown(3);
     setTimerSeconds(0);
@@ -734,8 +825,14 @@ function ProgramSession({ backPath, backLabel }) {
     setRestSeconds(0);
     setRestContext("set");
     setCurrentSet(1);
-    setSessionPerformance(buildInitialPerformance(exercises));
-  }, [programId, exercises]);
+    setSessionPerformance(buildInitialProgramPerformance(exercises));
+  }, [program, programId, exercises]);
+
+  useEffect(() => {
+    if (!persistedSession || restoredNoticeShownRef.current) return;
+    restoredNoticeShownRef.current = true;
+    emitToast("Restored your active workout session.", "info", 2800);
+  }, [persistedSession]);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -773,9 +870,47 @@ function ProgramSession({ backPath, backLabel }) {
     return () => clearInterval(id);
   }, [restOpen, restSeconds]);
 
+  useEffect(() => {
+    if (!program) return;
+    writeActiveProgramSession(userId, mode, programId, {
+      program,
+      currentIndex,
+      timerSeconds,
+      timerRunning,
+      countdownOpen,
+      countdown,
+      restOpen,
+      restSeconds,
+      restContext,
+      currentSet,
+      sessionPerformance,
+      savedAt: Date.now(),
+    });
+  }, [
+    countdown,
+    countdownOpen,
+    currentIndex,
+    currentSet,
+    mode,
+    program,
+    programId,
+    restContext,
+    restOpen,
+    restSeconds,
+    sessionPerformance,
+    timerRunning,
+    timerSeconds,
+    userId,
+  ]);
+
   if (!program) {
     return null;
   }
+
+  const handleExitSession = () => {
+    clearActiveProgramSession(userId, mode, programId);
+    navigate(backPath);
+  };
 
 // handleDone manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -812,7 +947,8 @@ function ProgramSession({ backPath, backLabel }) {
     if (currentIndex >= exercises.length - 1) {
       navigate(`../${programId}/finish`, {
         state: {
-          ...location.state,
+          ...(location.state || {}),
+          program,
           sessionPerformance: nextPerformance,
           sessionDurationSeconds: timerSeconds,
         },
@@ -850,7 +986,8 @@ function ProgramSession({ backPath, backLabel }) {
     if (currentIndex >= exercises.length - 1) {
       navigate(`../${programId}/finish`, {
         state: {
-          ...location.state,
+          ...(location.state || {}),
+          program,
           sessionPerformance: nextPerformance,
           sessionDurationSeconds: timerSeconds,
         },
@@ -926,7 +1063,7 @@ function ProgramSession({ backPath, backLabel }) {
           <h2 className="page-title">{program.name}</h2>
           <p className="page-subtitle">Lock in. One rep at a time.</p>
         </div>
-        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button className="studio-back program-back-btn" onClick={handleExitSession}>{backLabel}</button>
       </div>
 
       <div className="program-top">
@@ -1050,10 +1187,25 @@ function ProgramSession({ backPath, backLabel }) {
 // it keeps behavior isolated for readability,
 // inputs are validated before mutation when needed,
 // and output feeds the UI state or data flow
-function ProgramFinish({ backPath, backLabel }) {
+function ProgramFinish({ backPath, backLabel, mode, userId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { programId } = useParams();
+  const persistedSession = useMemo(
+    () => readActiveProgramSession(userId, mode, programId),
+    [mode, programId, userId]
+  );
+  const effectiveState = useMemo(
+    () => ({
+      ...(location.state || {}),
+      ...(persistedSession?.program ? { program: persistedSession.program } : {}),
+      ...(persistedSession?.sessionPerformance ? { sessionPerformance: persistedSession.sessionPerformance } : {}),
+      ...(Number.isFinite(Number(persistedSession?.timerSeconds))
+        ? { sessionDurationSeconds: Number(persistedSession.timerSeconds || 0) }
+        : {}),
+    }),
+    [location.state, persistedSession]
+  );
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -1071,11 +1223,11 @@ function ProgramFinish({ backPath, backLabel }) {
       if (next >= 100) {
         clearInterval(id);
         setHolding(false);
-        navigate(`../${programId}/congrats`, { state: { ...location.state } });
+        navigate(`../${programId}/congrats`, { state: effectiveState });
       }
     }, 50);
     return () => clearInterval(id);
-  }, [holding, navigate, programId, location.state]);
+  }, [effectiveState, holding, navigate, programId]);
 
 // stopHold manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -1093,7 +1245,15 @@ function ProgramFinish({ backPath, backLabel }) {
           <h2 className="page-title">Finish Session</h2>
           <p className="page-subtitle">Hold to complete the session.</p>
         </div>
-        <button className="studio-back program-back-btn" onClick={() => navigate(backPath)}>{backLabel}</button>
+        <button
+          className="studio-back program-back-btn"
+          onClick={() => {
+            clearActiveProgramSession(userId, mode, programId);
+            navigate(backPath);
+          }}
+        >
+          {backLabel}
+        </button>
       </div>
 
       <div className="hud-card program-finish">
@@ -1129,13 +1289,28 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(true);
   const [sessionAwardedXp, setSessionAwardedXp] = useState(0);
   const [syncWarning, setSyncWarning] = useState("");
-  const injectedProgram = location.state?.program;
+  const persistedSession = useMemo(
+    () => readActiveProgramSession(userId, mode, programId),
+    [mode, programId, userId]
+  );
+  const effectiveState = useMemo(
+    () => ({
+      ...(location.state || {}),
+      ...(persistedSession?.program ? { program: persistedSession.program } : {}),
+      ...(persistedSession?.sessionPerformance ? { sessionPerformance: persistedSession.sessionPerformance } : {}),
+      ...(Number.isFinite(Number(persistedSession?.timerSeconds))
+        ? { sessionDurationSeconds: Number(persistedSession.timerSeconds || 0) }
+        : {}),
+    }),
+    [location.state, persistedSession]
+  );
+  const injectedProgram = effectiveState?.program;
   const program = injectedProgram || findProgram(programId);
   const sessionPerformance = useMemo(
-    () => location.state?.sessionPerformance || EMPTY_OBJECT,
-    [location.state]
+    () => effectiveState?.sessionPerformance || EMPTY_OBJECT,
+    [effectiveState]
   );
-  const sessionDurationSeconds = Number(location.state?.sessionDurationSeconds || 0);
+  const sessionDurationSeconds = Number(effectiveState?.sessionDurationSeconds || 0);
   const resolvedUserId = userId || localStorage.getItem("exervia_user_id") || "";
   const logsPath = mode === "athlete" ? `/athlete/${resolvedUserId}/logs` : `/gym/${resolvedUserId}/logs`;
 
@@ -1156,6 +1331,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   useEffect(() => {
     if (!resolvedUserId || persistedRef.current) return;
     persistedRef.current = true;
+    clearActiveProgramSession(userId, mode, programId);
     const templateDurationText = String(program?.duration || "");
     const templateMinutesMatch = templateDurationText.match(/\d+/);
     const templateMinutes = templateMinutesMatch ? Number(templateMinutesMatch[0]) : "";
@@ -1327,12 +1503,12 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
       .finally(() => {
         setTimeout(() => {
           setSessionLoggedPulseOpen(false);
-          navigate(logsPath, { state: location.state });
+          navigate(logsPath, { state: effectiveState });
         }, 1100);
       });
     return undefined;
   }, [
-    location.state,
+    effectiveState,
     logsPath,
     mode,
     navigate,
@@ -1344,6 +1520,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     resolvedUserId,
     sessionDurationSeconds,
     sessionPerformance,
+    userId,
   ]);
 
   return (
@@ -1380,7 +1557,7 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         <div className="program-complete-sub">Session captured. Opening your logs...</div>
         <button
           className="studio-back program-back-btn"
-          onClick={() => navigate(logsPath, { state: location.state })}
+          onClick={() => navigate(logsPath, { state: effectiveState })}
         >
           Open logs
         </button>
@@ -1399,8 +1576,8 @@ export default function WorkoutProgram({ mode }) {
     <Routes>
       <Route index element={<ProgramList backPath={backPath} backLabel={backLabel} />} />
       <Route path=":programId" element={<ProgramPreview backPath={backPath} backLabel={backLabel} />} />
-      <Route path=":programId/session" element={<ProgramSession backPath={backPath} backLabel={backLabel} />} />
-      <Route path=":programId/finish" element={<ProgramFinish backPath={backPath} backLabel={backLabel} />} />
+      <Route path=":programId/session" element={<ProgramSession backPath={backPath} backLabel={backLabel} mode={mode} userId={id} />} />
+      <Route path=":programId/finish" element={<ProgramFinish backPath={backPath} backLabel={backLabel} mode={mode} userId={id} />} />
       <Route path=":programId/congrats" element={<ProgramCongrats backPath={backPath} backLabel={backLabel} mode={mode} userId={id} />} />
     </Routes>
   );

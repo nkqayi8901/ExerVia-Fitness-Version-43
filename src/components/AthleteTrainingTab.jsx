@@ -476,6 +476,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
   const [selectedTrainingTrendDay, setSelectedTrainingTrendDay] = useState('');
+  const athleteSessionStorageKey = useMemo(
+    () => (userId ? `exervia_active_athlete_session_${String(userId).trim()}` : ''),
+    [userId]
+  );
+  const athleteSessionRestoredRef = useRef(false);
 
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || '');
@@ -1057,6 +1062,115 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   };
 
   useEffect(() => {
+    if (!athleteSessionStorageKey || athleteSessionRestoredRef.current) return;
+    athleteSessionRestoredRef.current = true;
+    try {
+      const raw = localStorage.getItem(athleteSessionStorageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== 'object') return;
+      const savedAt = Number(parsed.savedAt || Date.now());
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - savedAt) / 1000));
+      const wasCountdownOpen = Boolean(parsed.countdownOpen);
+      let nextCountdownOpen = wasCountdownOpen;
+      let nextCountdown = Math.max(Number(parsed.countdown || 0), 0);
+      let nextTimerOpen = Boolean(parsed.timerOpen);
+      let nextTimerRunning = Boolean(parsed.timerRunning);
+      let nextTimerSeconds = Math.max(Number(parsed.timerSeconds || 0), 0);
+
+      if (wasCountdownOpen) {
+        if (elapsedSeconds >= nextCountdown) {
+          const remainingElapsed = Math.max(elapsedSeconds - nextCountdown, 0);
+          nextCountdownOpen = false;
+          nextCountdown = 0;
+          nextTimerOpen = true;
+          nextTimerRunning = true;
+          nextTimerSeconds += remainingElapsed;
+        } else {
+          nextCountdown -= elapsedSeconds;
+        }
+      } else if (nextTimerRunning) {
+        nextTimerSeconds += elapsedSeconds;
+      }
+
+      if (parsed.session && typeof parsed.session === 'object') {
+        setSession((prev) => ({ ...prev, ...parsed.session }));
+      }
+      if (parsed.sessionFocus) setSessionFocus(String(parsed.sessionFocus));
+      if (parsed.selectedPlan && typeof parsed.selectedPlan === 'object') setSelectedPlan(parsed.selectedPlan);
+      if (typeof parsed.planSportFilter === 'string') setPlanSportFilter(parsed.planSportFilter);
+      if (typeof parsed.planSearch === 'string') setPlanSearch(parsed.planSearch);
+      if (typeof parsed.activePlanWeekIndex === 'number') setActivePlanWeekIndex(parsed.activePlanWeekIndex);
+      if (parsed.sessionWeekSnapshot && typeof parsed.sessionWeekSnapshot === 'object') {
+        setSessionWeekSnapshot(parsed.sessionWeekSnapshot);
+      }
+      if (typeof parsed.sessionIntention === 'string') setSessionIntention(parsed.sessionIntention);
+      setTimerOpen(nextTimerOpen);
+      setTimerRunning(nextTimerRunning);
+      setTimerSeconds(nextTimerSeconds);
+      setCountdownOpen(nextCountdownOpen);
+      setCountdown(nextCountdownOpen ? nextCountdown : 3);
+      setFloorUiHidden(Boolean(parsed.floorUiHidden && nextTimerOpen));
+      emitToast('Restored your active training session.', 'info', 2800);
+    } catch {
+      // ignore malformed restore payloads
+    }
+  }, [athleteSessionStorageKey]);
+
+  useEffect(() => {
+    if (!athleteSessionStorageKey) return;
+    const hasMeaningfulSession =
+      Boolean(selectedPlan) ||
+      Boolean(sessionWeekSnapshot) ||
+      countdownOpen ||
+      timerOpen ||
+      timerSeconds > 0 ||
+      Boolean(sessionIntention.trim()) ||
+      Boolean(session.notes.trim());
+
+    if (!hasMeaningfulSession) {
+      localStorage.removeItem(athleteSessionStorageKey);
+      return;
+    }
+
+    localStorage.setItem(
+      athleteSessionStorageKey,
+      JSON.stringify({
+        session,
+        sessionFocus,
+        selectedPlan,
+        planSportFilter,
+        planSearch,
+        activePlanWeekIndex,
+        sessionWeekSnapshot,
+        timerOpen,
+        timerRunning,
+        timerSeconds,
+        countdownOpen,
+        countdown,
+        floorUiHidden,
+        sessionIntention,
+        savedAt: Date.now(),
+      })
+    );
+  }, [
+    activePlanWeekIndex,
+    athleteSessionStorageKey,
+    countdown,
+    countdownOpen,
+    floorUiHidden,
+    planSearch,
+    planSportFilter,
+    selectedPlan,
+    session,
+    sessionFocus,
+    sessionIntention,
+    sessionWeekSnapshot,
+    timerOpen,
+    timerRunning,
+    timerSeconds,
+  ]);
+
+  useEffect(() => {
     if (!planOpen && !showCreatePlan && !lastTrainingOpen && !congratsOpen && !timerOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key !== 'Escape') return;
@@ -1250,6 +1364,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setSessionFocus('Base');
       setSelectedPlan(null);
       setSessionWeekSnapshot(null);
+      if (athleteSessionStorageKey) {
+        localStorage.removeItem(athleteSessionStorageKey);
+      }
       setCongratsOpen(false);
       setSessionLoggedPulseOpen(true);
       if (sessionLoggedPulseTimerRef.current) {
