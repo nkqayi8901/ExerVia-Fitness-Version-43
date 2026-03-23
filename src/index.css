@@ -18466,18 +18466,6 @@ html, body, #root {
 }
 
 @media (max-width: 768px) {
-  .grid-3.dashboard-card-grid,
-  .dashboard-quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .dashboard-section-card {
-    min-height: 0;
-    padding: 12px;
-    gap: 8px;
-  }
-
   .dashboard-title-row {
     display: block;
   }
@@ -18622,11 +18610,6 @@ html, body, #root {
 }
 
 @media (max-width: 480px) {
-  .dashboard-card-grid,
-  .dashboard-quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .mode-nav {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     justify-content: stretch;
