@@ -18487,6 +18487,23 @@ html, body, #root {
     min-width: 0;
   }
 
+  .dashboard-header-actions .dashboard-header-btn,
+  .dashboard-header-actions .dashboard-switch-btn,
+  .fuel-header-actions .fuel-compact-btn,
+  .fuel-header-actions .studio-back,
+  .community-cta-row .community-cta-btn,
+  .community-modal-actions-compact > *,
+  .studio-header-actions .studio-back,
+  .studio-header-actions .studio-toggle-btn {
+    white-space: normal;
+    text-wrap: balance;
+    line-height: 1.15;
+    height: auto;
+    min-height: 44px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
   .mode-nav,
   .mode-nav-inline {
     width: 100%;
@@ -18638,5 +18655,14 @@ html, body, #root {
     min-width: 0;
     flex: 0 0 auto;
     padding-inline: 14px;
+  }
+
+  .dashboard-header-actions .dashboard-header-btn,
+  .dashboard-header-actions .dashboard-switch-btn,
+  .fuel-header-actions .fuel-compact-btn,
+  .fuel-header-actions .studio-back,
+  .community-modal-actions-compact > * {
+    font-size: 11px;
+    letter-spacing: 0.06em;
   }
 }
