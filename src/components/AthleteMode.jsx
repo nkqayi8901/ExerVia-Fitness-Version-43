@@ -56,17 +56,17 @@ function AthleteDashboard({ profile, id, userState }) {
           <div className="dashboard-hero-kicker">Performance System</div>
           <div className="dashboard-title-row">
             <h2 className="page-title"> {profile.full_name}'s Athlete Dashboard</h2>
-            <div className="dashboard-header-actions">
-              <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
-                Walkthrough
-              </button>
-              <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
-                Switch to Gym Mode
-              </button>
-            </div>
           </div>
           <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
           <div className="page-marker">{dayMarker}</div>
+          <div className="dashboard-header-actions">
+            <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+              Walkthrough
+            </button>
+            <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
+              Switch to Gym Mode
+            </button>
+          </div>
         </div>
       </div>
       <div className="grid-3 dashboard-card-grid">
@@ -521,4 +521,3 @@ export default function AthleteMode() {
     </div>
   );
 }
-

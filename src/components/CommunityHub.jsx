@@ -3787,7 +3787,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               value={newFriendUsername}
               onChange={(event) => setNewFriendUsername(event.target.value)}
             />
-            <div className="community-modal-actions">
+            <div className="community-modal-actions community-modal-actions-compact">
               <button className="studio-back community-cta-btn" onClick={() => setAddFriendOpen(false)}>
                 Cancel
               </button>
