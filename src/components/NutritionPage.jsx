@@ -1672,8 +1672,8 @@ export default function NutritionPage() {
       <Navbar modeLabel="NUTRITION" mode={pageMode} userId={storedId} />
 
       <div className="page-shell">
-        <div className="page-header">
-          <div>
+        <div className="page-header fuel-hero">
+          <div className="fuel-hero-main">
             <button
               className="studio-back"
               onClick={() => navigate(pageMode === "athlete" ? `/athlete/${storedId}` : `/gym/${storedId}`)}
@@ -1681,6 +1681,7 @@ export default function NutritionPage() {
             >
               {'Back'}
             </button>
+            <div className="fuel-hero-kicker">ExerVia Fuel Loop</div>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
               Pick a protocol -> Pick a time -> Pick a preference -> Get meals
@@ -1743,10 +1744,22 @@ export default function NutritionPage() {
           </div>
         ) : null}
 
-        <div className="hud-card" style={{ marginBottom: 12 }}>
-          <div className="hud-card-title">FUEL PRIORITY</div>
-          <div className="hud-dim" style={{ marginBottom: 10 }}>
-            Start here first: intake targets.
+        <div className="hud-card fuel-priority-card" style={{ marginBottom: 12 }}>
+          <div className="fuel-priority-head">
+            <div>
+              <div className="hud-card-title">FUEL PRIORITY</div>
+              <div className="hud-dim" style={{ marginBottom: 10 }}>
+                Start here first: intake targets.
+              </div>
+            </div>
+            <div className="fuel-priority-state">
+              {showOverview ? "Protocol view" : "Intake view"}
+            </div>
+          </div>
+          <div className="fuel-priority-strip" aria-label="Daily fuel loop">
+            <span className="fuel-priority-pill">Set protocol</span>
+            <span className="fuel-priority-pill">Generate options</span>
+            <span className="fuel-priority-pill">Log intake</span>
           </div>
           <div className="fuel-feed-toggle-row">
             <button
@@ -1766,7 +1779,7 @@ export default function NutritionPage() {
           </div>
         </div>
 
-        <div className={`grid-2 ${showIntake ? "fuel-single-column" : ""}`}>
+        <div className={`grid-2 fuel-main-grid ${showIntake ? "fuel-single-column" : ""}`}>
           {/* LEFT: Protocol controls + meal of day */}
           <div className="hud-card">
             {showProtocolSettings ? <div className="hud-card-title">PROTOCOL SETTINGS</div> : null}

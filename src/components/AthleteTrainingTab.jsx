@@ -462,6 +462,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [lastLoggedSessionId, setLastLoggedSessionId] = useState(null);
   const [lastLoggedNotes, setLastLoggedNotes] = useState('');
   const [completedSessionLabel, setCompletedSessionLabel] = useState('');
+  const [sessionRecap, setSessionRecap] = useState({ xp: 0, duration: 0, streak: 0, focus: 'Base' });
   const [planFavorites, setPlanFavorites] = useState([]);
   const [pinnedOrder, setPinnedOrder] = useState([]);
   const [activePlanWeekIndex, setActivePlanWeekIndex] = useState(0);
@@ -1360,6 +1361,12 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setLastLoggedSessionId(data?.id || null);
       setLastLoggedNotes(combinedNotes);
       setCompletedSessionLabel(loggedLabel);
+      setSessionRecap({
+        xp: awardedXp,
+        duration: resolvedDuration,
+        streak: 0,
+        focus: sessionFocus || 'Base',
+      });
       pushRecoveryNudge(loggedLabel, resolvedDuration);
       setSessionFocus('Base');
       setSelectedPlan(null);
@@ -1367,15 +1374,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       if (athleteSessionStorageKey) {
         localStorage.removeItem(athleteSessionStorageKey);
       }
-      setCongratsOpen(false);
-      setSessionLoggedPulseOpen(true);
-      if (sessionLoggedPulseTimerRef.current) {
-        clearTimeout(sessionLoggedPulseTimerRef.current);
-      }
-      sessionLoggedPulseTimerRef.current = setTimeout(() => {
-        setSessionLoggedPulseOpen(false);
-        navigate(`/athlete/${userId}/logs`);
-      }, 1100);
+      setSessionLoggedPulseOpen(false);
+      setCongratsOpen(true);
     } else {
       console.error('Error logging session:', error);
       setBanner({ type: 'error', message: 'Could not log session. Try again.' });
@@ -2720,6 +2720,28 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               </div>
               <div className="studio-congrats-sub">
                 {completedSessionLabel || 'Session'} logged.
+              </div>
+              <div className="studio-congrats-metrics">
+                <div className="studio-congrats-metric">
+                  <span>XP earned</span>
+                  <strong>{sessionRecap.xp > 0 ? `+${sessionRecap.xp}` : 'Logged'}</strong>
+                </div>
+                <div className="studio-congrats-metric">
+                  <span>Duration</span>
+                  <strong>{sessionRecap.duration > 0 ? `${sessionRecap.duration} min` : 'Tracked'}</strong>
+                </div>
+                <div className="studio-congrats-metric">
+                  <span>Focus</span>
+                  <strong>{sessionRecap.focus || 'Base'}</strong>
+                </div>
+              </div>
+              <div className="studio-congrats-next">
+                <div className="studio-congrats-next-title">
+                  {sessionRecap.streak > 1 ? `Streak protected: ${sessionRecap.streak} days` : 'System on track'}
+                </div>
+                <div className="studio-congrats-next-sub">
+                  Next best move: review the session in Logs or capture one reflection before you close the day.
+                </div>
               </div>
               <label className="studio-congrats-reflection">
                 <span className="studio-input-label">Reflection</span>

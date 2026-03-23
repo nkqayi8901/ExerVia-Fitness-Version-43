@@ -9,11 +9,22 @@ export default function LeaderboardPanel({
   groupLeaderboardLoading,
   globalLeaderboard,
   groupLeaderboard,
+  leaderboardSignals,
   globalLeaderboardLoaded,
   groupLeaderboardLoaded,
   profiles,
   openUserProfile,
 }) {
+  const renderSignals = (row) => {
+    const signals = leaderboardSignals?.[row.user_id] || {};
+    return (
+      <>
+        {signals.promotedRecently ? <span className="community-meta-pill success">Promoted</span> : null}
+        {signals.hotStreak ? <span className="community-meta-pill momentum">Hot streak</span> : null}
+      </>
+    );
+  };
+
   return (
     <div className="community-panel">
       <div className="community-panel-title">Leaderboards</div>
@@ -56,6 +67,7 @@ export default function LeaderboardPanel({
                 <div className="community-leaderboard-meta-stack">
                   <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
                   <span className="community-meta-pill">{row.rank || "-"}</span>
+                  {renderSignals(row)}
                 </div>
               </div>
             ))}
@@ -84,6 +96,7 @@ export default function LeaderboardPanel({
                 <div className="community-leaderboard-meta-stack">
                   <span className="community-meta-pill">XP {Number(row.xp || 0)}</span>
                   <span className="community-meta-pill">{row.rank || "-"}</span>
+                  {renderSignals(row)}
                 </div>
               </div>
             ))}

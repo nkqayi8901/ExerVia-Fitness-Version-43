@@ -1351,6 +1351,34 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
   const sessionDurationSeconds = Number(effectiveState?.sessionDurationSeconds || 0);
   const resolvedUserId = userId || localStorage.getItem("exervia_user_id") || "";
   const logsPath = mode === "athlete" ? `/athlete/${resolvedUserId}/logs` : `/gym/${resolvedUserId}/logs`;
+  const templateDurationText = String(program?.duration || "");
+  const templateMinutesMatch = templateDurationText.match(/\d+/);
+  const templateMinutes = templateMinutesMatch ? Number(templateMinutesMatch[0]) : "";
+  const recapMinutes = sessionDurationSeconds > 0 ? Math.max(1, Math.round(sessionDurationSeconds / 60)) : templateMinutes;
+  const recapDurationText = recapMinutes ? `${recapMinutes} min` : templateDurationText;
+  const recapExercises = useMemo(
+    () =>
+      (program?.exercises || []).map((exercise, index) => {
+        const entry = sessionPerformance[String(exercise?.id || "")] || null;
+        const isCardio = isCardioExercise(exercise);
+        const targetSets = Number(exercise?.sets) || 0;
+        const sets = Number(entry?.completedSets ?? targetSets) || 0;
+        const reps = normalizeRepTarget(exercise?.reps);
+        const weight = isCardio ? 0 : Number(exercise?.weight) || 0;
+        const repCount = estimateRepCount(reps);
+        const tonnage = !isCardio && sets > 0 && repCount > 0 && weight > 0 ? sets * repCount * weight : 0;
+        return {
+          id: exercise?.id || `${program?.name || "Program"}-${index + 1}`,
+          sets,
+          tonnage,
+        };
+      }),
+    [program?.exercises, program?.name, sessionPerformance]
+  );
+  const recapTotalSets = useMemo(
+    () => recapExercises.reduce((sum, item) => sum + (Number(item.sets) || 0), 0),
+    [recapExercises]
+  );
 
   const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
     let timeoutHandle = null;
@@ -1370,9 +1398,6 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     if (!resolvedUserId || persistedRef.current) return;
     persistedRef.current = true;
     clearActiveProgramSession(userId, mode, programId);
-    const templateDurationText = String(program?.duration || "");
-    const templateMinutesMatch = templateDurationText.match(/\d+/);
-    const templateMinutes = templateMinutesMatch ? Number(templateMinutesMatch[0]) : "";
     const minutes = sessionDurationSeconds > 0 ? Math.max(1, Math.round(sessionDurationSeconds / 60)) : templateMinutes;
     const durationText = minutes ? `${minutes} min` : templateDurationText;
     const planName = program?.name || "Program";
@@ -1546,7 +1571,6 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
       .finally(() => {
         setTimeout(() => {
           setSessionLoggedPulseOpen(false);
-          navigate(logsPath, { state: effectiveState });
         }, 1100);
       });
     return undefined;
@@ -1563,6 +1587,8 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
     resolvedUserId,
     sessionDurationSeconds,
     sessionPerformance,
+    templateDurationText,
+    templateMinutes,
     userId,
   ]);
 
@@ -1597,9 +1623,33 @@ function ProgramCongrats({ backPath, backLabel, mode, userId }) {
         </div>
         <div className="program-complete-main">Locked in. Great work.</div>
         <div className="program-complete-sub">{program?.name || "Program"} logged.</div>
-        <div className="program-complete-sub">Session captured. Opening your logs...</div>
+        <div className="program-complete-sub">Session captured. Review it now or move back into your training system.</div>
+        <div className="program-complete-metrics">
+          <div className="program-complete-metric">
+            <span>XP earned</span>
+            <strong>{sessionAwardedXp > 0 ? `+${sessionAwardedXp}` : "Logged"}</strong>
+          </div>
+          <div className="program-complete-metric">
+            <span>Exercises</span>
+            <strong>{recapExercises.length}</strong>
+          </div>
+          <div className="program-complete-metric">
+            <span>Sets</span>
+            <strong>{recapTotalSets}</strong>
+          </div>
+          <div className="program-complete-metric">
+            <span>Duration</span>
+            <strong>{recapDurationText || "Tracked"}</strong>
+          </div>
+        </div>
+        <div className="program-complete-next">
+          <div className="program-complete-next-title">Next best move</div>
+          <div className="program-complete-next-sub">
+            Open Logs to review the session report and keep your progression trail clean.
+          </div>
+        </div>
         <button
-          className="studio-back program-back-btn"
+          className="studio-primary-btn"
           onClick={() => navigate(logsPath, { state: effectiveState })}
         >
           Open logs

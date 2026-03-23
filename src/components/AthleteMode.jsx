@@ -13,6 +13,10 @@ import PublicProfilePage from "./PublicProfilePage";
 import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
+import PromotionMoment from "./PromotionMoment";
+import { emitToast } from "../utils/toast";
+import { buildProgressionMoment } from "../utils/progressionMoment";
+import { publishProgressionStatus } from "../utils/progressionFeed";
 
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
@@ -42,82 +46,82 @@ function AthleteDashboard({ profile, id, userState }) {
   const dayMarker = (() => {
     const now = new Date();
     const label = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-    return `It's ${label} — build your base.`;
+    return `It's ${label} —  log a session.`;
   })();
-
-
-
-
   // Render
   return (
     <div className="page-shell profile-shell">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Athlete Dashboard</h2>
+      <div className="page-header dashboard-hero">
+        <div className="dashboard-hero-main">
+          <div className="dashboard-hero-kicker">Performance System</div>
+          <div className="dashboard-title-row">
+            <h2 className="page-title"> {profile.full_name}'s Athlete Dashboard</h2>
+            <div className="dashboard-header-actions">
+              <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+                Walkthrough
+              </button>
+              <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
+                Switch to Gym Mode
+              </button>
+            </div>
+          </div>
           <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
           <div className="page-marker">{dayMarker}</div>
         </div>
-        <div className="dashboard-header-actions">
-          <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
-            Walkthrough
-          </button>
-          <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/gym/${id}`)}>
-            Switch to Gym Mode
-          </button>
-        </div>
       </div>
-      <div className="grid-3">
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/training`)}>
+      <div className="grid-3 dashboard-card-grid">
+        <button className="hud-card clickable dashboard-section-card dashboard-section-card-featured" onClick={() => navigate(`/athlete/${id}/training`)}>
+          <div className="dashboard-section-accent" aria-hidden="true" />
           <div className="hud-card-title">TRAINING</div>
           <div className="hud-big">Training Log</div>
           <div className="hud-dim">Aerobic efficiency + load</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/journal`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/athlete/${id}/journal`)}>
           <div className="hud-card-title">JOURNAL</div>
           <div className="hud-big">Daily Ritual</div>
           <div className="hud-dim">Mood + system readout</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/logs`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/athlete/${id}/logs`)}>
           <div className="hud-card-title">LOGS</div>
           <div className="hud-big">Daily Signals</div>
           <div className="hud-dim">Weight, water, meals, training</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/nutrition`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/nutrition`)}>
           <div className="hud-card-title">NUTRITION</div>
           <div className="hud-big">Fuel</div>
           <div className="hud-dim">Search + track meals</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/profile`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/athlete/${id}/profile`)}>
           <div className="hud-card-title">PROFILE</div>
           <div className="hud-big">Rank + Level</div>
           <div className="hud-dim">Identity, badges, progress</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/athlete/${id}/community`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/athlete/${id}/community`)}>
           <div className="hud-card-title">COMMUNITY</div>
           <div className="hud-big">Social</div>
           <div className="hud-dim">Groups, forums, challenges</div>
         </button>
       </div>
 
-      <div className="quick-add-row">
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/training`)}>
+      <div className="quick-add-row dashboard-quick-grid">
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/athlete/${id}/training`)}>
           Log session
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/logs`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/athlete/${id}/logs`)}>
           Open logs
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/athlete/${id}/journal`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/athlete/${id}/journal`)}>
           Open journal
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/settings`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/settings`)}>
           Settings
         </button>
       </div>
@@ -156,7 +160,12 @@ function AthleteProfileOverview({ profile, userState }) {
   const xpIntoLevel = Math.max(0, xp - levelStartXp);
   const xpRemaining = Math.max(0, nextLevelXp - xp);
   const levelProgressPct = Math.max(0, Math.min(100, Math.round((xpIntoLevel / levelSpan) * 100)));
-
+  const milestoneTone =
+    xpRemaining <= Math.max(80, Math.round(levelSpan * 0.18))
+      ? "Milestone close"
+      : xpRemaining <= Math.max(160, Math.round(levelSpan * 0.34))
+        ? "Unlock building"
+        : "Identity in progress";
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -200,7 +209,7 @@ function AthleteProfileOverview({ profile, userState }) {
           <div className="hud-dim">Load accumulation</div>
         </div>
       </div>
-      <div className="hud-card profile-progress-card">
+      <div className="hud-card profile-progress-card profile-progress-card-merged">
         <div className="profile-progress-head">
           <div className="hud-card-title">PROGRESSION</div>
           <div className="profile-progress-level">Level {safeLevel} · Rank {rank}</div>
@@ -210,6 +219,16 @@ function AthleteProfileOverview({ profile, userState }) {
         </div>
         <div className="profile-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelProgressPct}>
           <div className="profile-progress-fill" style={{ width: `${levelProgressPct}%` }} />
+        </div>
+        <div className="profile-progress-divider" />
+        <div className="hud-card-title">NEXT PRESTIGE TARGET</div>
+        <div className="profile-prestige-title">Level {safeLevel + 1} unlock</div>
+        <div className="profile-prestige-sub">
+          {xpRemaining} XP remaining. Keep training, recovery, and daily signals moving together to keep climbing.
+        </div>
+        <div className="profile-prestige-note">
+          <span>{milestoneTone}</span>
+          <strong>Next visible identity step: Rank {rank} · Level {safeLevel + 1} across your profile and community surfaces.</strong>
         </div>
       </div>
       <div className="profile-divider" />
@@ -238,9 +257,12 @@ export default function AthleteMode() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [userState, setUserState] = useState(null);
+  const [promotionMoment, setPromotionMoment] = useState(null);
   const [profileReady, setProfileReady] = useState(false);
   const profileRequestRef = useRef(0);
   const stateRequestRef = useRef(0);
+  const progressionBaselineRef = useRef(null);
+  const promotionTimerRef = useRef(null);
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const themeMode = "athlete";
@@ -286,6 +308,10 @@ export default function AthleteMode() {
 
     setMode();
   }, [id, routeLocation.pathname]);
+
+  useEffect(() => () => {
+    if (promotionTimerRef.current) clearTimeout(promotionTimerRef.current);
+  }, []);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -355,12 +381,40 @@ export default function AthleteMode() {
       const requestId = stateRequestRef.current + 1;
       stateRequestRef.current = requestId;
       const cacheKey = `exervia_user_state_${id}`;
+      const applyIncomingState = (nextState, { allowMoment = true } = {}) => {
+        setUserState(nextState);
+        if (!nextState) {
+          progressionBaselineRef.current = null;
+          localStorage.removeItem(cacheKey);
+          return;
+        }
+        if (allowMoment) {
+          const moment = buildProgressionMoment(progressionBaselineRef.current, nextState, {
+            discipline: "performance",
+          });
+          if (moment) {
+            setPromotionMoment(moment);
+            emitToast(moment.toastMessage, "success", 3800);
+            publishProgressionStatus(id, moment)
+              .then((post) => {
+                if (post?.id) {
+                  window.dispatchEvent(new CustomEvent("exervia:progression_event", { detail: { userId: Number(id), postId: post.id } }));
+                }
+              })
+              .catch(() => {});
+            if (promotionTimerRef.current) clearTimeout(promotionTimerRef.current);
+            promotionTimerRef.current = setTimeout(() => setPromotionMoment(null), 5200);
+          }
+        }
+        progressionBaselineRef.current = nextState;
+        localStorage.setItem(cacheKey, JSON.stringify(nextState));
+      };
       try {
         const raw = localStorage.getItem(cacheKey);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === "object") {
-            setUserState(parsed);
+            applyIncomingState(parsed, { allowMoment: false });
           }
         }
       } catch {
@@ -389,12 +443,10 @@ export default function AthleteMode() {
             "State refresh timed out"
           );
           if (stateRequestRef.current !== requestId) return;
-          setUserState(refreshed || null);
-          if (refreshed) localStorage.setItem(cacheKey, JSON.stringify(refreshed));
+          applyIncomingState(refreshed || null);
           return;
         }
-        setUserState(data);
-        localStorage.setItem(cacheKey, JSON.stringify(data));
+        applyIncomingState(data);
       } catch (error) {
         console.error("AthleteMode user_state load failed:", error);
       }
@@ -418,6 +470,14 @@ export default function AthleteMode() {
   return (
     <div className={`hud-bg mode-${themeMode}`}>
       <Navbar modeLabel="ATHLETE MODE" mode={themeMode} userId={id} />
+      <PromotionMoment
+        moment={promotionMoment}
+        onClose={() => setPromotionMoment(null)}
+        onOpenProfile={() => {
+          setPromotionMoment(null);
+          navigate(`/athlete/${id}/profile`);
+        }}
+      />
       <Routes>
         <Route index element={<AthleteDashboard profile={profile} id={id} userState={userState} />} />
         <Route

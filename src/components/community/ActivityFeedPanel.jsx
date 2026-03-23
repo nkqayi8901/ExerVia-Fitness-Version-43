@@ -10,6 +10,10 @@ export default function ActivityFeedPanel({
   profiles,
   openThreadPage,
   openUserProfile,
+  reactionOptions,
+  reactionCounts,
+  userReactions,
+  onReact,
   formatTime,
   renderEmptyState,
 }) {
@@ -42,7 +46,14 @@ export default function ActivityFeedPanel({
         {activityFeedLoading && <div className="community-empty">Loading feed...</div>}
         {!activityFeedLoading &&
           activityFeedItems.map((item) => {
-            const openStatus = () => openThreadPage(item.postId);
+            const isPromotion = item.type === "promotion";
+            const openStatus = () => {
+              if (isPromotion) {
+                openUserProfile(item.actor_id);
+                return;
+              }
+              openThreadPage(item.postId);
+            };
 
             return (
               <div
@@ -51,7 +62,7 @@ export default function ActivityFeedPanel({
                 role="button"
                 tabIndex={0}
                 aria-label={
-                  `${item.title}${item.sub ? `. ${item.sub}` : ""}. Opens forum post.`
+                  `${item.title}${item.sub ? `. ${item.sub}` : ""}.${isPromotion ? " Opens profile." : " Opens forum post."}`
                 }
                 onClick={openStatus}
                 onKeyDown={(event) => {
@@ -76,12 +87,35 @@ export default function ActivityFeedPanel({
                     <span className="community-feed-sub community-activity-time">{formatTime(item.created_at)}</span>
                   </div>
                   <div className="community-activity-destination" aria-hidden="true">
-                    <span className="community-activity-destination-icon">STATUS</span>
-                    <span>Status Update</span>
+                    <span className="community-activity-destination-icon">{isPromotion ? "RANK" : "STATUS"}</span>
+                    <span>{isPromotion ? "Progression Update" : "Status Update"}</span>
                   </div>
                 </div>
                 <div className="community-feed-sub community-activity-title">{item.title}</div>
                 {item.sub ? <div className="community-feed-sub community-activity-detail">{item.sub}</div> : null}
+                {isPromotion && item.primaryLabel ? (
+                  <div className="community-activity-promo-chip">{item.primaryLabel}</div>
+                ) : null}
+                {item.postId ? (
+                  <div className="community-reaction-row community-feed-reactions" onClick={(event) => event.stopPropagation()}>
+                    {reactionOptions.map((option) => {
+                      const key = `post:${item.postId}-${option.id}`;
+                      const count = reactionCounts[key] || 0;
+                      const active = Boolean(userReactions[key]);
+                      return (
+                        <button
+                          key={`${item.postId}-${option.id}`}
+                          type="button"
+                          className={`community-reaction-btn ${active ? "active" : ""}`}
+                          onClick={() => onReact({ postId: item.postId, reaction: option.id })}
+                        >
+                          <span className="community-reaction-emoji" aria-hidden="true">{option.emoji}</span>
+                          <span className="community-reaction-count">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="community-thread-actions">
                   <button
                     type="button"
@@ -91,7 +125,7 @@ export default function ActivityFeedPanel({
                       openStatus();
                     }}
                   >
-                    Open status
+                    {isPromotion ? "Open profile" : "Open status"}
                   </button>
                 </div>
               </div>

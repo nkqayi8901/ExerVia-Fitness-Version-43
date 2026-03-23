@@ -13,6 +13,10 @@ import PublicProfilePage from "./PublicProfilePage";
 import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
+import PromotionMoment from "./PromotionMoment";
+import { emitToast } from "../utils/toast";
+import { buildProgressionMoment } from "../utils/progressionMoment";
+import { publishProgressionStatus } from "../utils/progressionFeed";
 
 // Component: GymMode - UI layout and interactions.
 // This component renders the gymmode experience and wires up its local UI state.
@@ -42,82 +46,82 @@ function GymDashboard({ profile, id, userState }) {
   const dayMarker = (() => {
     const now = new Date();
     const label = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-    return `It's ${label} — forge your strength.`;
+    return `It's ${label} — log a session.`;
   })();
-
-
-
-
   // Render
   return (
     <div className="page-shell profile-shell">
-      <div className="page-header">
-        <div>
-          <h2 className="page-title">Gym Dashboard</h2>
-          <p className="page-subtitle">Welcome back, {profile.full_name}. Build the system.</p>
+      <div className="page-header dashboard-hero">
+        <div className="dashboard-hero-main">
+          <div className="dashboard-hero-kicker">Strength System</div>
+          <div className="dashboard-title-row">
+            <h2 className="page-title">{profile.full_name}'s Gym Dashboard</h2>
+            <div className="dashboard-header-actions">
+              <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
+                Walkthrough
+              </button>
+              <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/athlete/${id}`)}>
+                Switch to Athlete Mode
+              </button>
+            </div>
+          </div>
+          <p className="page-subtitle">Welcome back, {profile.full_name}. Start your day right.</p>
           <div className="page-marker">{dayMarker}</div>
         </div>
-        <div className="dashboard-header-actions">
-          <button className="studio-back dashboard-header-btn" type="button" onClick={() => setWalkthroughOpen(true)}>
-            Walkthrough
-          </button>
-          <button className="studio-back dashboard-header-btn dashboard-switch-btn" onClick={() => navigate(`/athlete/${id}`)}>
-            Switch to Athlete Mode
-          </button>
-        </div>
       </div>
-      <div className="grid-3">
-        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/progress`)}>
+      <div className="grid-3 dashboard-card-grid">
+        <button className="hud-card clickable dashboard-section-card dashboard-section-card-featured" onClick={() => navigate(`/gym/${id}/progress`)}>
+          <div className="dashboard-section-accent" aria-hidden="true" />
           <div className="hud-card-title">PROGRESS</div>
           <div className="hud-big">Strength Log</div>
           <div className="hud-dim">PRs, 1RM, progression</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/journal`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/gym/${id}/journal`)}>
           <div className="hud-card-title">JOURNAL</div>
           <div className="hud-big">Daily Ritual</div>
           <div className="hud-dim">Mood + system readout</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/logs`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/gym/${id}/logs`)}>
           <div className="hud-card-title">LOGS</div>
           <div className="hud-big">Daily Signals</div>
           <div className="hud-dim">Weight, water, meals, training</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/nutrition`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/nutrition`)}>
           <div className="hud-card-title">NUTRITION</div>
           <div className="hud-big">Fuel</div>
           <div className="hud-dim">Search + track meals</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/profile`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/gym/${id}/profile`)}>
           <div className="hud-card-title">PROFILE</div>
           <div className="hud-big">Rank + Level</div>
           <div className="hud-dim">Identity, badges, progress</div>
         </button>
 
-        <button className="hud-card clickable" onClick={() => navigate(`/gym/${id}/community`)}>
+        <button className="hud-card clickable dashboard-section-card" onClick={() => navigate(`/gym/${id}/community`)}>
           <div className="hud-card-title">COMMUNITY</div>
           <div className="hud-big">Social</div>
           <div className="hud-dim">Groups, forums, challenges</div>
         </button>
       </div>
 
-      <div className="quick-add-row">
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/progress`)}>
+      <div className="quick-add-row dashboard-quick-grid">
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/gym/${id}/progress`)}>
           Log session
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/logs`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/gym/${id}/logs`)}>
           Open logs
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/gym/${id}/journal`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/gym/${id}/journal`)}>
           Open journal
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/nutrition`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
-        <button className="studio-back home-quick-btn" onClick={() => navigate(`/settings`)}>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/settings`)}>
           Settings
         </button>
       </div>
@@ -147,7 +151,12 @@ function GymProfileOverview({ profile, userState }) {
   const xpIntoLevel = Math.max(0, xp - levelStartXp);
   const xpRemaining = Math.max(0, nextLevelXp - xp);
   const levelProgressPct = Math.max(0, Math.min(100, Math.round((xpIntoLevel / levelSpan) * 100)));
-
+  const milestoneTone =
+    xpRemaining <= Math.max(80, Math.round(levelSpan * 0.18))
+      ? "Milestone close"
+      : xpRemaining <= Math.max(160, Math.round(levelSpan * 0.34))
+        ? "Unlock building"
+        : "Identity in progress";
   return (
     <div className="page-shell">
       <div className="page-header">
@@ -191,7 +200,7 @@ function GymProfileOverview({ profile, userState }) {
           <div className="hud-dim">Load accumulation</div>
         </div>
       </div>
-      <div className="hud-card profile-progress-card">
+      <div className="hud-card profile-progress-card profile-progress-card-merged">
         <div className="profile-progress-head">
           <div className="hud-card-title">PROGRESSION</div>
           <div className="profile-progress-level">Level {safeLevel} · Rank {rank}</div>
@@ -201,6 +210,16 @@ function GymProfileOverview({ profile, userState }) {
         </div>
         <div className="profile-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={levelProgressPct}>
           <div className="profile-progress-fill" style={{ width: `${levelProgressPct}%` }} />
+        </div>
+        <div className="profile-progress-divider" />
+        <div className="hud-card-title">NEXT PRESTIGE TARGET</div>
+        <div className="profile-prestige-title">Level {safeLevel + 1} unlock</div>
+        <div className="profile-prestige-sub">
+          {xpRemaining} XP remaining. Keep training volume, daily logging, and streak protection moving in the same direction.
+        </div>
+        <div className="profile-prestige-note">
+          <span>{milestoneTone}</span>
+          <strong>Next visible identity step: Rank {rank} · Level {safeLevel + 1} across your profile and community surfaces.</strong>
         </div>
       </div>
       <div className="profile-divider" />
@@ -227,10 +246,14 @@ function GymProfileOverview({ profile, userState }) {
 
 export default function GymMode() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [userState, setUserState] = useState(null);
+  const [promotionMoment, setPromotionMoment] = useState(null);
   const profileRequestRef = useRef(0);
   const stateRequestRef = useRef(0);
+  const progressionBaselineRef = useRef(null);
+  const promotionTimerRef = useRef(null);
 
   const withTimeout = async (promise, timeoutMs, label = "Request timed out") => {
     let timeoutHandle = null;
@@ -267,6 +290,10 @@ export default function GymMode() {
 
     setMode();
   }, [id]);
+
+  useEffect(() => () => {
+    if (promotionTimerRef.current) clearTimeout(promotionTimerRef.current);
+  }, []);
 
 // lifecycle hook for side effects,
 // runs when dependencies change,
@@ -325,12 +352,40 @@ export default function GymMode() {
       const requestId = stateRequestRef.current + 1;
       stateRequestRef.current = requestId;
       const cacheKey = `exervia_user_state_${id}`;
+      const applyIncomingState = (nextState, { allowMoment = true } = {}) => {
+        setUserState(nextState);
+        if (!nextState) {
+          progressionBaselineRef.current = null;
+          localStorage.removeItem(cacheKey);
+          return;
+        }
+        if (allowMoment) {
+          const moment = buildProgressionMoment(progressionBaselineRef.current, nextState, {
+            discipline: "strength",
+          });
+          if (moment) {
+            setPromotionMoment(moment);
+            emitToast(moment.toastMessage, "success", 3800);
+            publishProgressionStatus(id, moment)
+              .then((post) => {
+                if (post?.id) {
+                  window.dispatchEvent(new CustomEvent("exervia:progression_event", { detail: { userId: Number(id), postId: post.id } }));
+                }
+              })
+              .catch(() => {});
+            if (promotionTimerRef.current) clearTimeout(promotionTimerRef.current);
+            promotionTimerRef.current = setTimeout(() => setPromotionMoment(null), 5200);
+          }
+        }
+        progressionBaselineRef.current = nextState;
+        localStorage.setItem(cacheKey, JSON.stringify(nextState));
+      };
       try {
         const raw = localStorage.getItem(cacheKey);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === "object") {
-            setUserState(parsed);
+            applyIncomingState(parsed, { allowMoment: false });
           }
         }
       } catch {
@@ -351,12 +406,10 @@ export default function GymMode() {
             "State refresh timed out"
           );
           if (stateRequestRef.current !== requestId) return;
-          setUserState(refreshed || null);
-          if (refreshed) localStorage.setItem(cacheKey, JSON.stringify(refreshed));
+          applyIncomingState(refreshed || null);
           return;
         }
-        setUserState(data);
-        localStorage.setItem(cacheKey, JSON.stringify(data));
+        applyIncomingState(data);
       } catch (error) {
         console.error("GymMode user_state load failed:", error);
       }
@@ -380,6 +433,14 @@ export default function GymMode() {
   return (
     <div className="hud-bg mode-gym">
       <Navbar modeLabel="GYM MODE" mode="gym" userId={id} />
+      <PromotionMoment
+        moment={promotionMoment}
+        onClose={() => setPromotionMoment(null)}
+        onOpenProfile={() => {
+          setPromotionMoment(null);
+          navigate(`/gym/${id}/profile`);
+        }}
+      />
       <Routes>
         <Route index element={<GymDashboard profile={profile} id={id} userState={userState} />} />
         <Route path="progress" element={<StrengthProgressTab userId={id} />} />
@@ -400,4 +461,3 @@ export default function GymMode() {
     </div>
   );
 }
-

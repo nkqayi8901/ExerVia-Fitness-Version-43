@@ -436,6 +436,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const {
     globalLeaderboard,
     groupLeaderboard,
+    leaderboardSignals,
     activityFeedItems,
     leaderboardLoading,
     groupLeaderboardLoading,
@@ -747,7 +748,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
         const friendList = friendRes.data || [];
         setFriends(friendList);
-        const friendIds = friendList.flatMap((row) => [row.user_id, row.friend_user_id]);
+        const friendIds = [Number(userId), ...friendList.flatMap((row) => [row.user_id, row.friend_user_id])];
         loadProfiles(friendIds);
         loadFriendStats(friendIds);
         loadFriendMessageSummaries();
@@ -909,6 +910,39 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    const feedPostIds = (activityFeedItems || []).map((item) => item?.postId).filter(Boolean);
+    if (!feedPostIds.length) return;
+
+    let cancelled = false;
+    const loadFeedReactions = async () => {
+      const { data: reactionData } = await supabase
+        .from("community_reactions")
+        .select("*")
+        .in("post_id", feedPostIds);
+
+      if (cancelled) return;
+
+      const nextReactions = {};
+      const nextUserReactions = {};
+      (reactionData || []).forEach((reaction) => {
+        const key = `post:${reaction.post_id}-${reaction.reaction}`;
+        nextReactions[key] = (nextReactions[key] || 0) + 1;
+        if (userId && Number(reaction.user_id) === Number(userId)) {
+          nextUserReactions[key] = reaction.id;
+        }
+      });
+
+      setReactionCounts((prev) => ({ ...prev, ...nextReactions }));
+      setUserReactions((prev) => ({ ...prev, ...nextUserReactions }));
+    };
+
+    loadFeedReactions();
+    return () => {
+      cancelled = true;
+    };
+  }, [activityFeedItems, userId]);
 
 // derived forum lists and select options are memoised to avoid
 // re-filtering and re-mapping on every render,
@@ -2972,7 +3006,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           {/* aligns action buttons to the right, */}
           {/* and keeps the page identity consistent */}
           <div className="community-header">
-            <div>
+            <div className="community-header-main">
               <button className="studio-back" onClick={() => navigate(backPath)} type="button">
                 {'Back'}
               </button>
@@ -3367,6 +3401,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               profiles={profiles}
               openThreadPage={openThreadPage}
               openUserProfile={openUserProfile}
+              reactionOptions={reactionOptions}
+              reactionCounts={reactionCounts}
+              userReactions={userReactions}
+              onReact={handleReact}
               formatTime={formatTime}
               renderEmptyState={renderEmptyState}
             />
@@ -3382,6 +3420,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               groupLeaderboardLoading={groupLeaderboardLoading}
               globalLeaderboard={globalLeaderboard}
               groupLeaderboard={groupLeaderboard}
+              leaderboardSignals={leaderboardSignals}
               globalLeaderboardLoaded={globalLeaderboardLoaded}
               groupLeaderboardLoaded={groupLeaderboardLoaded}
               profiles={profiles}
