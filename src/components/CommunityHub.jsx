@@ -125,6 +125,25 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setActiveThreadId(id);
     navigate(threadPath(id));
   };
+  const openRunPage = (runId, actorId) => {
+    const resolvedRunId = String(runId || "").trim();
+    if (!resolvedRunId) return;
+    const targetViewerId = Number(userId);
+    const targetActorId = Number(actorId);
+    if (!targetViewerId) return;
+    if (routePrefix === "athlete") {
+      navigate(`/athlete/${targetViewerId}/routes/${resolvedRunId}`);
+      return;
+    }
+    if (targetActorId) {
+      navigate(`/athlete/${targetViewerId}/profile/${targetActorId}`);
+    }
+  };
+  const openTrainingWorld = (sport) => {
+    const world = String(sport || "").trim().toLowerCase();
+    if (!world || !userId) return;
+    navigate(`/${routePrefix}/${userId}/training?world=${world}`);
+  };
   const openUserProfile = (targetProfileId) => {
     const resolvedTarget = Number(targetProfileId);
     if (!resolvedTarget || !userId) return;
@@ -3400,6 +3419,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               activityFeedItems={activityFeedItems}
               profiles={profiles}
               openThreadPage={openThreadPage}
+              openRunPage={openRunPage}
+              openTrainingWorld={openTrainingWorld}
               openUserProfile={openUserProfile}
               reactionOptions={reactionOptions}
               reactionCounts={reactionCounts}

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { STATUS_PREFIX } from "../components/community/communityHelpers";
 import { PROMOTION_PREFIX } from "../utils/progressionFeed";
+import { extractRunMeta, extractTrainingMeta, RUN_PREFIX, TRAINING_PREFIX } from "../utils/activityStatusFeed";
+import { buildRunStory } from "../utils/runHighlights";
+import { buildTrainingStory } from "../utils/trainingHighlights";
 
 const QUERY_TIMEOUT_MS = 7000;
 const CACHE_TTL_MS = 45000;
@@ -29,6 +32,7 @@ const runWithRetry = async (fn, retries = 1) => {
 export default function useCommunityData({
   userId,
   friends,
+  memberships,
   activeTab,
   leaderboardGroupId,
   loadProfiles,
@@ -54,6 +58,44 @@ export default function useCommunityData({
   const [globalLeaderboardLoaded, setGlobalLeaderboardLoaded] = useState(false);
   const [groupLeaderboardLoaded, setGroupLeaderboardLoaded] = useState(false);
   const [activityFeedLoading, setActivityFeedLoading] = useState(false);
+
+  const buildGroupMomentumItem = useCallback(async () => {
+    const firstGroupId = String(memberships?.[0]?.group_id || "").trim();
+    if (!firstGroupId) return null;
+
+    const membersRes = await withTimeout(
+      supabase
+        .from("community_group_members")
+        .select("user_id")
+        .eq("group_id", firstGroupId)
+    );
+    const memberIds = (membersRes?.data || []).map((row) => row.user_id).filter(Boolean);
+    if (!memberIds.length) return null;
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const activityRes = await withTimeout(
+      supabase
+        .from("daily_activity")
+        .select("user_id")
+        .in("user_id", memberIds)
+        .eq("activity_date", todayKey)
+        .eq("activity_type", "training_session")
+    );
+
+    const trainedIds = Array.from(new Set((activityRes?.data || []).map((row) => row.user_id).filter(Boolean)));
+    if (!trainedIds.length) return null;
+
+    return {
+      id: `group-momentum-${todayKey}-${firstGroupId}`,
+      created_at: new Date().toISOString(),
+      actor_id: null,
+      title: "Group momentum",
+      sub: `${trainedIds.length} people in your group trained today.`,
+      primaryLabel: trainedIds.length >= 3 ? "Momentum building" : "",
+      postId: "",
+      type: "group_momentum",
+    };
+  }, [memberships]);
 
   const loadGlobalLeaderboard = useCallback(async () => {
     if (!userId) return;
@@ -334,24 +376,98 @@ export default function useCommunityData({
 
       loadProfiles(statusRows.map((row) => row.created_by));
 
-      const finalItems = statusRows
+      const groupMomentumItem = await buildGroupMomentumItem();
+
+      let finalItems = [...statusRows]
         .map((row) => {
           const rawTitle = String(row.title || "");
+          const runMeta = extractRunMeta(row.body || "");
+          const trainingMeta = extractTrainingMeta(row.body || "");
           const promotionLabel = rawTitle.replace(STATUS_PREFIX, "").replace(PROMOTION_PREFIX, "").trim();
           const isPromotion = rawTitle.includes(PROMOTION_PREFIX);
+          const isTraining = rawTitle.includes(TRAINING_PREFIX);
+          const isRun = rawTitle.includes(RUN_PREFIX);
+          const strippedTitle = rawTitle
+            .replace(STATUS_PREFIX, "")
+            .replace(PROMOTION_PREFIX, "")
+            .replace(TRAINING_PREFIX, "")
+            .replace(RUN_PREFIX, "")
+            .trim();
           return {
             id: `status-${row.id}`,
             created_at: row.created_at,
             actor_id: row.created_by,
-            title: isPromotion ? "Promotion earned" : "Status",
-            sub: String(row.body || rawTitle || "").replace(STATUS_PREFIX, "").trim(),
+            title: isPromotion ? "Promotion earned" : isRun ? "Run logged" : isTraining ? "Workout logged" : "Status",
+            sub: isRun
+              ? runMeta.cleanText || String(row.body || rawTitle || "").replace(STATUS_PREFIX, "").trim()
+              : isTraining
+                ? trainingMeta.cleanText || String(row.body || rawTitle || "").replace(STATUS_PREFIX, "").trim()
+                : String(row.body || rawTitle || "").replace(STATUS_PREFIX, "").trim(),
             primaryLabel: isPromotion ? promotionLabel : "",
             postId: String(row.id || ""),
-            type: isPromotion ? "promotion" : "status_post",
+            entityLabel: strippedTitle,
+            runId: isRun ? runMeta.runId : "",
+            trainingMeta: isTraining ? trainingMeta : null,
+            type: isPromotion ? "promotion" : isRun ? "run_post" : isTraining ? "training_post" : "status_post",
           };
         })
+        .concat(groupMomentumItem ? [groupMomentumItem] : [])
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 80);
+
+      const runIds = Array.from(
+        new Set(
+          finalItems
+            .filter((item) => item.type === "run_post" && item.runId)
+            .map((item) => Number(item.runId))
+            .filter(Boolean)
+        )
+      );
+
+      if (runIds.length) {
+        const runRes = await withTimeout(
+          supabase
+            .from("athlete_runs")
+            .select("id,discipline,distance_km,elapsed_seconds,pace_per_km_seconds,visibility,challenge_mode,route_points")
+            .in("id", runIds)
+        );
+        const runRows = Array.isArray(runRes?.data) ? runRes.data : [];
+        const runById = {};
+        runRows.forEach((row) => {
+          runById[String(row.id)] = {
+            discipline: String(row.discipline || "running"),
+            distanceKm: Number(row.distance_km || 0),
+            elapsedSeconds: Number(row.elapsed_seconds || 0),
+            pacePerKmSeconds: Number(row.pace_per_km_seconds || 0),
+            visibility: String(row.visibility || "private"),
+            challengeMode: String(row.challenge_mode || "solo"),
+            routePoints: Array.isArray(row.route_points) ? row.route_points : [],
+          };
+        });
+        finalItems = finalItems.map((item) =>
+          item.type === "run_post" && item.runId
+            ? {
+                ...item,
+                runPreview: runById[String(item.runId)] || null,
+                runStory: runById[String(item.runId)] ? buildRunStory(runById[String(item.runId)]) : null,
+              }
+            : item.type === "training_post" && item.trainingMeta
+              ? {
+                  ...item,
+                  trainingStory: buildTrainingStory(item.trainingMeta),
+                }
+              : item
+        );
+      } else {
+        finalItems = finalItems.map((item) =>
+          item.type === "training_post" && item.trainingMeta
+            ? {
+                ...item,
+                trainingStory: buildTrainingStory(item.trainingMeta),
+              }
+            : item
+        );
+      }
 
       setActivityFeedItems(finalItems);
       cacheRef.current.feed = { data: finalItems, at: Date.now() };
@@ -362,7 +478,7 @@ export default function useCommunityData({
     } finally {
       setActivityFeedLoading(false);
     }
-  }, [friends, loadProfiles, userId]);
+  }, [buildGroupMomentumItem, friends, loadProfiles, userId]);
 
   useEffect(() => {
     if (activeTab !== "feed") return;

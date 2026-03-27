@@ -17,6 +17,8 @@ import PromotionMoment from "./PromotionMoment";
 import { emitToast } from "../utils/toast";
 import { buildProgressionMoment } from "../utils/progressionMoment";
 import { publishProgressionStatus } from "../utils/progressionFeed";
+import AthleteRunMapLab from "./AthleteRunMapLab";
+import AthleteRunDetailPage from "./AthleteRunDetailPage";
 
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
@@ -106,6 +108,7 @@ function AthleteDashboard({ profile, id, userState }) {
           <div className="hud-big">Social</div>
           <div className="hud-dim">Groups, forums, challenges</div>
         </button>
+
       </div>
 
       <div className="quick-add-row dashboard-quick-grid">
@@ -491,6 +494,8 @@ export default function AthleteMode() {
         />
         <Route path="journal" element={<JournalPage mode="athlete" />} />
         <Route path="logs" element={<LogsPage mode="athlete" />} />
+        <Route path="routes" element={<AthleteRunMapLab userId={id} />} />
+        <Route path="routes/:runId" element={<AthleteRunDetailPage viewerId={id} />} />
         <Route path="program/*" element={<WorkoutProgram mode="athlete" />} />
         <Route
           path="profile"

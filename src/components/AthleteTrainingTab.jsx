@@ -5,13 +5,15 @@
 // comments below explain each major block
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { recalcUserState } from '../services/stateEngine';
 import { trackDailyActivity } from '../services/activityTracker';
 import { grantXpEventSafe } from '../services/xpEvents';
 import { emitToast } from '../utils/toast';
+import { publishTrainingStatus } from '../utils/activityStatusFeed';
 import PageWalkthroughModal from './PageWalkthroughModal';
+import { getAthleteWorldMeta } from '../utils/athleteWorlds';
 // Component: AthleteTrainingTab - UI layout and interactions.
 // This component renders the athletetrainingtab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -427,6 +429,7 @@ const worldFallbackPlans = [
 // and renders the full training UI for this section
 const AthleteTrainingTab = ({ userId, onBack }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [banner, setBanner] = useState(null);
   const [pulsePanel, setPulsePanel] = useState(false);
   const [session, setSession] = useState({
@@ -438,6 +441,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     notes: ''
   });
   const [sessionFocus, setSessionFocus] = useState('Base');
+  const [sessionLaunchMode, setSessionLaunchMode] = useState('standard');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [plans, setPlans] = useState([]);
@@ -468,6 +472,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [activePlanWeekIndex, setActivePlanWeekIndex] = useState(0);
   const [sessionWeekSnapshot, setSessionWeekSnapshot] = useState(null);
   const [recentTrainingSessions, setRecentTrainingSessions] = useState([]);
+  const [recentRouteEfforts, setRecentRouteEfforts] = useState([]);
   const [lastTrainingOpen, setLastTrainingOpen] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [view, setView] = useState('log');
@@ -1325,6 +1330,17 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         console.error('trackDailyActivity failed:', activityError);
       }
       try {
+        await publishTrainingStatus(resolvedUserId, {
+          worldLabel: trainingWorlds.find((world) => world.sport === session.sport)?.title || session.sport || 'Training',
+          sportLabel: session.sport || 'training',
+          focus: sessionFocus,
+          durationLabel: `${durationBaseXp} min`,
+          planName: selectedPlan?.name || '',
+        });
+      } catch (feedError) {
+        console.error('publishTrainingStatus failed:', feedError);
+      }
+      try {
         await recalcUserState(resolvedUserId);
       } catch (stateError) {
         console.error('recalcUserState failed:', stateError);
@@ -1469,6 +1485,15 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   }, [userId]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const world = String(params.get('world') || '').trim().toLowerCase();
+    if (['running', 'cycling', 'trail', 'swimming', 'hybrid'].includes(world)) {
+      setPlanSportFilter(world);
+      setShowPlanLibrary(true);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     if (!userId) {
       setRecentTrainingSessions([]);
       return;
@@ -1481,6 +1506,23 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         .order('created_at', { ascending: false })
         .limit(12);
       setRecentTrainingSessions(data || []);
+    };
+    run();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setRecentRouteEfforts([]);
+      return;
+    }
+    const run = async () => {
+      const { data } = await supabase
+        .from('athlete_runs')
+        .select('id,title,discipline,distance_km,elapsed_seconds,created_at')
+        .eq('user_id', Number(userId))
+        .order('created_at', { ascending: false })
+        .limit(4);
+      setRecentRouteEfforts(data || []);
     };
     run();
   }, [userId]);
@@ -1531,6 +1573,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const recommendedPlans = plans
     .filter(plan => plan.sport === session.sport || plan.defaultFocus === sessionFocus)
     .slice(0, 3);
+  const ritualWorldMeta = getAthleteWorldMeta(planSportFilter || selectedPlan?.sport || session.sport || 'running');
 
   // companion hint uses session + plan context,
   // crafts a short tip to guide the user,
@@ -1661,6 +1704,25 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const selectedDaySessions = recentTrainingSessions
     .filter((row) => String(row?.created_at || '').slice(0, 10) === selectedTrainingTrendDayKey)
     .slice(0, 8);
+  const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
+  const filteredRouteEfforts = useMemo(() => {
+    const world = activeWorldSport || '';
+    if (!world) return recentRouteEfforts.slice(0, 3);
+    return recentRouteEfforts
+      .filter((effort) => String(effort?.discipline || '').trim().toLowerCase() === world)
+      .slice(0, 3);
+  }, [activeWorldSport, recentRouteEfforts]);
+  const routeRitualPreview = filteredRouteEfforts.slice(0, 2);
+  const buildRouteLabUrl = () => {
+    const params = new URLSearchParams();
+    if (activeWorldSport) params.set('world', activeWorldSport);
+    if (selectedPlan?.name) params.set('plan', selectedPlan.name);
+    if (selectedPlan?.defaultFocus) params.set('focus', selectedPlan.defaultFocus);
+    if (selectedPlanWeek?.week) params.set('week', selectedPlanWeek.week);
+    const firstObjective = Array.isArray(selectedPlanWeek?.sessions) ? selectedPlanWeek.sessions[0] : '';
+    if (firstObjective) params.set('objective', firstObjective);
+    return `/athlete/${userId}/routes${params.toString() ? `?${params.toString()}` : ''}`;
+  };
   const holdTimerRef = useRef(null);
   const sessionLoggedPulseTimerRef = useRef(null);
 
@@ -1682,8 +1744,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     const seconds = totalSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
-
-  const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
 
   // handleBack returns to the parent view,
   // uses onBack if provided by the container,
@@ -2026,6 +2086,27 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-plan-preview">
                 <div className="studio-plan-preview-title">{selectedPlan.name}</div>
                 <div className="studio-plan-preview-sub">{selectedPlan.goal}</div>
+                {activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport) ? (
+                  <div className="studio-inline-guide studio-session-launch-mode">
+                    <div className="studio-inline-title">Session mode</div>
+                    <div className="studio-inline-cues">
+                      <button
+                        type="button"
+                        className={`studio-mini-btn ${sessionLaunchMode === 'standard' ? 'active' : ''}`}
+                        onClick={() => setSessionLaunchMode('standard')}
+                      >
+                        Map off
+                      </button>
+                      <button
+                        type="button"
+                        className={`studio-mini-btn ${sessionLaunchMode === 'mapped' ? 'active' : ''}`}
+                        onClick={() => setSessionLaunchMode('mapped')}
+                      >
+                        Map on
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 {(selectedPlan.outline || []).length > 1 && (
                   <>
                     <div className="hud-dim" style={{ marginBottom: 8 }}>Select a week before starting your session.</div>
@@ -2070,10 +2151,18 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 <div className="studio-queue-actions studio-session-preview-actions">
                   <button
                     className="studio-queue-btn"
-                    onClick={() => openFocusLock(selectedPlan, activePlanWeekIndex)}
+                    onClick={() => {
+                      if (sessionLaunchMode === 'mapped' && activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport)) {
+                        navigate(buildRouteLabUrl());
+                        return;
+                      }
+                      openFocusLock(selectedPlan, activePlanWeekIndex);
+                    }}
                     type="button"
                   >
-                    Start session
+                    {sessionLaunchMode === 'mapped' && activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport)
+                      ? 'Start mapped session'
+                      : 'Start session'}
                   </button>
                   <button
                     className="studio-queue-btn ghost"
@@ -2087,6 +2176,56 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             ) : (
               <div className="studio-empty">Select a plan to preview the session.</div>
             )}
+
+            {activeWorldSport ? (
+              <div className="studio-route-ritual">
+                <div className="studio-route-ritual-top">
+                  <div>
+                    <div className="studio-panel-title">{ritualWorldMeta.title} Mapped Efforts</div>
+                    <div className="studio-route-ritual-sub">
+                      Keep route work inside this world without breaking Training Ritual.
+                    </div>
+                  </div>
+                  <button
+                    className="studio-mini-btn"
+                    type="button"
+                    onClick={() => navigate(buildRouteLabUrl())}
+                  >
+                    Open
+                  </button>
+                </div>
+                <div className="studio-route-ritual-actions">
+                  <div className="studio-route-ritual-note">
+                    Turn <strong>Map on</strong> above when this plan needs a live route.
+                  </div>
+                </div>
+                {routeRitualPreview.length ? (
+                  <div className="studio-route-ritual-list">
+                    {routeRitualPreview.map((effort) => (
+                      <button
+                        key={`route-effort-${effort.id}`}
+                        type="button"
+                        className="studio-route-ritual-card"
+                        onClick={() => navigate(`/athlete/${userId}/routes/${effort.id}`)}
+                      >
+                        <div className="studio-route-ritual-head">
+                          <strong>{effort.title || 'Mapped effort'}</strong>
+                          <span>{Number(effort.distance_km || 0).toFixed(2)} km</span>
+                        </div>
+                        <div className="studio-route-ritual-meta">
+                          <span>{getAthleteWorldMeta(effort.discipline).title}</span>
+                          <span>{Number(effort.elapsed_seconds || 0) > 0 ? `${Math.max(1, Math.floor(Number(effort.elapsed_seconds || 0) / 60))} min` : 'Tracked'}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="studio-route-ritual-empty">
+                    No mapped effort yet for {ritualWorldMeta.title}. Start one when this world needs live route data.
+                  </div>
+                )}
+              </div>
+            ) : null}
           </section>
         </div>
         ) : (
