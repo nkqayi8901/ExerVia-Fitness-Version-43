@@ -27,7 +27,10 @@ export function isMobile() {
 
 export function isTablet() {
   const userAgent = navigator.userAgent;
-  return /iPad|Android(?!.*Mobile)/i.test(userAgent);
+  if (/iPad|Android(?!.*Mobile)/i.test(userAgent)) {
+    return true;
+  }
+  return false;
 }
 
 export function isTouchDevice() {
@@ -231,6 +234,9 @@ export function triggerHapticFeedback(type = 'light') {
       case 'error':
         navigator.vibrate([100, 100, 100]);
         break;
+      default:
+        navigator.vibrate(50);
+        break;
     }
   }
 }
@@ -247,7 +253,7 @@ export function optimizeForMobile() {
 }
 
 // Export default configuration for easy import
-export default {
+const mobileUtils = {
   isMobile,
   isTablet,
   isTouchDevice,
@@ -261,3 +267,5 @@ export default {
   triggerHapticFeedback,
   optimizeForMobile
 };
+
+export default mobileUtils;

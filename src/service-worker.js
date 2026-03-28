@@ -1,4 +1,6 @@
 // Service Worker for ExerVia Fitness PWA
+// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line no-unused-vars
 const ignored = self.__WB_MANIFEST;
 const CACHE_NAME = 'exervia-v1';
 const urlsToCache = [

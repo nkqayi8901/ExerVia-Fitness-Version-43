@@ -16,7 +16,6 @@ import {
 import 'chartjs-adapter-date-fns';
 import '../components/AnalyticsDashboard.css';
 import { supabase } from '../supabaseClient';
-import { isMobile } from '../utils/mobileUtils';
 
 // Register Chart.js components
 ChartJS.register(
@@ -38,9 +37,20 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
   const [timeRange, setTimeRange] = useState('30d'); // 7d, 30d, 90d, 1y
   const [selectedMetric, setSelectedMetric] = useState('strength');
 
+  const getSinceDate = (range) => {
+    const now = new Date();
+    switch (range) {
+      case '7d': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case '30d': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case '90d': return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      case '1y': return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      default: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+  };
+
   useEffect(() => {
     fetchAnalyticsData();
-  }, [userId, timeRange, mode]);
+  }, [userId, timeRange, mode, getSinceDate]);
 
   const fetchAnalyticsData = async () => {
     if (!userId) return;
@@ -90,17 +100,6 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
       console.error('Error fetching analytics:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getSinceDate = (range) => {
-    const now = new Date();
-    switch (range) {
-      case '7d': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      case '30d': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      case '90d': return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      case '1y': return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      default: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
   };
 
@@ -155,8 +154,7 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
 
   // Training Volume Chart
   const volumeChartData = useMemo(() => {
-    const trainingData = data.training || [];
-    const dailyVolume = calculateDailyVolume(trainingData);
+    const dailyVolume = calculateDailyVolume(data.training || []);
     
     return {
       labels: Object.keys(dailyVolume),
