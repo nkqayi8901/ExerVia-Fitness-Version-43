@@ -296,6 +296,7 @@
 /* Haptic Feedback Classes */
 .haptic-light {
   /* CSS-only haptic feedback simulation */
+  transform: scale(1);
 }
 
 .haptic-medium {
