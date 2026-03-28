@@ -15,6 +15,8 @@ import {
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 import '../components/AnalyticsDashboard.css';
+import { supabase } from '../supabaseClient';
+import { isMobile } from '../utils/mobileUtils';
 
 // Register Chart.js components
 ChartJS.register(
@@ -29,9 +31,6 @@ ChartJS.register(
   Legend,
   TimeScale
 );
-
-import { supabase } from '../supabaseClient';
-import { isMobile } from '../utils/mobileUtils';
 
 const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
   const [data, setData] = useState({});
