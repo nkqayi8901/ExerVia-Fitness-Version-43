@@ -7,6 +7,7 @@ import ToastHost from "./components/ToastHost";
 import { captureAppError, initErrorMonitoring } from "./services/errorMonitoring";
 import { supabase } from "./supabaseClient";
 import { getStoredProfileId } from "./utils/authStorage";
+import { optimizeForMobile, setupKeyboardHandling } from "./utils/mobileUtils";
 
 const isTestEnv = process.env.NODE_ENV === "test";
 const resolveEagerModule = (loader) => {
@@ -130,6 +131,23 @@ function App() {
 
   useEffect(() => {
     initErrorMonitoring();
+    
+    // Initialize PWA and mobile optimizations
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((registration) => {
+            console.log('SW registered:', registration);
+          })
+          .catch((error) => {
+            console.log('SW registration failed:', error);
+          });
+      });
+    }
+    
+    // Setup mobile optimizations
+    optimizeForMobile();
+    setupKeyboardHandling();
   }, []);
 
   useEffect(() => {

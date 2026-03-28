@@ -14,6 +14,7 @@ import PublicSessionDetailPage from "./PublicSessionDetailPage";
 import MessagesPage from "./MessagesPage";
 import DashboardWalkthroughModal from "./DashboardWalkthroughModal";
 import PromotionMoment from "./PromotionMoment";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 import { emitToast } from "../utils/toast";
 import { buildProgressionMoment } from "../utils/progressionMoment";
 import { publishProgressionStatus } from "../utils/progressionFeed";
@@ -447,6 +448,7 @@ export default function GymMode() {
         <Route path="journal" element={<JournalPage mode="gym" />} />
         <Route path="logs" element={<LogsPage mode="gym" />} />
         <Route path="program/*" element={<WorkoutProgram mode="gym" />} />
+        <Route path="analytics" element={<AnalyticsDashboard userId={id} mode="gym" />} />
         <Route path="profile" element={<GymProfileOverview profile={profile} userState={userState} />} />
         <Route path="profile/:targetId" element={<PublicProfilePage mode="gym" viewerId={id} />} />
         <Route

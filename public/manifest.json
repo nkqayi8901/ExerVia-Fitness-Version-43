@@ -1,6 +1,13 @@
 {
-  "short_name": "ExerVia Fitness",
   "name": "ExerVia Fitness",
+  "short_name": "ExerVia",
+  "description": "Dual-mode fitness assistant for gym and athlete training",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#22c55e",
+  "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +25,7 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "categories": ["health", "fitness", "sports"],
+  "lang": "en",
+  "dir": "ltr"
 }

@@ -11,33 +11,8 @@ import {
   formatElapsed,
   formatPaceFromSecondsPerKm,
 } from "../utils/athleteMetrics";
+import { buildPointsRouteBbox, normalizeRoutePoints } from "../utils/routeGeometry";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
-
-function normalizePoints(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((point) => ({
-      lat: Number(point?.lat),
-      lng: Number(point?.lng),
-    }))
-    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-}
-
-function buildBbox(points, fallback) {
-  const source = points.length
-    ? points
-    : fallback?.lat && fallback?.lng
-      ? [fallback]
-      : [ATHLETE_DEFAULT_MAP_CENTER];
-  const lats = source.map((point) => point.lat);
-  const lngs = source.map((point) => point.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const pad = 0.012;
-  return `${minLng - pad},${minLat - pad},${maxLng + pad},${maxLat + pad}`;
-}
 
 export default function AthleteRunDetailPage({ viewerId }) {
   const navigate = useNavigate();
@@ -52,12 +27,20 @@ export default function AthleteRunDetailPage({ viewerId }) {
   const [ownerName, setOwnerName] = useState("");
   const [mapsReady, setMapsReady] = useState(false);
   const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
-  const resolvedViewerId = Number(viewerId || id);
+  const resolvedViewerIdRaw = Number(viewerId || id);
+  const resolvedViewerId = Number.isFinite(resolvedViewerIdRaw) ? resolvedViewerIdRaw : null;
 
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!runId) return;
+      if (!runId) {
+        if (active) {
+          setBanner("No run was selected.");
+          setRun(null);
+          setLoading(false);
+        }
+        return;
+      }
       setLoading(true);
       setBanner("");
       try {
@@ -75,7 +58,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
         }
         setRun({
           ...data,
-          route_points: normalizePoints(data.route_points),
+          route_points: normalizeRoutePoints(data.route_points),
         });
         const profileRes = await supabase
           .from("user_profiles")
@@ -99,7 +82,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
     };
   }, [runId]);
 
-  const points = useMemo(() => normalizePoints(run?.route_points), [run]);
+  const points = useMemo(() => normalizeRoutePoints(run?.route_points), [run]);
   const center = useMemo(() => {
     if (points.length) return points[Math.floor(points.length / 2)];
     if (run?.start_lat && run?.start_lng) {
@@ -109,7 +92,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
   }, [points, run]);
 
   const mapSrc = useMemo(() => {
-    const bbox = buildBbox(points, center);
+    const bbox = buildPointsRouteBbox(points, center);
     const marker = `${center.lat},${center.lng}`;
     return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
   }, [center, points]);
@@ -162,18 +145,47 @@ export default function AthleteRunDetailPage({ viewerId }) {
     );
   }
 
-  const backToCommunity = `/athlete/${resolvedViewerId}/community`;
-  const backToRoutes = `/athlete/${resolvedViewerId}/routes`;
+  const backToCommunity = resolvedViewerId ? `/athlete/${resolvedViewerId}/community` : null;
+  const backToRoutes = resolvedViewerId ? `/athlete/${resolvedViewerId}/routes` : null;
   const isOwnRun = Number(run?.user_id) === resolvedViewerId;
+  const handleBack = () => {
+    if (backToCommunity) {
+      navigate(backToCommunity);
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/");
+  };
   const openWorld = () => {
-    navigate(`/athlete/${resolvedViewerId}/training?world=${normalizeAthleteSport(run?.discipline)}`);
+    if (resolvedViewerId) {
+      navigate(`/athlete/${resolvedViewerId}/training?world=${normalizeAthleteSport(run?.discipline)}`);
+      return;
+    }
+    handleBack();
+  };
+  const openRoutes = () => {
+    if (backToRoutes) {
+      navigate(backToRoutes);
+      return;
+    }
+    handleBack();
+  };
+  const openAthlete = () => {
+    if (resolvedViewerId && run?.user_id) {
+      navigate(`/athlete/${resolvedViewerId}/profile/${run.user_id}`);
+      return;
+    }
+    handleBack();
   };
 
   return (
     <div className="page-shell athlete-run-detail-page">
       <div className="page-header athlete-run-detail-header">
         <div className="athlete-run-detail-copy">
-          <button className="studio-back" type="button" onClick={() => navigate(backToCommunity)}>
+          <button className="studio-back" type="button" onClick={handleBack} aria-label="Go back from run detail">
             Back
           </button>
           <div className="route-lab-kicker">Run Detail</div>
@@ -197,6 +209,8 @@ export default function AthleteRunDetailPage({ viewerId }) {
               className={`studio-toggle-btn ${distanceUnit === "km" ? "active" : ""}`}
               type="button"
               onClick={() => setDistanceUnit("km")}
+              aria-label="Show distance in kilometers"
+              aria-pressed={distanceUnit === "km"}
             >
               km
             </button>
@@ -204,6 +218,8 @@ export default function AthleteRunDetailPage({ viewerId }) {
               className={`studio-toggle-btn ${distanceUnit === "mi" ? "active" : ""}`}
               type="button"
               onClick={() => setDistanceUnit("mi")}
+              aria-label="Show distance in miles"
+              aria-pressed={distanceUnit === "mi"}
             >
               mi
             </button>
@@ -213,7 +229,17 @@ export default function AthleteRunDetailPage({ viewerId }) {
 
       {banner ? <div className="exervia-banner error">{banner}</div> : null}
 
-      {!run ? null : (
+      {!run ? (
+        <div className="hud-card athlete-run-summary-card">
+          <div className="hud-card-title">RUN DETAIL</div>
+          <p>That run is unavailable or the link is incomplete.</p>
+          <div className="route-lab-action-row">
+            <button className="studio-back" type="button" onClick={handleBack}>
+              Go back
+            </button>
+          </div>
+        </div>
+      ) : (
         <>
           <div className="athlete-run-detail-grid">
             <div className="hud-card athlete-run-map-card">
@@ -228,15 +254,18 @@ export default function AthleteRunDetailPage({ viewerId }) {
                   <div className="athlete-run-cover-kicker">{worldMeta.title}</div>
                   <div className="athlete-run-cover-title">{run.title || "Route effort"}</div>
                   <div className="athlete-run-cover-sub">
-                    {formatDistance(run.distance_km, { unit: distanceUnit, includeUnit: true })} · {formatElapsed(run.elapsed_seconds)} ·{" "}
-                    {formatPaceFromSecondsPerKm(run.pace_per_km_seconds, { unit: distanceUnit, includeUnit: true })}
+                    {[
+                      formatDistance(run.distance_km, { unit: distanceUnit, includeUnit: true }),
+                      formatElapsed(run.elapsed_seconds),
+                      formatPaceFromSecondsPerKm(run.pace_per_km_seconds, { unit: distanceUnit, includeUnit: true }),
+                    ].join(" · ")}
                   </div>
                 </div>
               </div>
               <div className="hud-card-title">ROUTE SURFACE</div>
-              <div className="athlete-run-map-wrap">
+              <div className="athlete-run-map-wrap" role="region" aria-label="Run route map">
                 {hasGoogleMapsKey && points.length > 0 ? (
-                  <div ref={mapNodeRef} className="route-lab-map-frame route-lab-google-map" />
+                  <div ref={mapNodeRef} className="route-lab-map-frame route-lab-google-map" aria-label="Interactive route map" />
                 ) : (
                   <iframe
                     title="Saved athlete run map"
@@ -297,23 +326,19 @@ export default function AthleteRunDetailPage({ viewerId }) {
                 </div>
               </div>
               <div className="route-lab-action-row">
-                <button className="studio-back" type="button" onClick={openWorld}>
+                <button className="studio-back" type="button" onClick={openWorld} aria-label={`Open ${worldMeta.title} training view`}>
                   {worldMeta.ctaLabel}
                 </button>
                 {isOwnRun ? (
-                  <button className="studio-primary-btn" type="button" onClick={() => navigate(backToRoutes)}>
+                  <button className="studio-primary-btn" type="button" onClick={openRoutes} aria-label="Open route lab">
                     Open route lab
                   </button>
                 ) : (
-                  <button
-                    className="studio-primary-btn"
-                    type="button"
-                    onClick={() => navigate(`/athlete/${resolvedViewerId}/profile/${run.user_id}`)}
-                  >
+                  <button className="studio-primary-btn" type="button" onClick={openAthlete} aria-label="Open athlete profile">
                     Open athlete
                   </button>
                 )}
-                <button className="studio-back" type="button" onClick={() => navigate(backToCommunity)}>
+                <button className="studio-back" type="button" onClick={handleBack} aria-label="Return to activity feed">
                   Back to feed
                 </button>
               </div>

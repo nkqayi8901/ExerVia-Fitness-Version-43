@@ -19284,9 +19284,11 @@ html, body, #root {
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(248, 250, 252, 0.98);
-  color: #0f172a;
-  box-shadow: 0 24px 54px rgba(2, 6, 23, 0.22);
+  background:
+    radial-gradient(280px 140px at 0% 0%, rgba(56, 189, 248, 0.12), transparent 72%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.84));
+  color: #e2e8f0;
+  box-shadow: 0 24px 54px rgba(2, 6, 23, 0.34);
 }
 
 .route-lab-live-state {
@@ -19295,7 +19297,7 @@ html, body, #root {
   justify-content: space-between;
   gap: 10px;
   padding: 14px 16px;
-  background: linear-gradient(145deg, rgba(220, 252, 231, 0.94), rgba(236, 253, 245, 0.88));
+  background: linear-gradient(145deg, rgba(15, 118, 110, 0.26), rgba(15, 23, 42, 0.12));
 }
 
 .route-lab-live-badge {
@@ -19315,7 +19317,7 @@ html, body, #root {
 .route-lab-expand-btn {
   border: 0;
   background: transparent;
-  color: #0f172a;
+  color: #e2e8f0;
   font-weight: 700;
   cursor: pointer;
 }
@@ -19353,7 +19355,7 @@ html, body, #root {
 }
 
 .route-lab-live-hint {
-  color: rgba(51, 65, 85, 0.8);
+  color: rgba(226, 232, 240, 0.76);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -19367,13 +19369,13 @@ html, body, #root {
 .route-lab-live-metric strong {
   font-size: clamp(1.4rem, 4vw, 2.2rem);
   line-height: 1;
-  color: #020617;
+  color: #f8fafc;
 }
 
 .route-lab-live-metric span {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(51, 65, 85, 0.78);
+  color: rgba(191, 219, 254, 0.78);
 }
 
 .route-lab-error {
@@ -19493,6 +19495,10 @@ html, body, #root {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.route-lab-chip-row .studio-chip {
+  min-height: 44px;
 }
 
 .route-lab-preset-list,
@@ -19797,6 +19803,33 @@ html, body, #root {
   color: #0f172a;
 }
 
+.mode-gym .route-lab-live-card {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(248, 250, 252, 0.98);
+  color: #0f172a;
+  box-shadow: 0 24px 54px rgba(2, 6, 23, 0.22);
+}
+
+.mode-gym .route-lab-live-state {
+  background: linear-gradient(145deg, rgba(220, 252, 231, 0.94), rgba(236, 253, 245, 0.88));
+}
+
+.mode-gym .route-lab-expand-btn {
+  color: #0f172a;
+}
+
+.mode-gym .route-lab-live-hint {
+  color: rgba(51, 65, 85, 0.8);
+}
+
+.mode-gym .route-lab-live-metric strong {
+  color: #020617;
+}
+
+.mode-gym .route-lab-live-metric span {
+  color: rgba(51, 65, 85, 0.78);
+}
+
 .mode-gym .route-lab-battle-card {
   border-color: rgba(15, 23, 42, 0.14);
   background:
@@ -20033,6 +20066,35 @@ html, body, #root {
   .route-lab-dock-start.live {
     background: linear-gradient(145deg, #ef4444, #dc2626);
     box-shadow: 0 20px 44px rgba(239, 68, 68, 0.28);
+  }
+}
+
+@media (max-width: 320px) {
+  .route-lab-header {
+    gap: 12px;
+  }
+
+  .route-lab-status {
+    gap: 8px;
+  }
+
+  .route-lab-status-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .route-lab-live-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .route-lab-preset-top,
+  .route-lab-saved-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .athlete-run-stat-grid {
+    grid-template-columns: 1fr;
   }
 }
 

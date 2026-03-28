@@ -451,11 +451,20 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setNewPlan({ ...emptyPlan });
   };
   useEffect(() => {
-    if (!planOpen && !showCreatePlan && !lastTrainingOpen && !congratsOpen && !timerOpen) return undefined;
+    if (!planOpen && !showCreatePlan && !lastTrainingOpen && !congratsOpen && !timerOpen && !countdownOpen && !walkthroughOpen) return undefined;
     const handleEscape = (event) => {
       if (event.key !== 'Escape') return;
+      if (walkthroughOpen) {
+        setWalkthroughOpen(false);
+        return;
+      }
       if (congratsOpen) {
         setCongratsOpen(false);
+        return;
+      }
+      if (countdownOpen) {
+        setCountdownOpen(false);
+        setCountdown(3);
         return;
       }
       if (timerOpen) {
@@ -478,7 +487,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [congratsOpen, lastTrainingOpen, planOpen, showCreatePlan, timerOpen]);
+  }, [congratsOpen, countdownOpen, lastTrainingOpen, planOpen, setWalkthroughOpen, showCreatePlan, timerOpen, walkthroughOpen]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
@@ -645,8 +654,10 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       return;
     }
     if (window.history.length > 1) {
-      window.history.back();
+      navigate(-1);
+      return;
     }
+    navigate('/');
   };
 
   // remixPlan clones an existing plan into the editor,
@@ -729,6 +740,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 className={`studio-toggle-btn ${distanceUnit === 'km' ? 'active' : ''}`}
                 type="button"
                 onClick={() => setDistanceUnit('km')}
+                aria-label="Show training distances in kilometers"
+                aria-pressed={distanceUnit === 'km'}
               >
                 km
               </button>
@@ -736,6 +749,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 className={`studio-toggle-btn ${distanceUnit === 'mi' ? 'active' : ''}`}
                 type="button"
                 onClick={() => setDistanceUnit('mi')}
+                aria-label="Show training distances in miles"
+                aria-pressed={distanceUnit === 'mi'}
               >
                 mi
               </button>

@@ -17,6 +17,7 @@ import {
   formatElapsed,
   formatPace,
 } from "../utils/athleteMetrics";
+import { buildCenteredRouteBbox } from "../utils/routeGeometry";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
 
 const STORAGE_KEY = "exervia_run_map_lab_v1";
@@ -27,6 +28,8 @@ const VISIBILITY_OPTIONS = ["Private", "Nearby", "Regional"];
 const CHALLENGE_OPTIONS = ["Solo", "Ghost", "Challenge"];
 const DISCIPLINE_OPTIONS = ["Running", "Cycling", "Trail"];
 const RADIUS_OPTIONS = ["2 km", "5 km", "10 km"];
+const MIN_VALID_RUN_SECONDS = 20;
+const MIN_VALID_RUN_DISTANCE_KM = 0.05;
 
 const ROUTE_PRESETS = [
   {
@@ -57,18 +60,6 @@ const ROUTE_PRESETS = [
     lng: -0.1387,
   },
 ];
-
-function clampCoord(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function buildBbox(lat, lng, zoomSpread = 0.028) {
-  const minLat = clampCoord(lat - zoomSpread, -85, 85);
-  const maxLat = clampCoord(lat + zoomSpread, -85, 85);
-  const minLng = clampCoord(lng - zoomSpread, -180, 180);
-  const maxLng = clampCoord(lng + zoomSpread, -180, 180);
-  return `${minLng},${minLat},${maxLng},${maxLat}`;
-}
 
 function readStoredLab() {
   try {
@@ -124,6 +115,7 @@ export default function AthleteRunMapLab({ userId }) {
   const googleRouteRef = useRef(null);
   const watchIdRef = useRef(null);
   const timerRef = useRef(null);
+  const routeSavedTimerRef = useRef(null);
   const hasGoogleMapsKey = Boolean(process.env.REACT_APP_GOOGLE_MAPS_API_KEY);
   const stored = readStoredLab();
   const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
@@ -334,6 +326,15 @@ export default function AthleteRunMapLab({ userId }) {
   }, [linkedWorld, userId]);
   const routeModeSummary = `${visibility} visibility · ${challengeMode} mode`;
   const availableRunModes = linkedTrainingMode ? CHALLENGE_OPTIONS.filter((option) => option !== "Challenge") : CHALLENGE_OPTIONS;
+  const canReturnToTraining = Boolean(userId);
+  const canPostRun = Boolean(userId && runSummary?.id && !postingRun);
+  const postRunLabel = postingRun
+    ? "Posting..."
+    : !userId
+      ? "Sign in to post"
+      : !runSummary?.id
+        ? "Save to unlock post"
+        : "Post run";
 
   useEffect(() => {
     setShowAdvancedSetup(!linkedTrainingMode);
@@ -346,7 +347,7 @@ export default function AthleteRunMapLab({ userId }) {
   }, [challengeMode, linkedTrainingMode]);
 
   const mapSrc = useMemo(() => {
-    const bbox = buildBbox(mapCenter.lat, mapCenter.lng);
+    const bbox = buildCenteredRouteBbox(mapCenter.lat, mapCenter.lng);
     return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`;
   }, [mapCenter]);
 
@@ -484,7 +485,25 @@ export default function AthleteRunMapLab({ userId }) {
     };
     setSavedPlans((prev) => [nextPlan, ...prev].slice(0, 6));
     setRouteSavedMessage("Route plan saved.");
-    window.setTimeout(() => setRouteSavedMessage(""), 2200);
+    if (routeSavedTimerRef.current) {
+      window.clearTimeout(routeSavedTimerRef.current);
+    }
+    routeSavedTimerRef.current = window.setTimeout(() => {
+      setRouteSavedMessage("");
+      routeSavedTimerRef.current = null;
+    }, 2200);
+  };
+
+  const handleBackToTraining = () => {
+    if (canReturnToTraining) {
+      navigate(backToTrainingUrl);
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/");
   };
 
   useEffect(() => {
@@ -493,6 +512,9 @@ export default function AthleteRunMapLab({ userId }) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
       if (timerRef.current) clearInterval(timerRef.current);
+      if (routeSavedTimerRef.current) {
+        window.clearTimeout(routeSavedTimerRef.current);
+      }
     };
   }, []);
 
@@ -553,19 +575,35 @@ export default function AthleteRunMapLab({ userId }) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    const resolvedDistanceKm = Number(distanceKm.toFixed(2));
+    const resolvedElapsedSeconds = Math.max(0, Number(elapsedSeconds || 0));
+    if (
+      resolvedElapsedSeconds < MIN_VALID_RUN_SECONDS &&
+      resolvedDistanceKm < MIN_VALID_RUN_DISTANCE_KM
+    ) {
+      setRunState("idle");
+      setRunSummary(null);
+      setRoutePoints([]);
+      setDistanceKm(0);
+      setElapsedSeconds(0);
+      setGeoState({ loading: false, error: "" });
+      emitToast("Run too short to save. Keep tracking a bit longer.", "info", 2800);
+      return;
+    }
     const runPrs = detectRunPrs({
       priorRuns: runHistory,
       disciplineValue: discipline,
-      distanceKmValue: distanceKm,
-      elapsedSecondsValue: elapsedSeconds,
+      distanceKmValue: resolvedDistanceKm,
+      elapsedSecondsValue: resolvedElapsedSeconds,
     });
     const summary = {
       id: null,
       name: routeName.trim() || `${discipline} session`,
       discipline,
-      distanceKm: Number(distanceKm.toFixed(2)),
-      elapsedSeconds,
-      pacePerKmSeconds: distanceKm > 0 ? Number((elapsedSeconds / distanceKm).toFixed(2)) : null,
+      distanceKm: resolvedDistanceKm,
+      elapsedSeconds: resolvedElapsedSeconds,
+      pacePerKmSeconds:
+        resolvedDistanceKm > 0 ? Number((resolvedElapsedSeconds / resolvedDistanceKm).toFixed(2)) : null,
       visibility,
       challengeMode,
       routePoints,
@@ -715,6 +753,7 @@ export default function AthleteRunMapLab({ userId }) {
     setDistanceKm(0);
     setRoutePoints([]);
     setRunSummary(null);
+    setGeoState({ loading: false, error: "" });
   };
 
   const postRunToCommunity = async () => {
@@ -761,7 +800,7 @@ export default function AthleteRunMapLab({ userId }) {
     <div className="page-shell route-lab-shell" data-world={routeWorld}>
       <div className="page-header route-lab-header">
         <div className="route-lab-head-copy">
-          <button className="studio-back" type="button" onClick={() => navigate(backToTrainingUrl)}>
+          <button className="studio-back" type="button" onClick={handleBackToTraining} aria-label="Return to training">
             Back to Training
           </button>
           <div className="route-lab-kicker">Run Map Lab</div>
@@ -795,6 +834,8 @@ export default function AthleteRunMapLab({ userId }) {
               type="button"
               className={`studio-toggle-btn ${distanceUnit === "km" ? "active" : ""}`}
               onClick={() => setDistanceUnit("km")}
+              aria-label="Show route distances in kilometers"
+              aria-pressed={distanceUnit === "km"}
             >
               km
             </button>
@@ -802,6 +843,8 @@ export default function AthleteRunMapLab({ userId }) {
               type="button"
               className={`studio-toggle-btn ${distanceUnit === "mi" ? "active" : ""}`}
               onClick={() => setDistanceUnit("mi")}
+              aria-label="Show route distances in miles"
+              aria-pressed={distanceUnit === "mi"}
             >
               mi
             </button>
@@ -812,9 +855,9 @@ export default function AthleteRunMapLab({ userId }) {
       <div className="route-lab-grid">
         <div className="hud-card route-lab-map-card">
           <div className="hud-card-title">LIVE MAP SURFACE</div>
-          <div className="route-lab-map-wrap">
+          <div className="route-lab-map-wrap" role="region" aria-label="Live route map">
             {hasGoogleMapsKey ? (
-              <div ref={mapNodeRef} className="route-lab-map-frame route-lab-google-map" />
+              <div ref={mapNodeRef} className="route-lab-map-frame route-lab-google-map" aria-label="Interactive live route map" />
             ) : (
               <iframe
                 title="ExerVia route map"
@@ -832,19 +875,19 @@ export default function AthleteRunMapLab({ userId }) {
             <span>{mapsState.usingGoogle ? "Google Maps live" : "Fallback map"}</span>
           </div>
           <div className="route-lab-map-actions">
-            <button className="studio-back" type="button" onClick={handleUseMyLocation}>
+            <button className="studio-back" type="button" onClick={handleUseMyLocation} aria-label="Center map on my location">
               {geoState.loading ? "Finding location..." : "Use my location"}
             </button>
-            <button className="studio-back" type="button" onClick={() => window.open(`https://www.openstreetmap.org/?mlat=${mapCenter.lat}&mlon=${mapCenter.lng}#map=14/${mapCenter.lat}/${mapCenter.lng}`, "_blank", "noopener,noreferrer")}>
+            <button className="studio-back" type="button" onClick={() => window.open(`https://www.openstreetmap.org/?mlat=${mapCenter.lat}&mlon=${mapCenter.lng}#map=14/${mapCenter.lat}/${mapCenter.lng}`, "_blank", "noopener,noreferrer")} aria-label="Open the full map in a new tab">
               Open full map
             </button>
           </div>
-          {geoState.error ? <div className="route-lab-error">{geoState.error}</div> : null}
-          {mapsState.error ? <div className="route-lab-error">{mapsState.error}</div> : null}
+          {geoState.error ? <div className="route-lab-error" role="alert">{geoState.error}</div> : null}
+          {mapsState.error ? <div className="route-lab-error" role="alert">{mapsState.error}</div> : null}
 
-          <div className="route-lab-live-card">
+          <div className="route-lab-live-card" role="region" aria-label="Live run controls">
             <div className="route-lab-live-state">
-              <span className={`route-lab-live-badge ${runState}`}>{runState === "tracking" ? "GPS Acquired" : runState === "completed" ? "Run complete" : "Ready to run"}</span>
+              <span className={`route-lab-live-badge ${runState}`} role="status" aria-live="polite">{runState === "tracking" ? "GPS Acquired" : runState === "completed" ? "Run complete" : "Ready to run"}</span>
               <span className="route-lab-expand-btn route-lab-map-lock">Map locked</span>
             </div>
             <div className="route-lab-live-metrics">
@@ -866,6 +909,7 @@ export default function AthleteRunMapLab({ userId }) {
                 className={`route-lab-live-start ${runState === "tracking" ? "live" : ""}`}
                 type="button"
                 onClick={runState === "tracking" ? stopRun : beginRun}
+                aria-label={runState === "tracking" ? "Stop live run tracking" : runState === "completed" ? "Start a new run" : "Start live run tracking"}
               >
                 {runState === "tracking" ? "Stop run" : runState === "completed" ? "Start again" : "Start run"}
               </button>
@@ -883,13 +927,15 @@ export default function AthleteRunMapLab({ userId }) {
           {!linkedTrainingMode ? (
             <div className="route-lab-option-block">
               <div className="route-lab-label">Discipline</div>
-              <div className="route-lab-chip-row">
+              <div className="route-lab-chip-row" role="group" aria-label="Discipline options">
                 {DISCIPLINE_OPTIONS.map((option) => (
                   <button
                     key={option}
                     type="button"
                     className={`studio-chip ${discipline === option ? "active" : ""}`}
                     onClick={() => setDiscipline(option)}
+                    aria-pressed={discipline === option}
+                    aria-label={`Choose ${option} discipline`}
                   >
                     {option}
                   </button>
@@ -900,13 +946,15 @@ export default function AthleteRunMapLab({ userId }) {
 
           <div className="route-lab-option-block">
             <div className="route-lab-label">Challenge distance</div>
-            <div className="route-lab-chip-row">
+            <div className="route-lab-chip-row" role="group" aria-label="Challenge distance options">
                   {DISTANCE_OPTIONS.map((option) => (
                     <button
                       key={option}
                       type="button"
                       className={`studio-chip ${selectedDistance === option ? "active" : ""}`}
                       onClick={() => setSelectedDistance(option)}
+                      aria-pressed={selectedDistance === option}
+                      aria-label={`Choose ${formatDistanceOptionLabel(Number(String(option).replace(/k/i, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)} challenge distance`}
                     >
                       {formatDistanceOptionLabel(Number(String(option).replace(/k/i, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}
                     </button>
@@ -916,13 +964,15 @@ export default function AthleteRunMapLab({ userId }) {
 
           <div className="route-lab-option-block">
             <div className="route-lab-label">Presence visibility</div>
-            <div className="route-lab-chip-row">
+            <div className="route-lab-chip-row" role="group" aria-label="Visibility options">
               {VISIBILITY_OPTIONS.map((option) => (
                 <button
                   key={option}
                   type="button"
                   className={`studio-chip ${visibility === option ? "active" : ""}`}
                   onClick={() => setVisibility(option)}
+                  aria-pressed={visibility === option}
+                  aria-label={`Set visibility to ${option}`}
                 >
                   {option}
                 </button>
@@ -932,13 +982,15 @@ export default function AthleteRunMapLab({ userId }) {
 
           <div className="route-lab-option-block">
             <div className="route-lab-label">Run mode</div>
-            <div className="route-lab-chip-row">
+            <div className="route-lab-chip-row" role="group" aria-label="Run mode options">
               {availableRunModes.map((option) => (
                 <button
                   key={option}
                   type="button"
                   className={`studio-chip ${challengeMode === option ? "active" : ""}`}
                   onClick={() => setChallengeMode(option)}
+                  aria-pressed={challengeMode === option}
+                  aria-label={`Set run mode to ${option}`}
                 >
                   {option}
                 </button>
@@ -976,6 +1028,7 @@ export default function AthleteRunMapLab({ userId }) {
                   value={routeName}
                   onChange={(event) => setRouteName(event.target.value)}
                   placeholder="ExerVia challenge route"
+                  aria-label="Route name"
                 />
               </label>
               {!linkedTrainingMode ? (
@@ -986,6 +1039,7 @@ export default function AthleteRunMapLab({ userId }) {
                     value={routeNote}
                     onChange={(event) => setRouteNote(event.target.value)}
                     placeholder="Why this route matters for pace, rivalry, or challenge format."
+                    aria-label="Route note"
                   />
                 </label>
               ) : (
@@ -1000,13 +1054,15 @@ export default function AthleteRunMapLab({ userId }) {
             <>
               <div className="route-lab-option-block">
                 <div className="route-lab-label">Challenge radius</div>
-                <div className="route-lab-chip-row">
+                <div className="route-lab-chip-row" role="group" aria-label="Challenge radius options">
                   {RADIUS_OPTIONS.map((option) => (
                     <button
                       key={option}
                       type="button"
                       className={`studio-chip ${battleRadius === option ? "active" : ""}`}
                       onClick={() => setBattleRadius(option)}
+                      aria-pressed={battleRadius === option}
+                      aria-label={`Set challenge radius to ${formatDistanceOptionLabel(Number(String(option).replace(/[^\d.]/g, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}`}
                     >
                       {formatDistanceOptionLabel(Number(String(option).replace(/[^\d.]/g, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}
                     </button>
@@ -1033,11 +1089,11 @@ export default function AthleteRunMapLab({ userId }) {
 
           <div className="route-lab-action-row">
             {!linkedTrainingMode ? (
-              <button className="studio-primary-btn" type="button" onClick={savePlan}>
+              <button className="studio-primary-btn" type="button" onClick={savePlan} aria-label="Save this route plan">
                 Save route plan
               </button>
             ) : null}
-            <button className="studio-back" type="button" onClick={() => applyPreset(activePreset)}>
+            <button className="studio-back" type="button" onClick={() => applyPreset(activePreset)} aria-label={linkedTrainingMode ? "Apply the current preset to this training route" : "Recenter map to the selected preset"}>
               {linkedTrainingMode ? "Use preset" : "Recenter preset"}
             </button>
           </div>
@@ -1104,15 +1160,17 @@ export default function AthleteRunMapLab({ userId }) {
                   className="studio-primary-btn"
                   type="button"
                   onClick={postRunToCommunity}
-                  disabled={postingRun || !userId || !runSummary.id}
+                  disabled={!canPostRun}
+                  aria-label={postRunLabel}
                 >
-                  {postingRun ? "Posting..." : "Post run"}
+                  {postRunLabel}
                 </button>
                 {linkedTrainingMode ? (
                   <button
                     className="studio-back"
                     type="button"
-                    onClick={() => navigate(backToTrainingUrl)}
+                    onClick={handleBackToTraining}
+                    aria-label="Return to the linked training plan"
                   >
                     Back to plan
                   </button>
@@ -1122,11 +1180,12 @@ export default function AthleteRunMapLab({ userId }) {
                     className="studio-back"
                     type="button"
                     onClick={() => navigate(`/athlete/${userId}/routes/${runSummary.id}`)}
+                    aria-label="Open saved run details"
                   >
                     View run
                   </button>
                 ) : null}
-                <button className="studio-back" type="button" onClick={resetRun}>
+                <button className="studio-back" type="button" onClick={resetRun} aria-label="Reset current run state">
                   Reset
                 </button>
               </div>
@@ -1154,6 +1213,7 @@ export default function AthleteRunMapLab({ userId }) {
                       className="route-lab-saved-card route-lab-run-card"
                       onClick={() => run.id && navigate(`/athlete/${userId}/routes/${run.id}`)}
                       disabled={!run.id}
+                      aria-label={run.id ? `Open run ${run.name}` : `${run.name} is not available yet`}
                     >
                       <div className="route-lab-saved-top">
                         <strong>{run.name}</strong>
@@ -1210,11 +1270,11 @@ export default function AthleteRunMapLab({ userId }) {
 
       <div className="route-lab-mobile-dock">
         {!linkedTrainingMode ? (
-          <button type="button" className={`route-lab-dock-option ${discipline === "Running" ? "active" : ""}`} onClick={() => setDiscipline("Running")}>
+          <button type="button" className={`route-lab-dock-option ${discipline === "Running" ? "active" : ""}`} onClick={() => setDiscipline("Running")} aria-label="Switch dock discipline to running">
             Run
           </button>
         ) : (
-          <button type="button" className="route-lab-dock-option" onClick={() => navigate(backToTrainingUrl)}>
+          <button type="button" className="route-lab-dock-option" onClick={handleBackToTraining} aria-label="Return to training">
             Ritual
           </button>
         )}
@@ -1222,6 +1282,7 @@ export default function AthleteRunMapLab({ userId }) {
           type="button"
           className={`route-lab-dock-start ${runState === "tracking" ? "live" : ""}`}
           onClick={runState === "tracking" ? stopRun : beginRun}
+          aria-label={runState === "tracking" ? "Stop live run tracking" : runState === "completed" ? "Restart run tracking" : "Start live run tracking"}
         >
           {runState === "tracking" ? "Stop" : runState === "completed" ? "Restart" : "Start"}
         </button>
@@ -1229,6 +1290,7 @@ export default function AthleteRunMapLab({ userId }) {
           type="button"
           className="route-lab-dock-option"
           onClick={linkedTrainingMode ? () => setShowAdvancedSetup((prev) => !prev) : savePlan}
+          aria-label={linkedTrainingMode ? "Toggle advanced setup" : "Save route plan"}
         >
           {linkedTrainingMode ? "Setup" : "Add route"}
         </button>
