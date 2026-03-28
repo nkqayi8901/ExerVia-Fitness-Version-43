@@ -466,7 +466,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [lastLoggedSessionId, setLastLoggedSessionId] = useState(null);
   const [lastLoggedNotes, setLastLoggedNotes] = useState('');
   const [completedSessionLabel, setCompletedSessionLabel] = useState('');
-  const [sessionRecap, setSessionRecap] = useState({ xp: 0, duration: 0, streak: 0, focus: 'Base' });
+  const [sessionRecap, setSessionRecap] = useState({ xp: 0, duration: 0, streak: 0, focus: 'Base', prs: [] });
   const [planFavorites, setPlanFavorites] = useState([]);
   const [pinnedOrder, setPinnedOrder] = useState([]);
   const [activePlanWeekIndex, setActivePlanWeekIndex] = useState(0);
@@ -482,11 +482,17 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
   const [selectedTrainingTrendDay, setSelectedTrainingTrendDay] = useState('');
+  const [recoveryNudge, setRecoveryNudge] = useState(null);
   const athleteSessionStorageKey = useMemo(
     () => (userId ? `exervia_active_athlete_session_${String(userId).trim()}` : ''),
     [userId]
   );
+  const athleteReflectionDraftKey = useMemo(
+    () => (userId ? `exervia_athlete_reflection_draft_${String(userId).trim()}` : ''),
+    [userId]
+  );
   const athleteSessionRestoredRef = useRef(false);
+  const timerStartedAtRef = useRef(null);
 
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || '');
@@ -526,6 +532,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     { id: 'swimming', title: 'Flow Pool (Swimming)', subtitle: 'Form and oxygen', sport: 'swimming' },
     { id: 'trail', title: 'Trail Forge (Trail Running)', subtitle: 'Elevation resilience', sport: 'trail' }
   ];
+  const worldShortLabels = {
+    hybrid: 'Hybrid Arena',
+    running: 'Velocity Lab',
+    cycling: 'Torque Studio',
+    swimming: 'Flow Pool',
+    trail: 'Trail Forge',
+  };
   // outlinePresets provide quick session templates by sport,
   // they accelerate plan creation with curated weeks,
   // keys align to focusOptions and sports,
@@ -1014,13 +1027,23 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 
   // session timer tick loop,
   // runs while timerRunning is true,
-  // increments seconds every 1s,
+  // calculates elapsed from a real start timestamp,
   // cleans up interval on stop/unmount
   useEffect(() => {
-    if (!timerRunning) return undefined;
+    if (!timerRunning) {
+      timerStartedAtRef.current = null;
+      return undefined;
+    }
+    const baseElapsedMs = Math.max(0, Number(timerSeconds || 0)) * 1000;
+    timerStartedAtRef.current = Date.now() - baseElapsedMs;
     const interval = setInterval(() => {
-      setTimerSeconds(prev => prev + 1);
-    }, 1000);
+      if (!timerStartedAtRef.current) return;
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - timerStartedAtRef.current) / 1000)
+      );
+      setTimerSeconds(elapsedSeconds);
+    }, 250);
     return () => clearInterval(interval);
   }, [timerRunning]);
 
@@ -1257,6 +1280,13 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       sessionIntention.trim() ? `Intention: ${sessionIntention.trim()}` : ''
     ].filter(Boolean).join('\n');
     const loggedLabel = selectedPlan?.name || `${String(session.sport || 'training').toUpperCase()} session`;
+    const distanceKmValue = session.distance ? parseFloat(session.distance) : 0;
+    const sessionPrs = detectSessionPrs({
+      priorSessions: recentTrainingSessions,
+      sport: session.sport,
+      durationMinutes: resolvedDuration,
+      distanceKm: distanceKmValue,
+    });
     const resolvedWeekSnapshot = sessionWeekSnapshot || selectedPlan?.outline?.[activePlanWeekIndex] || null;
     const resolvedPlanWeekLabel = String(resolvedWeekSnapshot?.week || '').trim() || null;
     const resolvedPlanSessions = Array.isArray(resolvedWeekSnapshot?.sessions)
@@ -1374,6 +1404,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       });
       setSessionIntention('');
       setSessionReflection('');
+      if (athleteReflectionDraftKey) {
+        localStorage.removeItem(athleteReflectionDraftKey);
+      }
       setLastLoggedSessionId(data?.id || null);
       setLastLoggedNotes(combinedNotes);
       setCompletedSessionLabel(loggedLabel);
@@ -1382,6 +1415,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         duration: resolvedDuration,
         streak: 0,
         focus: sessionFocus || 'Base',
+        prs: sessionPrs,
       });
       pushRecoveryNudge(loggedLabel, resolvedDuration);
       setSessionFocus('Base');
@@ -1391,6 +1425,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         localStorage.removeItem(athleteSessionStorageKey);
       }
       setSessionLoggedPulseOpen(false);
+      if (sessionPrs.length) {
+        emitToast(`Athlete PR: ${sessionPrs[0].label}.`, 'success', 3200);
+      }
       setCongratsOpen(true);
     } else {
       console.error('Error logging session:', error);
@@ -1432,6 +1469,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setBanner({ type: 'error', message: 'Could not save reflection.' });
     } else {
       setBanner({ type: 'success', message: 'Reflection saved.' });
+      if (athleteReflectionDraftKey) {
+        localStorage.removeItem(athleteReflectionDraftKey);
+      }
     }
     setReflectionSaving(false);
     setCongratsOpen(false);
@@ -1521,7 +1561,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         .select('id,title,discipline,distance_km,elapsed_seconds,created_at')
         .eq('user_id', Number(userId))
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(20);
       setRecentRouteEfforts(data || []);
     };
     run();
@@ -1540,6 +1580,60 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   }, [recentTrainingSessions, selectedTrainingTrendDay]);
 
   useEffect(() => {
+    const nudgeUserId = localStorage.getItem("exervia_user_id") || userId || "guest";
+    const key = `exervia_recovery_nudge_${nudgeUserId}`;
+    try {
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== 'object') {
+        setRecoveryNudge(null);
+        return;
+      }
+      const ageMs = Date.now() - Number(parsed.at || 0);
+      if (!Number.isFinite(ageMs) || ageMs > 1000 * 60 * 60 * 72) {
+        setRecoveryNudge(null);
+        return;
+      }
+      setRecoveryNudge(parsed);
+    } catch {
+      setRecoveryNudge(null);
+    }
+  }, [userId, recentTrainingSessions]);
+
+  useEffect(() => {
+    if (!athleteReflectionDraftKey || !congratsOpen) return;
+    try {
+      const raw = localStorage.getItem(athleteReflectionDraftKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.text === 'string') {
+        setSessionReflection(parsed.text);
+      }
+    } catch {
+      // ignore malformed draft
+    }
+  }, [athleteReflectionDraftKey, congratsOpen]);
+
+  useEffect(() => {
+    if (!athleteReflectionDraftKey || !congratsOpen) return;
+    try {
+      if (!sessionReflection.trim()) {
+        localStorage.removeItem(athleteReflectionDraftKey);
+        return;
+      }
+      localStorage.setItem(
+        athleteReflectionDraftKey,
+        JSON.stringify({
+          text: sessionReflection,
+          at: Date.now(),
+        })
+      );
+    } catch {
+      // ignore storage failure
+    }
+  }, [athleteReflectionDraftKey, congratsOpen, sessionReflection]);
+
+  useEffect(() => {
     const weekCount = (selectedPlan?.outline || []).length;
     if (!weekCount) {
       setActivePlanWeekIndex(0);
@@ -1547,6 +1641,18 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     }
     setActivePlanWeekIndex((prev) => Math.max(0, Math.min(prev, weekCount - 1)));
   }, [selectedPlan]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const walkthroughSeenKey = `exervia_athlete_training_walkthrough_seen_${userId}`;
+    try {
+      if (localStorage.getItem(walkthroughSeenKey)) return;
+      setWalkthroughOpen(true);
+      localStorage.setItem(walkthroughSeenKey, '1');
+    } catch {
+      // ignore storage failure and keep the ritual usable
+    }
+  }, [userId]);
 
   // filteredPlans applies search + sport filter,
   // keeps the library list focused by user input,
@@ -1602,7 +1708,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   // used by the plan library view
   const displayPlans = (planSportFilter ? filteredPlans : []).slice(
     0,
-    showAllPlans || planSearch ? filteredPlans.length : 8
+    showAllPlans || planSearch ? filteredPlans.length : 5
   );
 
   // aggregate plan state for summary cards,
@@ -1616,6 +1722,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     .map((item) => plans.find(plan => plan.name === item))
     .filter(Boolean);
   const pinnedPlan = pinnedPlans[0] || null;
+  const suggestedPlan = filteredPlans[0] || pinnedPlan || recommendedPlans[0] || null;
   const timelinePlan = selectedPlan || pinnedPlan || recommendedPlans[0];
   const selectedPlanOutline = Array.isArray(selectedPlan?.outline) ? selectedPlan.outline : [];
   const selectedPlanWeek =
@@ -1712,7 +1819,128 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       .filter((effort) => String(effort?.discipline || '').trim().toLowerCase() === world)
       .slice(0, 3);
   }, [activeWorldSport, recentRouteEfforts]);
+  const activeWorldSessionCount = activeWorldSport
+    ? recentTrainingSessions.filter((row) => String(row?.sport || '').trim().toLowerCase() === activeWorldSport).length
+    : 0;
+  const activeWorldMinutes = activeWorldSport
+    ? recentTrainingSessions
+        .filter((row) => String(row?.sport || '').trim().toLowerCase() === activeWorldSport)
+        .reduce((sum, row) => sum + Math.max(0, Number(row?.duration_minutes || 0)), 0)
+    : 0;
+  const activeWorldDistanceKm = activeWorldSport
+    ? recentRouteEfforts
+        .filter((effort) => String(effort?.discipline || '').trim().toLowerCase() === activeWorldSport)
+        .reduce((sum, effort) => sum + Math.max(0, Number(effort?.distance_km || 0)), 0)
+    : 0;
+  const routePrStats = useMemo(() => {
+    const formatPaceLabel = (secondsPerKm) => {
+      if (!Number.isFinite(secondsPerKm) || secondsPerKm <= 0) return null;
+      const mins = Math.floor(secondsPerKm / 60);
+      const secs = Math.round(secondsPerKm % 60);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}/km`;
+    };
+    const routeRows = recentRouteEfforts.filter(
+      (effort) => Number(effort?.distance_km || 0) > 0 && Number(effort?.elapsed_seconds || 0) > 0
+    );
+    if (!routeRows.length) {
+      return {
+        bestPace: null,
+        longestDistance: 0,
+        longestDiscipline: '',
+      };
+    }
+    const bestPaceRow = routeRows.reduce((best, current) => {
+      const currentPace = Number(current.elapsed_seconds || 0) / Number(current.distance_km || 1);
+      if (!best) return { row: current, pace: currentPace };
+      return currentPace < best.pace ? { row: current, pace: currentPace } : best;
+    }, null);
+    const longestDistanceRow = routeRows.reduce((best, current) =>
+      Number(current.distance_km || 0) > Number(best?.distance_km || 0) ? current : best
+    , null);
+    return {
+      bestPace: bestPaceRow ? formatPaceLabel(bestPaceRow.pace) : null,
+      longestDistance: Number(longestDistanceRow?.distance_km || 0),
+      longestDiscipline: longestDistanceRow ? getAthleteWorldMeta(longestDistanceRow.discipline).title : '',
+    };
+  }, [recentRouteEfforts]);
+  const formatPaceLabel = (secondsPerKm) => {
+    if (!Number.isFinite(secondsPerKm) || secondsPerKm <= 0) return null;
+    const mins = Math.floor(secondsPerKm / 60);
+    const secs = Math.round(secondsPerKm % 60);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}/km`;
+  };
+  const weeklyVolumeChart = useMemo(
+    () =>
+      recentSessionDurationByDay.map((item) => ({
+        ...item,
+        ratio: maxTrainingMinutesByDay ? Number(item.minutes || 0) / maxTrainingMinutesByDay : 0,
+      })),
+    [recentSessionDurationByDay, maxTrainingMinutesByDay]
+  );
+  const paceTrendPoints = useMemo(() => {
+    return recentRouteEfforts
+      .filter((effort) => Number(effort?.distance_km || 0) > 0 && Number(effort?.elapsed_seconds || 0) > 0)
+      .slice(0, 8)
+      .reverse()
+      .map((effort) => {
+        const paceSeconds = Number(effort.elapsed_seconds || 0) / Math.max(0.01, Number(effort.distance_km || 0));
+        return {
+          id: effort.id,
+          label: new Date(effort.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+          paceSeconds,
+          paceLabel: formatPaceLabel(paceSeconds) || '--:--/km',
+        };
+      });
+  }, [recentRouteEfforts]);
+  const paceTrendRange = useMemo(() => {
+    if (!paceTrendPoints.length) {
+      return { min: 0, max: 0 };
+    }
+    const values = paceTrendPoints.map((item) => item.paceSeconds);
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, [paceTrendPoints]);
+  const paceTrendPolyline = useMemo(() => {
+    if (paceTrendPoints.length < 2) return '';
+    const spread = Math.max(1, paceTrendRange.max - paceTrendRange.min);
+    const stepX = paceTrendPoints.length > 1 ? 100 / (paceTrendPoints.length - 1) : 100;
+    return paceTrendPoints
+      .map((item, index) => {
+        const normalized = (item.paceSeconds - paceTrendRange.min) / spread;
+        const x = index * stepX;
+        const y = 100 - normalized * 74 - 12;
+        return `${x},${y}`;
+      })
+      .join(' ');
+  }, [paceTrendPoints, paceTrendRange]);
   const routeRitualPreview = filteredRouteEfforts.slice(0, 2);
+  const detectSessionPrs = ({ priorSessions, sport, durationMinutes, distanceKm }) => {
+    const normalizedSport = String(sport || '').trim().toLowerCase();
+    const rows = priorSessions.filter(
+      (row) => String(row?.sport || '').trim().toLowerCase() === normalizedSport
+    );
+    const prs = [];
+    const maxDuration = rows.reduce(
+      (best, row) => Math.max(best, Number(row?.duration_minutes || 0)),
+      0
+    );
+    const maxDistance = rows.reduce(
+      (best, row) => Math.max(best, Number(row?.metrics?.distance || 0)),
+      0
+    );
+    if (Number(durationMinutes || 0) > 0 && Number(durationMinutes || 0) > maxDuration) {
+      prs.push({
+        label: 'Longest session',
+        value: `${Math.round(Number(durationMinutes || 0))} min`,
+      });
+    }
+    if (Number(distanceKm || 0) > 0 && Number(distanceKm || 0) > maxDistance) {
+      prs.push({
+        label: 'Longest distance',
+        value: `${Number(distanceKm || 0).toFixed(1)} km`,
+      });
+    }
+    return prs;
+  };
   const buildRouteLabUrl = () => {
     const params = new URLSearchParams();
     if (activeWorldSport) params.set('world', activeWorldSport);
@@ -1796,18 +2024,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
 
   // getPlanStory builds a short narrative summary,
   // tailors the text to focus + sport,
-  // used in the plan preview story block,
-  // keeps tone consistent across the UI
-  const getPlanStory = (plan) => {
-    const focus = plan?.defaultFocus || 'Base';
-    const sport = plan?.sport || 'training';
-    if (focus === 'Speed') return `Short, sharp reps to lift your ${sport} pace.`;
-    if (focus === 'Recovery') return `Low strain, clean rhythm, full system reset.`;
-    if (focus === 'Race Prep') return `Precision blocks to peak for your next event.`;
-    if (focus === 'Tempo') return `Sustained tempo to build durable engine.`;
-    return `Foundational volume to grow your ${sport} capacity.`;
-  };
-
   // render the athlete training experience,
   // combines plan library, session preview, and logging,
   // conditionally shows modals and overlays,
@@ -1919,8 +2135,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               <div className="studio-panel-title">Training Categories</div>
               <div className="studio-world-grid">
                 {trainingWorlds.map((world) => (
-                  <div
+                  <button
                     key={world.id}
+                    type="button"
                     className={`studio-world-card ${activeWorldSport === world.sport ? 'active' : ''}`}
                     onClick={() => {
                       setSelectedPlan(null);
@@ -1930,11 +2147,18 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                       setPlanSportFilter(planSportFilter === world.sport ? '' : world.sport);
                     }}
                   >
-                    <div className="studio-world-title">{world.title}</div>
+                    <div className="studio-world-title">{worldShortLabels[world.sport] || world.title}</div>
                     <div className="studio-world-sub">{world.subtitle}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
+              {activeWorldSport ? (
+                <div className="studio-world-summary">
+                  <span>{ritualWorldMeta.title}</span>
+                  <span>{activeWorldSessionCount} session{activeWorldSessionCount === 1 ? '' : 's'} logged</span>
+                  <span>{filteredRouteEfforts.length} mapped effort{filteredRouteEfforts.length === 1 ? '' : 's'}</span>
+                </div>
+              ) : null}
             </div>
 
             {showPlanLibrary ? (
@@ -2008,10 +2232,22 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                     <button
                       key={plan.id}
                       className={`studio-program-card ${selectedPlan?.id === plan.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedPlan(plan);
-                  }}
+                      onClick={() => {
+                        setSelectedPlan(plan);
+                      }}
+                      type="button"
                     >
+                      <button
+                        className={`studio-program-pin ${planFavorites.includes(plan.name) ? 'active' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          togglePlanFavorite(plan);
+                        }}
+                        type="button"
+                        aria-label={planFavorites.includes(plan.name) ? 'Unpin plan' : 'Pin plan'}
+                      >
+                        {planFavorites.includes(plan.name) ? '★' : '☆'}
+                      </button>
                       <div className="studio-program-head">
                         <div className="studio-program-name">{plan.name}</div>
                         <div className="studio-program-level">
@@ -2020,19 +2256,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                       </div>
                       <div className="studio-program-sub">{plan.goal}</div>
                       <div className="studio-program-desc">{plan.summary}</div>
-                      <div className="studio-program-story">{getPlanStory(plan)}</div>
-                      <div className="studio-plan-favorite">
-                        <button
-                          className={`studio-queue-swap ${planFavorites.includes(plan.name) ? 'active' : ''}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            togglePlanFavorite(plan);
-                          }}
-                          type="button"
-                        >
-                          {planFavorites.includes(plan.name) ? 'Pinned' : 'Pin'}
-                        </button>
-                      </div>
                       <div className="studio-plan-actions">
                         <button
                           className="studio-queue-btn ghost"
@@ -2064,7 +2287,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             {planSportFilter && !planSearch && filteredPlans.length === 0 && (
               <div className="studio-empty">No plans yet for {planSportFilter}.</div>
             )}
-            {planSportFilter && !planSearch && !showAllPlans && filteredPlans.length > 8 && (
+            {planSportFilter && !planSearch && !showAllPlans && filteredPlans.length > 5 && (
               <button
                 className="studio-mini-btn"
                 onClick={() => setShowAllPlans(true)}
@@ -2104,6 +2327,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                       >
                         Map on
                       </button>
+                    </div>
+                    <div className="studio-session-launch-copy">
+                      {sessionLaunchMode === 'mapped'
+                        ? `Use the ${ritualWorldMeta.title} route layer for GPS, distance, and mapped effort logging.`
+                        : 'Stay in the ritual timer for a faster session start without GPS mapping.'}
                     </div>
                   </div>
                 ) : null}
@@ -2174,7 +2402,32 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 </div>
               </>
             ) : (
-              <div className="studio-empty">Select a plan to preview the session.</div>
+              <div className="studio-empty studio-session-empty">
+                {activeWorldSport ? (
+                  <>
+                    <div className="studio-session-empty-title">Pick a plan to start {ritualWorldMeta.title}.</div>
+                    <div className="studio-session-empty-copy">
+                      Choose a plan first, then this panel becomes your session launch point.
+                    </div>
+                    {suggestedPlan ? (
+                      <button
+                        className="studio-queue-btn"
+                        type="button"
+                        onClick={() => setSelectedPlan(suggestedPlan)}
+                      >
+                        Try {suggestedPlan.name}
+                      </button>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <div className="studio-session-empty-title">Choose a training world first.</div>
+                    <div className="studio-session-empty-copy">
+                      Pick a world above to unlock plans and build a cleaner session flow.
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {activeWorldSport ? (
@@ -2226,6 +2479,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                 )}
               </div>
             ) : null}
+            {recoveryNudge ? (
+              <div className="studio-inline-guide studio-recovery-guide">
+                <div className="studio-inline-title">Recovery signal</div>
+                <div className="studio-session-empty-copy">
+                  {recoveryNudge.label || 'Recent session'} logged for {Number(recoveryNudge.minutes || 0)} min. If you are stacking hard days, consider a lighter effort or recovery session next.
+                </div>
+              </div>
+            ) : null}
           </section>
         </div>
         ) : (
@@ -2253,6 +2514,26 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                   <div className="studio-pr-value">{avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : "Untimed"}</div>
                   <div className="studio-pr-sub">Average timed session</div>
                 </div>
+                {activeWorldSport ? (
+                  <div className="studio-pr-card studio-pr-card-world">
+                    <div className="studio-pr-title">This Block in {ritualWorldMeta.title}</div>
+                    <div className="studio-pr-value">{activeWorldSessionCount} sessions</div>
+                    <div className="studio-pr-sub">
+                      {activeWorldMinutes} min logged · {activeWorldDistanceKm > 0 ? `${activeWorldDistanceKm.toFixed(1)} km mapped` : 'No mapped distance yet'}
+                    </div>
+                  </div>
+                ) : null}
+                {routePrStats.bestPace || routePrStats.longestDistance > 0 ? (
+                  <div className="studio-pr-card studio-pr-card-world">
+                    <div className="studio-pr-title">Route Signals</div>
+                    <div className="studio-pr-value">{routePrStats.bestPace || 'No pace yet'}</div>
+                    <div className="studio-pr-sub">
+                      {routePrStats.longestDistance > 0
+                        ? `Longest effort ${routePrStats.longestDistance.toFixed(1)} km · ${routePrStats.longestDiscipline}`
+                        : 'Complete a mapped effort to unlock route PRs.'}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -2261,32 +2542,72 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
               <div className="studio-progress-grid">
                 <div className="studio-progress-card">
                   <div className="studio-progress-title">7-Day Training Minutes</div>
-                  <div className="studio-progress-list">
-                    {recentSessionDurationByDay.map((item) => (
-                      <button
-                        type="button"
-                        className={`studio-progress-row studio-progress-row-btn${selectedTrainingTrendDayKey === item.key ? ' active' : ''}`}
-                        key={`ath-trend-${item.key}`}
-                        onClick={() => setSelectedTrainingTrendDay(item.key)}
-                      >
-                        <div className="studio-progress-label">{item.label}</div>
-                        <div className="studio-progress-bar-shell">
-                          <div
-                            className="studio-progress-bar"
-                            style={{ width: `${Math.max(6, (item.minutes / maxTrainingMinutesByDay) * 100)}%` }}
+                  <div className="studio-chart-shell">
+                    <div className="studio-volume-chart" role="img" aria-label="7 day training minutes chart">
+                      {weeklyVolumeChart.map((item) => (
+                        <button
+                          type="button"
+                          className={`studio-volume-bar${selectedTrainingTrendDayKey === item.key ? ' active' : ''}`}
+                          key={`ath-trend-${item.key}`}
+                          onClick={() => setSelectedTrainingTrendDay(item.key)}
+                          title={`${item.label}: ${Math.round(item.minutes)} training minutes`}
+                          aria-label={`${item.label}: ${Math.round(item.minutes)} training minutes`}
+                        >
+                          <span
+                            className="studio-volume-bar-fill"
+                            style={{ height: `${Math.max(10, item.ratio * 100)}%` }}
                           />
-                        </div>
-                        <div className="studio-progress-value">{Math.round(item.minutes)}m</div>
-                      </button>
-                    ))}
+                          <span className="studio-volume-bar-minutes">{Math.round(item.minutes)}m</span>
+                          <span className="studio-volume-bar-label">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="studio-chart-caption">Tap a day to focus the breakdown below.</div>
                   </div>
                 </div>
 
                 <div className="studio-progress-card">
-                  <div className="studio-progress-title">Most Trained Sports</div>
-                  <div className="studio-progress-list">
-                    {topSportsTrend.length ? (
-                      topSportsTrend.map((item) => (
+                  <div className="studio-progress-title">Route Pace Trend</div>
+                  {paceTrendPoints.length >= 2 ? (
+                    <div className="studio-chart-shell">
+                      <div className="studio-line-chart" role="img" aria-label="Route pace trend chart">
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <line x1="0" y1="88" x2="100" y2="88" className="studio-line-chart-axis" />
+                          <polyline points={paceTrendPolyline} className="studio-line-chart-path" />
+                          {paceTrendPoints.map((item, index) => {
+                            const spread = Math.max(1, paceTrendRange.max - paceTrendRange.min);
+                            const stepX = paceTrendPoints.length > 1 ? 100 / (paceTrendPoints.length - 1) : 100;
+                            const normalized = (item.paceSeconds - paceTrendRange.min) / spread;
+                            const x = index * stepX;
+                            const y = 100 - normalized * 74 - 12;
+                            return (
+                              <circle
+                                key={`pace-point-${item.id}`}
+                                cx={x}
+                                cy={y}
+                                r="2.5"
+                                className="studio-line-chart-point"
+                              />
+                            );
+                          })}
+                        </svg>
+                      </div>
+                      <div className="studio-line-chart-legend">
+                        {paceTrendPoints.map((item) => (
+                          <div
+                            className="studio-line-chart-chip"
+                            key={`pace-chip-${item.id}`}
+                            title={`${item.label}: ${item.paceLabel}`}
+                          >
+                            <span>{item.label}</span>
+                            <strong>{item.paceLabel}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : topSportsTrend.length ? (
+                    <div className="studio-progress-list">
+                      {topSportsTrend.map((item) => (
                         <div className="studio-progress-row" key={`ath-sport-${item.sport}`}>
                           <div className="studio-progress-label">{item.sport}</div>
                           <div className="studio-progress-bar-shell">
@@ -2297,11 +2618,11 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                           </div>
                           <div className="studio-progress-value">{item.count}x</div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="studio-empty">Log sessions to unlock sport trends.</div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="studio-empty">Complete mapped efforts to unlock pace trends.</div>
+                  )}
                 </div>
               </div>
             </section>
@@ -2882,6 +3203,19 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
                   Next best move: review the session in Logs or capture one reflection before you close the day.
                 </div>
               </div>
+              {sessionRecap.prs?.length ? (
+                <div className="studio-congrats-prs">
+                  <div className="studio-congrats-prs-title">Performance signal</div>
+                  <div className="studio-congrats-pr-list">
+                    {sessionRecap.prs.map((pr) => (
+                      <div className="studio-congrats-pr-chip" key={`${pr.label}-${pr.value}`}>
+                        <span>{pr.label}</span>
+                        <strong>{pr.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <label className="studio-congrats-reflection">
                 <span className="studio-input-label">Reflection</span>
                 <textarea

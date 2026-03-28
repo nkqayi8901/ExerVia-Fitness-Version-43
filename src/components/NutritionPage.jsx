@@ -1684,7 +1684,7 @@ export default function NutritionPage() {
             <div className="fuel-hero-kicker">ExerVia Fuel Loop</div>
             <h2 className="page-title">{protocolLabel}</h2>
             <p className="page-subtitle">
-              Pick a protocol -> Pick a time -> Pick a preference -> Get meals
+              {'Pick a protocol -> Pick a time -> Pick a preference -> Get meals'}
             </p>
           </div>
 
@@ -1829,7 +1829,7 @@ export default function NutritionPage() {
                 ))}
               </div>
               <div className="hud-dim" style={{ marginTop: 10 }}>
-                Tip: Change settings -> hit <b>Generate New Meals</b>.
+                {'Tip: Change settings -> hit '}<b>Generate New Meals</b>{'.'}
               </div>
             </div>
 

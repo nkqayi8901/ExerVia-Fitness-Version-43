@@ -7,7 +7,7 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { emitToast } from "../utils/toast";
 import { publishRunStatus } from "../utils/activityStatusFeed";
 import { recalcUserState } from "../services/stateEngine";
-import { normalizeAthleteSport } from "../utils/athleteWorlds";
+import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
 
 const STORAGE_KEY = "exervia_run_map_lab_v1";
 const RUN_HISTORY_KEY = "exervia_run_history_v1";
@@ -160,6 +160,7 @@ export default function AthleteRunMapLab({ userId }) {
   const [postingRun, setPostingRun] = useState(false);
   const [routeSavedMessage, setRouteSavedMessage] = useState("");
   const [runsLoading, setRunsLoading] = useState(false);
+  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
   const [mapsState, setMapsState] = useState({
     ready: false,
     usingGoogle: false,
@@ -182,12 +183,48 @@ export default function AthleteRunMapLab({ userId }) {
     [linkedFocus, linkedObjective, linkedPlan, linkedWeek, linkedWorld]
   );
   const linkedTrainingMode = Boolean(linkedWorld || linkedPlan || linkedWeek || linkedFocus || linkedObjective);
+  const routeWorld = linkedWorld || normalizeDiscipline(discipline);
+  const worldMeta = getAthleteWorldMeta(routeWorld);
   const initialMapConfigRef = useRef({
     center: stored?.mapCenter || { lat: 53.3498, lng: -6.2603 },
     routeName: stored?.routeName || "ExerVia Run Prototype",
     visibility: stored?.visibility || "Nearby",
     challengeMode: stored?.challengeMode || "Challenge",
   });
+  const detectRunPrs = ({ priorRuns, disciplineValue, distanceKmValue, elapsedSecondsValue }) => {
+    const normalizedDiscipline = normalizeDiscipline(disciplineValue);
+    const comparableRuns = priorRuns.filter(
+      (run) =>
+        normalizeDiscipline(run?.discipline) === normalizedDiscipline &&
+        Number(run?.distanceKm || run?.distance_km || 0) > 0 &&
+        Number(run?.elapsedSeconds || run?.elapsed_seconds || 0) > 0
+    );
+    const prs = [];
+    const maxDistance = comparableRuns.reduce(
+      (best, run) => Math.max(best, Number(run?.distanceKm || run?.distance_km || 0)),
+      0
+    );
+    const currentDistance = Number(distanceKmValue || 0);
+    const currentElapsed = Number(elapsedSecondsValue || 0);
+    if (currentDistance > 0 && currentDistance > maxDistance) {
+      prs.push({ label: "Longest route", value: `${currentDistance.toFixed(1)} km` });
+    }
+    const similarDistanceRuns = comparableRuns.filter((run) => {
+      const previousDistance = Number(run?.distanceKm || run?.distance_km || 0);
+      return Math.abs(previousDistance - currentDistance) <= 0.25;
+    });
+    const bestElapsedForDistance = similarDistanceRuns.reduce(
+      (best, run) => {
+        const value = Number(run?.elapsedSeconds || run?.elapsed_seconds || 0);
+        return value > 0 && (best === 0 || value < best) ? value : best;
+      },
+      0
+    );
+    if (currentDistance > 0 && currentElapsed > 0 && bestElapsedForDistance > 0 && currentElapsed < bestElapsedForDistance) {
+      prs.push({ label: "Fastest matched effort", value: formatElapsed(currentElapsed) });
+    }
+    return prs;
+  };
 
   useEffect(() => {
     localStorage.setItem(
@@ -281,7 +318,7 @@ export default function AthleteRunMapLab({ userId }) {
     [activePresetId]
   );
   const pageTitle = linkedTrainingMode
-    ? `${(linkedContext.world || normalizeDiscipline(discipline)).replace(/^./, (char) => char.toUpperCase())} Route Layer`
+    ? `${worldMeta.title} Route Layer`
     : "Challenge-ready route planning";
   const pageSubtitle = linkedTrainingMode
     ? "Built into Training Ritual so mapped efforts follow your selected world, plan, and week."
@@ -291,6 +328,18 @@ export default function AthleteRunMapLab({ userId }) {
     if (linkedWorld) params.set("world", linkedWorld);
     return `/athlete/${userId}/training${params.toString() ? `?${params.toString()}` : ""}`;
   }, [linkedWorld, userId]);
+  const routeModeSummary = `${visibility} visibility · ${challengeMode} mode`;
+  const availableRunModes = linkedTrainingMode ? CHALLENGE_OPTIONS.filter((option) => option !== "Challenge") : CHALLENGE_OPTIONS;
+
+  useEffect(() => {
+    setShowAdvancedSetup(!linkedTrainingMode);
+  }, [linkedTrainingMode]);
+
+  useEffect(() => {
+    if (linkedTrainingMode && challengeMode === "Challenge") {
+      setChallengeMode("Solo");
+    }
+  }, [challengeMode, linkedTrainingMode]);
 
   const mapSrc = useMemo(() => {
     const bbox = buildBbox(mapCenter.lat, mapCenter.lng);
@@ -497,6 +546,12 @@ export default function AthleteRunMapLab({ userId }) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    const runPrs = detectRunPrs({
+      priorRuns: runHistory,
+      disciplineValue: discipline,
+      distanceKmValue: distanceKm,
+      elapsedSecondsValue: elapsedSeconds,
+    });
     const summary = {
       id: null,
       name: routeName.trim() || `${discipline} session`,
@@ -507,12 +562,14 @@ export default function AthleteRunMapLab({ userId }) {
       visibility,
       challengeMode,
       routePoints,
+      prs: runPrs,
       createdAt: new Date().toISOString(),
     };
     setRunSummary(summary);
     setRunHistory((prev) => [summary, ...prev].slice(0, 10));
     setRunState("completed");
 
+    let savedRunId = null;
     if (userId) {
       try {
         const normalizedDiscipline = normalizeDiscipline(summary.discipline);
@@ -546,6 +603,7 @@ export default function AthleteRunMapLab({ userId }) {
           .select("id,created_at")
           .single();
         if (!error && data?.id) {
+          savedRunId = data.id;
           setRunSummary((prev) => (prev ? { ...prev, id: data.id, createdAt: data.created_at || prev.createdAt } : prev));
           setRunHistory((prev) =>
             prev.map((item, index) =>
@@ -558,6 +616,47 @@ export default function AthleteRunMapLab({ userId }) {
         }
       } catch (error) {
         console.error("Run save failed:", error);
+      }
+    }
+
+    if (userId && linkedTrainingMode) {
+      try {
+        const trainingSessionData = {
+          user_id: Number(userId),
+          sport: normalizeDiscipline(summary.discipline),
+          level: "advanced",
+          duration_minutes: Math.max(1, Math.round(Number(summary.elapsedSeconds || 0) / 60)),
+          effort_level: null,
+          mood_emoji: "Focused",
+          notes: [routeNote.trim(), linkedObjective ? `Objective: ${linkedObjective}` : ""].filter(Boolean).join("\n"),
+          metrics: {
+            distance: summary.distanceKm > 0 ? Number(summary.distanceKm) : null,
+            heart_rate: null,
+            efficiency_factor: null,
+            focus: linkedFocus || null,
+            plan_id: null,
+            plan_name: linkedPlan || null,
+            plan_week: linkedWeek || null,
+            plan_sessions: linkedObjective ? [linkedObjective] : [],
+            mapped_effort: true,
+            route_run_id: savedRunId,
+            world: routeWorld,
+            source: "route_lab",
+          },
+          efficiency_factor: null,
+        };
+        const { data: trainingData, error: trainingError } = await supabase
+          .from("training_sessions")
+          .insert([trainingSessionData])
+          .select("id")
+          .single();
+        if (!trainingError && trainingData?.id) {
+          setRunSummary((prev) =>
+            prev ? { ...prev, trainingSessionId: trainingData.id, trainingLinked: true } : prev
+          );
+        }
+      } catch (error) {
+        console.error("Mapped effort sync failed:", error);
       }
     }
 
@@ -581,6 +680,9 @@ export default function AthleteRunMapLab({ userId }) {
         window.dispatchEvent(new Event("user_state_updated"));
         if (Number(xpResult.awardedXp || 0) > 0) {
           emitToast(`Run complete. +${xpResult.awardedXp} XP earned.`, "success", 2800);
+        }
+        if (runPrs.length) {
+          emitToast(`Run PR: ${runPrs[0].label}.`, "success", 3200);
         }
       } catch (error) {
         console.error("Run XP/state update failed:", error);
@@ -641,7 +743,7 @@ export default function AthleteRunMapLab({ userId }) {
   const livePace = formatPace(distanceKm, elapsedSeconds);
 
   return (
-    <div className="page-shell route-lab-shell">
+    <div className="page-shell route-lab-shell" data-world={routeWorld}>
       <div className="page-header route-lab-header">
         <div className="route-lab-head-copy">
           <button className="studio-back" type="button" onClick={() => navigate(backToTrainingUrl)}>
@@ -654,7 +756,7 @@ export default function AthleteRunMapLab({ userId }) {
             <div className="route-lab-context">
               <div className="route-lab-context-top">
                 <strong>Linked from Training Ritual</strong>
-                <span>{linkedContext.world || normalizeDiscipline(discipline)}</span>
+                <span>{worldMeta.title}</span>
               </div>
               <div className="route-lab-context-line">
                 {linkedContext.plan || "Mapped effort"}{linkedContext.week ? ` - ${linkedContext.week}` : ""}
@@ -669,7 +771,7 @@ export default function AthleteRunMapLab({ userId }) {
           ) : null}
         </div>
         <div className="route-lab-status">
-          <div className="route-lab-status-pill">{discipline}</div>
+          <div className="route-lab-status-pill">{worldMeta.title}</div>
           <div className="route-lab-status-pill">Distance {selectedDistance}</div>
           {!linkedTrainingMode ? <div className="route-lab-status-pill">{visibility} visibility</div> : null}
           {!linkedTrainingMode ? <div className="route-lab-status-pill">{challengeMode} mode</div> : null}
@@ -747,45 +849,23 @@ export default function AthleteRunMapLab({ userId }) {
 
         <div className="hud-card route-lab-control-card">
           <div className="hud-card-title">ROUTE SETUP</div>
-          <div className="route-lab-option-block">
-            <div className="route-lab-label">Discipline</div>
-            <div className="route-lab-chip-row">
-              {DISCIPLINE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={`studio-chip ${discipline === option ? "active" : ""}`}
-                  onClick={() => setDiscipline(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-          <label className="route-lab-field">
-            <span className="route-lab-label">Route name</span>
-            <input
-              className="studio-form-input"
-              value={routeName}
-              onChange={(event) => setRouteName(event.target.value)}
-              placeholder="ExerVia challenge route"
-            />
-          </label>
           {!linkedTrainingMode ? (
-            <label className="route-lab-field">
-              <span className="route-lab-label">Route note</span>
-              <textarea
-                className="studio-textarea route-lab-note"
-                value={routeNote}
-                onChange={(event) => setRouteNote(event.target.value)}
-                placeholder="Why this route matters for pace, rivalry, or challenge format."
-              />
-            </label>
-          ) : (
-            <div className="route-lab-linked-note">
-              {routeNote || "Mapped effort linked to this training block."}
+            <div className="route-lab-option-block">
+              <div className="route-lab-label">Discipline</div>
+              <div className="route-lab-chip-row">
+                {DISCIPLINE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`studio-chip ${discipline === option ? "active" : ""}`}
+                    onClick={() => setDiscipline(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+          ) : null}
 
           <div className="route-lab-option-block">
             <div className="route-lab-label">Challenge distance</div>
@@ -822,7 +902,7 @@ export default function AthleteRunMapLab({ userId }) {
           <div className="route-lab-option-block">
             <div className="route-lab-label">Run mode</div>
             <div className="route-lab-chip-row">
-              {CHALLENGE_OPTIONS.map((option) => (
+              {availableRunModes.map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -834,8 +914,58 @@ export default function AthleteRunMapLab({ userId }) {
               ))}
             </div>
           </div>
+          {linkedTrainingMode ? (
+            <div className="route-lab-mode-note">
+              Live challenges unlock after matchmaking is ready. For now, keep mapped efforts focused on solo or ghost sessions.
+            </div>
+          ) : null}
 
-          {challengeMode === "Challenge" ? (
+          {linkedTrainingMode ? (
+            <button
+              className="route-lab-advanced-toggle"
+              type="button"
+              onClick={() => setShowAdvancedSetup((prev) => !prev)}
+            >
+              {showAdvancedSetup ? "Hide advanced setup" : "Show advanced setup"}
+            </button>
+          ) : null}
+
+          {linkedTrainingMode && !showAdvancedSetup ? (
+            <div className="route-lab-linked-note">
+              {routeModeSummary}. {routeNote || "Mapped effort linked to this training block."}
+            </div>
+          ) : null}
+
+          {!linkedTrainingMode || showAdvancedSetup ? (
+            <>
+              <label className="route-lab-field">
+                <span className="route-lab-label">Route name</span>
+                <input
+                  className="studio-form-input"
+                  value={routeName}
+                  onChange={(event) => setRouteName(event.target.value)}
+                  placeholder="ExerVia challenge route"
+                />
+              </label>
+              {!linkedTrainingMode ? (
+                <label className="route-lab-field">
+                  <span className="route-lab-label">Route note</span>
+                  <textarea
+                    className="studio-textarea route-lab-note"
+                    value={routeNote}
+                    onChange={(event) => setRouteNote(event.target.value)}
+                    placeholder="Why this route matters for pace, rivalry, or challenge format."
+                  />
+                </label>
+              ) : (
+                <div className="route-lab-linked-note">
+                  {routeNote || "Mapped effort linked to this training block."}
+                </div>
+              )}
+            </>
+          ) : null}
+
+          {challengeMode === "Challenge" && (!linkedTrainingMode || showAdvancedSetup) ? (
             <>
               <div className="route-lab-option-block">
                 <div className="route-lab-label">Challenge radius</div>
@@ -922,12 +1052,33 @@ export default function AthleteRunMapLab({ userId }) {
                 <span>{runSummary.pace}/km</span>
               </div>
               <div className="route-lab-preset-note">
-                Ready to share. Post this run into community and turn route effort into social proof.
+                {runSummary.trainingLinked && linkedTrainingMode
+                  ? "Mapped effort logged back into Training Ritual. Share it or move straight back into your plan."
+                  : "Ready to share. Post this run into community and turn route effort into social proof."}
               </div>
+              {runSummary.prs?.length ? (
+                <div className="route-lab-pr-list">
+                  {runSummary.prs.map((pr) => (
+                    <div className="route-lab-pr-chip" key={`${pr.label}-${pr.value}`}>
+                      <span>{pr.label}</span>
+                      <strong>{pr.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="route-lab-action-row">
                 <button className="studio-primary-btn" type="button" onClick={postRunToCommunity} disabled={postingRun}>
                   {postingRun ? "Posting..." : "Post run"}
                 </button>
+                {linkedTrainingMode ? (
+                  <button
+                    className="studio-back"
+                    type="button"
+                    onClick={() => navigate(backToTrainingUrl)}
+                  >
+                    Back to plan
+                  </button>
+                ) : null}
                 {runSummary.id ? (
                   <button
                     className="studio-back"
@@ -948,7 +1099,15 @@ export default function AthleteRunMapLab({ userId }) {
               <div className="hud-card-title">RECENT RUNS</div>
               <div className="route-lab-saved-list">
                 {runsLoading ? (
-                  <div className="route-lab-empty">Loading runs...</div>
+                  <div className="route-lab-skeleton-list" aria-hidden="true">
+                    {[...Array(linkedTrainingMode ? 2 : 3)].map((_, index) => (
+                      <div className="route-lab-skeleton-card" key={`run-skeleton-${index}`}>
+                        <div className="route-lab-skeleton-line short" />
+                        <div className="route-lab-skeleton-line long" />
+                        <div className="route-lab-skeleton-row" />
+                      </div>
+                    ))}
+                  </div>
                 ) : runHistory.length ? (
                   runHistory.slice(0, linkedTrainingMode ? 2 : 4).map((run) => (
                     <button
@@ -970,7 +1129,7 @@ export default function AthleteRunMapLab({ userId }) {
                     </button>
                   ))
                 ) : (
-                  <div className="route-lab-empty">Completed runs will stack here and feed back into your social profile.</div>
+                  <div className="route-lab-empty">No runs yet. Finish your first mapped effort and it will land here ready for profile and community.</div>
                 )}
               </div>
             </>
@@ -1006,9 +1165,15 @@ export default function AthleteRunMapLab({ userId }) {
       </div>
 
       <div className="route-lab-mobile-dock">
-        <button type="button" className={`route-lab-dock-option ${discipline === "Running" ? "active" : ""}`} onClick={() => setDiscipline("Running")}>
-          Run
-        </button>
+        {!linkedTrainingMode ? (
+          <button type="button" className={`route-lab-dock-option ${discipline === "Running" ? "active" : ""}`} onClick={() => setDiscipline("Running")}>
+            Run
+          </button>
+        ) : (
+          <button type="button" className="route-lab-dock-option" onClick={() => navigate(backToTrainingUrl)}>
+            Ritual
+          </button>
+        )}
         <button
           type="button"
           className={`route-lab-dock-start ${runState === "tracking" ? "live" : ""}`}
@@ -1016,8 +1181,12 @@ export default function AthleteRunMapLab({ userId }) {
         >
           {runState === "tracking" ? "Stop" : runState === "completed" ? "Restart" : "Start"}
         </button>
-        <button type="button" className="route-lab-dock-option" onClick={savePlan}>
-          Add route
+        <button
+          type="button"
+          className="route-lab-dock-option"
+          onClick={linkedTrainingMode ? () => setShowAdvancedSetup((prev) => !prev) : savePlan}
+        >
+          {linkedTrainingMode ? "Setup" : "Add route"}
         </button>
       </div>
     </div>
