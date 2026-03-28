@@ -357,6 +357,10 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     (profileId) => blockedProfileIds.includes(Number(profileId)),
     [blockedProfileIds]
   );
+  const isVisibleAuthor = useCallback(
+    (profileId) => !profileId || !isBlockedProfile(profileId),
+    [isBlockedProfile]
+  );
 
   const handleToggleBlockProfile = (profileId) => {
     const normalized = Number(profileId);
@@ -1045,6 +1049,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
       const filteredPosts = (posts || []).filter((post) => {
         if (String(post.title || "").startsWith(STATUS_PREFIX)) return false;
+        if (!isVisibleAuthor(post.created_by)) return false;
         const title = (post.title || "").toLowerCase();
         const body = (post.body || "").toLowerCase();
         return title.includes(query) || body.includes(query);
@@ -1088,7 +1093,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       cancelled = true;
       if (debounceHandle) clearTimeout(debounceHandle);
     };
-  }, [activeTab, search, forums, loadProfiles]);
+  }, [activeTab, search, forums, isVisibleAuthor, loadProfiles]);
 
 // below are the action handlers for create/join/update flows,
 // they call supabase mutations, set banner feedback,
@@ -1996,7 +2001,9 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
       .select("*")
       .eq("forum_id", forumId)
       .order("created_at", { ascending: false });
-    const visiblePosts = (data || []).filter((post) => !String(post.title || "").startsWith(STATUS_PREFIX));
+    const visiblePosts = (data || []).filter(
+      (post) => !String(post.title || "").startsWith(STATUS_PREFIX) && isVisibleAuthor(post.created_by)
+    );
     setForumPosts(visiblePosts);
     if (!visiblePosts.length) {
       setPostReplies({});
@@ -2098,13 +2105,19 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
 
   const filteredThreadPosts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return sortedForumPosts;
+    if (!query) return sortedForumPosts.filter((post) => isVisibleAuthor(post.created_by));
     return sortedForumPosts.filter((post) => {
+      if (!isVisibleAuthor(post.created_by)) return false;
       const title = (post.title || "").toLowerCase();
       const body = (post.body || "").toLowerCase();
       return title.includes(query) || body.includes(query);
     });
-  }, [sortedForumPosts, search]);
+  }, [isVisibleAuthor, sortedForumPosts, search]);
+
+  const filteredActivityFeedItems = useMemo(
+    () => (activityFeedItems || []).filter((item) => isVisibleAuthor(item?.actor_id)),
+    [activityFeedItems, isVisibleAuthor]
+  );
 
 // compute unread count for all friends,
 // uses latest message + last seen logic per friend,
@@ -3416,7 +3429,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
               onStatusDraftChange={setStatusDraft}
               onCreateStatusPost={handleCreateStatusPost}
               activityFeedLoading={activityFeedLoading}
-              activityFeedItems={activityFeedItems}
+              activityFeedItems={filteredActivityFeedItems}
               profiles={profiles}
               openThreadPage={openThreadPage}
               openRunPage={openRunPage}

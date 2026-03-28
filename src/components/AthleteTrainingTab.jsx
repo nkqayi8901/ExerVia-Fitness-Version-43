@@ -3,17 +3,36 @@
 // it manages plans, sessions, timers, and reflections,
 // and coordinates UI state with Supabase data,
 // comments below explain each major block
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { recalcUserState } from '../services/stateEngine';
-import { trackDailyActivity } from '../services/activityTracker';
-import { grantXpEventSafe } from '../services/xpEvents';
 import { emitToast } from '../utils/toast';
-import { publishTrainingStatus } from '../utils/activityStatusFeed';
+import useAthleteTrainingActivityData from '../hooks/useAthleteTrainingActivityData';
+import useAthleteTrainingInsights from '../hooks/useAthleteTrainingInsights';
+import useAthleteTrainingPlans from '../hooks/useAthleteTrainingPlans';
+import useAthleteTrainingSessionActions from '../hooks/useAthleteTrainingSessionActions';
+import useAthleteTrainingSessionPersistence from '../hooks/useAthleteTrainingSessionPersistence';
+import useDistanceUnitPreference from '../hooks/useDistanceUnitPreference';
 import PageWalkthroughModal from './PageWalkthroughModal';
-import { getAthleteWorldMeta } from '../utils/athleteWorlds';
+import AthleteTrainingCreatePlanModal from './AthleteTrainingCreatePlanModal';
+import AthleteTrainingCountdownOverlay from './AthleteTrainingCountdownOverlay';
+import AthleteTrainingCongratsModal from './AthleteTrainingCongratsModal';
+import AthleteTrainingFloorTimerOverlay from './AthleteTrainingFloorTimerOverlay';
+import AthleteTrainingLastTrainingModal from './AthleteTrainingLastTrainingModal';
+import AthleteTrainingLoggedPulseOverlay from './AthleteTrainingLoggedPulseOverlay';
+import AthleteTrainingPlanDetailModal from './AthleteTrainingPlanDetailModal';
+import AthleteTrainingPlanLibrary from './AthleteTrainingPlanLibrary';
+import AthleteTrainingSessionPreview from './AthleteTrainingSessionPreview';
+import AthleteTrainingStatsView from './AthleteTrainingStatsView';
+import {
+  emptyPlan,
+  focusOptions,
+  sports,
+  trainingWorlds,
+  TRAINING_WALKTHROUGH_STEPS,
+  worldShortLabels,
+} from '../utils/athleteTrainingConfig';
+import { vibrateStart } from '../utils/haptics';
 // Component: AthleteTrainingTab - UI layout and interactions.
 // This component renders the athletetrainingtab experience and wires up its local UI state.
 // Sections below are grouped to keep the layout and user flow readable.
@@ -27,402 +46,6 @@ import { getAthleteWorldMeta } from '../utils/athleteWorlds';
 // the data fetching and state management logic was 
 // adapted from the patterns I learned in the SystemStatus and Navbar components,
 
-// fallbackPlans provide a local default when the API is empty,
-// they ensure the UI has content for new users,
-// each plan includes a summary + weekly outline,
-// and these are used only if no remote plans exist
-const fallbackPlans = [
-  {
-    id: 'hyrox-foundation',
-    name: 'Hyrox Foundation',
-    sport: 'hybrid',
-    goal: 'Hybrid engine + strength endurance',
-    summary: '4-week build blending running, sled work, and stations.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 60,
-    distanceTarget: 8,
-    outline: [
-      { week: 'Week 1', sessions: ['Run 40 min', 'Sled push/pull technique', 'Burpee broad jumps'] },
-      { week: 'Week 2', sessions: ['Tempo 20 min', 'Wall balls + farmer carry', 'Row intervals'] },
-      { week: 'Week 3', sessions: ['Mixed station circuit', 'Run 50 min', 'Ski erg intervals'] },
-      { week: 'Week 4', sessions: ['Race simulation', 'Recovery 30 min', 'Mobility reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'hybrid-endurance',
-    name: 'Hybrid Endurance',
-    sport: 'hybrid',
-    goal: 'Strength base + endurance conditioning',
-    summary: 'Balanced week with strength intervals and longer cardio blocks.',
-    defaultFocus: 'Base',
-    durationTarget: 55,
-    distanceTarget: 6,
-    outline: [
-      { week: 'Week 1', sessions: ['Strength density 30 min', 'Zone 2 35 min', 'Recovery 25 min'] },
-      { week: 'Week 2', sessions: ['Tempo 15 min', 'Carry + sled circuit', 'Endurance 50 min'] },
-      { week: 'Week 3', sessions: ['Speed ladder', 'Zone 2 45 min', 'Mobility reset'] },
-      { week: 'Week 4', sessions: ['Test day', 'Recovery 30 min', 'Endurance 60 min'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'running-pace-builder',
-    name: 'Running Pace Builder',
-    sport: 'running',
-    goal: 'Build aerobic base and controlled speed',
-    summary: '4-week progression for pacing confidence and recovery balance.',
-    defaultFocus: 'Base',
-    durationTarget: 50,
-    distanceTarget: 8,
-    outline: [
-      { week: 'Week 1', sessions: ['Base run 40 min', 'Tempo 15 min', 'Recovery jog 25 min'] },
-      { week: 'Week 2', sessions: ['Intervals 6x2 min', 'Base run 45 min', 'Mobility + strides'] },
-      { week: 'Week 3', sessions: ['Tempo 20 min', 'Long run 60 min', 'Recovery jog 30 min'] },
-      { week: 'Week 4', sessions: ['Test 5K effort', 'Easy run 35 min', 'Reset + mobility'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'cycling-power-base',
-    name: 'Cycling Power Base',
-    sport: 'cycling',
-    goal: 'Raise threshold while keeping endurance volume',
-    summary: 'Balanced cadence, hill, and recovery work over 4 weeks.',
-    defaultFocus: 'Tempo',
-    durationTarget: 60,
-    distanceTarget: 22,
-    outline: [
-      { week: 'Week 1', sessions: ['Zone 2 ride 60 min', 'Cadence drill 40 min', 'Recovery spin 25 min'] },
-      { week: 'Week 2', sessions: ['Hill repeats 6x3 min', 'Tempo ride 30 min', 'Easy spin 30 min'] },
-      { week: 'Week 3', sessions: ['Power intervals 5x4 min', 'Zone 2 ride 75 min', 'Mobility reset'] },
-      { week: 'Week 4', sessions: ['Threshold test ride', 'Easy spin 35 min', 'Recovery day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'swim-tech-endurance',
-    name: 'Swim Tech Endurance',
-    sport: 'swimming',
-    goal: 'Improve efficiency and repeatable pace',
-    summary: 'Technique-first blocks with steady endurance progression.',
-    defaultFocus: 'Base',
-    durationTarget: 45,
-    distanceTarget: 2,
-    outline: [
-      { week: 'Week 1', sessions: ['Drill set 30 min', 'Steady swim 25 min', 'Kick + pull mix'] },
-      { week: 'Week 2', sessions: ['Tempo 12x50m', 'Technique 30 min', 'Recovery easy laps'] },
-      { week: 'Week 3', sessions: ['Pace set 8x100m', 'Steady swim 35 min', 'Breath control set'] },
-      { week: 'Week 4', sessions: ['400m time trial', 'Easy technique swim', 'Mobility + recovery'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'trail-climb-engine',
-    name: 'Trail Climb Engine',
-    sport: 'trail',
-    goal: 'Climbing strength and downhill control',
-    summary: 'Trail-focused build with elevation, tempo, and durability work.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 65,
-    distanceTarget: 10,
-    outline: [
-      { week: 'Week 1', sessions: ['Hill reps 8x60s', 'Easy trail 35 min', 'Hike strength 40 min'] },
-      { week: 'Week 2', sessions: ['Tempo trail 25 min', 'Long trail 70 min', 'Recovery walk + mobility'] },
-      { week: 'Week 3', sessions: ['Climb repeats 6x3 min', 'Trail endurance 80 min', 'Easy trail 30 min'] },
-      { week: 'Week 4', sessions: ['Simulation run', 'Recovery 30 min', 'Mobility reset'] },
-    ],
-    source: 'fallback'
-  },
-];
-
-// emptyPlan is the template used when creating a new plan,
-// it keeps form state consistent and avoids undefined fields,
-// outline starts with a single editable week,
-// and values get replaced as the user fills the form
-const emptyPlan = {
-  name: '',
-  sport: 'running',
-  goal: '',
-  summary: '',
-  defaultFocus: 'Base',
-  durationTarget: '',
-  distanceTarget: '',
-  outline: [{ week: 'Week 1', sessions: [''] }]
-};
-
-const TRAINING_WALKTHROUGH_STEPS = [
-  {
-    id: 'pick_world',
-    title: 'Pick a Training Category',
-    what: 'Choose a category like Hybrid, Running, Cycling, Swim, or Trail to filter plans by sport.',
-    why: 'The category keeps your plan list focused so sessions match your current goal.',
-    firstAction: 'Select a training category.',
-  },
-  {
-    id: 'pick_plan',
-    title: 'Pick a Plan',
-    what: 'Open Plan Library and select one plan to preview weekly sessions.',
-    why: 'A selected plan powers checklist context and timer flow.',
-    firstAction: 'Open and select a plan.',
-  },
-  {
-    id: 'create_plan',
-    title: 'Create or Edit a Plan',
-    what: 'Use Create plan to build or adjust a program structure that fits your week.',
-    why: 'Custom plans let you adapt volume and focus without losing consistency.',
-    firstAction: 'Open Create plan.',
-  },
-  {
-    id: 'start_session',
-    title: 'Run the Session Timer',
-    what: 'Start your session from the selected plan and log it with reflections.',
-    why: 'Timer + completion logging keeps training data clean for reports and XP.',
-    firstAction: 'Start a session timer.',
-  },
-];
-
-const worldFallbackPlans = [
-  {
-    id: 'hybrid-threshold-builder',
-    name: 'Hybrid Threshold Builder',
-    sport: 'hybrid',
-    goal: 'Raise threshold and station repeatability',
-    summary: 'Race-specific pacing under fatigue over 4 weeks.',
-    defaultFocus: 'Tempo',
-    durationTarget: 58,
-    distanceTarget: 7,
-    outline: [
-      { week: 'Week 1', sessions: ['Tempo run 20 min', 'Sled push intervals', 'Row + carry combo'] },
-      { week: 'Week 2', sessions: ['Wall balls density', 'Run 45 min', 'Burpee broad jumps'] },
-      { week: 'Week 3', sessions: ['Station circuit 5 rounds', 'Tempo 25 min', 'Recovery mobility'] },
-      { week: 'Week 4', sessions: ['Simulation effort', 'Easy zone 2 35 min', 'Reset day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'hybrid-race-primer',
-    name: 'Hybrid Race Primer',
-    sport: 'hybrid',
-    goal: 'Peak for event day confidence',
-    summary: 'Short focused block to sharpen transitions and pace control.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 52,
-    distanceTarget: 6,
-    outline: [
-      { week: 'Week 1', sessions: ['Run + ski erg bricks', 'Farmer carry ladders', 'Recovery spin 30 min'] },
-      { week: 'Week 2', sessions: ['Wall balls + row repeats', 'Tempo run 30 min', 'Mobility reset'] },
-      { week: 'Week 3', sessions: ['Mini simulation', 'Easy endurance 40 min', 'Drill + transitions'] },
-      { week: 'Week 4', sessions: ['Race tune-up', 'Easy shakeout', 'Event prep'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'running-5k-blueprint',
-    name: 'Running 5K Blueprint',
-    sport: 'running',
-    goal: 'Build speed and pacing for 5K',
-    summary: 'Simple 4-week build for controlled 5K performance.',
-    defaultFocus: 'Speed',
-    durationTarget: 42,
-    distanceTarget: 5,
-    outline: [
-      { week: 'Week 1', sessions: ['Strides 10x20s', 'Tempo 15 min', 'Recovery 25 min'] },
-      { week: 'Week 2', sessions: ['Intervals 8x400m', 'Base run 35 min', 'Mobility + drills'] },
-      { week: 'Week 3', sessions: ['Threshold 18 min', 'Long easy 50 min', 'Recovery jog 25 min'] },
-      { week: 'Week 4', sessions: ['5K test', 'Easy run 30 min', 'Reset day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'running-10k-steady-build',
-    name: 'Running 10K Steady Build',
-    sport: 'running',
-    goal: 'Progress to a confident 10K',
-    summary: 'Balanced endurance and tempo progression for 10K prep.',
-    defaultFocus: 'Base',
-    durationTarget: 58,
-    distanceTarget: 10,
-    outline: [
-      { week: 'Week 1', sessions: ['Base run 45 min', 'Tempo 20 min', 'Recovery 30 min'] },
-      { week: 'Week 2', sessions: ['Intervals 5x1k', 'Easy run 40 min', 'Long run 70 min'] },
-      { week: 'Week 3', sessions: ['Tempo 25 min', 'Base run 50 min', 'Recovery jog 30 min'] },
-      { week: 'Week 4', sessions: ['10K simulation', 'Easy run 35 min', 'Mobility reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'running-marathon-foundation',
-    name: 'Running Marathon Foundation',
-    sport: 'running',
-    goal: 'Introduce 42K base structure',
-    summary: 'Entry marathon base with long-run rhythm and recovery control.',
-    defaultFocus: 'Base',
-    durationTarget: 75,
-    distanceTarget: 42,
-    outline: [
-      { week: 'Week 1', sessions: ['Base run 50 min', 'Tempo 20 min', 'Long run 90 min'] },
-      { week: 'Week 2', sessions: ['Intervals 6x800m', 'Easy run 45 min', 'Long run 100 min'] },
-      { week: 'Week 3', sessions: ['Steady run 60 min', 'Recovery jog 30 min', 'Long run 110 min'] },
-      { week: 'Week 4', sessions: ['Progression run', 'Easy run 40 min', 'Mobility + reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'cycling-endurance-foundation',
-    name: 'Cycling Endurance Foundation',
-    sport: 'cycling',
-    goal: 'Build repeatable aerobic power',
-    summary: 'Steady base block for stronger week-to-week volume.',
-    defaultFocus: 'Base',
-    durationTarget: 70,
-    distanceTarget: 28,
-    outline: [
-      { week: 'Week 1', sessions: ['Zone 2 70 min', 'Cadence drills 35 min', 'Recovery spin 25 min'] },
-      { week: 'Week 2', sessions: ['Tempo 25 min', 'Zone 2 80 min', 'Mobility reset'] },
-      { week: 'Week 3', sessions: ['Hill repeats 5x5 min', 'Endurance 90 min', 'Easy spin 30 min'] },
-      { week: 'Week 4', sessions: ['Threshold check', 'Zone 2 60 min', 'Recovery day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'cycling-climb-focus',
-    name: 'Cycling Climb Focus',
-    sport: 'cycling',
-    goal: 'Improve climbing cadence and torque',
-    summary: 'Hill-specific sessions with recovery balance.',
-    defaultFocus: 'Tempo',
-    durationTarget: 62,
-    distanceTarget: 20,
-    outline: [
-      { week: 'Week 1', sessions: ['Hill repeats 6x3 min', 'Easy spin 35 min', 'Cadence drills'] },
-      { week: 'Week 2', sessions: ['Tempo climb 20 min', 'Zone 2 70 min', 'Recovery spin'] },
-      { week: 'Week 3', sessions: ['Over-under climbs', 'Long endurance 85 min', 'Mobility'] },
-      { week: 'Week 4', sessions: ['Climb benchmark', 'Easy spin 30 min', 'Reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'cycling-threshold-ramp',
-    name: 'Cycling Threshold Ramp',
-    sport: 'cycling',
-    goal: 'Lift sustainable race pace',
-    summary: 'Progressive threshold work across 4 weeks.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 64,
-    distanceTarget: 24,
-    outline: [
-      { week: 'Week 1', sessions: ['Threshold 3x8 min', 'Zone 2 60 min', 'Recovery spin 25 min'] },
-      { week: 'Week 2', sessions: ['Threshold 2x12 min', 'Tempo 30 min', 'Easy spin'] },
-      { week: 'Week 3', sessions: ['Threshold 3x10 min', 'Endurance 80 min', 'Mobility'] },
-      { week: 'Week 4', sessions: ['Race pace simulation', 'Easy ride 35 min', 'Recovery day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'swim-sprint-control',
-    name: 'Swim Sprint Control',
-    sport: 'swimming',
-    goal: 'Improve top-end speed mechanics',
-    summary: 'Short sprint sets with strict form quality.',
-    defaultFocus: 'Speed',
-    durationTarget: 40,
-    distanceTarget: 1.5,
-    outline: [
-      { week: 'Week 1', sessions: ['8x25m sprint', 'Technique drills 25 min', 'Recovery swim'] },
-      { week: 'Week 2', sessions: ['10x25m sprint', 'Tempo 10x50m', 'Kick set'] },
-      { week: 'Week 3', sessions: ['12x25m sprint', 'Steady 30 min', 'Breath control'] },
-      { week: 'Week 4', sessions: ['Sprint test set', 'Easy technique', 'Mobility reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'swim-distance-builder',
-    name: 'Swim Distance Builder',
-    sport: 'swimming',
-    goal: 'Extend steady-distance capacity',
-    summary: 'Longer continuous sets with controlled pacing.',
-    defaultFocus: 'Base',
-    durationTarget: 50,
-    distanceTarget: 2.5,
-    outline: [
-      { week: 'Week 1', sessions: ['Steady 30 min', 'Pull set 6x100m', 'Easy recovery'] },
-      { week: 'Week 2', sessions: ['Steady 35 min', 'Pace 8x100m', 'Kick + drill'] },
-      { week: 'Week 3', sessions: ['Steady 40 min', 'Threshold 5x200m', 'Recovery laps'] },
-      { week: 'Week 4', sessions: ['Distance test', 'Easy technique', 'Reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'swim-race-readiness',
-    name: 'Swim Race Readiness',
-    sport: 'swimming',
-    goal: 'Prepare for race pacing and control',
-    summary: 'Race-pace reps and sharpened form work.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 48,
-    distanceTarget: 2,
-    outline: [
-      { week: 'Week 1', sessions: ['Race pace 10x100m', 'Technique 25 min', 'Recovery'] },
-      { week: 'Week 2', sessions: ['Race pace 6x200m', 'Easy swim 30 min', 'Drill set'] },
-      { week: 'Week 3', sessions: ['Broken race set', 'Steady 35 min', 'Mobility'] },
-      { week: 'Week 4', sessions: ['Time trial', 'Easy flush', 'Reset day'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'trail-5k-starter',
-    name: 'Trail 5K Starter',
-    sport: 'trail',
-    goal: 'Simple entry trail 5K structure',
-    summary: 'Beginner-friendly trail rhythm with climb control.',
-    defaultFocus: 'Base',
-    durationTarget: 46,
-    distanceTarget: 5,
-    outline: [
-      { week: 'Week 1', sessions: ['Trail easy 30 min', 'Hill reps 6x45s', 'Recovery walk'] },
-      { week: 'Week 2', sessions: ['Tempo trail 18 min', 'Trail run 35 min', 'Mobility'] },
-      { week: 'Week 3', sessions: ['Hill reps 8x45s', 'Trail endurance 45 min', 'Recovery jog'] },
-      { week: 'Week 4', sessions: ['5K trail effort', 'Easy trail 25 min', 'Reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'trail-10k-builder',
-    name: 'Trail 10K Builder',
-    sport: 'trail',
-    goal: 'Build durable trail 10K output',
-    summary: 'Elevation and tempo progression for 10K efforts.',
-    defaultFocus: 'Tempo',
-    durationTarget: 62,
-    distanceTarget: 10,
-    outline: [
-      { week: 'Week 1', sessions: ['Trail base 45 min', 'Hill repeats 6x2 min', 'Recovery walk'] },
-      { week: 'Week 2', sessions: ['Tempo trail 25 min', 'Long trail 80 min', 'Mobility'] },
-      { week: 'Week 3', sessions: ['Climb repeats 7x2 min', 'Trail base 55 min', 'Recovery jog'] },
-      { week: 'Week 4', sessions: ['10K trail simulation', 'Easy trail 35 min', 'Reset'] },
-    ],
-    source: 'fallback'
-  },
-  {
-    id: 'trail-ultra-base',
-    name: 'Trail Ultra Base',
-    sport: 'trail',
-    goal: 'Long-form mountain endurance',
-    summary: 'Long climbs, controlled descents, and recovery rhythm.',
-    defaultFocus: 'Race Prep',
-    durationTarget: 85,
-    distanceTarget: 42,
-    outline: [
-      { week: 'Week 1', sessions: ['Long trail 95 min', 'Hill reps 8x90s', 'Recovery hike'] },
-      { week: 'Week 2', sessions: ['Steady trail 70 min', 'Tempo climb 22 min', 'Mobility'] },
-      { week: 'Week 3', sessions: ['Long trail 110 min', 'Easy trail 40 min', 'Recovery walk'] },
-      { week: 'Week 4', sessions: ['Ultra simulation block', 'Easy flush', 'Reset day'] },
-    ],
-    source: 'fallback'
-  },
-];
-
 // AthleteTrainingTab is the main training hub for athlete mode,
 // it manages selection, creation, and execution of plans,
 // it controls countdowns, timers, and session logging,
@@ -430,6 +53,7 @@ const worldFallbackPlans = [
 const AthleteTrainingTab = ({ userId, onBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
   const [banner, setBanner] = useState(null);
   const [pulsePanel, setPulsePanel] = useState(false);
   const [session, setSession] = useState({
@@ -444,7 +68,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [sessionLaunchMode, setSessionLaunchMode] = useState('standard');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [planOpen, setPlanOpen] = useState(false);
-  const [plans, setPlans] = useState([]);
   const [planSportFilter, setPlanSportFilter] = useState('');
   const [planSearch, setPlanSearch] = useState('');
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -467,22 +90,14 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   const [lastLoggedNotes, setLastLoggedNotes] = useState('');
   const [completedSessionLabel, setCompletedSessionLabel] = useState('');
   const [sessionRecap, setSessionRecap] = useState({ xp: 0, duration: 0, streak: 0, focus: 'Base', prs: [] });
-  const [planFavorites, setPlanFavorites] = useState([]);
-  const [pinnedOrder, setPinnedOrder] = useState([]);
   const [activePlanWeekIndex, setActivePlanWeekIndex] = useState(0);
   const [sessionWeekSnapshot, setSessionWeekSnapshot] = useState(null);
-  const [recentTrainingSessions, setRecentTrainingSessions] = useState([]);
-  const [recentRouteEfforts, setRecentRouteEfforts] = useState([]);
   const [lastTrainingOpen, setLastTrainingOpen] = useState(false);
-  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [view, setView] = useState('log');
   const [draggingPin, setDraggingPin] = useState(null);
   const [newPlan, setNewPlan] = useState({ ...emptyPlan });
-  const [apiStatus, setApiStatus] = useState('idle');
   const [congratsOpen, setCongratsOpen] = useState(false);
   const [sessionLoggedPulseOpen, setSessionLoggedPulseOpen] = useState(false);
-  const [selectedTrainingTrendDay, setSelectedTrainingTrendDay] = useState('');
-  const [recoveryNudge, setRecoveryNudge] = useState(null);
   const athleteSessionStorageKey = useMemo(
     () => (userId ? `exervia_active_athlete_session_${String(userId).trim()}` : ''),
     [userId]
@@ -493,6 +108,67 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   );
   const athleteSessionRestoredRef = useRef(false);
   const timerStartedAtRef = useRef(null);
+  const {
+    apiStatus,
+    buildOutline,
+    fetchPlans,
+    pinnedOrder,
+    planFavorites,
+    plans,
+    savePinnedOrder,
+    togglePlanFavorite,
+    mapPlan,
+  } = useAthleteTrainingPlans({
+    userId,
+    distanceUnit,
+  });
+  const {
+    recentRouteEfforts,
+    recentTrainingSessions,
+    recoveryNudge,
+    selectedTrainingTrendDay,
+    setSelectedTrainingTrendDay,
+    setWalkthroughOpen,
+    walkthroughOpen,
+  } = useAthleteTrainingActivityData({
+    userId,
+  });
+  useAthleteTrainingSessionPersistence({
+    athleteReflectionDraftKey,
+    athleteSessionRestoredRef,
+    athleteSessionStorageKey,
+    activePlanWeekIndex,
+    countdown,
+    countdownOpen,
+    congratsOpen,
+    floorUiHidden,
+    planSearch,
+    planSportFilter,
+    selectedPlan,
+    session,
+    sessionFocus,
+    sessionIntention,
+    sessionReflection,
+    sessionWeekSnapshot,
+    setActivePlanWeekIndex,
+    setCountdown,
+    setCountdownOpen,
+    setFloorUiHidden,
+    setPlanSearch,
+    setPlanSportFilter,
+    setSelectedPlan,
+    setSession,
+    setSessionFocus,
+    setSessionIntention,
+    setSessionReflection,
+    setSessionWeekSnapshot,
+    setTimerOpen,
+    setTimerRunning,
+    setTimerSeconds,
+    timerOpen,
+    timerRunning,
+    timerSeconds,
+  });
 
   const handleWalkthroughAction = (step) => {
     const stepId = String(step?.id || '');
@@ -515,324 +191,8 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         setBanner({ type: 'info', message: 'Pick a plan first, then start your session timer.' });
         return;
       }
-      setTimerOpen(true);
+      openFocusLock(selectedPlan);
     }
-  };
-
-  // focusOptions and sports drive filters + dropdowns,
-  // trainingWorlds define the themed entry points,
-  // these labels are used across the plan library,
-  // and keep the UI copy consistent
-  const focusOptions = ['Base', 'Tempo', 'Speed', 'Recovery', 'Race Prep'];
-  const sports = ['running', 'cycling', 'swimming', 'hybrid', 'trail'];
-  const trainingWorlds = [
-    { id: 'hybrid', title: 'Hybrid Arena (Hybrid Training)', subtitle: 'Carry, sled, engine', sport: 'hybrid' },
-    { id: 'running', title: 'Velocity Lab (Running)', subtitle: 'Tempo and pace craft', sport: 'running' },
-    { id: 'cycling', title: 'Torque Studio (Cycling)', subtitle: 'Cadence and climbs', sport: 'cycling' },
-    { id: 'swimming', title: 'Flow Pool (Swimming)', subtitle: 'Form and oxygen', sport: 'swimming' },
-    { id: 'trail', title: 'Trail Forge (Trail Running)', subtitle: 'Elevation resilience', sport: 'trail' }
-  ];
-  const worldShortLabels = {
-    hybrid: 'Hybrid Arena',
-    running: 'Velocity Lab',
-    cycling: 'Torque Studio',
-    swimming: 'Flow Pool',
-    trail: 'Trail Forge',
-  };
-  // outlinePresets provide quick session templates by sport,
-  // they accelerate plan creation with curated weeks,
-  // keys align to focusOptions and sports,
-  // and are used when users select a focus
-  const outlinePresets = {
-    running: {
-      Base: ['Base run 40 min', 'Tempo 20 min', 'Recovery 30 min'],
-      Tempo: ['Tempo 20 min', 'Intervals 6x2', 'Easy run 35 min'],
-      Speed: ['Strides 10x20s', 'Intervals 8x400', 'Recovery 25 min'],
-      Recovery: ['Easy run 30 min', 'Mobility reset', 'Recovery walk 20 min'],
-      'Race Prep': ['Race simulation', 'Tempo 25 min', 'Easy run 30 min']
-    },
-    cycling: {
-      Base: ['Zone 2 60 min', 'Cadence 45 min', 'Recovery spin 30 min'],
-      Tempo: ['Tempo 20 min', 'Hill repeats 6x2', 'Easy spin 30 min'],
-      Speed: ['Power sprints 8x30s', 'Intervals 5x3', 'Recovery 25 min'],
-      Recovery: ['Easy spin 30 min', 'Mobility reset', 'Core reset'],
-      'Race Prep': ['Test ride 45 min', 'Tempo 30 min', 'Easy spin 35 min']
-    },
-    swimming: {
-      Base: ['Technique 30 min', 'Steady 25 min', 'Kick set 20 min'],
-      Tempo: ['Tempo 20 min', 'Intervals 10x50', 'Recovery 20 min'],
-      Speed: ['Sprints 12x25', 'Pull buoy 25 min', 'Recovery 20 min'],
-      Recovery: ['Easy swim 25 min', 'Mobility reset', 'Breath control'],
-      'Race Prep': ['Test 400m', 'Tempo 25 min', 'Easy 20 min']
-    },
-    hybrid: {
-      Base: ['Carry ladder 20 min', 'Zone 2 35 min', 'Recovery 25 min'],
-      Tempo: ['Mixed circuit 30 min', 'Tempo run 25 min', 'Mobility reset'],
-      Speed: ['Sled push 6x20m', 'Row 5x500', 'Recovery 25 min'],
-      Recovery: ['Easy run 25 min', 'Mobility reset', 'Breathwork'],
-      'Race Prep': ['Simulation day', 'Tempo 20 min', 'Recovery 30 min']
-    },
-    trail: {
-      Base: ['Hills 6x60s', 'Easy run 30 min', 'Strength hike 40 min'],
-      Tempo: ['Tempo trail 25 min', 'Long trail 75 min', 'Mobility reset'],
-      Speed: ['Hill sprints 10x20', 'Easy run 30 min', 'Recovery 25 min'],
-      Recovery: ['Easy trail 30 min', 'Mobility reset', 'Recovery walk'],
-      'Race Prep': ['Trail simulation', 'Tempo 25 min', 'Recovery 30 min']
-    }
-  };
-
-  // calculateEfficiency computes a simple pacing efficiency score,
-  // it returns value, pace, and a readable insight label,
-  // used to give immediate feedback on logged sessions,
-  // returns null when required inputs are missing
-  const calculateEfficiency = (distance, time, heartRate) => {
-    if (!distance || !time || !heartRate) return null;
-    const paceMinutesPerKm = parseFloat(time) / parseFloat(distance);
-    const efficiency = paceMinutesPerKm / parseFloat(heartRate);
-
-    let insight = '';
-    if (efficiency < 0.02) insight = 'Elite efficiency';
-    else if (efficiency < 0.03) insight = 'Very efficient';
-    else if (efficiency < 0.04) insight = 'Good efficiency';
-    else if (efficiency < 0.05) insight = 'Average efficiency';
-    else insight = 'Room for improvement';
-
-    return {
-      value: efficiency.toFixed(4),
-      insight,
-      pace: paceMinutesPerKm.toFixed(2)
-    };
-  };
-
-  // mapPlan normalizes remote plan data into local shape,
-  // converts sport names into supported categories,
-  // adds defaults for missing fields to keep UI stable,
-  // returns null for unsupported plan types
-  const mapPlan = (plan, source) => {
-// rawSport manages a focused piece of logic,
-// it keeps behavior isolated for readability,
-// inputs are validated before mutation when needed,
-// and output feeds the UI state or data flow
-    const rawSport = (plan.sport || 'running').toLowerCase();
-    const normalizedSport = ['hyrox', 'functional', 'hybrid'].includes(rawSport) ? 'hybrid' : rawSport;
-    if (normalizedSport === 'row') return null;
-    return {
-      id: plan.id || plan.slug || plan.name,
-      name: plan.name,
-      sport: normalizedSport,
-      rawSport,
-      goal: plan.goal || 'Custom plan',
-      summary: plan.summary || 'Custom plan overview.',
-      defaultFocus: plan.defaultFocus || plan.default_focus || 'Base',
-      durationTarget: plan.durationTarget ?? plan.duration_target ?? '',
-      distanceTarget: plan.distanceTarget ?? plan.distance_target ?? '',
-      outline: Array.isArray(plan.outline) ? plan.outline : [],
-      source
-    };
-  };
-
-  // dedupePlans removes repeated plans coming from multiple sources.
-  // It dedupes by normalized sport+name (not id), because the same plan
-  // can arrive with different ids from template/api/live sources.
-  // When duplicates collide, it keeps the higher-priority source.
-  const dedupePlans = (list) => {
-    const sourceRank = { user: 4, template: 3, api: 2, fallback: 1 };
-    const bucket = new Map();
-
-    list.forEach((plan) => {
-      if (!plan) return;
-      const source = String(plan.source || '').toLowerCase();
-      const sportKey = String(plan.sport || '').trim().toLowerCase();
-      const nameKey = String(plan.name || '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, ' ');
-      const key = `${sportKey}::${nameKey}`;
-      if (!sportKey || !nameKey) return;
-
-      const existing = bucket.get(key);
-      if (!existing) {
-        bucket.set(key, plan);
-        return;
-      }
-
-      const currentRank = sourceRank[source] || 0;
-      const existingRank = sourceRank[String(existing.source || '').toLowerCase()] || 0;
-
-      if (currentRank > existingRank) {
-        bucket.set(key, plan);
-      }
-    });
-
-    return Array.from(bucket.values());
-  };
-
-  // loadFavorites pulls pinned plan ids from local storage,
-  // keeps user preferences persistent across sessions,
-  // safely handles malformed storage data,
-  // used to initialize the favorites state
-  const loadFavorites = () => {
-    const stored = localStorage.getItem('exervia_plan_favorites');
-    if (!stored) return [];
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  };
-
-  // loadPinnedOrder restores the custom plan ordering,
-  // this keeps the library layout stable for the user,
-  // safely parses stored order or returns an empty list,
-  // used when rendering the pinned plans list
-  const loadPinnedOrder = () => {
-    const stored = localStorage.getItem('exervia_plan_pinned_order');
-    if (!stored) return [];
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  };
-
-  // saveFavorites writes the favorites list to state + storage,
-  // keeps the UI updated immediately after changes,
-  // persists plan pins across reloads,
-  // used by favorite toggle interactions
-  const saveFavorites = (items) => {
-    setPlanFavorites(items);
-    localStorage.setItem('exervia_plan_favorites', JSON.stringify(items));
-  };
-
-  // savePinnedOrder stores the custom ordering of pinned plans,
-  // ensures the pinned list renders in the userâ€™s order,
-  // persists the ordering in local storage,
-  // used when dragging or reordering pins
-  const savePinnedOrder = (items) => {
-    setPinnedOrder(items);
-    localStorage.setItem('exervia_plan_pinned_order', JSON.stringify(items));
-  };
-
-  // togglePlanFavorite adds or removes a plan from favorites,
-  // keeps pinned order in sync with favorites,
-  // handles both add and remove flows,
-  // prevents invalid plans from being processed
-  const togglePlanFavorite = (plan) => {
-    if (!plan?.name) return;
-    if (planFavorites.includes(plan.name)) {
-      const next = planFavorites.filter(item => item !== plan.name);
-      saveFavorites(next);
-      savePinnedOrder(pinnedOrder.filter(item => item !== plan.name));
-    } else {
-      saveFavorites([...planFavorites, plan.name]);
-      if (!pinnedOrder.includes(plan.name)) {
-        savePinnedOrder([...pinnedOrder, plan.name]);
-      }
-    }
-  };
-
-  // buildOutline generates a 4-week outline from presets,
-  // blends focus, duration, and distance into sessions,
-  // applies week intensity labels for readability,
-  // returns a normalized outline array for new plans
-  const buildOutline = (sport, focus, duration, distance) => {
-    const durationTag = duration ? `${duration} min` : null;
-    const distanceTag = distance ? `${distance} km` : null;
-    const tag = [durationTag, distanceTag].filter(Boolean).join(' \u00B7 ');
-    const weekFocus = [
-      focus,
-      focus === 'Base' ? 'Tempo' : 'Base',
-      focus === 'Speed' ? 'Tempo' : 'Speed',
-      'Recovery'
-    ];
-    const weekIntensity = ['70%', '85%', '95%', '60%'];
-    return weekFocus.map((weekFocusLabel, idx) => {
-      const template = outlinePresets[sport]?.[weekFocusLabel] || outlinePresets[sport]?.Base;
-      const baseSessions = template || ['Session 1', 'Session 2', 'Session 3'];
-      const sessions = baseSessions.map((item, index) => {
-        if (!tag) return item;
-        if (index === 0) return `${item} \u00B7 ${tag}`;
-        return item;
-      });
-      return {
-        week: `Week ${idx + 1}`,
-        intensity: weekIntensity[idx] || '70%',
-        focus: weekFocusLabel,
-        sessions
-      };
-    });
-  };
-
-  // fetchExternalPlans loads plans from a public endpoint,
-  // handles API errors and sets the apiStatus flag,
-  // maps external payloads into the local plan shape,
-  // returns a normalized list for aggregation
-  const fetchExternalPlans = async () => {
-    const endpoint = process.env.REACT_APP_TRAINING_PLANS_API || '/data/training-plans.json';
-    setApiStatus('loading');
-    try {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        setApiStatus('error');
-        return [];
-      }
-      const payload = await response.json();
-      const list = Array.isArray(payload) ? payload : payload?.plans || payload?.data || [];
-      setApiStatus('ready');
-      return list.map(item => mapPlan(item, 'api'));
-    } catch (error) {
-      console.error('Plan API error:', error);
-      setApiStatus('error');
-      return [];
-    }
-  };
-
-  // fetchPlans aggregates all plan sources,
-  // merges API, templates, and user-created plans,
-  // falls back to local defaults when empty,
-  // and updates the plan list state
-  const fetchPlans = async () => {
-    const collected = [];
-    const apiPlans = await fetchExternalPlans();
-
-    if (apiPlans.length > 0) {
-      apiPlans.forEach(plan => {
-        if (plan) collected.push(plan);
-      });
-    }
-
-    const { data: templateData } = await supabase
-      .from('training_plan_templates')
-      .select('*')
-      .limit(40);
-
-    if (templateData && templateData.length > 0) {
-      templateData.forEach(template => {
-        const mapped = mapPlan(template, 'template');
-        if (mapped) collected.unshift(mapped);
-      });
-    }
-
-    if (userId) {
-      const { data: userPlanData } = await supabase
-        .from('user_training_plans')
-        .select('*')
-        .eq('user_id', userId)
-        .limit(30);
-
-      if (userPlanData && userPlanData.length > 0) {
-        userPlanData.forEach(plan => {
-          const mapped = mapPlan(plan, 'user');
-          if (mapped) collected.unshift(mapped);
-        });
-      }
-    }
-
-    if (collected.length === 0) {
-      collected.push(...fallbackPlans, ...worldFallbackPlans);
-    }
-
-    setPlans(dedupePlans(collected));
   };
 
   // startPlan applies a selected plan to session state,
@@ -881,6 +241,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     if (plan) {
       startPlan(plan, weekIndex);
     }
+    vibrateStart();
     setCountdown(3);
     setCountdownOpen(true);
     setTimerSeconds(0);
@@ -1045,7 +406,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       setTimerSeconds(elapsedSeconds);
     }, 250);
     return () => clearInterval(interval);
-  }, [timerRunning]);
+  }, [timerRunning, timerSeconds]);
 
   // hides the floor UI after timer starts,
   // gives users a few seconds before hiding,
@@ -1089,116 +450,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setEditingPlanId(null);
     setNewPlan({ ...emptyPlan });
   };
-
-  useEffect(() => {
-    if (!athleteSessionStorageKey || athleteSessionRestoredRef.current) return;
-    athleteSessionRestoredRef.current = true;
-    try {
-      const raw = localStorage.getItem(athleteSessionStorageKey);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== 'object') return;
-      const savedAt = Number(parsed.savedAt || Date.now());
-      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - savedAt) / 1000));
-      const wasCountdownOpen = Boolean(parsed.countdownOpen);
-      let nextCountdownOpen = wasCountdownOpen;
-      let nextCountdown = Math.max(Number(parsed.countdown || 0), 0);
-      let nextTimerOpen = Boolean(parsed.timerOpen);
-      let nextTimerRunning = Boolean(parsed.timerRunning);
-      let nextTimerSeconds = Math.max(Number(parsed.timerSeconds || 0), 0);
-
-      if (wasCountdownOpen) {
-        if (elapsedSeconds >= nextCountdown) {
-          const remainingElapsed = Math.max(elapsedSeconds - nextCountdown, 0);
-          nextCountdownOpen = false;
-          nextCountdown = 0;
-          nextTimerOpen = true;
-          nextTimerRunning = true;
-          nextTimerSeconds += remainingElapsed;
-        } else {
-          nextCountdown -= elapsedSeconds;
-        }
-      } else if (nextTimerRunning) {
-        nextTimerSeconds += elapsedSeconds;
-      }
-
-      if (parsed.session && typeof parsed.session === 'object') {
-        setSession((prev) => ({ ...prev, ...parsed.session }));
-      }
-      if (parsed.sessionFocus) setSessionFocus(String(parsed.sessionFocus));
-      if (parsed.selectedPlan && typeof parsed.selectedPlan === 'object') setSelectedPlan(parsed.selectedPlan);
-      if (typeof parsed.planSportFilter === 'string') setPlanSportFilter(parsed.planSportFilter);
-      if (typeof parsed.planSearch === 'string') setPlanSearch(parsed.planSearch);
-      if (typeof parsed.activePlanWeekIndex === 'number') setActivePlanWeekIndex(parsed.activePlanWeekIndex);
-      if (parsed.sessionWeekSnapshot && typeof parsed.sessionWeekSnapshot === 'object') {
-        setSessionWeekSnapshot(parsed.sessionWeekSnapshot);
-      }
-      if (typeof parsed.sessionIntention === 'string') setSessionIntention(parsed.sessionIntention);
-      setTimerOpen(nextTimerOpen);
-      setTimerRunning(nextTimerRunning);
-      setTimerSeconds(nextTimerSeconds);
-      setCountdownOpen(nextCountdownOpen);
-      setCountdown(nextCountdownOpen ? nextCountdown : 3);
-      setFloorUiHidden(Boolean(parsed.floorUiHidden && nextTimerOpen));
-      emitToast('Restored your active training session.', 'info', 2800);
-    } catch {
-      // ignore malformed restore payloads
-    }
-  }, [athleteSessionStorageKey]);
-
-  useEffect(() => {
-    if (!athleteSessionStorageKey) return;
-    const hasMeaningfulSession =
-      Boolean(selectedPlan) ||
-      Boolean(sessionWeekSnapshot) ||
-      countdownOpen ||
-      timerOpen ||
-      timerSeconds > 0 ||
-      Boolean(sessionIntention.trim()) ||
-      Boolean(session.notes.trim());
-
-    if (!hasMeaningfulSession) {
-      localStorage.removeItem(athleteSessionStorageKey);
-      return;
-    }
-
-    localStorage.setItem(
-      athleteSessionStorageKey,
-      JSON.stringify({
-        session,
-        sessionFocus,
-        selectedPlan,
-        planSportFilter,
-        planSearch,
-        activePlanWeekIndex,
-        sessionWeekSnapshot,
-        timerOpen,
-        timerRunning,
-        timerSeconds,
-        countdownOpen,
-        countdown,
-        floorUiHidden,
-        sessionIntention,
-        savedAt: Date.now(),
-      })
-    );
-  }, [
-    activePlanWeekIndex,
-    athleteSessionStorageKey,
-    countdown,
-    countdownOpen,
-    floorUiHidden,
-    planSearch,
-    planSportFilter,
-    selectedPlan,
-    session,
-    sessionFocus,
-    sessionIntention,
-    sessionWeekSnapshot,
-    timerOpen,
-    timerRunning,
-    timerSeconds,
-  ]);
-
   useEffect(() => {
     if (!planOpen && !showCreatePlan && !lastTrainingOpen && !congratsOpen && !timerOpen) return undefined;
     const handleEscape = (event) => {
@@ -1229,301 +480,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [congratsOpen, lastTrainingOpen, planOpen, showCreatePlan, timerOpen]);
 
-  // handleLogSession writes the session to Supabase,
-  // computes efficiency metrics when available,
-  // attaches plan info + intention to notes,
-  // resets form state and refreshes user stats
-  const handleLogSession = async () => {
-    const pushRecoveryNudge = (label, minutes) => {
-      const nudgeUserId = localStorage.getItem("exervia_user_id") || userId || "guest";
-      const key = `exervia_recovery_nudge_${nudgeUserId}`;
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          type: "training_session",
-          label: String(label || "Session"),
-          minutes: Number(minutes || 0),
-          at: Date.now(),
-        })
-      );
-    };
-
-    const typedDuration = parseInt(session.duration, 10);
-    const timerDerivedDuration = timerSeconds > 0 ? Math.max(1, Math.round(timerSeconds / 60)) : 0;
-    const planDurationTarget = Number(selectedPlan?.durationTarget || 0);
-    const resolvedDuration =
-      (Number.isFinite(typedDuration) && typedDuration > 0 ? typedDuration : 0) ||
-      timerDerivedDuration ||
-      (planDurationTarget > 0 ? planDurationTarget : 0);
-    const resolvedUserId =
-      Number.isFinite(Number(userId))
-        ? Number(userId)
-        : Number(localStorage.getItem('exervia_user_id'));
-
-    if (!resolvedDuration || !session.sport) {
-      setBanner({ type: 'warn', message: 'Please add a duration source and sport before logging.' });
-      return;
-    }
-    if (!Number.isFinite(resolvedUserId) || resolvedUserId <= 0) {
-      setBanner({ type: 'error', message: 'Could not resolve your profile for XP. Please refresh and try again.' });
-      return;
-    }
-
-    let efficiencyData = null;
-
-    if (session.distance && session.duration && session.heartRate) {
-      efficiencyData = calculateEfficiency(session.distance, session.duration, session.heartRate);
-    }
-
-    const combinedNotes = [
-      session.notes.trim(),
-      sessionIntention.trim() ? `Intention: ${sessionIntention.trim()}` : ''
-    ].filter(Boolean).join('\n');
-    const loggedLabel = selectedPlan?.name || `${String(session.sport || 'training').toUpperCase()} session`;
-    const distanceKmValue = session.distance ? parseFloat(session.distance) : 0;
-    const sessionPrs = detectSessionPrs({
-      priorSessions: recentTrainingSessions,
-      sport: session.sport,
-      durationMinutes: resolvedDuration,
-      distanceKm: distanceKmValue,
-    });
-    const resolvedWeekSnapshot = sessionWeekSnapshot || selectedPlan?.outline?.[activePlanWeekIndex] || null;
-    const resolvedPlanWeekLabel = String(resolvedWeekSnapshot?.week || '').trim() || null;
-    const resolvedPlanSessions = Array.isArray(resolvedWeekSnapshot?.sessions)
-      ? resolvedWeekSnapshot.sessions.filter((item) => String(item || '').trim().length > 0)
-      : [];
-
-    const sessionData = {
-      user_id: resolvedUserId,
-      sport: session.sport,
-      level: 'advanced',
-      duration_minutes: resolvedDuration,
-      effort_level: null,
-      mood_emoji: session.mood,
-      notes: combinedNotes,
-      metrics: {
-        distance: session.distance ? parseFloat(session.distance) : null,
-        heart_rate: session.heartRate ? parseInt(session.heartRate, 10) : null,
-        efficiency_factor: efficiencyData ? efficiencyData.value : null,
-        focus: sessionFocus,
-        plan_id: selectedPlan ? selectedPlan.id : null,
-        plan_name: selectedPlan ? selectedPlan.name : null,
-        plan_week: resolvedPlanWeekLabel,
-        plan_sessions: resolvedPlanSessions
-      },
-      efficiency_factor: efficiencyData ? efficiencyData.value : null,
-    };
-
-    // eslint-disable-next-line
-    const { data, error } = await supabase
-      .from('training_sessions')
-      .insert([sessionData])
-      .select()
-      .single();
-
-    if (!error) {
-      // Keep athlete sessions rewarding even with short logged durations.
-      // Daily diminishing returns still apply server-side.
-      const durationBaseXp = Math.max(15, resolvedDuration || 0);
-      let awardedXp = 0;
-      let xpRelinked = false;
-      if (data?.id && durationBaseXp > 0) {
-        const xpResult = await grantXpEventSafe({
-          userId: resolvedUserId,
-          eventType: 'training_session',
-          baseXp: durationBaseXp,
-          idempotencyKey: `training_session:${data.id}`,
-          sourceTable: 'training_sessions',
-          sourceId: String(data.id),
-          meta: {
-            sport: session.sport,
-            focus: sessionFocus,
-            duration_minutes: durationBaseXp,
-            plan_id: selectedPlan ? selectedPlan.id : null,
-            plan_name: selectedPlan ? selectedPlan.name : null,
-            plan_week: resolvedPlanWeekLabel,
-          },
-        });
-        awardedXp = Number(xpResult.awardedXp || 0);
-        xpRelinked = Boolean(xpResult.relinked);
-        if (xpResult.error) {
-          console.error('grant_xp_event failed:', xpResult.error);
-          setBanner({
-            type: 'warn',
-            message: 'Session logged, but XP update is delayed. It will retry automatically.',
-          });
-        }
-      }
-      try {
-        await trackDailyActivity(resolvedUserId, 'training_session');
-      } catch (activityError) {
-        console.error('trackDailyActivity failed:', activityError);
-      }
-      try {
-        await publishTrainingStatus(resolvedUserId, {
-          worldLabel: trainingWorlds.find((world) => world.sport === session.sport)?.title || session.sport || 'Training',
-          sportLabel: session.sport || 'training',
-          focus: sessionFocus,
-          durationLabel: `${durationBaseXp} min`,
-          planName: selectedPlan?.name || '',
-        });
-      } catch (feedError) {
-        console.error('publishTrainingStatus failed:', feedError);
-      }
-      try {
-        await recalcUserState(resolvedUserId);
-      } catch (stateError) {
-        console.error('recalcUserState failed:', stateError);
-      }
-      window.dispatchEvent(new Event('user_state_updated'));
-
-      if (awardedXp > 0) {
-        setBanner({
-          type: 'success',
-          message: `Session logged. +${awardedXp} XP earned.${xpRelinked ? ' Profile link repaired.' : ''}`,
-        });
-      } else if (efficiencyData && parseFloat(efficiencyData.value) < 0.03) {
-        setBanner({
-          type: 'success',
-          message: `Great efficiency score. Cardiovascular fitness is improving.${xpRelinked ? ' Profile link repaired.' : ''}`,
-        });
-      } else {
-        setBanner({
-          type: 'info',
-          message: `Session logged. No XP update this time (already counted, daily XP cap reached, or reduced to 0 by diminishing returns).${xpRelinked ? ' Profile link repaired.' : ''}`,
-        });
-      }
-
-      setSession({
-        sport: 'running',
-        duration: '',
-        distance: '',
-        heartRate: '',
-        mood: 'Focused',
-        notes: ''
-      });
-      setSessionIntention('');
-      setSessionReflection('');
-      if (athleteReflectionDraftKey) {
-        localStorage.removeItem(athleteReflectionDraftKey);
-      }
-      setLastLoggedSessionId(data?.id || null);
-      setLastLoggedNotes(combinedNotes);
-      setCompletedSessionLabel(loggedLabel);
-      setSessionRecap({
-        xp: awardedXp,
-        duration: resolvedDuration,
-        streak: 0,
-        focus: sessionFocus || 'Base',
-        prs: sessionPrs,
-      });
-      pushRecoveryNudge(loggedLabel, resolvedDuration);
-      setSessionFocus('Base');
-      setSelectedPlan(null);
-      setSessionWeekSnapshot(null);
-      if (athleteSessionStorageKey) {
-        localStorage.removeItem(athleteSessionStorageKey);
-      }
-      setSessionLoggedPulseOpen(false);
-      if (sessionPrs.length) {
-        emitToast(`Athlete PR: ${sessionPrs[0].label}.`, 'success', 3200);
-      }
-      setCongratsOpen(true);
-    } else {
-      console.error('Error logging session:', error);
-      setBanner({ type: 'error', message: 'Could not log session. Try again.' });
-    }
-
-  };
-
-  // finishSession ends the active timer flow,
-  // stops the timer and closes the timer UI,
-  // then delegates to handleLogSession,
-  // keeps session completion in one path
-  const finishSession = () => {
-    setTimerRunning(false);
-    setTimerOpen(false);
-    handleLogSession();
-  };
-
-  // saveReflection appends a reflection to the last session,
-  // requires a logged session id to update notes,
-  // posts the update to Supabase and shows feedback,
-  // closes the congrats modal after completion
-  const saveReflection = async () => {
-    const reflection = sessionReflection.trim();
-    if (!reflection || !lastLoggedSessionId) {
-      setCongratsOpen(false);
-      return;
-    }
-    setReflectionSaving(true);
-    const updatedNotes = [lastLoggedNotes, `Reflection: ${reflection}`]
-      .filter(Boolean)
-      .join('\n');
-    const { error } = await supabase
-      .from('training_sessions')
-      .update({ notes: updatedNotes })
-      .eq('id', lastLoggedSessionId);
-    if (error) {
-      console.error('Error saving reflection:', error);
-      setBanner({ type: 'error', message: 'Could not save reflection.' });
-    } else {
-      setBanner({ type: 'success', message: 'Reflection saved.' });
-      if (athleteReflectionDraftKey) {
-        localStorage.removeItem(athleteReflectionDraftKey);
-      }
-    }
-    setReflectionSaving(false);
-    setCongratsOpen(false);
-  };
-
-  // startFinishHold begins the hold-to-finish interaction,
-  // increments progress until it reaches the threshold,
-  // calls finishSession when complete,
-  // ignores repeated starts while active
-  const startFinishHold = () => {
-    if (isHoldingFinish || holdTimerRef.current) return;
-    setIsHoldingFinish(true);
-    setFinishHold(0);
-    const duration = 900;
-    const step = 50;
-    let elapsed = 0;
-    holdTimerRef.current = setInterval(() => {
-      elapsed += step;
-      const progress = Math.min(elapsed / duration, 1);
-      setFinishHold(progress);
-      if (progress >= 1) {
-        clearInterval(holdTimerRef.current);
-        holdTimerRef.current = null;
-        setIsHoldingFinish(false);
-        setFinishHold(0);
-        finishSession();
-      }
-    }, step);
-  };
-
-  // endFinishHold cancels the hold interaction,
-  // clears the interval and resets progress state,
-  // prevents accidental completion,
-  // called on pointer/touch release
-  const endFinishHold = () => {
-    if (!holdTimerRef.current) return;
-    clearInterval(holdTimerRef.current);
-    holdTimerRef.current = null;
-    setIsHoldingFinish(false);
-    setFinishHold(0);
-  };
-
-  // initial data load for plans + local prefs,
-  // recent sessions are user-specific,
-  // plan sources still load without a signed-in user,
-  // runs once per userId change
-  useEffect(() => {
-    fetchPlans();
-    setPlanFavorites(loadFavorites());
-    setPinnedOrder(loadPinnedOrder());
-  }, [userId]);
-
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
     const world = String(params.get('world') || '').trim().toLowerCase();
@@ -1534,106 +490,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
   }, [location.search]);
 
   useEffect(() => {
-    if (!userId) {
-      setRecentTrainingSessions([]);
-      return;
-    }
-    const run = async () => {
-      const { data } = await supabase
-        .from('training_sessions')
-        .select('id,sport,duration_minutes,created_at,metrics')
-        .eq('user_id', Number(userId))
-        .order('created_at', { ascending: false })
-        .limit(12);
-      setRecentTrainingSessions(data || []);
-    };
-    run();
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) {
-      setRecentRouteEfforts([]);
-      return;
-    }
-    const run = async () => {
-      const { data } = await supabase
-        .from('athlete_runs')
-        .select('id,title,discipline,distance_km,elapsed_seconds,created_at')
-        .eq('user_id', Number(userId))
-        .order('created_at', { ascending: false })
-        .limit(20);
-      setRecentRouteEfforts(data || []);
-    };
-    run();
-  }, [userId]);
-
-  useEffect(() => {
-    if (!recentTrainingSessions.length) {
-      setSelectedTrainingTrendDay('');
-      return;
-    }
-    if (selectedTrainingTrendDay) return;
-    const latestSessionDay = String(recentTrainingSessions[0]?.created_at || '').slice(0, 10);
-    if (latestSessionDay) {
-      setSelectedTrainingTrendDay(latestSessionDay);
-    }
-  }, [recentTrainingSessions, selectedTrainingTrendDay]);
-
-  useEffect(() => {
-    const nudgeUserId = localStorage.getItem("exervia_user_id") || userId || "guest";
-    const key = `exervia_recovery_nudge_${nudgeUserId}`;
-    try {
-      const raw = localStorage.getItem(key);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== 'object') {
-        setRecoveryNudge(null);
-        return;
-      }
-      const ageMs = Date.now() - Number(parsed.at || 0);
-      if (!Number.isFinite(ageMs) || ageMs > 1000 * 60 * 60 * 72) {
-        setRecoveryNudge(null);
-        return;
-      }
-      setRecoveryNudge(parsed);
-    } catch {
-      setRecoveryNudge(null);
-    }
-  }, [userId, recentTrainingSessions]);
-
-  useEffect(() => {
-    if (!athleteReflectionDraftKey || !congratsOpen) return;
-    try {
-      const raw = localStorage.getItem(athleteReflectionDraftKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.text === 'string') {
-        setSessionReflection(parsed.text);
-      }
-    } catch {
-      // ignore malformed draft
-    }
-  }, [athleteReflectionDraftKey, congratsOpen]);
-
-  useEffect(() => {
-    if (!athleteReflectionDraftKey || !congratsOpen) return;
-    try {
-      if (!sessionReflection.trim()) {
-        localStorage.removeItem(athleteReflectionDraftKey);
-        return;
-      }
-      localStorage.setItem(
-        athleteReflectionDraftKey,
-        JSON.stringify({
-          text: sessionReflection,
-          at: Date.now(),
-        })
-      );
-    } catch {
-      // ignore storage failure
-    }
-  }, [athleteReflectionDraftKey, congratsOpen, sessionReflection]);
-
-  useEffect(() => {
     const weekCount = (selectedPlan?.outline || []).length;
     if (!weekCount) {
       setActivePlanWeekIndex(0);
@@ -1642,44 +498,100 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     setActivePlanWeekIndex((prev) => Math.max(0, Math.min(prev, weekCount - 1)));
   }, [selectedPlan]);
 
-  useEffect(() => {
-    if (!userId) return;
-    const walkthroughSeenKey = `exervia_athlete_training_walkthrough_seen_${userId}`;
-    try {
-      if (localStorage.getItem(walkthroughSeenKey)) return;
-      setWalkthroughOpen(true);
-      localStorage.setItem(walkthroughSeenKey, '1');
-    } catch {
-      // ignore storage failure and keep the ritual usable
-    }
-  }, [userId]);
-
-  // filteredPlans applies search + sport filter,
-  // keeps the library list focused by user input,
-  // matches on name/goal/summary/sport fields,
-  // used to render the program list
-  const filteredPlans = plans.filter(plan => {
-    const query = planSearch.toLowerCase();
-    const sportMatch = planSportFilter ? plan.sport === planSportFilter : false;
-    return (
-      sportMatch && (
-        plan.name.toLowerCase().includes(query) ||
-        plan.goal.toLowerCase().includes(query) ||
-        plan.summary.toLowerCase().includes(query) ||
-        plan.sport.toLowerCase().includes(query) ||
-        plan.rawSport?.toLowerCase().includes(query)
-      )
-    );
+  const {
+    filteredPlans,
+    recommendedPlans,
+    ritualWorldMeta,
+    displayPlans,
+    sortedPins,
+    suggestedPlan,
+    timelinePlan,
+    timerChecklistWeek,
+    lastTraining,
+    getRecentPlanName,
+    getRecentPlanWeek,
+    getRecentObjectives,
+    lastTrainingTitle,
+    bestDurationMinutes,
+    avgDurationMinutes,
+    totalSessionsLogged,
+    uniqueSportsTracked,
+    maxTrainingMinutesByDay,
+    topSportsTrend,
+    maxSportCount,
+    selectedTrainingTrendDayKey,
+    selectedDaySessions,
+    activeWorldSport,
+    filteredRouteEfforts,
+    activeWorldSessionCount,
+    activeWorldMinutes,
+    activeWorldDistanceKm,
+    routePrStats,
+    weeklyVolumeChart,
+    paceTrendPoints,
+    paceTrendRange,
+    paceTrendPolyline,
+    routeRitualPreview,
+    detectSessionPrs,
+    buildRouteLabUrl,
+  } = useAthleteTrainingInsights({
+    plans,
+    planSearch,
+    planSportFilter,
+    session,
+    sessionFocus,
+    selectedPlan,
+    pinnedOrder,
+    planFavorites,
+    activePlanWeekIndex,
+    sessionWeekSnapshot,
+    recentTrainingSessions,
+    recentRouteEfforts,
+    selectedTrainingTrendDay,
+    distanceUnit,
+    userId,
   });
-
-  // recommendedPlans picks a small subset for quick access,
-  // based on current session sport or focus,
-  // keeps the highlight area concise,
-  // used in the pinned/recommended strip
-  const recommendedPlans = plans
-    .filter(plan => plan.sport === session.sport || plan.defaultFocus === sessionFocus)
-    .slice(0, 3);
-  const ritualWorldMeta = getAthleteWorldMeta(planSportFilter || selectedPlan?.sport || session.sport || 'running');
+  const {
+    endFinishHold,
+    saveReflection,
+    startFinishHold,
+  } = useAthleteTrainingSessionActions({
+    activePlanWeekIndex,
+    athleteReflectionDraftKey,
+    athleteSessionStorageKey,
+    detectSessionPrs,
+    isHoldingFinish,
+    lastLoggedNotes,
+    lastLoggedSessionId,
+    recentTrainingSessions,
+    selectedPlan,
+    session,
+    sessionFocus,
+    sessionIntention,
+    sessionReflection,
+    sessionWeekSnapshot,
+    setBanner,
+    setCompletedSessionLabel,
+    setCongratsOpen,
+    setFinishHold,
+    setIsHoldingFinish,
+    setLastLoggedNotes,
+    setLastLoggedSessionId,
+    setReflectionSaving,
+    setSelectedPlan,
+    setSession,
+    setSessionFocus,
+    setSessionIntention,
+    setSessionLoggedPulseOpen,
+    setSessionRecap,
+    setSessionReflection,
+    setSessionWeekSnapshot,
+    setTimerOpen,
+    setTimerRunning,
+    timerSeconds,
+    trainingWorlds,
+    userId,
+  });
 
   // companion hint uses session + plan context,
   // crafts a short tip to guide the user,
@@ -1700,259 +612,9 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         detail: { text }
       })
     );
-  }, [session.sport, selectedPlan, recommendedPlans]);
+  }, [recommendedPlans, selectedPlan, session.duration, session.sport, sessionFocus]);
 
-  // displayPlans limits visible plans for performance,
-  // respects the showAll toggle and search state,
-  // avoids overwhelming the user with long lists,
-  // used by the plan library view
-  const displayPlans = (planSportFilter ? filteredPlans : []).slice(
-    0,
-    showAllPlans || planSearch ? filteredPlans.length : 5
-  );
-
-  // aggregate plan state for summary cards,
-  // derive pinned plan ordering and selection,
-  // and prepare timeline context for the UI
-  const sortedPins = [
-    ...pinnedOrder.filter(item => planFavorites.includes(item)),
-    ...planFavorites.filter(item => !pinnedOrder.includes(item))
-  ];
-  const pinnedPlans = sortedPins
-    .map((item) => plans.find(plan => plan.name === item))
-    .filter(Boolean);
-  const pinnedPlan = pinnedPlans[0] || null;
-  const suggestedPlan = filteredPlans[0] || pinnedPlan || recommendedPlans[0] || null;
-  const timelinePlan = selectedPlan || pinnedPlan || recommendedPlans[0];
-  const selectedPlanOutline = Array.isArray(selectedPlan?.outline) ? selectedPlan.outline : [];
-  const selectedPlanWeek =
-    selectedPlanOutline[activePlanWeekIndex] || selectedPlanOutline[0] || null;
-  const timerChecklistWeek = sessionWeekSnapshot || selectedPlanWeek;
-  const lastTraining = recentTrainingSessions[0] || null;
-  const parsePlanNameFromNotes = (notesValue = '') => {
-    const notesText = String(notesValue || '');
-    const match = notesText.match(/Plan:\s*(.+?)\s*(?:\(|-|$)/i);
-    return match ? String(match[1] || '').trim() : '';
-  };
-  const getRecentPlanName = (row) =>
-    String(row?.metrics?.plan_name || '').trim() ||
-    parsePlanNameFromNotes(row?.notes || '') ||
-    String(row?.sport || 'training').toUpperCase();
-  const getRecentPlanWeek = (row) => {
-    const metricsWeek = String(row?.metrics?.plan_week || '').trim();
-    if (metricsWeek) return metricsWeek;
-    const notesText = String(row?.notes || '');
-    const weekMatch = notesText.match(/\((Week\s+\d+)\)/i);
-    return weekMatch ? String(weekMatch[1] || '').trim() : '';
-  };
-  const getRecentObjectives = (row) => {
-    const fromMetrics = Array.isArray(row?.metrics?.plan_sessions)
-      ? row.metrics.plan_sessions.map((item) => String(item || '').trim()).filter(Boolean)
-      : [];
-    if (fromMetrics.length) return fromMetrics;
-    return [];
-  };
-  const lastTrainingTitle = lastTraining ? getRecentPlanName(lastTraining) : '';
-  const timedSessionDurations = recentTrainingSessions
-    .map((row) => Number(row?.duration_minutes || 0))
-    .filter((minutes) => Number.isFinite(minutes) && minutes > 0);
-  const bestDurationMinutes = timedSessionDurations.length ? Math.min(...timedSessionDurations) : 0;
-  const avgDurationMinutes = timedSessionDurations.length
-    ? Math.round(
-        timedSessionDurations.reduce((sum, minutes) => sum + Number(minutes || 0), 0) /
-          timedSessionDurations.length
-      )
-    : 0;
-  const totalSessionsLogged = recentTrainingSessions.length;
-  const uniqueSportsTracked = new Set(
-    recentTrainingSessions.map((row) => String(row?.sport || '').trim()).filter(Boolean)
-  ).size;
-  const recentSessionDurationByDay = useMemo(() => {
-    const now = new Date();
-    const rows = [];
-    for (let offset = 6; offset >= 0; offset -= 1) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - offset);
-      const key = date.toISOString().slice(0, 10);
-      const dayRows = recentTrainingSessions.filter(
-        (row) => String(row?.created_at || '').slice(0, 10) === key
-      );
-      const totalMinutes = dayRows.reduce(
-        (sum, row) => sum + Math.max(0, Number(row?.duration_minutes || 0)),
-        0
-      );
-      rows.push({
-        key,
-        label: date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-        minutes: totalMinutes,
-      });
-    }
-    return rows;
-  }, [recentTrainingSessions]);
-  const maxTrainingMinutesByDay = Math.max(
-    1,
-    ...recentSessionDurationByDay.map((item) => Number(item.minutes || 0))
-  );
-  const topSportsTrend = useMemo(() => {
-    const counts = {};
-    recentTrainingSessions.forEach((row) => {
-      const key = String(row?.sport || '').trim();
-      if (!key) return;
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([sport, count]) => ({ sport: sport.toUpperCase(), count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [recentTrainingSessions]);
-  const maxSportCount = Math.max(1, ...topSportsTrend.map((item) => Number(item.count || 0)));
-  const selectedTrainingTrendDayKey =
-    selectedTrainingTrendDay || recentSessionDurationByDay[recentSessionDurationByDay.length - 1]?.key || '';
-  const selectedDaySessions = recentTrainingSessions
-    .filter((row) => String(row?.created_at || '').slice(0, 10) === selectedTrainingTrendDayKey)
-    .slice(0, 8);
-  const activeWorldSport = planSportFilter || selectedPlan?.sport || '';
-  const filteredRouteEfforts = useMemo(() => {
-    const world = activeWorldSport || '';
-    if (!world) return recentRouteEfforts.slice(0, 3);
-    return recentRouteEfforts
-      .filter((effort) => String(effort?.discipline || '').trim().toLowerCase() === world)
-      .slice(0, 3);
-  }, [activeWorldSport, recentRouteEfforts]);
-  const activeWorldSessionCount = activeWorldSport
-    ? recentTrainingSessions.filter((row) => String(row?.sport || '').trim().toLowerCase() === activeWorldSport).length
-    : 0;
-  const activeWorldMinutes = activeWorldSport
-    ? recentTrainingSessions
-        .filter((row) => String(row?.sport || '').trim().toLowerCase() === activeWorldSport)
-        .reduce((sum, row) => sum + Math.max(0, Number(row?.duration_minutes || 0)), 0)
-    : 0;
-  const activeWorldDistanceKm = activeWorldSport
-    ? recentRouteEfforts
-        .filter((effort) => String(effort?.discipline || '').trim().toLowerCase() === activeWorldSport)
-        .reduce((sum, effort) => sum + Math.max(0, Number(effort?.distance_km || 0)), 0)
-    : 0;
-  const routePrStats = useMemo(() => {
-    const formatPaceLabel = (secondsPerKm) => {
-      if (!Number.isFinite(secondsPerKm) || secondsPerKm <= 0) return null;
-      const mins = Math.floor(secondsPerKm / 60);
-      const secs = Math.round(secondsPerKm % 60);
-      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}/km`;
-    };
-    const routeRows = recentRouteEfforts.filter(
-      (effort) => Number(effort?.distance_km || 0) > 0 && Number(effort?.elapsed_seconds || 0) > 0
-    );
-    if (!routeRows.length) {
-      return {
-        bestPace: null,
-        longestDistance: 0,
-        longestDiscipline: '',
-      };
-    }
-    const bestPaceRow = routeRows.reduce((best, current) => {
-      const currentPace = Number(current.elapsed_seconds || 0) / Number(current.distance_km || 1);
-      if (!best) return { row: current, pace: currentPace };
-      return currentPace < best.pace ? { row: current, pace: currentPace } : best;
-    }, null);
-    const longestDistanceRow = routeRows.reduce((best, current) =>
-      Number(current.distance_km || 0) > Number(best?.distance_km || 0) ? current : best
-    , null);
-    return {
-      bestPace: bestPaceRow ? formatPaceLabel(bestPaceRow.pace) : null,
-      longestDistance: Number(longestDistanceRow?.distance_km || 0),
-      longestDiscipline: longestDistanceRow ? getAthleteWorldMeta(longestDistanceRow.discipline).title : '',
-    };
-  }, [recentRouteEfforts]);
-  const formatPaceLabel = (secondsPerKm) => {
-    if (!Number.isFinite(secondsPerKm) || secondsPerKm <= 0) return null;
-    const mins = Math.floor(secondsPerKm / 60);
-    const secs = Math.round(secondsPerKm % 60);
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}/km`;
-  };
-  const weeklyVolumeChart = useMemo(
-    () =>
-      recentSessionDurationByDay.map((item) => ({
-        ...item,
-        ratio: maxTrainingMinutesByDay ? Number(item.minutes || 0) / maxTrainingMinutesByDay : 0,
-      })),
-    [recentSessionDurationByDay, maxTrainingMinutesByDay]
-  );
-  const paceTrendPoints = useMemo(() => {
-    return recentRouteEfforts
-      .filter((effort) => Number(effort?.distance_km || 0) > 0 && Number(effort?.elapsed_seconds || 0) > 0)
-      .slice(0, 8)
-      .reverse()
-      .map((effort) => {
-        const paceSeconds = Number(effort.elapsed_seconds || 0) / Math.max(0.01, Number(effort.distance_km || 0));
-        return {
-          id: effort.id,
-          label: new Date(effort.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-          paceSeconds,
-          paceLabel: formatPaceLabel(paceSeconds) || '--:--/km',
-        };
-      });
-  }, [recentRouteEfforts]);
-  const paceTrendRange = useMemo(() => {
-    if (!paceTrendPoints.length) {
-      return { min: 0, max: 0 };
-    }
-    const values = paceTrendPoints.map((item) => item.paceSeconds);
-    return { min: Math.min(...values), max: Math.max(...values) };
-  }, [paceTrendPoints]);
-  const paceTrendPolyline = useMemo(() => {
-    if (paceTrendPoints.length < 2) return '';
-    const spread = Math.max(1, paceTrendRange.max - paceTrendRange.min);
-    const stepX = paceTrendPoints.length > 1 ? 100 / (paceTrendPoints.length - 1) : 100;
-    return paceTrendPoints
-      .map((item, index) => {
-        const normalized = (item.paceSeconds - paceTrendRange.min) / spread;
-        const x = index * stepX;
-        const y = 100 - normalized * 74 - 12;
-        return `${x},${y}`;
-      })
-      .join(' ');
-  }, [paceTrendPoints, paceTrendRange]);
-  const routeRitualPreview = filteredRouteEfforts.slice(0, 2);
-  const detectSessionPrs = ({ priorSessions, sport, durationMinutes, distanceKm }) => {
-    const normalizedSport = String(sport || '').trim().toLowerCase();
-    const rows = priorSessions.filter(
-      (row) => String(row?.sport || '').trim().toLowerCase() === normalizedSport
-    );
-    const prs = [];
-    const maxDuration = rows.reduce(
-      (best, row) => Math.max(best, Number(row?.duration_minutes || 0)),
-      0
-    );
-    const maxDistance = rows.reduce(
-      (best, row) => Math.max(best, Number(row?.metrics?.distance || 0)),
-      0
-    );
-    if (Number(durationMinutes || 0) > 0 && Number(durationMinutes || 0) > maxDuration) {
-      prs.push({
-        label: 'Longest session',
-        value: `${Math.round(Number(durationMinutes || 0))} min`,
-      });
-    }
-    if (Number(distanceKm || 0) > 0 && Number(distanceKm || 0) > maxDistance) {
-      prs.push({
-        label: 'Longest distance',
-        value: `${Number(distanceKm || 0).toFixed(1)} km`,
-      });
-    }
-    return prs;
-  };
-  const buildRouteLabUrl = () => {
-    const params = new URLSearchParams();
-    if (activeWorldSport) params.set('world', activeWorldSport);
-    if (selectedPlan?.name) params.set('plan', selectedPlan.name);
-    if (selectedPlan?.defaultFocus) params.set('focus', selectedPlan.defaultFocus);
-    if (selectedPlanWeek?.week) params.set('week', selectedPlanWeek.week);
-    const firstObjective = Array.isArray(selectedPlanWeek?.sessions) ? selectedPlanWeek.sessions[0] : '';
-    if (firstObjective) params.set('objective', firstObjective);
-    return `/athlete/${userId}/routes${params.toString() ? `?${params.toString()}` : ''}`;
-  };
-  const holdTimerRef = useRef(null);
-  const sessionLoggedPulseTimerRef = useRef(null);
+  const visiblePlans = displayPlans(showAllPlans);
 
   // timer values are derived from session or plan,
   // targetSeconds drives the progress ring,
@@ -2006,21 +668,6 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
     });
     setShowCreatePlan(true);
   };
-
-  // cleanup effect for hold-to-finish timer,
-  // clears any active intervals on unmount,
-  // prevents stray timers from running in background,
-  // keeps component lifecycle tidy
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current);
-      }
-      if (sessionLoggedPulseTimerRef.current) {
-        clearTimeout(sessionLoggedPulseTimerRef.current);
-      }
-    };
-  }, []);
 
   // getPlanStory builds a short narrative summary,
   // tailors the text to focus + sport,
@@ -2077,6 +724,22 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
             >
               Stats
             </button>
+            <div className="studio-toggle" aria-label="Distance unit preference">
+              <button
+                className={`studio-toggle-btn ${distanceUnit === 'km' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setDistanceUnit('km')}
+              >
+                km
+              </button>
+              <button
+                className={`studio-toggle-btn ${distanceUnit === 'mi' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setDistanceUnit('mi')}
+              >
+                mi
+              </button>
+            </div>
           </div>
         </header>
 
@@ -2097,566 +760,88 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
         {/* right panel focuses on session preview, */}
         {/* layout stays consistent across states */}
         {view === 'log' ? (
-        <div className="studio-grid">
-          {/* plan library panel with filters + actions, */}
-          {/* controls create/collapse and search behaviors, */}
-          {/* renders pinned and available plans, */}
-          {/* keeps selection logic in one place */}
-          <section className="studio-panel studio-reveal">
-              <div className="studio-panel-row">
-                <div className="studio-panel-title">Plan Library</div>
-                <div className="studio-panel-actions">
-                  <button
-                    className="studio-mini-btn ghost"
-                    onClick={() => setShowPlanLibrary((prev) => !prev)}
-                    type="button"
-                  >
-                    {showPlanLibrary ? 'Collapse list' : 'Show plans'}
-                  </button>
-                  <button
-                    className="studio-mini-btn"
-                    onClick={() => {
-                      setEditingPlanId(null);
-                      setNewPlan({ ...emptyPlan });
-                      setShowCreatePlan(true);
-                    }}
-                    type="button"
-                  >
-                    Create plan
-                  </button>
-                </div>
-              </div>
-
-            {/* training worlds act as sport filters, */}
-            {/* selecting a world activates its plan list, */}
-            {/* clicking again clears the filter, */}
-            {/* provides a fast entry into plan browsing */}
-            <div className="studio-worlds">
-              <div className="studio-panel-title">Training Categories</div>
-              <div className="studio-world-grid">
-                {trainingWorlds.map((world) => (
-                  <button
-                    key={world.id}
-                    type="button"
-                    className={`studio-world-card ${activeWorldSport === world.sport ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedPlan(null);
-                      setSessionWeekSnapshot(null);
-                      setPlanSearch('');
-                      setShowAllPlans(false);
-                      setPlanSportFilter(planSportFilter === world.sport ? '' : world.sport);
-                    }}
-                  >
-                    <div className="studio-world-title">{worldShortLabels[world.sport] || world.title}</div>
-                    <div className="studio-world-sub">{world.subtitle}</div>
-                  </button>
-                ))}
-              </div>
-              {activeWorldSport ? (
-                <div className="studio-world-summary">
-                  <span>{ritualWorldMeta.title}</span>
-                  <span>{activeWorldSessionCount} session{activeWorldSessionCount === 1 ? '' : 's'} logged</span>
-                  <span>{filteredRouteEfforts.length} mapped effort{filteredRouteEfforts.length === 1 ? '' : 's'}</span>
-                </div>
-              ) : null}
-            </div>
-
-            {showPlanLibrary ? (
-              <>
-                <input
-                  className="studio-search"
-                  placeholder={planSportFilter ? 'Search plans' : 'Select a training category to unlock plans'}
-                  value={planSearch}
-                  onChange={(event) => setPlanSearch(event.target.value)}
-                  disabled={!planSportFilter}
-                />
-                {apiStatus === 'loading' && (
-                  <div className="studio-empty">Syncing plan sources...</div>
-                )}
-                {apiStatus === 'error' && (
-                  <div className="studio-empty">Plan source offline. Showing your library.</div>
-                )}
-                {planSportFilter && planFavorites.length > 0 && (
-                  <div className="studio-programs-block">
-                    <div className="studio-panel-title">Pinned Plans</div>
-                    <div className="studio-favorite-row">
-                      {sortedPins.map((item, index) => (
-                        <button
-                          key={`fav-${item}`}
-                          className="studio-favorite-chip"
-                          draggable
-                          onDragStart={() => setDraggingPin(index)}
-                          onDragEnd={() => setDraggingPin(null)}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={() => {
-                            if (draggingPin === null || draggingPin === index) return;
-                            const next = [...sortedPins];
-                            const [moved] = next.splice(draggingPin, 1);
-                            next.splice(index, 0, moved);
-                            savePinnedOrder(next);
-                            setDraggingPin(null);
-                          }}
-                      onClick={() => {
-                        const match = plans.find(plan => plan.name === item);
-                        if (match) {
-                          setSelectedPlan(match);
-                        }
-                      }}
-                          type="button"
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {!planSportFilter && (
-                  <div className="studio-empty">
-                    <div>Select a Training World to see curated plans.</div>
-                    <button
-                      className="studio-queue-btn ghost"
-                      onClick={() => {
-                        if (trainingWorlds[0]) {
-                          setPlanSportFilter(trainingWorlds[0].sport);
-                        }
-                      }}
-                      type="button"
-                    >
-                      Choose a category
-                    </button>
-                  </div>
-                )}
-
-                <div className="studio-programs">
-                  {displayPlans.map((plan) => (
-                    <button
-                      key={plan.id}
-                      className={`studio-program-card ${selectedPlan?.id === plan.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedPlan(plan);
-                      }}
-                      type="button"
-                    >
-                      <button
-                        className={`studio-program-pin ${planFavorites.includes(plan.name) ? 'active' : ''}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          togglePlanFavorite(plan);
-                        }}
-                        type="button"
-                        aria-label={planFavorites.includes(plan.name) ? 'Unpin plan' : 'Pin plan'}
-                      >
-                        {planFavorites.includes(plan.name) ? '★' : '☆'}
-                      </button>
-                      <div className="studio-program-head">
-                        <div className="studio-program-name">{plan.name}</div>
-                        <div className="studio-program-level">
-                          {plan.sport.toUpperCase()} {plan.source === 'api' ? '- LIVE' : ''}
-                        </div>
-                      </div>
-                      <div className="studio-program-sub">{plan.goal}</div>
-                      <div className="studio-program-desc">{plan.summary}</div>
-                      <div className="studio-plan-actions">
-                        <button
-                          className="studio-queue-btn ghost"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                        setSelectedPlan(plan);
-                        setPlanOpen(true);
-                          }}
-                          type="button"
-                        >
-                          View plan
-                        </button>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {planSportFilter && planSearch && filteredPlans.length === 0 && (
-                  <div className="studio-empty">No plans found for "{planSearch}".</div>
-                )}
-              </>
-            ) : (
-              <div className="studio-empty">Plan list collapsed to reduce scroll.</div>
-            )}
-
-            {planSportFilter && planSearch && filteredPlans.length === 0 && (
-              <div className="studio-empty">No plans found for "{planSearch}".</div>
-            )}
-            {planSportFilter && !planSearch && filteredPlans.length === 0 && (
-              <div className="studio-empty">No plans yet for {planSportFilter}.</div>
-            )}
-            {planSportFilter && !planSearch && !showAllPlans && filteredPlans.length > 5 && (
-              <button
-                className="studio-mini-btn"
-                onClick={() => setShowAllPlans(true)}
-                type="button"
-              >
-                Show more
-              </button>
-            )}
-          </section>
-
-          {/* session preview panel for the selected plan, */}
-          {/* shows a brief outline + start actions, */}
-          {/* includes recent session history below, */}
-          {/* displays empty state when nothing is selected */}
-          <section className="studio-panel studio-reveal">
-            <div className="studio-panel-title">Session Preview</div>
-            {selectedPlan ? (
-              <>
-                <div className="studio-plan-preview">
-                <div className="studio-plan-preview-title">{selectedPlan.name}</div>
-                <div className="studio-plan-preview-sub">{selectedPlan.goal}</div>
-                {activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport) ? (
-                  <div className="studio-inline-guide studio-session-launch-mode">
-                    <div className="studio-inline-title">Session mode</div>
-                    <div className="studio-inline-cues">
-                      <button
-                        type="button"
-                        className={`studio-mini-btn ${sessionLaunchMode === 'standard' ? 'active' : ''}`}
-                        onClick={() => setSessionLaunchMode('standard')}
-                      >
-                        Map off
-                      </button>
-                      <button
-                        type="button"
-                        className={`studio-mini-btn ${sessionLaunchMode === 'mapped' ? 'active' : ''}`}
-                        onClick={() => setSessionLaunchMode('mapped')}
-                      >
-                        Map on
-                      </button>
-                    </div>
-                    <div className="studio-session-launch-copy">
-                      {sessionLaunchMode === 'mapped'
-                        ? `Use the ${ritualWorldMeta.title} route layer for GPS, distance, and mapped effort logging.`
-                        : 'Stay in the ritual timer for a faster session start without GPS mapping.'}
-                    </div>
-                  </div>
-                ) : null}
-                {(selectedPlan.outline || []).length > 1 && (
-                  <>
-                    <div className="hud-dim" style={{ marginBottom: 8 }}>Select a week before starting your session.</div>
-                    <div className="studio-week-selector">
-                      {(selectedPlan.outline || []).map((block, index) => (
-                        <button
-                          key={`week-tab-${block.week}-${index}`}
-                          type="button"
-                          className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
-                          onClick={() => setActivePlanWeekIndex(index)}
-                        >
-                          {block.week || `Week ${index + 1}`}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                <div className="studio-plan-preview-list">
-                  {(selectedPlan.outline || []).length > 0 ? (
-                    <div className="studio-plan-preview-row">
-                      <div className="studio-plan-preview-week">
-                        {selectedPlan.outline[activePlanWeekIndex]?.week || selectedPlan.outline[0]?.week || 'Week 1'}
-                      </div>
-                      <div className="studio-plan-preview-sessions">
-                        {(
-                          selectedPlan.outline[activePlanWeekIndex]?.sessions ||
-                          selectedPlan.outline[0]?.sessions ||
-                          []
-                        ).map((sessionItem, sessionIndex) => (
-                          <span
-                            key={`preview-${sessionItem}-${sessionIndex}`}
-                            className="studio-plan-preview-session-pill"
-                          >
-                            {sessionItem}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  </div>
-                </div>
-                <div className="studio-queue-actions studio-session-preview-actions">
-                  <button
-                    className="studio-queue-btn"
-                    onClick={() => {
-                      if (sessionLaunchMode === 'mapped' && activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport)) {
-                        navigate(buildRouteLabUrl());
-                        return;
-                      }
-                      openFocusLock(selectedPlan, activePlanWeekIndex);
-                    }}
-                    type="button"
-                  >
-                    {sessionLaunchMode === 'mapped' && activeWorldSport && ['running', 'cycling', 'trail'].includes(activeWorldSport)
-                      ? 'Start mapped session'
-                      : 'Start session'}
-                  </button>
-                  <button
-                    className="studio-queue-btn ghost"
-                    onClick={() => setPlanOpen(true)}
-                    type="button"
-                  >
-                    View plan
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="studio-empty studio-session-empty">
-                {activeWorldSport ? (
-                  <>
-                    <div className="studio-session-empty-title">Pick a plan to start {ritualWorldMeta.title}.</div>
-                    <div className="studio-session-empty-copy">
-                      Choose a plan first, then this panel becomes your session launch point.
-                    </div>
-                    {suggestedPlan ? (
-                      <button
-                        className="studio-queue-btn"
-                        type="button"
-                        onClick={() => setSelectedPlan(suggestedPlan)}
-                      >
-                        Try {suggestedPlan.name}
-                      </button>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <div className="studio-session-empty-title">Choose a training world first.</div>
-                    <div className="studio-session-empty-copy">
-                      Pick a world above to unlock plans and build a cleaner session flow.
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeWorldSport ? (
-              <div className="studio-route-ritual">
-                <div className="studio-route-ritual-top">
-                  <div>
-                    <div className="studio-panel-title">{ritualWorldMeta.title} Mapped Efforts</div>
-                    <div className="studio-route-ritual-sub">
-                      Keep route work inside this world without breaking Training Ritual.
-                    </div>
-                  </div>
-                  <button
-                    className="studio-mini-btn"
-                    type="button"
-                    onClick={() => navigate(buildRouteLabUrl())}
-                  >
-                    Open
-                  </button>
-                </div>
-                <div className="studio-route-ritual-actions">
-                  <div className="studio-route-ritual-note">
-                    Turn <strong>Map on</strong> above when this plan needs a live route.
-                  </div>
-                </div>
-                {routeRitualPreview.length ? (
-                  <div className="studio-route-ritual-list">
-                    {routeRitualPreview.map((effort) => (
-                      <button
-                        key={`route-effort-${effort.id}`}
-                        type="button"
-                        className="studio-route-ritual-card"
-                        onClick={() => navigate(`/athlete/${userId}/routes/${effort.id}`)}
-                      >
-                        <div className="studio-route-ritual-head">
-                          <strong>{effort.title || 'Mapped effort'}</strong>
-                          <span>{Number(effort.distance_km || 0).toFixed(2)} km</span>
-                        </div>
-                        <div className="studio-route-ritual-meta">
-                          <span>{getAthleteWorldMeta(effort.discipline).title}</span>
-                          <span>{Number(effort.elapsed_seconds || 0) > 0 ? `${Math.max(1, Math.floor(Number(effort.elapsed_seconds || 0) / 60))} min` : 'Tracked'}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="studio-route-ritual-empty">
-                    No mapped effort yet for {ritualWorldMeta.title}. Start one when this world needs live route data.
-                  </div>
-                )}
-              </div>
-            ) : null}
-            {recoveryNudge ? (
-              <div className="studio-inline-guide studio-recovery-guide">
-                <div className="studio-inline-title">Recovery signal</div>
-                <div className="studio-session-empty-copy">
-                  {recoveryNudge.label || 'Recent session'} logged for {Number(recoveryNudge.minutes || 0)} min. If you are stacking hard days, consider a lighter effort or recovery session next.
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </div>
-        ) : (
-          <div className="studio-stats">
-            <section className="studio-panel studio-reveal">
-              <div className="studio-panel-title">Stats Snapshot</div>
-              <div className="studio-pr-grid">
-                <div className="studio-pr-card">
-                  <div className="studio-pr-title">Sessions Logged</div>
-                  <div className="studio-pr-value">{totalSessionsLogged}</div>
-                  <div className="studio-pr-sub">Recent training sessions</div>
-                </div>
-                <div className="studio-pr-card">
-                  <div className="studio-pr-title">Sports Tracked</div>
-                  <div className="studio-pr-value">{uniqueSportsTracked}</div>
-                  <div className="studio-pr-sub">Unique sports in log</div>
-                </div>
-                <div className="studio-pr-card">
-                  <div className="studio-pr-title">Best Time</div>
-                  <div className="studio-pr-value">{bestDurationMinutes > 0 ? `${bestDurationMinutes} min` : "Untimed"}</div>
-                  <div className="studio-pr-sub">Best timed completion</div>
-                </div>
-                <div className="studio-pr-card">
-                  <div className="studio-pr-title">Avg Duration</div>
-                  <div className="studio-pr-value">{avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : "Untimed"}</div>
-                  <div className="studio-pr-sub">Average timed session</div>
-                </div>
-                {activeWorldSport ? (
-                  <div className="studio-pr-card studio-pr-card-world">
-                    <div className="studio-pr-title">This Block in {ritualWorldMeta.title}</div>
-                    <div className="studio-pr-value">{activeWorldSessionCount} sessions</div>
-                    <div className="studio-pr-sub">
-                      {activeWorldMinutes} min logged · {activeWorldDistanceKm > 0 ? `${activeWorldDistanceKm.toFixed(1)} km mapped` : 'No mapped distance yet'}
-                    </div>
-                  </div>
-                ) : null}
-                {routePrStats.bestPace || routePrStats.longestDistance > 0 ? (
-                  <div className="studio-pr-card studio-pr-card-world">
-                    <div className="studio-pr-title">Route Signals</div>
-                    <div className="studio-pr-value">{routePrStats.bestPace || 'No pace yet'}</div>
-                    <div className="studio-pr-sub">
-                      {routePrStats.longestDistance > 0
-                        ? `Longest effort ${routePrStats.longestDistance.toFixed(1)} km · ${routePrStats.longestDiscipline}`
-                        : 'Complete a mapped effort to unlock route PRs.'}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-
-            <section className="studio-panel studio-reveal">
-              <div className="studio-panel-title">Progress Trends</div>
-              <div className="studio-progress-grid">
-                <div className="studio-progress-card">
-                  <div className="studio-progress-title">7-Day Training Minutes</div>
-                  <div className="studio-chart-shell">
-                    <div className="studio-volume-chart" role="img" aria-label="7 day training minutes chart">
-                      {weeklyVolumeChart.map((item) => (
-                        <button
-                          type="button"
-                          className={`studio-volume-bar${selectedTrainingTrendDayKey === item.key ? ' active' : ''}`}
-                          key={`ath-trend-${item.key}`}
-                          onClick={() => setSelectedTrainingTrendDay(item.key)}
-                          title={`${item.label}: ${Math.round(item.minutes)} training minutes`}
-                          aria-label={`${item.label}: ${Math.round(item.minutes)} training minutes`}
-                        >
-                          <span
-                            className="studio-volume-bar-fill"
-                            style={{ height: `${Math.max(10, item.ratio * 100)}%` }}
-                          />
-                          <span className="studio-volume-bar-minutes">{Math.round(item.minutes)}m</span>
-                          <span className="studio-volume-bar-label">{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="studio-chart-caption">Tap a day to focus the breakdown below.</div>
-                  </div>
-                </div>
-
-                <div className="studio-progress-card">
-                  <div className="studio-progress-title">Route Pace Trend</div>
-                  {paceTrendPoints.length >= 2 ? (
-                    <div className="studio-chart-shell">
-                      <div className="studio-line-chart" role="img" aria-label="Route pace trend chart">
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                          <line x1="0" y1="88" x2="100" y2="88" className="studio-line-chart-axis" />
-                          <polyline points={paceTrendPolyline} className="studio-line-chart-path" />
-                          {paceTrendPoints.map((item, index) => {
-                            const spread = Math.max(1, paceTrendRange.max - paceTrendRange.min);
-                            const stepX = paceTrendPoints.length > 1 ? 100 / (paceTrendPoints.length - 1) : 100;
-                            const normalized = (item.paceSeconds - paceTrendRange.min) / spread;
-                            const x = index * stepX;
-                            const y = 100 - normalized * 74 - 12;
-                            return (
-                              <circle
-                                key={`pace-point-${item.id}`}
-                                cx={x}
-                                cy={y}
-                                r="2.5"
-                                className="studio-line-chart-point"
-                              />
-                            );
-                          })}
-                        </svg>
-                      </div>
-                      <div className="studio-line-chart-legend">
-                        {paceTrendPoints.map((item) => (
-                          <div
-                            className="studio-line-chart-chip"
-                            key={`pace-chip-${item.id}`}
-                            title={`${item.label}: ${item.paceLabel}`}
-                          >
-                            <span>{item.label}</span>
-                            <strong>{item.paceLabel}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : topSportsTrend.length ? (
-                    <div className="studio-progress-list">
-                      {topSportsTrend.map((item) => (
-                        <div className="studio-progress-row" key={`ath-sport-${item.sport}`}>
-                          <div className="studio-progress-label">{item.sport}</div>
-                          <div className="studio-progress-bar-shell">
-                            <div
-                              className="studio-progress-bar alt"
-                              style={{ width: `${Math.max(8, (item.count / maxSportCount) * 100)}%` }}
-                            />
-                          </div>
-                          <div className="studio-progress-value">{item.count}x</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="studio-empty">Complete mapped efforts to unlock pace trends.</div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="studio-panel studio-reveal">
-              <div className="studio-panel-row">
-                <div className="studio-panel-title">Day Breakdown</div>
-                <div className="studio-hud-date">{selectedTrainingTrendDayKey || 'No day selected'}</div>
-              </div>
-              <div className="studio-progress-list">
-                {selectedDaySessions.length ? (
-                  selectedDaySessions.map((row) => (
-                    <div className="studio-progress-row" key={`ath-day-${row.id}`}>
-                      <div className="studio-progress-label">{getRecentPlanName(row)}</div>
-                      <div className="studio-progress-bar-shell">
-                        <div
-                          className="studio-progress-bar"
-                          style={{ width: `${Math.max(8, (Number(row.duration_minutes || 0) / Math.max(1, maxTrainingMinutesByDay)) * 100)}%` }}
-                        />
-                      </div>
-                      <div className="studio-progress-value">{Number(row.duration_minutes || 0)}m</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="studio-empty">No sessions logged for this day.</div>
-                )}
-              </div>
-              <div className="logs-list-sub">
-                {lastTraining
-                  ? `Latest: ${lastTrainingTitle} · ${new Date(lastTraining.created_at).toLocaleString()}`
-                  : "No recent sessions logged yet."}
-              </div>
-            </section>
+          <div className="studio-grid">
+            <AthleteTrainingPlanLibrary
+              selectedPlan={selectedPlan}
+              showPlanLibrary={showPlanLibrary}
+              setShowPlanLibrary={setShowPlanLibrary}
+              setEditingPlanId={setEditingPlanId}
+              emptyPlan={emptyPlan}
+              setNewPlan={setNewPlan}
+              setShowCreatePlan={setShowCreatePlan}
+              trainingWorlds={trainingWorlds}
+              activeWorldSport={activeWorldSport}
+              worldShortLabels={worldShortLabels}
+              setSelectedPlan={setSelectedPlan}
+              setSessionWeekSnapshot={setSessionWeekSnapshot}
+              setPlanSearch={setPlanSearch}
+              showAllPlans={showAllPlans}
+              setShowAllPlans={setShowAllPlans}
+              planSportFilter={planSportFilter}
+              setPlanSportFilter={setPlanSportFilter}
+              ritualWorldMeta={ritualWorldMeta}
+              activeWorldSessionCount={activeWorldSessionCount}
+              filteredRouteEfforts={filteredRouteEfforts}
+              planSearch={planSearch}
+              apiStatus={apiStatus}
+              planFavorites={planFavorites}
+              sortedPins={sortedPins}
+              setDraggingPin={setDraggingPin}
+              draggingPin={draggingPin}
+              savePinnedOrder={savePinnedOrder}
+              plans={plans}
+              displayPlans={visiblePlans}
+              togglePlanFavorite={togglePlanFavorite}
+              setPlanOpen={setPlanOpen}
+              filteredPlans={filteredPlans}
+            />
+            <AthleteTrainingSessionPreview
+              selectedPlan={selectedPlan}
+              activeWorldSport={activeWorldSport}
+              ritualWorldMeta={ritualWorldMeta}
+              sessionLaunchMode={sessionLaunchMode}
+              setSessionLaunchMode={setSessionLaunchMode}
+              activePlanWeekIndex={activePlanWeekIndex}
+              setActivePlanWeekIndex={setActivePlanWeekIndex}
+              navigate={navigate}
+              buildRouteLabUrl={buildRouteLabUrl}
+              openFocusLock={openFocusLock}
+              setPlanOpen={setPlanOpen}
+              suggestedPlan={suggestedPlan}
+              setSelectedPlan={setSelectedPlan}
+              routeRitualPreview={routeRitualPreview}
+              userId={userId}
+              distanceUnit={distanceUnit}
+              recoveryNudge={recoveryNudge}
+            />
           </div>
+        ) : (
+          <AthleteTrainingStatsView
+            totalSessionsLogged={totalSessionsLogged}
+            uniqueSportsTracked={uniqueSportsTracked}
+            bestDurationMinutes={bestDurationMinutes}
+            avgDurationMinutes={avgDurationMinutes}
+            activeWorldSport={activeWorldSport}
+            ritualWorldMeta={ritualWorldMeta}
+            activeWorldSessionCount={activeWorldSessionCount}
+            activeWorldMinutes={activeWorldMinutes}
+            activeWorldDistanceKm={activeWorldDistanceKm}
+            routePrStats={routePrStats}
+            distanceUnit={distanceUnit}
+            selectedTrainingTrendDayKey={selectedTrainingTrendDayKey}
+            setSelectedTrainingTrendDay={setSelectedTrainingTrendDay}
+            weeklyVolumeChart={weeklyVolumeChart}
+            paceTrendPoints={paceTrendPoints}
+            paceTrendRange={paceTrendRange}
+            paceTrendPolyline={paceTrendPolyline}
+            topSportsTrend={topSportsTrend}
+            maxSportCount={maxSportCount}
+            selectedDaySessions={selectedDaySessions}
+            getRecentPlanName={getRecentPlanName}
+            maxTrainingMinutesByDay={maxTrainingMinutesByDay}
+            lastTraining={lastTraining}
+            lastTrainingTitle={lastTrainingTitle}
+          />
         )}
       </div>
 
@@ -2664,596 +849,105 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
       {/* appears when a plan is opened from the list, */}
       {/* includes actions to start, pin, remix, delete, */}
       {/* closes to return to the main layout */}
-      {planOpen && selectedPlan && (
-        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closePlanModal()}>
-          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
-            <div className="studio-swap-header">
-              <div>
-                <div className="studio-panel-title">Plan Details</div>
-                <div className="studio-swap-sub">{selectedPlan.name}</div>
-              </div>
-              <button
-                className="studio-swap-close"
-                onClick={closePlanModal}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-              <div className="studio-swap-body">
-                <div className="studio-plan-detail">{selectedPlan.summary}</div>
-                {(selectedPlan.outline || []).length > 1 && (
-                  <>
-                    <div className="hud-dim" style={{ marginBottom: 8 }}>Select a week before starting.</div>
-                    <div className="studio-week-selector" style={{ marginTop: 0 }}>
-                      {(selectedPlan.outline || []).map((block, index) => (
-                        <button
-                          key={`plan-open-week-tab-${block.week}-${index}`}
-                          type="button"
-                          className={`studio-week-chip-btn ${index === activePlanWeekIndex ? 'active' : ''}`}
-                          onClick={() => setActivePlanWeekIndex(index)}
-                        >
-                          {block.week || `Week ${index + 1}`}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                <div className="studio-plan-timeline">
-                  {(selectedPlan.outline || [])
-                    .filter((_, blockIndex) => blockIndex === activePlanWeekIndex || (selectedPlan.outline || []).length === 1)
-                    .map((block) => (
-                    <div key={block.week} className="studio-plan-week">
-                      <div className="studio-plan-week-title">
-                        {block.week}
-                        {block.intensity && (
-                          <span className="studio-week-pill">{block.intensity}</span>
-                        )}
-                        {block.focus && (
-                          <span className="studio-week-chip">{block.focus}</span>
-                        )}
-                      </div>
-                      {block.intensity && (
-                        <div className="studio-week-progress">
-                          <div
-                            className="studio-week-fill"
-                            style={{ width: block.intensity }}
-                          />
-                        </div>
-                      )}
-                      <ul className="studio-plan-week-list">
-                        {(block.sessions || []).map((item, itemIndex) => (
-                          <li key={`${block.week}-${item}-${itemIndex}`}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  className="studio-primary-btn"
-                  onClick={() => {
-                    setPlanOpen(false);
-                    openFocusLock(selectedPlan, activePlanWeekIndex);
-                  }}
-                  type="button"
-                >
-                  Start session
-                </button>
-                <div className="studio-plan-actions">
-                  <button
-                    className={`studio-queue-btn ghost ${planFavorites.includes(selectedPlan.name) ? 'active' : ''}`}
-                    onClick={() => togglePlanFavorite(selectedPlan)}
-                    type="button"
-                  >
-                    {planFavorites.includes(selectedPlan.name) ? 'Pinned' : 'Pin'}
-                  </button>
-                  <button
-                    className="studio-queue-btn ghost"
-                    onClick={() => {
-                      setPlanOpen(false);
-                      remixPlan(selectedPlan);
-                    }}
-                    type="button"
-                  >
-                    Edit plan
-                  </button>
-                </div>
-                {selectedPlan.source === 'user' ? (
-                  <div className="studio-plan-actions">
-                    <button
-                      className="studio-queue-btn ghost"
-                      onClick={() => {
-                        setPlanOpen(false);
-                        prefillPlanEditor(selectedPlan);
-                      }}
-                      type="button"
-                    >
-                      Edit plan
-                    </button>
-                    <button
-                      className="studio-queue-btn ghost danger"
-                      onClick={deletePlan}
-                      type="button"
-                    >
-                      Delete plan
-                    </button>
-                  </div>
-                ) : (
-                  <div className="studio-plan-actions">
-                    <button
-                      className="studio-queue-btn ghost"
-                      onClick={() => {
-                        setPlanOpen(false);
-                        prefillPlanEditor(selectedPlan);
-                      }}
-                      type="button"
-                    >
-                      Save as my plan
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-      )}
+      {planOpen && selectedPlan ? (
+        <AthleteTrainingPlanDetailModal
+          selectedPlan={selectedPlan}
+          closePlanModal={closePlanModal}
+          activePlanWeekIndex={activePlanWeekIndex}
+          setActivePlanWeekIndex={setActivePlanWeekIndex}
+          openFocusLock={openFocusLock}
+          planFavorites={planFavorites}
+          togglePlanFavorite={togglePlanFavorite}
+          remixPlan={remixPlan}
+          prefillPlanEditor={prefillPlanEditor}
+          deletePlan={deletePlan}
+          setPlanOpen={setPlanOpen}
+        />
+      ) : null}
 
       {/* create/edit plan modal for custom plans, */}
       {/* collects plan metadata and weekly outline, */}
       {/* supports auto-fill and week management, */}
       {/* saves to Supabase on submit */}
-      {showCreatePlan && (
-        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && closeCreatePlanModal()}>
-          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
-            <div className="studio-swap-header">
-              <div>
-                <div className="studio-panel-title">Create Plan</div>
-                <div className="studio-swap-sub">Build or customize your plan.</div>
-              </div>
-              <button
-                className="studio-swap-close"
-                onClick={closeCreatePlanModal}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-            <div className="studio-swap-body studio-create-program-panel">
-              <div className="studio-form-grid">
-                <label className="studio-form-field">
-                  <span className="studio-input-label">Plan name</span>
-                  <input
-                    className="studio-search"
-                    value={newPlan.name}
-                    onChange={(event) => setNewPlan(prev => ({ ...prev, name: event.target.value }))}
-                    placeholder="Hybrid Build"
-                  />
-                </label>
-                <label className="studio-form-field">
-                  <span className="studio-input-label">Sport</span>
-                  <select
-                    className="studio-select"
-                    value={newPlan.sport}
-                    onChange={(event) => setNewPlan(prev => ({ ...prev, sport: event.target.value }))}
-                  >
-                    {sports.map((sport) => (
-                      <option key={sport} value={sport}>
-                        {sport.charAt(0).toUpperCase() + sport.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="studio-form-field">
-                  <span className="studio-input-label">Default focus</span>
-                  <select
-                    className="studio-select"
-                    value={newPlan.defaultFocus}
-                    onChange={(event) => setNewPlan(prev => ({ ...prev, defaultFocus: event.target.value }))}
-                  >
-                    {focusOptions.map((focus) => (
-                      <option key={focus} value={focus}>{focus}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <label className="studio-form-field">
-                <span className="studio-input-label">Goal</span>
-                <input
-                  className="studio-search"
-                  value={newPlan.goal}
-                  onChange={(event) => setNewPlan(prev => ({ ...prev, goal: event.target.value }))}
-                  placeholder="Endurance + strength blend"
-                />
-              </label>
-
-              <label className="studio-form-field">
-                <span className="studio-input-label">Summary</span>
-                <textarea
-                  className="studio-textarea"
-                  value={newPlan.summary}
-                  onChange={(event) => setNewPlan(prev => ({ ...prev, summary: event.target.value }))}
-                  placeholder="What makes this plan unique"
-                />
-              </label>
-
-              <div className="studio-form-grid">
-                <label className="studio-form-field">
-                  <span className="studio-input-label">Target duration</span>
-                  <input
-                    className="studio-search"
-                    value={newPlan.durationTarget}
-                    onChange={(event) => setNewPlan(prev => ({ ...prev, durationTarget: event.target.value }))}
-                    placeholder="60"
-                  />
-                </label>
-                <label className="studio-form-field">
-                  <span className="studio-input-label">Target distance</span>
-                  <input
-                    className="studio-search"
-                    value={newPlan.distanceTarget}
-                    onChange={(event) => setNewPlan(prev => ({ ...prev, distanceTarget: event.target.value }))}
-                    placeholder="8"
-                  />
-                </label>
-              </div>
-
-              <div className="studio-panel-title">Outline</div>
-              <div className="studio-create-list studio-outline-editor">
-                {newPlan.outline.map((block, idx) => (
-                  <div key={`${block.week}-${idx}`} className="studio-outline-week-card">
-                    <div className="studio-outline-week-head">
-                      <label className="studio-form-field">
-                        <span className="studio-input-label">Week title</span>
-                        <input
-                          className="studio-form-input studio-outline-week-input"
-                          value={block.week}
-                          onChange={(event) => {
-                            const next = [...newPlan.outline];
-                            next[idx] = { ...next[idx], week: event.target.value };
-                            setNewPlan(prev => ({ ...prev, outline: next }));
-                          }}
-                          placeholder="Week 1"
-                        />
-                      </label>
-                      {newPlan.outline.length > 1 && (
-                        <button
-                          className="studio-queue-btn ghost danger"
-                          onClick={() => {
-                            setNewPlan((prev) => ({
-                              ...prev,
-                              outline: prev.outline.filter((_, outlineIndex) => outlineIndex !== idx)
-                            }));
-                          }}
-                          type="button"
-                        >
-                          Remove week
-                        </button>
-                      )}
-                    </div>
-                    <label className="studio-form-field">
-                      <span className="studio-input-label">Session objectives</span>
-                      <textarea
-                        className="studio-textarea studio-outline-sessions"
-                        value={(block.sessions || []).join('\n')}
-                        onChange={(event) => {
-                          const next = [...newPlan.outline];
-                          next[idx] = {
-                            ...next[idx],
-                            sessions: event.target.value
-                              .split('\n')
-                              .map((sessionLine) => sessionLine.trim())
-                              .filter(Boolean)
-                          };
-                          setNewPlan(prev => ({ ...prev, outline: next }));
-                        }}
-                        placeholder={'One objective per line\nTempo run 20 min\nMobility reset'}
-                      />
-                    </label>
-                    {(block.sessions || []).length > 0 && (
-                      <div className="studio-outline-preview">
-                        {(block.sessions || []).map((sessionLine, sessionIndex) => (
-                          <span
-                            key={`${block.week}-${sessionLine}-${sessionIndex}`}
-                            className="studio-outline-preview-pill"
-                          >
-                            {sessionLine}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="studio-create-actions">
-                <button
-                  className="studio-queue-btn ghost"
-                  onClick={() => setNewPlan(prev => ({
-                    ...prev,
-                    outline: [...prev.outline, { week: `Week ${prev.outline.length + 1}`, sessions: [''] }]
-                  }))}
-                  type="button"
-                >
-                  Add week
-                </button>
-                <button
-                  className="studio-queue-btn ghost"
-                  onClick={() => setNewPlan(prev => ({
-                    ...prev,
-                    outline: buildOutline(prev.sport, prev.defaultFocus, prev.durationTarget, prev.distanceTarget)
-                  }))}
-                  type="button"
-                >
-                  Auto-fill 4 weeks
-                </button>
-                <button
-                  className="studio-queue-btn"
-                  onClick={savePlan}
-                  type="button"
-                  disabled={isPlanSaving}
-                >
-                  {isPlanSaving ? 'Saving...' : 'Save plan'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showCreatePlan ? (
+        <AthleteTrainingCreatePlanModal
+          closeCreatePlanModal={closeCreatePlanModal}
+          newPlan={newPlan}
+          setNewPlan={setNewPlan}
+          sports={sports}
+          focusOptions={focusOptions}
+          buildOutline={buildOutline}
+          savePlan={savePlan}
+          isPlanSaving={isPlanSaving}
+        />
+      ) : null}
 
       {/* floor mode timer overlay for active sessions, */}
       {/* shows live timer, progress bar, and cues, */}
       {/* allows pausing/resuming and hidden UI mode, */}
       {/* closes cleanly back to the main view */}
-      {timerOpen && (
-        <div
-          className={`studio-floor-overlay ${floorUiHidden ? 'hidden-ui' : ''}`}
-          onClick={(event) => {
-            if (event.target !== event.currentTarget) return;
-            if (floorUiHidden) {
-              setFloorUiHidden(false);
-              return;
-            }
-            setTimerRunning(false);
-            setTimerOpen(false);
-          }}
-        >
-          <div className="studio-floor-top">
-            <div>
-              <div className="studio-kicker">FLOOR MODE</div>
-              <div className="studio-floor-title">
-                {timelinePlan ? timelinePlan.name : 'Focused Session'}
-              </div>
-              <div className="studio-floor-sub">
-                {sessionFocus} {"\u00B7"} {session.sport.toUpperCase()}
-              </div>
-            </div>
-            <button
-              className="studio-swap-close"
-              onClick={() => {
-                setTimerRunning(false);
-                setTimerOpen(false);
-              }}
-              type="button"
-            >
-              Close
-            </button>
-          </div>
-          <div className="studio-floor-center">
-            <div className="studio-floor-clock">{formatTime(timerSeconds)}</div>
-            <div className="studio-floor-target">Target {formatTime(safeTargetSeconds)}</div>
-            <div className="studio-floor-bar">
-              <div
-                className="studio-floor-progress"
-                style={{ width: `${timerProgress * 100}%` }}
-              />
-            </div>
-            {timerChecklistWeek?.sessions?.length ? (
-              <div className="studio-floor-plan-checklist">
-                <div className="studio-floor-plan-checklist-title">Session Objectives</div>
-                <div className="studio-floor-plan-checklist-week">
-                  {timerChecklistWeek?.week || 'Week 1'}
-                </div>
-                <ul className="studio-floor-plan-checklist-list">
-                  {(timerChecklistWeek?.sessions || []).map((sessionItem, index) => (
-                    <li key={`timer-check-${index}`}>{sessionItem}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-          <div className="studio-floor-actions">
-            <button
-              className="studio-queue-btn ghost"
-              onClick={() => setTimerRunning(!timerRunning)}
-              type="button"
-            >
-              {timerRunning ? 'Pause session' : 'Resume session'}
-            </button>
-            <button
-              className="studio-primary-btn studio-hold-btn"
-              onMouseDown={startFinishHold}
-              onMouseUp={endFinishHold}
-              onMouseLeave={endFinishHold}
-              onTouchStart={startFinishHold}
-              onTouchEnd={endFinishHold}
-              onTouchCancel={endFinishHold}
-              type="button"
-            >
-              <span className="studio-hold-fill" style={{ width: `${finishHold * 100}%` }} />
-              {isHoldingFinish ? 'Holding...' : 'Hold to finish'}
-            </button>
-          </div>
-        </div>
-      )}
+      {timerOpen ? (
+        <AthleteTrainingFloorTimerOverlay
+          floorUiHidden={floorUiHidden}
+          setFloorUiHidden={setFloorUiHidden}
+          setTimerRunning={setTimerRunning}
+          setTimerOpen={setTimerOpen}
+          timelinePlan={timelinePlan}
+          sessionFocus={sessionFocus}
+          session={session}
+          formatTime={formatTime}
+          timerSeconds={timerSeconds}
+          safeTargetSeconds={safeTargetSeconds}
+          timerProgress={timerProgress}
+          timerChecklistWeek={timerChecklistWeek}
+          startFinishHold={startFinishHold}
+          endFinishHold={endFinishHold}
+          finishHold={finishHold}
+          isHoldingFinish={isHoldingFinish}
+          timerRunning={timerRunning}
+        />
+      ) : null}
 
       {/* 3-2-1 countdown overlay before the timer starts, */}
       {/* provides visual lock-in feedback, */}
       {/* transitions into floor mode when complete, */}
       {/* uses color ring to emphasize timing */}
-      {countdownOpen && (
-        <div className="studio-countdown-overlay">
-          <div className={`studio-countdown-ring countdown-${countdown}`}>
-            <div className={`studio-countdown-number countdown-${countdown}`}>{countdown}</div>
-            <div className="studio-countdown-sub">Lock in</div>
-          </div>
-        </div>
-      )}
+      {countdownOpen ? <AthleteTrainingCountdownOverlay countdown={countdown} /> : null}
 
-      {sessionLoggedPulseOpen && (
-        <div className="studio-log-pulse-overlay" role="status" aria-live="polite">
-          <div className="studio-log-pulse-card">
-            <div className="studio-log-pulse-check" aria-hidden="true">&#10003;</div>
-            <div className="studio-log-pulse-title">Session logged</div>
-            <div className="studio-log-pulse-sub">Opening your logs...</div>
-          </div>
-        </div>
-      )}
+      {sessionLoggedPulseOpen ? <AthleteTrainingLoggedPulseOverlay /> : null}
 
-      {lastTrainingOpen && (
-        <div className="studio-swap-backdrop" onClick={(event) => event.target === event.currentTarget && setLastTrainingOpen(false)}>
-          <div className="studio-swap-panel" onClick={(event) => event.stopPropagation()}>
-            <div className="studio-swap-header">
-              <div>
-                <div className="studio-panel-title">Last training</div>
-                <div className="studio-swap-sub">
-                  {lastTraining
-                    ? `${lastTrainingTitle} - ${lastTraining.duration_minutes || 0} min`
-                    : 'No training logged yet'}
-                </div>
-              </div>
-              <button className="studio-swap-close" onClick={() => setLastTrainingOpen(false)} type="button">
-                Close
-              </button>
-            </div>
-            <div className="studio-swap-body">
-              {recentTrainingSessions.length ? (
-                <div className="studio-plan-timeline">
-                  {recentTrainingSessions.slice(0, 3).map((row) => (
-                    <div key={`recent-ath-${row.id}`} className="studio-plan-week">
-                      <div className="studio-plan-week-title">
-                        {getRecentPlanName(row)} - {row.duration_minutes || 0} min
-                      </div>
-                      <ul className="studio-plan-week-list">
-                        <li>{new Date(row.created_at).toLocaleString()}</li>
-                        {getRecentPlanWeek(row) ? <li>{getRecentPlanWeek(row)}</li> : null}
-                        {getRecentObjectives(row).map((objective, objectiveIndex) => (
-                          <li key={`recent-objective-${row.id}-${objectiveIndex}`}>{objective}</li>
-                        ))}
-                        {!getRecentObjectives(row).length && row?.metrics?.distance ? <li>Distance: {row.metrics.distance}</li> : null}
-                        {!getRecentObjectives(row).length && row?.metrics?.focus ? <li>Focus: {row.metrics.focus}</li> : null}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="studio-empty">No training history yet.</div>
-              )}
-              <button className="studio-primary-btn" type="button" onClick={() => navigate(`/athlete/${userId}/logs`)}>
-                Open full logs
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {lastTrainingOpen ? (
+        <AthleteTrainingLastTrainingModal
+          setLastTrainingOpen={setLastTrainingOpen}
+          lastTraining={lastTraining}
+          lastTrainingTitle={lastTrainingTitle}
+          recentTrainingSessions={recentTrainingSessions}
+          getRecentPlanName={getRecentPlanName}
+          getRecentPlanWeek={getRecentPlanWeek}
+          getRecentObjectives={getRecentObjectives}
+          distanceUnit={distanceUnit}
+          navigate={navigate}
+          userId={userId}
+        />
+      ) : null}
 
       {/* congrats overlay after session logging, */}
       {/* allows a quick reflection entry, */}
       {/* saves reflection back into session notes, */}
       {/* closes on save or skip */}
-      {congratsOpen && (
-        <div
-          className="studio-congrats-overlay"
-          onClick={(event) => {
-            if (event.target !== event.currentTarget) return;
-            setCongratsOpen(false);
-          }}
-        >
-            <div className="studio-congrats-panel">
-              <div className="program-celebration" aria-hidden="true">
-                {[...Array(10)].map((_, index) => (
-                  <span key={`program-spark-${index}`} className={`program-spark spark-${index + 1}`} />
-                ))}
-                <div className="program-celebration-badge">{"\u2713"}</div>
-              </div>
-              <div className="studio-congrats-title">Well done.</div>
-              <div className="studio-congrats-sub">
-                Session closed. Momentum logged.
-              </div>
-              <div className="studio-congrats-sub">
-                {completedSessionLabel || 'Session'} logged.
-              </div>
-              <div className="studio-congrats-metrics">
-                <div className="studio-congrats-metric">
-                  <span>XP earned</span>
-                  <strong>{sessionRecap.xp > 0 ? `+${sessionRecap.xp}` : 'Logged'}</strong>
-                </div>
-                <div className="studio-congrats-metric">
-                  <span>Duration</span>
-                  <strong>{sessionRecap.duration > 0 ? `${sessionRecap.duration} min` : 'Tracked'}</strong>
-                </div>
-                <div className="studio-congrats-metric">
-                  <span>Focus</span>
-                  <strong>{sessionRecap.focus || 'Base'}</strong>
-                </div>
-              </div>
-              <div className="studio-congrats-next">
-                <div className="studio-congrats-next-title">
-                  {sessionRecap.streak > 1 ? `Streak protected: ${sessionRecap.streak} days` : 'System on track'}
-                </div>
-                <div className="studio-congrats-next-sub">
-                  Next best move: review the session in Logs or capture one reflection before you close the day.
-                </div>
-              </div>
-              {sessionRecap.prs?.length ? (
-                <div className="studio-congrats-prs">
-                  <div className="studio-congrats-prs-title">Performance signal</div>
-                  <div className="studio-congrats-pr-list">
-                    {sessionRecap.prs.map((pr) => (
-                      <div className="studio-congrats-pr-chip" key={`${pr.label}-${pr.value}`}>
-                        <span>{pr.label}</span>
-                        <strong>{pr.value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <label className="studio-congrats-reflection">
-                <span className="studio-input-label">Reflection</span>
-                <textarea
-                  value={sessionReflection}
-                  onChange={(event) => setSessionReflection(event.target.value)}
-                  placeholder="What did you learn or feel?"
-                />
-              </label>
-              <div className="studio-congrats-actions">
-                <button
-                  className="studio-queue-btn ghost"
-                  onClick={() => setCongratsOpen(false)}
-                  type="button"
-                >
-                  Close
-                </button>
-                <button
-                  className="studio-primary-btn"
-                  onClick={saveReflection}
-                  disabled={reflectionSaving}
-                  type="button"
-                >
-                  {reflectionSaving ? 'Saving...' : 'Save reflection'}
-                </button>
-                <button
-                  className="studio-queue-btn ghost"
-                  onClick={() => {
-                    setCongratsOpen(false);
-                    navigate(`/athlete/${userId}/logs`);
-                  }}
-                  type="button"
-                >
-                  Open logs
-                </button>
-              </div>
-            </div>
-          </div>
-      )}
+      {congratsOpen ? (
+        <AthleteTrainingCongratsModal
+          setCongratsOpen={setCongratsOpen}
+          completedSessionLabel={completedSessionLabel}
+          sessionRecap={sessionRecap}
+          sessionReflection={sessionReflection}
+          setSessionReflection={setSessionReflection}
+          saveReflection={saveReflection}
+          reflectionSaving={reflectionSaving}
+          navigate={navigate}
+          userId={userId}
+        />
+      ) : null}
 
       <PageWalkthroughModal
         open={walkthroughOpen}

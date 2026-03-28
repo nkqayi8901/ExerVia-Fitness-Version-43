@@ -103,6 +103,8 @@ export default function useCommunityData({
     if (Date.now() - Number(cache.at || 0) < CACHE_TTL_MS && Array.isArray(cache.data)) {
       setGlobalLeaderboard(cache.data);
       setGlobalLeaderboardLoaded(true);
+      setLeaderboardLoading(false);
+      return;
     }
     setLeaderboardLoading(true);
     setGlobalLeaderboardLoaded(false);
@@ -234,6 +236,8 @@ export default function useCommunityData({
       ) {
         setGroupLeaderboard(cachedGroup.data);
         setGroupLeaderboardLoaded(true);
+        setGroupLeaderboardLoading(false);
+        return;
       }
       setGroupLeaderboardLoading(true);
       setGroupLeaderboardLoaded(false);
@@ -342,6 +346,8 @@ export default function useCommunityData({
     const feedCache = cacheRef.current.feed;
     if (Date.now() - Number(feedCache.at || 0) < 30000 && Array.isArray(feedCache.data)) {
       setActivityFeedItems(feedCache.data);
+      setActivityFeedLoading(false);
+      return;
     }
     setActivityFeedLoading(true);
     try {

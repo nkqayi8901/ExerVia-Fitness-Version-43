@@ -1,4 +1,6 @@
 import React from 'react';
+import EmptyState from './EmptyState';
+import { formatDistance } from '../utils/athleteMetrics';
 
 function AthleteTrainingStatsView({
   totalSessionsLogged,
@@ -11,6 +13,7 @@ function AthleteTrainingStatsView({
   activeWorldMinutes,
   activeWorldDistanceKm,
   routePrStats,
+  distanceUnit,
   selectedTrainingTrendDayKey,
   setSelectedTrainingTrendDay,
   weeklyVolumeChart,
@@ -55,7 +58,7 @@ function AthleteTrainingStatsView({
               <div className="studio-pr-title">This Block in {ritualWorldMeta.title}</div>
               <div className="studio-pr-value">{activeWorldSessionCount} sessions</div>
               <div className="studio-pr-sub">
-                {activeWorldMinutes} min logged - {activeWorldDistanceKm > 0 ? `${activeWorldDistanceKm.toFixed(1)} km mapped` : 'No mapped distance yet'}
+                {activeWorldMinutes} min logged · {activeWorldDistanceKm > 0 ? `${formatDistance(activeWorldDistanceKm, { unit: distanceUnit, decimals: 1, includeUnit: true })} mapped` : 'No mapped distance yet'}
               </div>
             </div>
           ) : null}
@@ -65,7 +68,7 @@ function AthleteTrainingStatsView({
               <div className="studio-pr-value">{routePrStats.bestPace || 'No pace yet'}</div>
               <div className="studio-pr-sub">
                 {routePrStats.longestDistance > 0
-                  ? `Longest effort ${routePrStats.longestDistance.toFixed(1)} km - ${routePrStats.longestDiscipline}`
+                  ? `Longest effort ${formatDistance(routePrStats.longestDistance, { unit: distanceUnit, decimals: 1, includeUnit: true })} · ${routePrStats.longestDiscipline}`
                   : 'Complete a mapped effort to unlock route PRs.'}
               </div>
             </div>
@@ -157,7 +160,10 @@ function AthleteTrainingStatsView({
                 ))}
               </div>
             ) : (
-              <div className="studio-empty">Complete mapped efforts to unlock pace trends.</div>
+              <EmptyState
+                title="No pace trend yet"
+                description="Complete mapped efforts to unlock pace trends."
+              />
             )}
           </div>
         </div>
@@ -183,12 +189,15 @@ function AthleteTrainingStatsView({
               </div>
             ))
           ) : (
-            <div className="studio-empty">No sessions logged for this day.</div>
+            <EmptyState
+              title="No sessions for this day"
+              description="Log a training block to populate this breakdown."
+            />
           )}
         </div>
         <div className="logs-list-sub">
           {lastTraining
-            ? `Latest: ${lastTrainingTitle} - ${new Date(lastTraining.created_at).toLocaleString()}`
+            ? `Latest: ${lastTrainingTitle} · ${new Date(lastTraining.created_at).toLocaleString()}`
             : 'No recent sessions logged yet.'}
         </div>
       </section>

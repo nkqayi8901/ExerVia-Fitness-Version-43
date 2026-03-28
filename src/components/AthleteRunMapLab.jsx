@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import EmptyState from "./EmptyState";
+import useDistanceUnitPreference from "../hooks/useDistanceUnitPreference";
 import { loadGoogleMapsApi } from "../utils/googleMapsLoader";
 import { supabase } from "../supabaseClient";
 import { grantXpEventSafe } from "../services/xpEvents";
@@ -7,6 +9,14 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { emitToast } from "../utils/toast";
 import { publishRunStatus } from "../utils/activityStatusFeed";
 import { recalcUserState } from "../services/stateEngine";
+import { vibratePr, vibrateStart, vibrateStop, vibrateSuccess } from "../utils/haptics";
+import {
+  ATHLETE_DEFAULT_MAP_CENTER,
+  formatDistance,
+  formatDistanceOptionLabel,
+  formatElapsed,
+  formatPace,
+} from "../utils/athleteMetrics";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
 
 const STORAGE_KEY = "exervia_run_map_lab_v1";
@@ -97,30 +107,6 @@ function distanceKmBetween(a, b) {
   return earthRadiusKm * (2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
 }
 
-function formatElapsed(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) {
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  }
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function formatDistance(distanceKm) {
-  return Number(distanceKm || 0).toFixed(2);
-}
-
-function formatPace(distanceKm, elapsedSeconds) {
-  const distance = Number(distanceKm || 0);
-  const seconds = Number(elapsedSeconds || 0);
-  if (distance <= 0 || seconds <= 0) return "--:--";
-  const paceSeconds = Math.round(seconds / distance);
-  const mins = Math.floor(paceSeconds / 60);
-  const secs = paceSeconds % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-}
-
 function normalizeDiscipline(value) {
   const raw = String(value || "running").trim().toLowerCase();
   if (raw.includes("cycle")) return "cycling";
@@ -140,6 +126,7 @@ export default function AthleteRunMapLab({ userId }) {
   const timerRef = useRef(null);
   const hasGoogleMapsKey = Boolean(process.env.REACT_APP_GOOGLE_MAPS_API_KEY);
   const stored = readStoredLab();
+  const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
   const [discipline, setDiscipline] = useState(stored?.discipline || "Running");
   const [selectedDistance, setSelectedDistance] = useState(stored?.selectedDistance || "5K");
   const [visibility, setVisibility] = useState(stored?.visibility || "Nearby");
@@ -147,7 +134,7 @@ export default function AthleteRunMapLab({ userId }) {
   const [battleRadius, setBattleRadius] = useState(stored?.battleRadius || "10 km");
   const [routeName, setRouteName] = useState(stored?.routeName || "ExerVia Run Prototype");
   const [routeNote, setRouteNote] = useState(stored?.routeNote || "Route-ready for live challenge matchmaking.");
-  const [mapCenter, setMapCenter] = useState(stored?.mapCenter || { lat: 53.3498, lng: -6.2603 });
+  const [mapCenter, setMapCenter] = useState(stored?.mapCenter || ATHLETE_DEFAULT_MAP_CENTER);
   const [savedPlans, setSavedPlans] = useState(Array.isArray(stored?.savedPlans) ? stored.savedPlans : []);
   const [runHistory, setRunHistory] = useState(readRunHistory());
   const [activePresetId, setActivePresetId] = useState(stored?.activePresetId || ROUTE_PRESETS[0].id);
@@ -186,7 +173,7 @@ export default function AthleteRunMapLab({ userId }) {
   const routeWorld = linkedWorld || normalizeDiscipline(discipline);
   const worldMeta = getAthleteWorldMeta(routeWorld);
   const initialMapConfigRef = useRef({
-    center: stored?.mapCenter || { lat: 53.3498, lng: -6.2603 },
+    center: stored?.mapCenter || ATHLETE_DEFAULT_MAP_CENTER,
     routeName: stored?.routeName || "ExerVia Run Prototype",
     visibility: stored?.visibility || "Nearby",
     challengeMode: stored?.challengeMode || "Challenge",
@@ -207,7 +194,7 @@ export default function AthleteRunMapLab({ userId }) {
     const currentDistance = Number(distanceKmValue || 0);
     const currentElapsed = Number(elapsedSecondsValue || 0);
     if (currentDistance > 0 && currentDistance > maxDistance) {
-      prs.push({ label: "Longest route", value: `${currentDistance.toFixed(1)} km` });
+      prs.push({ label: "Longest route", value: formatDistance(currentDistance, { unit: distanceUnit, decimals: 1, includeUnit: true }) });
     }
     const similarDistanceRuns = comparableRuns.filter((run) => {
       const previousDistance = Number(run?.distanceKm || run?.distance_km || 0);
@@ -227,26 +214,30 @@ export default function AthleteRunMapLab({ userId }) {
   };
 
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        discipline,
-        selectedDistance,
-        visibility,
-        challengeMode,
-        battleRadius,
-        routeName,
-        routeNote,
-        mapCenter,
-        savedPlans,
-        activePresetId,
-        runState,
-        elapsedSeconds,
-        distanceKm,
-        routePoints,
-        runSummary,
-      })
-    );
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          discipline,
+          selectedDistance,
+          visibility,
+          challengeMode,
+          battleRadius,
+          routeName,
+          routeNote,
+          mapCenter,
+          savedPlans,
+          activePresetId,
+          runState,
+          elapsedSeconds,
+          distanceKm,
+          routePoints,
+          runSummary,
+        })
+      );
+    } catch {
+      // best-effort cache only
+    }
   }, [discipline, selectedDistance, visibility, challengeMode, battleRadius, routeName, routeNote, mapCenter, savedPlans, activePresetId, runState, elapsedSeconds, distanceKm, routePoints, runSummary]);
 
   useEffect(() => {
@@ -273,7 +264,11 @@ export default function AthleteRunMapLab({ userId }) {
   }, [discipline, linkedFocus, linkedObjective, linkedPlan, linkedWeek, linkedWorld, stored?.routeName, stored?.routeNote]);
 
   useEffect(() => {
-    localStorage.setItem(RUN_HISTORY_KEY, JSON.stringify(runHistory));
+    try {
+      localStorage.setItem(RUN_HISTORY_KEY, JSON.stringify(runHistory));
+    } catch {
+      // best-effort cache only
+    }
   }, [runHistory]);
 
   useEffect(() => {
@@ -295,7 +290,7 @@ export default function AthleteRunMapLab({ userId }) {
           discipline: String(row.discipline || "running"),
           distanceKm: Number(row.distance_km || 0),
           elapsedSeconds: Number(row.elapsed_seconds || 0),
-          pace: row.pace_per_km_seconds ? formatPace(1, Number(row.pace_per_km_seconds)) : formatPace(Number(row.distance_km || 0), Number(row.elapsed_seconds || 0)),
+          pacePerKmSeconds: Number(row.pace_per_km_seconds || 0) || null,
           visibility: row.visibility,
           challengeMode: row.challenge_mode,
           routePoints: Array.isArray(row.route_points) ? row.route_points : [],
@@ -317,6 +312,15 @@ export default function AthleteRunMapLab({ userId }) {
     () => ROUTE_PRESETS.find((preset) => preset.id === activePresetId) || ROUTE_PRESETS[0],
     [activePresetId]
   );
+  const displayChallengeDistance = useMemo(() => {
+    const distanceValueKm = Number(String(selectedDistance || "").replace(/k/i, "")) || 0;
+    return distanceValueKm > 0 ? formatDistanceOptionLabel(distanceValueKm, distanceUnit, distanceUnit === "mi" ? 2 : 0) : selectedDistance;
+  }, [distanceUnit, selectedDistance]);
+  const displayBattleRadius = useMemo(() => {
+    const radiusKm = Number(String(battleRadius || "").replace(/[^\d.]/g, "")) || 0;
+    return radiusKm > 0 ? formatDistanceOptionLabel(radiusKm, distanceUnit, distanceUnit === "mi" ? 2 : 0) : battleRadius;
+  }, [battleRadius, distanceUnit]);
+  const livePace = formatPace(distanceKm, elapsedSeconds, { unit: distanceUnit, includeUnit: false });
   const pageTitle = linkedTrainingMode
     ? `${worldMeta.title} Route Layer`
     : "Challenge-ready route planning";
@@ -483,11 +487,13 @@ export default function AthleteRunMapLab({ userId }) {
     window.setTimeout(() => setRouteSavedMessage(""), 2200);
   };
 
-  useEffect(() => () => {
-    if (watchIdRef.current !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-    if (timerRef.current) clearInterval(timerRef.current);
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const beginRun = () => {
@@ -507,6 +513,7 @@ export default function AthleteRunMapLab({ userId }) {
     setRoutePoints([]);
     setRunSummary(null);
     setGeoState({ loading: true, error: "" });
+    vibrateStart();
 
     const startedAt = Date.now();
     timerRef.current = window.setInterval(() => {
@@ -558,7 +565,7 @@ export default function AthleteRunMapLab({ userId }) {
       discipline,
       distanceKm: Number(distanceKm.toFixed(2)),
       elapsedSeconds,
-      pace: formatPace(distanceKm, elapsedSeconds),
+      pacePerKmSeconds: distanceKm > 0 ? Number((elapsedSeconds / distanceKm).toFixed(2)) : null,
       visibility,
       challengeMode,
       routePoints,
@@ -568,6 +575,7 @@ export default function AthleteRunMapLab({ userId }) {
     setRunSummary(summary);
     setRunHistory((prev) => [summary, ...prev].slice(0, 10));
     setRunState("completed");
+    vibrateStop();
 
     let savedRunId = null;
     if (userId) {
@@ -682,7 +690,10 @@ export default function AthleteRunMapLab({ userId }) {
           emitToast(`Run complete. +${xpResult.awardedXp} XP earned.`, "success", 2800);
         }
         if (runPrs.length) {
+          vibratePr();
           emitToast(`Run PR: ${runPrs[0].label}.`, "success", 3200);
+        } else {
+          vibrateSuccess();
         }
       } catch (error) {
         console.error("Run XP/state update failed:", error);
@@ -708,15 +719,19 @@ export default function AthleteRunMapLab({ userId }) {
 
   const postRunToCommunity = async () => {
     if (!runSummary || !userId) return;
+    if (!runSummary.id) {
+      emitToast("Save the run first before posting it.", "info", 2800);
+      return;
+    }
     setPostingRun(true);
     try {
       await publishRunStatus(userId, {
         runId: runSummary.id,
         discipline: runSummary.discipline,
         name: runSummary.name,
-        distanceLabel: `${formatDistance(runSummary.distanceKm)} km`,
+        distanceLabel: formatDistance(runSummary.distanceKm, { unit: distanceUnit, includeUnit: true }),
         elapsedLabel: formatElapsed(runSummary.elapsedSeconds),
-        paceLabel: `${runSummary.pace}/km`,
+        paceLabel: formatPace(runSummary.distanceKm, runSummary.elapsedSeconds, { unit: distanceUnit, includeUnit: true }),
       });
 
       await trackDailyActivity(userId, "community_post");
@@ -731,6 +746,8 @@ export default function AthleteRunMapLab({ userId }) {
           discipline: runSummary.discipline,
         },
       });
+      await recalcUserState(userId);
+      window.dispatchEvent(new Event("user_state_updated"));
 
       emitToast("Run posted to community.", "success", 2800);
     } catch (error) {
@@ -739,8 +756,6 @@ export default function AthleteRunMapLab({ userId }) {
       setPostingRun(false);
     }
   };
-
-  const livePace = formatPace(distanceKm, elapsedSeconds);
 
   return (
     <div className="page-shell route-lab-shell" data-world={routeWorld}>
@@ -772,9 +787,25 @@ export default function AthleteRunMapLab({ userId }) {
         </div>
         <div className="route-lab-status">
           <div className="route-lab-status-pill">{worldMeta.title}</div>
-          <div className="route-lab-status-pill">Distance {selectedDistance}</div>
+          <div className="route-lab-status-pill">Distance {displayChallengeDistance}</div>
           {!linkedTrainingMode ? <div className="route-lab-status-pill">{visibility} visibility</div> : null}
           {!linkedTrainingMode ? <div className="route-lab-status-pill">{challengeMode} mode</div> : null}
+          <div className="studio-toggle" aria-label="Distance unit preference">
+            <button
+              type="button"
+              className={`studio-toggle-btn ${distanceUnit === "km" ? "active" : ""}`}
+              onClick={() => setDistanceUnit("km")}
+            >
+              km
+            </button>
+            <button
+              type="button"
+              className={`studio-toggle-btn ${distanceUnit === "mi" ? "active" : ""}`}
+              onClick={() => setDistanceUnit("mi")}
+            >
+              mi
+            </button>
+          </div>
         </div>
       </div>
 
@@ -823,11 +854,11 @@ export default function AthleteRunMapLab({ userId }) {
               </div>
               <div className="route-lab-live-metric">
                 <strong>{livePace}</strong>
-                <span>Avg. pace /km</span>
+                <span>Avg. pace /{distanceUnit}</span>
               </div>
               <div className="route-lab-live-metric">
-                <strong>{formatDistance(distanceKm)}</strong>
-                <span>Distance (km)</span>
+                <strong>{formatDistance(distanceKm, { unit: distanceUnit })}</strong>
+                <span>Distance ({distanceUnit})</span>
               </div>
             </div>
             <div className="route-lab-live-actions">
@@ -870,16 +901,16 @@ export default function AthleteRunMapLab({ userId }) {
           <div className="route-lab-option-block">
             <div className="route-lab-label">Challenge distance</div>
             <div className="route-lab-chip-row">
-              {DISTANCE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={`studio-chip ${selectedDistance === option ? "active" : ""}`}
-                  onClick={() => setSelectedDistance(option)}
-                >
-                  {option}
-                </button>
-              ))}
+                  {DISTANCE_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`studio-chip ${selectedDistance === option ? "active" : ""}`}
+                      onClick={() => setSelectedDistance(option)}
+                    >
+                      {formatDistanceOptionLabel(Number(String(option).replace(/k/i, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}
+                    </button>
+                  ))}
             </div>
           </div>
 
@@ -977,7 +1008,7 @@ export default function AthleteRunMapLab({ userId }) {
                       className={`studio-chip ${battleRadius === option ? "active" : ""}`}
                       onClick={() => setBattleRadius(option)}
                     >
-                      {option}
+                      {formatDistanceOptionLabel(Number(String(option).replace(/[^\d.]/g, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}
                     </button>
                   ))}
                 </div>
@@ -992,8 +1023,8 @@ export default function AthleteRunMapLab({ userId }) {
                   Challenge athletes inside your chosen radius, lock the distance, and go live only after both sides accept.
                 </div>
                 <div className="route-lab-battle-meta">
-                  <span>{selectedDistance}</span>
-                  <span>{battleRadius}</span>
+                  <span>{displayChallengeDistance}</span>
+                  <span>{displayBattleRadius}</span>
                   <span>{challengeMode}</span>
                 </div>
               </div>
@@ -1028,7 +1059,7 @@ export default function AthleteRunMapLab({ userId }) {
                 >
                   <div className="route-lab-preset-top">
                     <strong>{preset.name}</strong>
-                    <span>{preset.distance}</span>
+                    <span>{formatDistanceOptionLabel(Number(String(preset.distance).replace(/k/i, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}</span>
                   </div>
                   <div className="route-lab-preset-sub">{preset.city}</div>
                   <div className="route-lab-preset-note">{preset.vibe}</div>
@@ -1044,17 +1075,19 @@ export default function AthleteRunMapLab({ userId }) {
             <div className="route-lab-run-summary">
               <div className="route-lab-saved-top">
                 <strong>{runSummary.name}</strong>
-                <span>{formatDistance(runSummary.distanceKm)} km</span>
+                <span>{formatDistance(runSummary.distanceKm, { unit: distanceUnit, includeUnit: true })}</span>
               </div>
               <div className="route-lab-saved-meta">
                 <span>{runSummary.discipline}</span>
                 <span>{formatElapsed(runSummary.elapsedSeconds)}</span>
-                <span>{runSummary.pace}/km</span>
+                <span>{formatPace(runSummary.distanceKm, runSummary.elapsedSeconds, { unit: distanceUnit, includeUnit: true })}</span>
               </div>
               <div className="route-lab-preset-note">
                 {runSummary.trainingLinked && linkedTrainingMode
                   ? "Mapped effort logged back into Training Ritual. Share it or move straight back into your plan."
-                  : "Ready to share. Post this run into community and turn route effort into social proof."}
+                  : runSummary.id
+                    ? "Ready to share. Post this run into community and turn route effort into social proof."
+                    : "Run complete locally. Sign in and save the run to unlock community posting and route detail pages."}
               </div>
               {runSummary.prs?.length ? (
                 <div className="route-lab-pr-list">
@@ -1067,7 +1100,12 @@ export default function AthleteRunMapLab({ userId }) {
                 </div>
               ) : null}
               <div className="route-lab-action-row">
-                <button className="studio-primary-btn" type="button" onClick={postRunToCommunity} disabled={postingRun}>
+                <button
+                  className="studio-primary-btn"
+                  type="button"
+                  onClick={postRunToCommunity}
+                  disabled={postingRun || !userId || !runSummary.id}
+                >
                   {postingRun ? "Posting..." : "Post run"}
                 </button>
                 {linkedTrainingMode ? (
@@ -1119,17 +1157,21 @@ export default function AthleteRunMapLab({ userId }) {
                     >
                       <div className="route-lab-saved-top">
                         <strong>{run.name}</strong>
-                        <span>{formatDistance(run.distanceKm)} km</span>
+                        <span>{formatDistance(run.distanceKm, { unit: distanceUnit, includeUnit: true })}</span>
                       </div>
                       <div className="route-lab-saved-meta">
                         <span>{run.discipline}</span>
                         <span>{formatElapsed(run.elapsedSeconds)}</span>
-                        <span>{run.pace}/km</span>
+                        <span>{formatPace(run.distanceKm, run.elapsedSeconds, { unit: distanceUnit, includeUnit: true })}</span>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="route-lab-empty">No runs yet. Finish your first mapped effort and it will land here ready for profile and community.</div>
+                  <EmptyState
+                    className="route-lab-empty"
+                    title="No runs yet"
+                    description="Finish your first mapped effort and it will land here ready for profile and community."
+                  />
                 )}
               </div>
             </>
@@ -1143,7 +1185,7 @@ export default function AthleteRunMapLab({ userId }) {
                     <div key={plan.id} className="route-lab-saved-card">
                       <div className="route-lab-saved-top">
                         <strong>{plan.name}</strong>
-                        <span>{plan.distance}</span>
+                        <span>{formatDistanceOptionLabel(Number(String(plan.distance).replace(/k/i, "")) || 0, distanceUnit, distanceUnit === "mi" ? 2 : 0)}</span>
                       </div>
                       <div className="route-lab-saved-meta">
                         <span>{plan.discipline || "Running"}</span>
@@ -1154,9 +1196,11 @@ export default function AthleteRunMapLab({ userId }) {
                     </div>
                   ))
                 ) : (
-                  <div className="route-lab-empty">
-                    Save one route plan and you have a concrete running demo surface for investors and cofounders.
-                  </div>
+                  <EmptyState
+                    className="route-lab-empty"
+                    title="No saved route plans"
+                    description="Save one route plan and you have a concrete running demo surface for investors and cofounders."
+                  />
                 )}
               </div>
             </>

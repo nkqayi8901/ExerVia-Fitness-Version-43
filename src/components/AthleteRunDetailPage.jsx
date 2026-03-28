@@ -1,33 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import useDistanceUnitPreference from "../hooks/useDistanceUnitPreference";
+import RoutePreviewVisual from "./RoutePreviewVisual";
 import { supabase } from "../supabaseClient";
 import { loadGoogleMapsApi } from "../utils/googleMapsLoader";
-import RoutePreviewVisual from "./RoutePreviewVisual";
 import { buildRunStory } from "../utils/runHighlights";
+import {
+  ATHLETE_DEFAULT_MAP_CENTER,
+  formatDistance,
+  formatElapsed,
+  formatPaceFromSecondsPerKm,
+} from "../utils/athleteMetrics";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
-
-function formatElapsed(totalSeconds) {
-  const seconds = Number(totalSeconds || 0);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainder = seconds % 60;
-  if (hours > 0) {
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
-  }
-  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
-}
-
-function formatDistance(distanceKm) {
-  return `${Number(distanceKm || 0).toFixed(2)} km`;
-}
-
-function formatPace(secondsPerKm) {
-  const total = Number(secondsPerKm || 0);
-  if (!total) return "--:--/km";
-  const mins = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}/km`;
-}
 
 function normalizePoints(value) {
   if (!Array.isArray(value)) return [];
@@ -44,7 +28,7 @@ function buildBbox(points, fallback) {
     ? points
     : fallback?.lat && fallback?.lng
       ? [fallback]
-      : [{ lat: 53.3498, lng: -6.2603 }];
+      : [ATHLETE_DEFAULT_MAP_CENTER];
   const lats = source.map((point) => point.lat);
   const lngs = source.map((point) => point.lng);
   const minLat = Math.min(...lats);
@@ -67,6 +51,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
   const [run, setRun] = useState(null);
   const [ownerName, setOwnerName] = useState("");
   const [mapsReady, setMapsReady] = useState(false);
+  const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
   const resolvedViewerId = Number(viewerId || id);
 
   useEffect(() => {
@@ -120,7 +105,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
     if (run?.start_lat && run?.start_lng) {
       return { lat: Number(run.start_lat), lng: Number(run.start_lng) };
     }
-    return { lat: 53.3498, lng: -6.2603 };
+    return ATHLETE_DEFAULT_MAP_CENTER;
   }, [points, run]);
 
   const mapSrc = useMemo(() => {
@@ -194,13 +179,35 @@ export default function AthleteRunDetailPage({ viewerId }) {
           <div className="route-lab-kicker">Run Detail</div>
           <h2 className="page-title">{run?.title || "Route effort"}</h2>
           <p className="page-subtitle">
-            {ownerName ? `${ownerName} logged this ${String(run?.discipline || "run").toLowerCase()} effort.` : "Route effort from the ExerVia athlete network."}
+            {ownerName
+              ? `${ownerName} logged this ${String(run?.discipline || "run").toLowerCase()} effort.`
+              : "Route effort from the ExerVia athlete network."}
           </p>
         </div>
         <div className="route-lab-status">
-          <div className="route-lab-status-pill">{formatDistance(run?.distance_km)}</div>
+          <div className="route-lab-status-pill">
+            {formatDistance(run?.distance_km, { unit: distanceUnit, includeUnit: true })}
+          </div>
           <div className="route-lab-status-pill">{formatElapsed(run?.elapsed_seconds)}</div>
-          <div className="route-lab-status-pill">{formatPace(run?.pace_per_km_seconds)}</div>
+          <div className="route-lab-status-pill">
+            {formatPaceFromSecondsPerKm(run?.pace_per_km_seconds, { unit: distanceUnit, includeUnit: true })}
+          </div>
+          <div className="studio-toggle" aria-label="Distance unit preference">
+            <button
+              className={`studio-toggle-btn ${distanceUnit === "km" ? "active" : ""}`}
+              type="button"
+              onClick={() => setDistanceUnit("km")}
+            >
+              km
+            </button>
+            <button
+              className={`studio-toggle-btn ${distanceUnit === "mi" ? "active" : ""}`}
+              type="button"
+              onClick={() => setDistanceUnit("mi")}
+            >
+              mi
+            </button>
+          </div>
         </div>
       </div>
 
@@ -221,7 +228,8 @@ export default function AthleteRunDetailPage({ viewerId }) {
                   <div className="athlete-run-cover-kicker">{worldMeta.title}</div>
                   <div className="athlete-run-cover-title">{run.title || "Route effort"}</div>
                   <div className="athlete-run-cover-sub">
-                    {formatDistance(run.distance_km)} · {formatElapsed(run.elapsed_seconds)} · {formatPace(run.pace_per_km_seconds)}
+                    {formatDistance(run.distance_km, { unit: distanceUnit, includeUnit: true })} · {formatElapsed(run.elapsed_seconds)} ·{" "}
+                    {formatPaceFromSecondsPerKm(run.pace_per_km_seconds, { unit: distanceUnit, includeUnit: true })}
                   </div>
                 </div>
               </div>
@@ -257,7 +265,8 @@ export default function AthleteRunDetailPage({ viewerId }) {
               <div className="athlete-run-summary-copy">
                 <strong>{ownerName || "Athlete"} moved with intent.</strong>
                 <p>
-                  {run.route_note || "Saved route, tracked distance, and live effort now sit inside the athlete profile instead of disappearing after the session closes."}
+                  {run.route_note ||
+                    "Saved route, tracked distance, and live effort now sit inside the athlete profile instead of disappearing after the session closes."}
                 </p>
               </div>
               {runStory?.highlights?.length ? (
@@ -272,7 +281,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
               <div className="athlete-run-stat-grid">
                 <div className="athlete-run-stat">
                   <span className="athlete-run-stat-label">Distance</span>
-                  <strong>{formatDistance(run.distance_km)}</strong>
+                  <strong>{formatDistance(run.distance_km, { unit: distanceUnit, includeUnit: true })}</strong>
                 </div>
                 <div className="athlete-run-stat">
                   <span className="athlete-run-stat-label">Time</span>
@@ -280,7 +289,7 @@ export default function AthleteRunDetailPage({ viewerId }) {
                 </div>
                 <div className="athlete-run-stat">
                   <span className="athlete-run-stat-label">Pace</span>
-                  <strong>{formatPace(run.pace_per_km_seconds)}</strong>
+                  <strong>{formatPaceFromSecondsPerKm(run.pace_per_km_seconds, { unit: distanceUnit, includeUnit: true })}</strong>
                 </div>
                 <div className="athlete-run-stat">
                   <span className="athlete-run-stat-label">Logged</span>
@@ -316,14 +325,13 @@ export default function AthleteRunDetailPage({ viewerId }) {
             <div className="athlete-run-story-grid">
               <div>
                 <div className="athlete-run-story-label">Route note</div>
-                <p className="athlete-run-story-body">
-                  {run.route_note || "No route note was added for this effort."}
-                </p>
+                <p className="athlete-run-story-body">{run.route_note || "No route note was added for this effort."}</p>
               </div>
               <div>
                 <div className="athlete-run-story-label">{worldMeta.title}</div>
                 <p className="athlete-run-story-body">
-                  {runStory?.summary || "ExerVia turns run logging into visible athlete identity: route, pace, and effort move straight into feed, profile, and progression."}
+                  {runStory?.summary ||
+                    "ExerVia turns run logging into visible athlete identity: route, pace, and effort move straight into feed, profile, and progression."}
                 </p>
               </div>
             </div>

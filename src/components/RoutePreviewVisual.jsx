@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 function normalizePoints(points) {
   return Array.isArray(points)
     ? points
@@ -36,7 +38,7 @@ export default function RoutePreviewVisual({
   fallbackLabel = "Route ready",
   gradientId = "route-preview",
 }) {
-  const path = buildMiniRoutePath(points);
+  const path = useMemo(() => buildMiniRoutePath(points), [points]);
 
   return (
     <div className={`route-preview-visual ${className}`.trim()}>
