@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -48,11 +48,7 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
     }
   };
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [userId, timeRange, mode, getSinceDate]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     if (!userId) return;
 
     setLoading(true);
@@ -101,7 +97,11 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, timeRange]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   // Chart configurations
   const chartOptions = {
@@ -171,7 +171,6 @@ const AnalyticsDashboard = ({ userId, mode = 'gym' }) => {
   // Recovery vs Performance Chart
   const recoveryChartData = useMemo(() => {
     const strengthData = data.strength || [];
-    const trainingData = data.training || [];
     
     const recoveryData = strengthData.map(log => ({
       x: log.effort_level || 0,
