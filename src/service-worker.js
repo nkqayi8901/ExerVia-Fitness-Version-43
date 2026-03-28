@@ -1,4 +1,5 @@
 // Service Worker for ExerVia Fitness PWA
+const ignored = self.__WB_MANIFEST;
 const CACHE_NAME = 'exervia-v1';
 const urlsToCache = [
   '/',
