@@ -25,7 +25,6 @@ import {
   formatElapsed,
   formatPace,
 } from "../utils/athleteMetrics";
-import { buildCenteredRouteBbox } from "../utils/routeGeometry";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
 import { questProgress } from "../utils/questProgress";
 import LeafletRunMap from "./LeafletRunMap";
@@ -496,11 +495,6 @@ export default function AthleteRunMapLab({ userId, displayName: propDisplayName,
       setChallengeMode("Solo");
     }
   }, [challengeMode, linkedTrainingMode]);
-
-  const mapSrc = useMemo(() => {
-    const bbox = buildCenteredRouteBbox(mapCenter.lat, mapCenter.lng);
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`;
-  }, [mapCenter]);
 
   useEffect(() => {
     let active = true;

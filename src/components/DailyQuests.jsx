@@ -182,10 +182,6 @@ export default function DailyQuests({ userId, mode = "athlete", onXpClaimed }) {
           {quests.map((quest) => {
             const cat = catalogue[quest.quest_id];
             if (!cat) return null;
-            const pct = quest.is_complete
-              ? 100
-              : Math.round((quest.progress / Math.max(cat.target_value, 1)) * 100);
-
             return (
               <div
                 key={quest.id}

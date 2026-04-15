@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { format } from 'date-fns';
@@ -44,17 +44,7 @@ const LogsPinnacle = ({ viewerId }) => {
   const resolvedViewerId = Number(viewerId || id);
 
   // Load logs and data
-  useEffect(() => {
-    loadLogs();
-    loadStreaks();
-  }, [selectedDate, resolvedViewerId]);
-
-  // Generate insights after logs have loaded
-  useEffect(() => {
-    if (!loading) generateInsights();
-  }, [logs]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (!resolvedViewerId) return;
     
     setLoading(true);
@@ -82,9 +72,9 @@ const LogsPinnacle = ({ viewerId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedViewerId, selectedDate]);
 
-  const loadStreaks = async () => {
+  const loadStreaks = useCallback(async () => {
     if (!resolvedViewerId) return;
     
     try {
@@ -103,9 +93,9 @@ const LogsPinnacle = ({ viewerId }) => {
     } catch (error) {
       console.error('Error loading streaks:', error);
     }
-  };
+  }, [resolvedViewerId]);
 
-  const generateInsights = () => {
+  const generateInsights = useCallback(() => {
     const insightsList = [];
     
     // Weight trend insight
@@ -152,7 +142,18 @@ const LogsPinnacle = ({ viewerId }) => {
     }
 
     setInsights(insightsList);
-  };
+  }, [goals.water, logs.activities, logs.water, logs.weight, water, weight]);
+
+  // Load logs and data
+  useEffect(() => {
+    loadLogs();
+    loadStreaks();
+  }, [loadLogs, loadStreaks]);
+
+  // Generate insights after logs have loaded
+  useEffect(() => {
+    if (!loading) generateInsights();
+  }, [generateInsights, loading]);
 
   const saveLog = async (type, data) => {
     if (!resolvedViewerId) return;

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
 import { recalcUserState } from "../services/stateEngine";
 import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
@@ -480,7 +479,6 @@ function PinnacleHistoryCard({
 }
 
 export default function JournalPinnacle({ viewerId, mode = "gym" }) {
-  const navigate = useNavigate();
   const userId = useMemo(() => viewerId || localStorage.getItem("exervia_user_id"), [viewerId]);
   const pageMode = useMemo(() => {
     const storedMode = localStorage.getItem("exervia_active_mode");

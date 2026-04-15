@@ -3,7 +3,7 @@
 // Two tabs: City (filtered to user's city) and Global.
 // Own entry is highlighted. Rank badge animates for top 3.
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import "./CityLeaderboard.css";
 

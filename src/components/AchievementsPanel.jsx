@@ -8,7 +8,6 @@ import { supabase } from "../supabaseClient";
 import { emitToast } from "../utils/toast";
 import "./AchievementsPanel.css";
 
-const RARITY_ORDER = { legendary: 0, epic: 1, rare: 2, common: 3 };
 const CATEGORY_LABELS = {
   training:  "Training",
   running:   "Running",
@@ -64,8 +63,6 @@ export default function AchievementsPanel({ userId }) {
         supabase.from("achievement_catalogue").select("*").eq("is_active", true).order("sort_order"),
       ]);
 
-      const earnedSlugs = new Set((myAchs || []).map((a) => a.slug));
-
       // Mark unnotified achievements for toast
       const newOnes = (myAchs || []).filter((a) => !a.notified);
       if (newOnes.length) {
@@ -77,10 +74,6 @@ export default function AchievementsPanel({ userId }) {
 
       // Build merged list: earned first (with awarded_at), then locked
       const earnedList = (myAchs || []).sort((a, b) => new Date(b.awarded_at) - new Date(a.awarded_at));
-      const lockedList = (cat || [])
-        .filter((c) => !earnedSlugs.has(c.slug))
-        .sort((a, b) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || a.sort_order - b.sort_order);
-
       setEarned(earnedList);
       setCatalogue(cat || []);
     } catch {
