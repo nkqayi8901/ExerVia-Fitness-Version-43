@@ -1,0 +1,813 @@
+/* JournalPinnacle Component Styles - Premium Design Transformation */
+
+/* Layout and Grid System */
+.pinnacle-journal {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.pinnacle-journal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.pinnacle-journal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.pinnacle-branding {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pinnacle-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pinnacle-logo-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+.pinnacle-logo-text {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff, #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.pinnacle-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.pinnacle-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Card System */
+.pinnacle-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pinnacle-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s ease;
+}
+
+.pinnacle-card:hover::before {
+  transform: scaleX(1);
+}
+
+.pinnacle-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Grid Layout */
+.pinnacle-journal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Meta Cards */
+.pinnacle-summary-card {
+  min-height: 200px;
+}
+
+.pinnacle-quote-card {
+  min-height: 200px;
+}
+
+.pinnacle-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-card-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.pinnacle-card-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #666;
+}
+
+.pinnacle-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pinnacle-summary-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #333;
+  font-weight: 500;
+}
+
+.pinnacle-complete-badge {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.pinnacle-summary-stats {
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pinnacle-quote-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+}
+
+.pinnacle-quote-text {
+  font-size: 1.25rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: #333;
+  position: relative;
+  padding: 0 1rem;
+}
+
+.pinnacle-quote-text::before,
+.pinnacle-quote-text::after {
+  content: '"';
+  font-size: 3rem;
+  color: #667eea;
+  position: absolute;
+  opacity: 0.3;
+}
+
+.pinnacle-quote-text::before {
+  top: -0.5rem;
+  left: -0.5rem;
+}
+
+.pinnacle-quote-text::after {
+  bottom: -1.5rem;
+  right: -0.5rem;
+}
+
+.pinnacle-quote-author {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Daily Check-in Card */
+.pinnacle-checkin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-checkin-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.pinnacle-checkin-status {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.pinnacle-editing-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pinnacle-editing-text {
+  font-size: 0.875rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.pinnacle-cancel-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-cancel-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Slot Switch */
+.pinnacle-slot-switch {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  background: #f8fafc;
+  padding: 0.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-slot-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-slot-btn.active {
+  background: white;
+  color: #334155;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.pinnacle-slot-btn:hover:not(.active) {
+  color: #334155;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-slot-icon {
+  font-size: 1.25rem;
+}
+
+/* Form Fields */
+.pinnacle-field-group {
+  margin-bottom: 1.5rem;
+}
+
+.pinnacle-field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-field-icon {
+  font-size: 1rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.pinnacle-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  background: white;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.pinnacle-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.pinnacle-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  background: white;
+  transition: all 0.3s ease;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.pinnacle-textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.pinnacle-primary-btn {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+.pinnacle-primary-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(102, 126, 234, 0.6);
+}
+
+.pinnacle-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* History Card */
+.pinnacle-history-card {
+  margin-top: 2rem;
+}
+
+.pinnacle-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-history-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.pinnacle-search-group {
+  flex: 1;
+  max-width: 400px;
+  margin-left: 2rem;
+}
+
+.pinnacle-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  color: #333;
+  background: white;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.pinnacle-search-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.pinnacle-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-tag-pill {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 9999px;
+  background: white;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-tag-pill.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.pinnacle-tag-pill:hover:not(.active) {
+  background: #f8fafc;
+  color: #334155;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.pinnacle-empty-state {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 2rem;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.pinnacle-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pinnacle-history-item {
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 1.5rem;
+  background: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.pinnacle-history-item:hover {
+  background: white;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-history-date {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-history-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pinnacle-history-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.pinnacle-history-section-title {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pinnacle-history-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.pinnacle-history-field:hover {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.pinnacle-field-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pinnacle-field-value {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.pinnacle-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.pinnacle-edit-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.pinnacle-edit-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.pinnacle-history-empty {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  text-align: center;
+}
+
+/* Loading States */
+.pinnacle-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.pinnacle-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid white;
+  border-radius: 50%;
+  animation: pinnacle-spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes pinnacle-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.pinnacle-loading-text {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Banner and Modal Styles */
+.pinnacle-banner {
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  animation: pinnacle-slide-down 0.3s ease;
+}
+
+.pinnacle-banner.success {
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  color: white;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pinnacle-banner.warn {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: white;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.pinnacle-banner.error {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: white;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.pinnacle-banner.info {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+@keyframes pinnacle-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pinnacle-confirm-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.pinnacle-confirm-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.pinnacle-confirm-message {
+  font-size: 1.125rem;
+  color: #333;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.pinnacle-confirm-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .pinnacle-journal-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pinnacle-journal-header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .pinnacle-search-group {
+    margin-left: 0;
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .pinnacle-journal {
+    padding: 1rem;
+  }
+  
+  .pinnacle-journal-header {
+    padding: 1rem;
+  }
+  
+  .pinnacle-card {
+    padding: 1.5rem;
+  }
+  
+  .pinnacle-slot-switch {
+    flex-direction: column;
+  }
+  
+  .pinnacle-search-group {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pinnacle-journal {
+    padding: 0.5rem;
+  }
+  
+  .pinnacle-card {
+    padding: 1rem;
+  }
+  
+  .pinnacle-history-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

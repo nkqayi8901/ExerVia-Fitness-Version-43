@@ -33,12 +33,12 @@ const GymMode = isTestEnv
 const AthleteMode = isTestEnv
   ? resolveEagerModule(() => require("./components/AthleteMode"))
   : lazy(() => import("./components/AthleteMode"));
-const NutritionPage = isTestEnv
-  ? resolveEagerModule(() => require("./components/NutritionPage"))
-  : lazy(() => import("./components/NutritionPage"));
-const JournalPage = isTestEnv
-  ? resolveEagerModule(() => require("./components/JournalPage"))
-  : lazy(() => import("./components/JournalPage"));
+const NutritionPinnacle = isTestEnv
+  ? resolveEagerModule(() => require("./components/NutritionPinnacle"))
+  : lazy(() => import("./components/NutritionPinnacle"));
+const JournalPinnacle = isTestEnv
+  ? resolveEagerModule(() => require("./components/JournalPinnacle"))
+  : lazy(() => import("./components/JournalPinnacle"));
 const ResetPasswordPage = isTestEnv
   ? resolveEagerModule(() => require("./components/ResetPasswordPage"))
   : lazy(() => import("./components/ResetPasswordPage"));
@@ -221,17 +221,16 @@ function App() {
               path="/nutrition"
               element={withRouteBoundary(
                 <RequireAuth>
-                  <NutritionPage />
+                  <NutritionPinnacle />
                 </RequireAuth>
               )}
             />
 
-            {/* optional standalone journal route */}
             <Route
               path="/journal"
               element={withRouteBoundary(
                 <RequireAuth>
-                  <JournalPage />
+                  <JournalPinnacle />
                 </RequireAuth>
               )}
             />

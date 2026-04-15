@@ -1,13 +1,15 @@
 {
   "name": "ExerVia Fitness",
   "short_name": "ExerVia",
-  "description": "Dual-mode fitness assistant for gym and athlete training",
+  "description": "Train. Compete. Dominate. The world's most competitive fitness platform.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#22c55e",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#070710",
+  "theme_color": "#070710",
   "orientation": "portrait-primary",
   "scope": "/",
+  "id": "/",
   "icons": [
     {
       "src": "favicon.ico",
@@ -17,15 +19,47 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["health", "fitness", "sports"],
+  "shortcuts": [
+    {
+      "name": "Train",
+      "short_name": "Train",
+      "description": "Open your training log",
+      "url": "/",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Shop",
+      "short_name": "Shop",
+      "description": "Open the ExerVia shop",
+      "url": "/",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "categories": ["health", "fitness", "sports", "games"],
+  "prefer_related_applications": false,
   "lang": "en",
   "dir": "ltr"
 }

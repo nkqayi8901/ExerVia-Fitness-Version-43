@@ -1,0 +1,249 @@
+/* RivalsPanel.css */
+
+.rp-shell {
+  display: grid;
+  gap: 16px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.rp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rp-kicker {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #f97316;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.rp-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.rp-header-meta {
+  font-size: 0.75rem;
+  color: #475569;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+/* ── List ──────────────────────────────────────────────────────────────────── */
+.rp-list {
+  display: grid;
+  gap: 10px;
+}
+
+/* ── Card ──────────────────────────────────────────────────────────────────── */
+.rp-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 14px 16px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.rp-card:hover { border-color: #334155; background: #131e30; }
+.rp-card.rival {
+  border-color: rgba(249, 115, 22, 0.25);
+  background: linear-gradient(135deg, rgba(249,115,22,0.06), rgba(15,23,42,0.95));
+}
+.rp-card.rival:hover { border-color: rgba(249,115,22,0.45); }
+
+.rp-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rp-card-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Avatar ────────────────────────────────────────────────────────────────── */
+.rp-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.rp-avatar,
+.rp-avatar-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rp-avatar-placeholder {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.rp-online-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #111827;
+  animation: rp-pulse-online 2s infinite;
+}
+@keyframes rp-pulse-online {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50%       { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+
+/* ── Info ──────────────────────────────────────────────────────────────────── */
+.rp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rp-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.rp-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rp-rival-badge {
+  background: rgba(249,115,22,0.15);
+  border: 1px solid rgba(249,115,22,0.35);
+  color: #f97316;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.rp-online-label {
+  color: #22c55e;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rp-record {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+.rp-wins   { color: #f97316; font-weight: 700; }
+.rp-sep    { color: #334155; }
+.rp-losses { color: #64748b; font-weight: 600; }
+.rp-total  { color: #475569; font-size: 0.72rem; }
+
+/* ── Win rate bar ──────────────────────────────────────────────────────────── */
+.rp-bar-track {
+  height: 3px;
+  background: #1e293b;
+  border-radius: 2px;
+  overflow: hidden;
+  max-width: 140px;
+}
+
+.rp-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.rp-bar-fill.winning { background: linear-gradient(90deg, #f97316, #fbbf24); }
+.rp-bar-fill.losing  { background: #334155; }
+
+/* ── Right column ──────────────────────────────────────────────────────────── */
+.rp-winrate {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1;
+}
+.rp-winrate-label {
+  font-size: 0.65rem;
+  color: #475569;
+  margin-top: 2px;
+}
+.rp-last-battle {
+  font-size: 0.68rem;
+  color: #334155;
+  margin-top: 6px;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────────── */
+.rp-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.rp-empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.rp-empty-title { font-size: 1rem; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+.rp-empty-sub   { font-size: 0.82rem; color: #475569; line-height: 1.5; max-width: 280px; margin: 0 auto; }
+
+/* ── Skeleton ──────────────────────────────────────────────────────────────── */
+.rp-skeleton-list { display: grid; gap: 10px; }
+.rp-skeleton-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.rp-skeleton-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #1e293b;
+  animation: rp-shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+.rp-skeleton-lines { flex: 1; display: grid; gap: 8px; }
+.rp-skeleton-name  { height: 14px; background: #1e293b; border-radius: 4px; width: 60%; animation: rp-shimmer 1.4s infinite; }
+.rp-skeleton-stats { height: 10px; background: #1e293b; border-radius: 4px; width: 45%; animation: rp-shimmer 1.4s infinite 0.2s; }
+
+@keyframes rp-shimmer {
+  0%   { opacity: 0.5; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* ── More ──────────────────────────────────────────────────────────────────── */
+.rp-more {
+  font-size: 0.75rem;
+  color: #475569;
+  text-align: center;
+  padding: 4px;
+}

@@ -6,6 +6,7 @@ import { grantXpEventSafe } from '../services/xpEvents';
 import { emitToast } from '../utils/toast';
 import { publishTrainingStatus } from '../utils/activityStatusFeed';
 import { vibratePr, vibrateSuccess } from '../utils/haptics';
+import { questProgress } from '../utils/questProgress';
 
 const calculateEfficiency = (distance, time, heartRate) => {
   if (!distance || !time || !heartRate) return null;
@@ -285,6 +286,11 @@ export default function useAthleteTrainingSessionActions({
         vibrateSuccess();
       }
       setCongratsOpen(true);
+      questProgress.trainingSession(1);
+      // Fire-and-forget achievement check
+      supabase.rpc("check_and_award_achievements").then(() => {
+        window.dispatchEvent(new CustomEvent("achievements_updated"));
+      });
       return;
     }
 

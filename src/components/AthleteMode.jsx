@@ -4,10 +4,18 @@ import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 
 import Navbar from "./Navbar";
-import JournalPage from "./JournalPage";
-import LogsPage from "./LogsPage";
+import JournalPinnacle from "./JournalPinnacle";
+import LogsPinnacle from "./LogsPinnacle";
+import NutritionPinnacle from "./NutritionPinnacle";
+import RouteLabsPinnacle from "./RouteLabsPinnacle";
+import AthleteRunMapLab from "./AthleteRunMapLab";
 import AthleteTrainingTab from "./AthleteTrainingTab";
+import AthleteOnboardingModal from "./AthleteOnboardingModal";
+import ExerviaShop from "./ExerviaShop";
 import CommunityHub from "./CommunityHub";
+import { useInventory } from "../hooks/useInventory";
+import DailyQuests from "./DailyQuests";
+import AchievementsPanel from "./AchievementsPanel";
 import WorkoutProgram from "./WorkoutProgram";
 import PublicProfilePage from "./PublicProfilePage";
 import PublicSessionDetailPage from "./PublicSessionDetailPage";
@@ -17,8 +25,6 @@ import PromotionMoment from "./PromotionMoment";
 import { emitToast } from "../utils/toast";
 import { buildProgressionMoment } from "../utils/progressionMoment";
 import { publishProgressionStatus } from "../utils/progressionFeed";
-import AthleteRunMapLab from "./AthleteRunMapLab";
-import AthleteRunDetailPage from "./AthleteRunDetailPage";
 
 // Component: AthleteMode - UI layout and interactions.
 // This component renders the athletemode experience and wires up its local UI state.
@@ -40,6 +46,7 @@ import AthleteRunDetailPage from "./AthleteRunDetailPage";
 function AthleteDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const { activeFlair, activeTitle, activeBoosts } = useInventory(id);
 
 // dayMarker manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -67,7 +74,17 @@ function AthleteDashboard({ profile, id, userState }) {
               </button>
             </div>
           </div>
-          <p className="page-subtitle">Welcome back, {profile.full_name}. Train with precision.</p>
+          <p className="page-subtitle">
+            Welcome back, {profile.full_name}{activeFlair ? <span className="exervia-flair">{activeFlair}</span> : null}. Train with precision.
+          </p>
+          {activeTitle ? <div className="exervia-title-badge" style={{ marginBottom: 4 }}>{activeTitle}</div> : null}
+          {activeBoosts.length > 0 ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+              {activeBoosts.map((b) => (
+                <span key={b.name} className="boost-active-pill">{b.icon} {b.name}</span>
+              ))}
+            </div>
+          ) : null}
           <div className="page-marker">{dayMarker}</div>
         </div>
       </div>
@@ -109,6 +126,20 @@ function AthleteDashboard({ profile, id, userState }) {
           <div className="hud-dim">Groups, forums, challenges</div>
         </button>
 
+        <button className="hud-card clickable dashboard-section-card dashboard-section-card-shop" onClick={() => navigate(`/athlete/${id}/shop`)}>
+          <div className="dashboard-section-accent dashboard-section-accent-shop" aria-hidden="true" />
+          <div className="dashboard-shop-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="hud-card-title">SHOP</div>
+          <div className="hud-big">ExerVia Store</div>
+          <div className="hud-dim">Flairs, boosts, titles &amp; more</div>
+        </button>
+
       </div>
 
       <div className="quick-add-row dashboard-quick-grid">
@@ -124,10 +155,35 @@ function AthleteDashboard({ profile, id, userState }) {
         <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/athlete/${id}/shop`)}>
+          Shop
+        </button>
         <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/settings`)}>
           Settings
         </button>
       </div>
+      {/* Daily Quests — the daily engagement loop */}
+      <div className="hud-card" style={{ margin: "0 0 16px", borderRadius: 16, padding: 0, overflow: "hidden" }}>
+        <DailyQuests userId={id} mode="athlete" />
+      </div>
+
+      {/* Achievements — trophy wall teaser on dashboard */}
+      <button
+        className="hud-card clickable dashboard-section-card"
+        style={{ marginBottom: 16, textAlign: "left" }}
+        onClick={() => navigate(`/athlete/${id}/achievements`)}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "1.7rem" }}>🏅</span>
+          <div>
+            <div style={{ fontSize: "0.88rem", fontWeight: 800, color: "#fff" }}>Achievements</div>
+            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+              Unlock permanent badges & bonus XP
+            </div>
+          </div>
+        </div>
+      </button>
+
       <DashboardWalkthroughModal
         open={walkthroughOpen}
         onClose={() => setWalkthroughOpen(false)}
@@ -262,6 +318,8 @@ export default function AthleteMode() {
   const [userState, setUserState] = useState(null);
   const [promotionMoment, setPromotionMoment] = useState(null);
   const [profileReady, setProfileReady] = useState(false);
+  const [challengeNotif, setChallengeNotif] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const profileRequestRef = useRef(0);
   const stateRequestRef = useRef(0);
   const progressionBaselineRef = useRef(null);
@@ -466,6 +524,42 @@ export default function AthleteMode() {
     return () => window.removeEventListener("user_state_updated", handler);
   }, [id]);
 
+  // Show onboarding if city is not set
+  useEffect(() => {
+    if (profileReady && profile && !profile.city) {
+      setShowOnboarding(true);
+    }
+  }, [profileReady, profile]);
+
+  // Global incoming challenge notifications (fires on any screen in athlete mode)
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`athlete-challenge-notif-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "live_challenges",
+          filter: `challenged_id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new;
+          if (row.status === "pending") {
+            setChallengeNotif({
+              id: row.id,
+              challenger_name: row.challenger_name || "Someone",
+              distance_label: row.distance_label || "5K",
+              xp_wager: row.xp_wager || 50,
+            });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
+
   if (!profileReady || !profile) {
     return <div className={`hud-bg mode-${themeMode} full-center`}>Loading...</div>;
   }
@@ -481,6 +575,53 @@ export default function AthleteMode() {
           navigate(`/athlete/${id}/profile`);
         }}
       />
+
+      {showOnboarding && (
+        <AthleteOnboardingModal
+          userId={id}
+          profile={profile}
+          onComplete={(updated) => {
+            setShowOnboarding(false);
+            if (updated) {
+              setProfile((prev) => ({ ...prev, ...updated }));
+            }
+          }}
+        />
+      )}
+
+      {challengeNotif && (
+        <div className="challenge-notif-banner">
+          <div className="challenge-notif-icon">⚔️</div>
+          <div className="challenge-notif-body">
+            <div className="challenge-notif-title">
+              {challengeNotif.challenger_name} challenged you!
+            </div>
+            <div className="challenge-notif-detail">
+              {challengeNotif.distance_label} · Wager{" "}
+              <span className="challenge-notif-xp">{challengeNotif.xp_wager} XP</span>
+            </div>
+          </div>
+          <div className="challenge-notif-actions">
+            <button
+              className="challenge-notif-accept"
+              type="button"
+              onClick={() => {
+                setChallengeNotif(null);
+                navigate(`/athlete/${id}/routes`);
+              }}
+            >
+              Go to Map
+            </button>
+            <button
+              className="challenge-notif-dismiss"
+              type="button"
+              onClick={() => setChallengeNotif(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <Routes>
         <Route index element={<AthleteDashboard profile={profile} id={id} userState={userState} />} />
         <Route
@@ -489,13 +630,15 @@ export default function AthleteMode() {
             <AthleteTrainingTab
               userId={id}
               onBack={() => navigate(`/athlete/${id}`)}
+              buildRouteLabUrl={() => `/athlete/${id}/routes`}
             />
           }
         />
-        <Route path="journal" element={<JournalPage mode="athlete" />} />
-        <Route path="logs" element={<LogsPage mode="athlete" />} />
-        <Route path="routes" element={<AthleteRunMapLab userId={id} />} />
-        <Route path="routes/:runId" element={<AthleteRunDetailPage viewerId={id} />} />
+        <Route path="journal" element={<JournalPinnacle mode="athlete" viewerId={id} />} />
+        <Route path="logs" element={<LogsPinnacle viewerId={id} />} />
+        <Route path="nutrition" element={<NutritionPinnacle viewerId={id} />} />
+        <Route path="routes" element={<AthleteRunMapLab userId={id} displayName={profile?.display_name || profile?.full_name || ""} avatarUrl={profile?.avatar_url || ""} />} />
+        <Route path="routes/:runId" element={<RouteLabsPinnacle viewerId={id} mode="athlete" />} />
         <Route path="program/*" element={<WorkoutProgram mode="athlete" />} />
         <Route
           path="profile"
@@ -509,6 +652,12 @@ export default function AthleteMode() {
           path="profile/:targetId/session/:sessionType/:sessionId"
           element={<PublicSessionDetailPage mode="athlete" viewerId={id} />}
         />
+        <Route path="shop" element={<ExerviaShop userId={id} />} />
+        <Route path="achievements" element={
+          <div style={{ minHeight: "100vh", background: "#070710" }}>
+            <AchievementsPanel userId={id} />
+          </div>
+        } />
         <Route
           path="community"
           element={<CommunityHub userId={id} />}

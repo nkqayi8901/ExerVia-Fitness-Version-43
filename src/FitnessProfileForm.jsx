@@ -56,6 +56,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
   const [username, setUsername] = useState("");
   const [fitnessLevel, setFitnessLevel] = useState("Beginner");
   const [primaryGoal, setPrimaryGoal] = useState("Build Muscle");
+  const [city, setCity] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -90,9 +91,10 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       String(fullName || "").trim() !== snapshot.fullName ||
       String(username || "").trim() !== snapshot.username ||
       String(fitnessLevel || "").trim() !== snapshot.fitnessLevel ||
-      String(primaryGoal || "").trim() !== snapshot.primaryGoal
+      String(primaryGoal || "").trim() !== snapshot.primaryGoal ||
+      String(city || "").trim() !== (snapshot.city || "")
     );
-  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal]);
+  }, [settingsOnly, session, profile, fullName, username, fitnessLevel, primaryGoal, city]);
   const setUserStorage = (profileRow, authUser) => setAuthStorage(profileRow, authUser);
   const clearUserStorage = () => clearAuthStorage();
 
@@ -255,12 +257,14 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
         setUsername(row.username || "");
         setFitnessLevel(row.fitness_level || "Beginner");
         setPrimaryGoal(row.primary_goal || "Build Muscle");
+        setCity(row.city || "");
         setUserStorage(row, nextSession.user);
         settingsSnapshotRef.current = {
           fullName: String(row.full_name || "").trim(),
           username: String(row.username || "").trim(),
           fitnessLevel: String(row.fitness_level || "Beginner").trim(),
           primaryGoal: String(row.primary_goal || "Build Muscle").trim(),
+          city: String(row.city || "").trim(),
         };
         lastSyncRef.current = { userId: nextUserId, at: Date.now() };
       }
@@ -715,6 +719,7 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
       username: cleanUsername,
       fitness_level: fitnessLevel,
       primary_goal: primaryGoal,
+      city: city.trim(),
     };
 
     const { data, error } = await supabase
@@ -732,11 +737,13 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
 
     setProfile(data);
     setUserStorage(data, session?.user || null);
+    setCity(String(data.city || "").trim());
     settingsSnapshotRef.current = {
       fullName: String(data.full_name || "").trim(),
       username: String(data.username || "").trim(),
       fitnessLevel: String(data.fitness_level || "Beginner").trim(),
       primaryGoal: String(data.primary_goal || "Build Muscle").trim(),
+      city: String(data.city || "").trim(),
     };
     setBanner("Profile updated.", "success");
   };
@@ -1040,6 +1047,10 @@ export default function FitnessProfileForm({ settingsOnly = false }) {
               <div>
                 <label className="block text-white mb-2">Username</label>
                 <input className="profile-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-white mb-2">City</label>
+                <input className="profile-input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. London, Lagos, New York..." maxLength={60} />
               </div>
               <div>
                 <label className="block text-white mb-2">Fitness Level</label>

@@ -1,0 +1,854 @@
+/* Nutrition Pinnacle - Premium Design Styles */
+
+/* CSS Variables for Theme */
+:root {
+  --pinnacle-primary: #10b981;
+  --pinnacle-primary-dark: #059669;
+  --pinnacle-secondary: #f59e0b;
+  --pinnacle-accent: #3b82f6;
+  --pinnacle-warning: #f59e0b;
+  --pinnacle-danger: #ef4444;
+  
+  --pinnacle-bg: #0f172a;
+  --pinnacle-surface: #111827;
+  --pinnacle-card: #0b1220;
+  --pinnacle-border: #1f2937;
+  
+  --pinnacle-text-primary: #f8fafc;
+  --pinnacle-text-secondary: #94a3b8;
+  --pinnacle-text-muted: #64748b;
+  
+  --pinnacle-glow: 0 0 20px rgba(16, 185, 129, 0.3);
+  --pinnacle-glow-secondary: 0 0 15px rgba(245, 158, 11, 0.3);
+  
+  --pinnacle-radius: 16px;
+  --pinnacle-radius-sm: 12px;
+  --pinnacle-radius-lg: 20px;
+}
+
+/* Mode-specific color schemes */
+.nutrition-pinnacle.gym-mode {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+  color: #1e293b;
+}
+
+.nutrition-pinnacle.athlete-mode {
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 50%, #111827 100%);
+  color: #f8fafc;
+}
+
+/* Dark theme with premium gradients */
+.nutrition-pinnacle {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 50%, #111827 100%);
+  color: var(--pinnacle-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Loading Animation */
+.pinnacle-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 24px;
+}
+
+.pinnacle-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--pinnacle-border);
+  border-top: 4px solid var(--pinnacle-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Header Design */
+.pinnacle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--pinnacle-border);
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.pinnacle-branding {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pinnacle-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.pinnacle-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 0 8px var(--pinnacle-primary));
+}
+
+.pinnacle-title {
+  background: linear-gradient(135deg, var(--pinnacle-text-primary), #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.pinnacle-subtitle {
+  font-size: 14px;
+  color: var(--pinnacle-text-secondary);
+  font-weight: 500;
+}
+
+.pinnacle-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.walkthrough-btn, .generate-btn, .custom-btn {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.walkthrough-btn:hover, .generate-btn:hover, .custom-btn:hover {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--pinnacle-glow);
+}
+
+/* Navigation Tabs */
+.pinnacle-nav {
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 8px;
+  max-width: 600px;
+}
+
+.nav-tab {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+}
+
+.nav-tab.active {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: var(--pinnacle-glow);
+}
+
+/* Walkthrough Modal */
+.walkthrough-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.walkthrough-content {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.walkthrough-content h3 {
+  margin: 0 0 16px 0;
+  color: var(--pinnacle-text-primary);
+}
+
+.walkthrough-content ol {
+  margin: 0 0 20px 0;
+  padding-left: 20px;
+  color: var(--pinnacle-text-secondary);
+}
+
+.walkthrough-content li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.walkthrough-content button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--pinnacle-primary);
+  background: linear-gradient(135deg, var(--pinnacle-primary), var(--pinnacle-primary-dark));
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.walkthrough-content button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Main Content */
+.pinnacle-content {
+  padding: 24px 32px;
+  min-height: calc(100vh - 200px);
+}
+
+/* Protocol Settings Card */
+.protocol-settings-card {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.protocol-settings-card h3 {
+  padding: 16px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.1), transparent);
+  color: var(--pinnacle-text-primary);
+}
+
+.settings-grid {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-group label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--pinnacle-text-secondary);
+}
+
+.goal-options, .time-options, .preference-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.goal-btn, .time-btn, .preference-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+}
+
+.goal-btn:hover, .time-btn:hover, .preference-btn:hover {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+}
+
+.goal-btn.active, .time-btn.active, .preference-btn.active {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: var(--pinnacle-glow);
+}
+
+.goal-desc {
+  display: block;
+  font-size: 10px;
+  color: var(--pinnacle-text-muted);
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.settings-tip {
+  padding: 12px 20px;
+  border-top: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, transparent, rgba(16, 185, 129, 0.05));
+  font-size: 12px;
+  color: var(--pinnacle-text-muted);
+  font-style: italic;
+}
+
+/* Intake Card */
+.intake-card {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.intake-card h3 {
+  padding: 16px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.1), transparent);
+  color: var(--pinnacle-text-primary);
+}
+
+.intake-targets {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.target-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.target-label {
+  font-size: 12px;
+  color: var(--pinnacle-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.target-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--pinnacle-text-primary);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--pinnacle-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.calories { background: linear-gradient(90deg, #f59e0b, #f97316); }
+.progress-fill.protein { background: linear-gradient(90deg, #10b981, #059669); }
+.progress-fill.carbs { background: linear-gradient(90deg, #3b82f6, #22c55e); }
+.progress-fill.fat { background: linear-gradient(90deg, #a855f7, #3b82f6); }
+
+.quick-log {
+  padding: 16px 20px;
+  border-top: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.quick-log h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--pinnacle-text-secondary);
+}
+
+.log-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.log-inputs input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-primary);
+  font-size: 14px;
+}
+
+.add-intake-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--pinnacle-primary);
+  background: linear-gradient(135deg, var(--pinnacle-primary), var(--pinnacle-primary-dark));
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-intake-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Charts Grid */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 16px;
+}
+
+.chart-card h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--pinnacle-text-secondary);
+}
+
+.chart-placeholder {
+  height: 120px;
+  background: rgba(17, 24, 39, 0.5);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pinnacle-text-muted);
+  font-size: 14px;
+  border: 1px dashed var(--pinnacle-border);
+}
+
+.chart-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.chart-day {
+  font-size: 10px;
+  color: var(--pinnacle-text-muted);
+  text-align: center;
+}
+
+/* Daily Intake Card */
+.daily-intake-card {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 16px 20px;
+}
+
+.daily-intake-card h3 {
+  margin: 0 0 12px 0;
+  color: var(--pinnacle-text-primary);
+}
+
+.no-intake {
+  color: var(--pinnacle-text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Meal Cards */
+.meal-of-day-card, .protocol-feed {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.meal-of-day-card h3, .protocol-feed h3 {
+  padding: 16px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), transparent);
+  color: var(--pinnacle-text-primary);
+}
+
+.meals-grid {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.meal-card {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.meal-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--pinnacle-primary);
+  box-shadow: var(--pinnacle-glow);
+}
+
+.meal-card.featured {
+  border-color: var(--pinnacle-secondary);
+  box-shadow: var(--pinnacle-glow-secondary);
+}
+
+.meal-card.featured::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--pinnacle-secondary), #f97316);
+}
+
+.meal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.meal-category {
+  font-size: 11px;
+  color: var(--pinnacle-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.meal-type {
+  font-size: 11px;
+  color: var(--pinnacle-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.meal-source {
+  font-size: 12px;
+  color: var(--pinnacle-text-muted);
+  margin-bottom: 12px;
+}
+
+.meal-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.favorite-btn, .open-recipe-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.favorite-btn:hover, .open-recipe-btn:hover {
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+}
+
+.meal-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--pinnacle-text-primary);
+  margin-bottom: 8px;
+}
+
+.meal-nutrition {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.nutrition-item {
+  font-size: 12px;
+  color: var(--pinnacle-text-secondary);
+  font-weight: 600;
+  background: rgba(17, 24, 39, 0.5);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--pinnacle-border);
+}
+
+.meal-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--pinnacle-text-muted);
+}
+
+.meal-description {
+  font-size: 12px;
+  color: var(--pinnacle-text-muted);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.feed-note {
+  padding: 12px 20px;
+  border-top: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, transparent, rgba(245, 158, 11, 0.05));
+  font-size: 12px;
+  color: var(--pinnacle-text-muted);
+  font-style: italic;
+}
+
+/* Overview View */
+.overview-view {
+  background: var(--pinnacle-card);
+  border: 1px solid var(--pinnacle-border);
+  border-radius: var(--pinnacle-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 20px;
+}
+
+.overview-content h3 {
+  margin: 0 0 12px 0;
+  color: var(--pinnacle-text-primary);
+}
+
+.overview-content p {
+  color: var(--pinnacle-text-secondary);
+  line-height: 1.6;
+}
+
+/* Footer */
+.pinnacle-footer {
+  padding: 24px 32px;
+  border-top: 1px solid var(--pinnacle-border);
+  background: linear-gradient(180deg, transparent, rgba(17, 24, 39, 0.8));
+  backdrop-filter: blur(10px);
+}
+
+.footer-info {
+  font-size: 12px;
+  color: var(--pinnacle-text-muted);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.footer-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--pinnacle-border);
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--pinnacle-text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.footer-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--pinnacle-primary);
+  color: var(--pinnacle-primary);
+  box-shadow: var(--pinnacle-glow);
+}
+
+.footer-btn.primary {
+  background: linear-gradient(135deg, var(--pinnacle-primary), var(--pinnacle-primary-dark));
+  border-color: var(--pinnacle-primary);
+  color: white;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.footer-btn.primary:hover {
+  box-shadow: 0 12px 35px rgba(16, 185, 129, 0.6);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .meals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .pinnacle-header {
+    padding: 16px;
+  }
+  
+  .pinnacle-title {
+    font-size: 20px;
+  }
+  
+  .pinnacle-nav {
+    padding: 16px;
+  }
+  
+  .nav-tabs {
+    flex-direction: column;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .meals-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .footer-actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .pinnacle-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .pinnacle-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .intake-targets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .meal-nutrition {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --pinnacle-border: #ffffff;
+    --pinnacle-text-secondary: #ffffff;
+    --pinnacle-text-muted: #cccccc;
+  }
+}
+
+/* Dark mode specific adjustments */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pinnacle-bg: #0b1220;
+    --pinnacle-surface: #111827;
+    --pinnacle-card: #0b1220;
+  }
+}
+
+/* Print styles */
+@media print {
+  .nutrition-pinnacle {
+    background: white;
+    color: black;
+  }
+  
+  .pinnacle-header, .pinnacle-footer {
+    display: none;
+  }
+  
+  .pinnacle-content {
+    padding: 16px;
+  }
+  
+  .meals-grid {
+    grid-template-columns: 1fr;
+  }
+}

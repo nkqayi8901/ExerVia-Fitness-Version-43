@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EmptyState from "./EmptyState";
 import useDistanceUnitPreference from "../hooks/useDistanceUnitPreference";
+import useNearbyRunners from "../hooks/useNearbyRunners";
+import useLiveChallenge from "../hooks/useLiveChallenge";
+import {
+  NearbyRunnerCard,
+  OutgoingChallenge,
+  IncomingChallenge,
+  ActiveChallenge,
+} from "./NearbyChallenge";
 import { loadGoogleMapsApi } from "../utils/googleMapsLoader";
 import { supabase } from "../supabaseClient";
 import { grantXpEventSafe } from "../services/xpEvents";
@@ -19,6 +27,8 @@ import {
 } from "../utils/athleteMetrics";
 import { buildCenteredRouteBbox } from "../utils/routeGeometry";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
+import { questProgress } from "../utils/questProgress";
+import LeafletRunMap from "./LeafletRunMap";
 
 const STORAGE_KEY = "exervia_run_map_lab_v1";
 const RUN_HISTORY_KEY = "exervia_run_history_v1";
@@ -105,7 +115,7 @@ function normalizeDiscipline(value) {
   return "running";
 }
 
-export default function AthleteRunMapLab({ userId }) {
+export default function AthleteRunMapLab({ userId, displayName: propDisplayName, avatarUrl }) {
   const navigate = useNavigate();
   const location = useLocation();
   const mapNodeRef = useRef(null);
@@ -117,6 +127,7 @@ export default function AthleteRunMapLab({ userId }) {
   const timerRef = useRef(null);
   const routeSavedTimerRef = useRef(null);
   const hasGoogleMapsKey = Boolean(process.env.REACT_APP_GOOGLE_MAPS_API_KEY);
+  const displayName = propDisplayName || localStorage.getItem("exervia_display_name") || "Runner";
   const stored = readStoredLab();
   const [distanceUnit, setDistanceUnit] = useDistanceUnitPreference();
   const [discipline, setDiscipline] = useState(stored?.discipline || "Running");
@@ -145,6 +156,16 @@ export default function AthleteRunMapLab({ userId }) {
     usingGoogle: false,
     error: "",
   });
+  // Nearby challenge UI state
+  const [selectedRunnerForChallenge, setSelectedRunnerForChallenge] = useState(null);
+  const [challengeDistanceKm, setChallengeDistanceKm] = useState(5);
+  const [challengeDistanceLabel, setChallengeDistanceLabel] = useState("5K");
+  const [challengeXpWager, setChallengeXpWager] = useState(50);
+  const [userXp, setUserXp] = useState(0);
+  // Ghost Mode: animated ghost based on best prior run for same discipline/distance
+  const [ghostPosition, setGhostPosition] = useState(null);
+  const ghostTimerRef = useRef(null);
+  const nearbyMarkersRef = useRef({});
   const routeParams = useMemo(() => new URLSearchParams(location.search || ""), [location.search]);
   const linkedWorld = normalizeAthleteSport(routeParams.get("world") || "");
   const linkedPlan = String(routeParams.get("plan") || "").trim();
@@ -164,6 +185,33 @@ export default function AthleteRunMapLab({ userId }) {
   const linkedTrainingMode = Boolean(linkedWorld || linkedPlan || linkedWeek || linkedFocus || linkedObjective);
   const routeWorld = linkedWorld || normalizeDiscipline(discipline);
   const worldMeta = getAthleteWorldMeta(routeWorld);
+
+  // Derive radiusKm from battleRadius string ("2 km" / "5 km" / "10 km")
+  const radiusKm = Number(String(battleRadius || "").replace(/[^\d.]/g, "")) || 10;
+
+  // Nearby runners hook — only active when tracking with Nearby/Regional visibility
+  const { nearbyRunners } = useNearbyRunners({
+    userId,
+    displayName,
+    visibility,
+    radiusKm,
+    discipline,
+    runMode: challengeMode,
+    isTracking: runState === "tracking",
+    currentPosition: mapCenter,
+  });
+
+  // Live challenge hook
+  const {
+    activeChallenge,
+    incomingChallenge,
+    challengeError,
+    sendChallenge,
+    respondToChallenge,
+    cancelChallenge,
+    submitFinishTime,
+  } = useLiveChallenge({ userId, displayName, userXp });
+
   const initialMapConfigRef = useRef({
     center: stored?.mapCenter || ATHLETE_DEFAULT_MAP_CENTER,
     routeName: stored?.routeName || "ExerVia Run Prototype",
@@ -300,6 +348,110 @@ export default function AthleteRunMapLab({ userId }) {
     };
   }, [userId]);
 
+  const [userCity, setUserCity] = useState("");
+
+  // Fetch user XP + city for challenge wagering and share card
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    (async () => {
+      try {
+        const [xpRes, profileRes] = await Promise.all([
+          supabase.from("user_state").select("xp").eq("user_id", Number(userId)).maybeSingle(),
+          supabase.from("user_profiles").select("city").eq("id", Number(userId)).maybeSingle(),
+        ]);
+        if (active && xpRes.data?.xp != null) setUserXp(Number(xpRes.data.xp));
+        if (active && profileRes.data?.city) setUserCity(String(profileRes.data.city));
+      } catch {
+        // keep 0
+      }
+    })();
+    return () => { active = false; };
+  }, [userId]);
+
+  // Listen for XP changes from the rest of the app
+  useEffect(() => {
+    const refresh = () => {
+      if (!userId) return;
+      supabase
+        .from("user_state")
+        .select("xp")
+        .eq("user_id", Number(userId))
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.xp != null) setUserXp(Number(data.xp));
+        });
+    };
+    window.addEventListener("user_state_updated", refresh);
+    return () => window.removeEventListener("user_state_updated", refresh);
+  }, [userId]);
+
+  // Ghost Mode: animate a ghost marker along the best matching prior run
+  useEffect(() => {
+    if (challengeMode !== "Ghost" || runState !== "tracking") {
+      setGhostPosition(null);
+      if (ghostTimerRef.current) clearInterval(ghostTimerRef.current);
+      return undefined;
+    }
+    const normalizedDiscipline = normalizeDiscipline(discipline);
+    const targetKm = Number(String(selectedDistance || "").replace(/k/i, "")) || 5;
+    // Find best matching run: same discipline, closest distance
+    const ghostRun = runHistory
+      .filter(
+        (run) =>
+          normalizeDiscipline(run.discipline || run?.discipline) === normalizedDiscipline &&
+          Array.isArray(run.routePoints) &&
+          run.routePoints.length > 1 &&
+          Number(run.distanceKm || run.distance_km || 0) > 0
+      )
+      .sort((a, b) => {
+        const aDist = Number(a.distanceKm || a.distance_km || 0);
+        const bDist = Number(b.distanceKm || b.distance_km || 0);
+        return Math.abs(aDist - targetKm) - Math.abs(bDist - targetKm);
+      })[0];
+
+    if (!ghostRun) return undefined;
+
+    const points = ghostRun.routePoints;
+    const totalSeconds = Number(ghostRun.elapsedSeconds || ghostRun.elapsed_seconds || 0);
+    if (!totalSeconds || !points.length) return undefined;
+
+    const startedAt = Date.now();
+    const interpolate = () => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      if (elapsed >= totalSeconds) {
+        setGhostPosition(points[points.length - 1]);
+        if (ghostTimerRef.current) clearInterval(ghostTimerRef.current);
+        return;
+      }
+      const fraction = elapsed / totalSeconds;
+      const rawIndex = fraction * (points.length - 1);
+      const i = Math.floor(rawIndex);
+      const t = rawIndex - i;
+      if (i < points.length - 1) {
+        const a = points[i];
+        const b = points[i + 1];
+        setGhostPosition({
+          lat: a.lat + (b.lat - a.lat) * t,
+          lng: a.lng + (b.lng - a.lng) * t,
+        });
+      }
+    };
+    interpolate();
+    ghostTimerRef.current = window.setInterval(interpolate, 1500);
+    return () => {
+      if (ghostTimerRef.current) clearInterval(ghostTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challengeMode, runState, discipline, selectedDistance]);
+
+  // Cleanup ghost timer on unmount
+  useEffect(() => {
+    return () => {
+      if (ghostTimerRef.current) clearInterval(ghostTimerRef.current);
+    };
+  }, []);
+
   const activePreset = useMemo(
     () => ROUTE_PRESETS.find((preset) => preset.id === activePresetId) || ROUTE_PRESETS[0],
     [activePresetId]
@@ -309,9 +461,8 @@ export default function AthleteRunMapLab({ userId }) {
     return distanceValueKm > 0 ? formatDistanceOptionLabel(distanceValueKm, distanceUnit, distanceUnit === "mi" ? 2 : 0) : selectedDistance;
   }, [distanceUnit, selectedDistance]);
   const displayBattleRadius = useMemo(() => {
-    const radiusKm = Number(String(battleRadius || "").replace(/[^\d.]/g, "")) || 0;
     return radiusKm > 0 ? formatDistanceOptionLabel(radiusKm, distanceUnit, distanceUnit === "mi" ? 2 : 0) : battleRadius;
-  }, [battleRadius, distanceUnit]);
+  }, [radiusKm, battleRadius, distanceUnit]);
   const livePace = formatPace(distanceKm, elapsedSeconds, { unit: distanceUnit, includeUnit: false });
   const pageTitle = linkedTrainingMode
     ? `${worldMeta.title} Route Layer`
@@ -355,11 +506,7 @@ export default function AthleteRunMapLab({ userId }) {
     let active = true;
     const mapId = process.env.REACT_APP_GOOGLE_MAPS_MAP_ID;
     if (!hasGoogleMapsKey) {
-      setMapsState({
-        ready: true,
-        usingGoogle: false,
-        error: "Add REACT_APP_GOOGLE_MAPS_API_KEY to enable Google Maps.",
-      });
+      setMapsState({ ready: true, usingGoogle: false, error: "" });
       return undefined;
     }
 
@@ -414,10 +561,16 @@ export default function AthleteRunMapLab({ userId }) {
 
   useEffect(() => {
     if (!googleMapRef.current || !window.google?.maps) return;
-    googleMapRef.current.panTo(mapCenter);
+    if (runState === "tracking") {
+      // Instant follow during an active run — smooth pan is too slow
+      googleMapRef.current.setCenter(mapCenter);
+      googleMapRef.current.setZoom(17);
+    } else {
+      googleMapRef.current.panTo(mapCenter);
+    }
     googleMarkerRef.current?.setPosition(mapCenter);
     googleCircleRef.current?.setCenter(mapCenter);
-  }, [mapCenter]);
+  }, [mapCenter, runState]);
 
   useEffect(() => {
     if (!googleMapRef.current || !window.google?.maps) return;
@@ -442,6 +595,103 @@ export default function AthleteRunMapLab({ userId }) {
       fillOpacity: challengeMode === "Challenge" ? 0.14 : 0.08,
     });
   }, [visibility, challengeMode]);
+
+  // Nearby runner markers on Google Map
+  useEffect(() => {
+    if (!googleMapRef.current || !window.google?.maps) return;
+    const maps = window.google.maps;
+    const currentIds = new Set(nearbyRunners.map((r) => String(r.user_id)));
+
+    // Remove stale markers
+    Object.keys(nearbyMarkersRef.current).forEach((id) => {
+      if (!currentIds.has(id)) {
+        nearbyMarkersRef.current[id].setMap(null);
+        delete nearbyMarkersRef.current[id];
+      }
+    });
+
+    // Add/update markers
+    nearbyRunners.forEach((runner) => {
+      const id = String(runner.user_id);
+      const pos = { lat: Number(runner.lat), lng: Number(runner.lng) };
+      if (nearbyMarkersRef.current[id]) {
+        nearbyMarkersRef.current[id].setPosition(pos);
+      } else {
+        const marker = new maps.Marker({
+          position: pos,
+          map: googleMapRef.current,
+          title: runner.display_name || "Runner",
+          icon: {
+            path: maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#22c55e",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2.5,
+          },
+          label: {
+            text: String(runner.display_name || "?").charAt(0).toUpperCase(),
+            color: "#fff",
+            fontSize: "11px",
+            fontWeight: "700",
+          },
+        });
+        marker.addListener("click", () => setSelectedRunnerForChallenge(runner));
+        nearbyMarkersRef.current[id] = marker;
+      }
+    });
+  }, [nearbyRunners]);
+
+  // Ghost Mode marker on Google Map
+  const ghostMarkerRef = useRef(null);
+  useEffect(() => {
+    if (!googleMapRef.current || !window.google?.maps) return;
+    if (!ghostPosition) {
+      if (ghostMarkerRef.current) {
+        ghostMarkerRef.current.setMap(null);
+        ghostMarkerRef.current = null;
+      }
+      return;
+    }
+    const maps = window.google.maps;
+    const pos = { lat: ghostPosition.lat, lng: ghostPosition.lng };
+    if (ghostMarkerRef.current) {
+      ghostMarkerRef.current.setPosition(pos);
+    } else {
+      ghostMarkerRef.current = new maps.Marker({
+        position: pos,
+        map: googleMapRef.current,
+        title: "Your ghost — beat this time",
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#a855f7",
+          fillOpacity: 0.85,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+        label: {
+          text: "G",
+          color: "#fff",
+          fontSize: "10px",
+          fontWeight: "700",
+        },
+      });
+    }
+  }, [ghostPosition]);
+
+  // Clean up ghost marker on unmount
+  useEffect(() => {
+    return () => {
+      if (ghostMarkerRef.current) {
+        ghostMarkerRef.current.setMap(null);
+        ghostMarkerRef.current = null;
+      }
+      Object.values(nearbyMarkersRef.current).forEach((m) => m.setMap(null));
+      nearbyMarkersRef.current = {};
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -724,6 +974,13 @@ export default function AthleteRunMapLab({ userId }) {
         await trackDailyActivity(userId, "training_session");
         await recalcUserState(userId);
         window.dispatchEvent(new Event("user_state_updated"));
+        // Quest progress — run completed + distance
+        questProgress.run(1);
+        if (summary.distanceKm >= 1) questProgress.runKm(summary.distanceKm);
+        // Achievement check (fire-and-forget)
+        supabase.rpc("check_and_award_achievements").then(() => {
+          window.dispatchEvent(new CustomEvent("achievements_updated"));
+        });
         if (Number(xpResult.awardedXp || 0) > 0) {
           emitToast(`Run complete. +${xpResult.awardedXp} XP earned.`, "success", 2800);
         }
@@ -859,13 +1116,15 @@ export default function AthleteRunMapLab({ userId }) {
             {hasGoogleMapsKey ? (
               <div ref={mapNodeRef} className="route-lab-map-frame route-lab-google-map" aria-label="Interactive live route map" />
             ) : (
-              <iframe
-                title="ExerVia route map"
-                src={mapSrc}
-                className="route-lab-map-frame"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
+              <div className="route-lab-map-frame" style={{ overflow: "hidden" }}>
+                <LeafletRunMap
+                  center={mapCenter}
+                  routePoints={routePoints}
+                  isTracking={runState === "tracking"}
+                  challengeMode={challengeMode}
+                  visibility={visibility}
+                />
+              </div>
             )}
           </div>
           <div className="route-lab-map-meta">
@@ -1295,6 +1554,77 @@ export default function AthleteRunMapLab({ userId }) {
           {linkedTrainingMode ? "Setup" : "Add route"}
         </button>
       </div>
+
+      {/* ── Nearby challenge overlays ─────────────────────────────────────── */}
+
+      {/* Challenge card: shown when user taps a nearby runner marker */}
+      {selectedRunnerForChallenge && !activeChallenge && challengeMode === "Challenge" ? (
+        <NearbyRunnerCard
+          runner={selectedRunnerForChallenge}
+          selectedDistanceKm={challengeDistanceKm}
+          selectedDistanceLabel={challengeDistanceLabel}
+          selectedXpWager={challengeXpWager}
+          onDistanceChange={(km, label) => { setChallengeDistanceKm(km); setChallengeDistanceLabel(label); }}
+          onWagerChange={setChallengeXpWager}
+          onSendChallenge={async (runner, distKm, distLabel, xpWager) => {
+            setSelectedRunnerForChallenge(null);
+            await sendChallenge(runner, distKm, distLabel, xpWager);
+          }}
+          onClose={() => setSelectedRunnerForChallenge(null)}
+          userXp={userXp}
+          error={challengeError}
+        />
+      ) : null}
+
+      {/* Outgoing: waiting for the challenged runner to accept */}
+      {activeChallenge?.status === "pending" && Number(activeChallenge.challenger_id) === Number(userId) ? (
+        <OutgoingChallenge challenge={activeChallenge} onCancel={cancelChallenge} />
+      ) : null}
+
+      {/* Incoming: this user has been challenged */}
+      {incomingChallenge ? (
+        <IncomingChallenge
+          challenge={incomingChallenge}
+          onRespond={respondToChallenge}
+          userXp={userXp}
+        />
+      ) : null}
+
+      {/* Active battle bar or result screen */}
+      {activeChallenge && (activeChallenge.status === "accepted" || activeChallenge.status === "in_progress" || activeChallenge.status === "completed") ? (
+        <ActiveChallenge
+          challenge={activeChallenge}
+          userId={userId}
+          elapsedSeconds={elapsedSeconds}
+          distanceKm={distanceKm}
+          distanceUnit={distanceUnit}
+          city={userCity}
+          onSubmitFinish={submitFinishTime}
+          onDismiss={() => {
+            window.dispatchEvent(new Event("user_state_updated"));
+          }}
+        />
+      ) : null}
+
+      {/* Nearby runner count indicator during a run */}
+      {runState === "tracking" && (visibility === "Nearby" || visibility === "Regional") && nearbyRunners.length > 0 ? (
+        <div className="route-lab-nearby-count" role="status" aria-live="polite">
+          {nearbyRunners.length} runner{nearbyRunners.length !== 1 ? "s" : ""} nearby
+          {challengeMode === "Challenge" ? " — tap a marker to challenge" : ""}
+        </div>
+      ) : null}
+
+      {/* Ghost Mode label */}
+      {runState === "tracking" && challengeMode === "Ghost" && ghostPosition ? (
+        <div className="route-lab-ghost-label" role="status">
+          Ghost active — beat your best time
+        </div>
+      ) : null}
+      {runState === "tracking" && challengeMode === "Ghost" && !ghostPosition ? (
+        <div className="route-lab-ghost-label faded" role="status">
+          No ghost found for this route — run solo for now
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function AthleteTrainingPlanDetailModal({
   selectedPlan,
@@ -12,7 +13,9 @@ function AthleteTrainingPlanDetailModal({
   prefillPlanEditor,
   deletePlan,
   setPlanOpen,
+  buildRouteLabUrl,
 }) {
+  const navigate = useNavigate();
   if (!selectedPlan) return null;
 
   return (
@@ -90,6 +93,18 @@ function AthleteTrainingPlanDetailModal({
           >
             Start session
           </button>
+          {buildRouteLabUrl ? (
+            <button
+              className="studio-queue-btn ghost"
+              onClick={() => {
+                setPlanOpen(false);
+                navigate(buildRouteLabUrl());
+              }}
+              type="button"
+            >
+              Open Map
+            </button>
+          ) : null}
           <div className="studio-plan-actions">
             <button
               className={`studio-queue-btn ghost ${planFavorites.includes(selectedPlan.name) ? 'active' : ''}`}

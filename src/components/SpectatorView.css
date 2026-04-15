@@ -1,0 +1,221 @@
+/* SpectatorView.css */
+
+.sv-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  min-height: 100vh;
+  background: #0b1220;
+  color: #f8fafc;
+  position: relative;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.sv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(11, 18, 32, 0.95);
+  border-bottom: 1px solid #1f2937;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+}
+
+.sv-header-left,
+.sv-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sv-live-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  animation: sv-live-pulse 1.4s infinite;
+}
+.sv-live-badge:not(:contains("LIVE")) {
+  background: #334155;
+  animation: none;
+}
+@keyframes sv-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.sv-distance {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.sv-wager {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f97316;
+}
+
+.sv-spectators {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.sv-close {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 0.9rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sv-close:hover { color: #f8fafc; border-color: #64748b; }
+
+/* ── Map ───────────────────────────────────────────────────────────────────── */
+.sv-map-wrap {
+  position: relative;
+  min-height: 340px;
+}
+
+.sv-map {
+  width: 100%;
+  height: 100%;
+  min-height: 340px;
+  border: none;
+  display: block;
+}
+
+.sv-map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11,18,32,0.7);
+  font-size: 0.82rem;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* ── Scoreboard ────────────────────────────────────────────────────────────── */
+.sv-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  background: #0f172a;
+  border-top: 1px solid #1f2937;
+}
+
+.sv-runner-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+}
+.sv-runner-card.winner {
+  border-color: rgba(249,115,22,0.5);
+  background: rgba(249,115,22,0.06);
+}
+
+.sv-runner-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.sv-runner-avatar.challenger { background: linear-gradient(135deg, #f97316, #ea580c); }
+.sv-runner-avatar.challenged  { background: linear-gradient(135deg, #22c55e, #16a34a); }
+
+.sv-runner-info { flex: 1; min-width: 0; }
+
+.sv-runner-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.sv-winner-crown { font-size: 0.9rem; }
+
+.sv-runner-time {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f97316;
+  line-height: 1;
+}
+
+.sv-runner-last {
+  font-size: 0.65rem;
+  color: #475569;
+  margin-top: 4px;
+}
+
+/* Animated running dot — shows while runner is active */
+.sv-running-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: sv-dot-pulse 1s infinite;
+  vertical-align: middle;
+}
+@keyframes sv-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.7; }
+}
+
+.sv-vs {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #334155;
+  text-align: center;
+}
+
+/* ── Result banner ─────────────────────────────────────────────────────────── */
+.sv-result-banner {
+  background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+  border-top: 1px solid rgba(249,115,22,0.3);
+  color: #f97316;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 14px 16px 20px;
+  animation: sv-result-in 0.3s ease;
+}
+@keyframes sv-result-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .sv-scoreboard { grid-template-columns: 1fr; gap: 8px; }
+  .sv-vs { display: none; }
+}

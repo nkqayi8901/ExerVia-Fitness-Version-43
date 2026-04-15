@@ -13,6 +13,8 @@ import {
 } from "../utils/athleteMetrics";
 import { buildPointsRouteBbox, normalizeRoutePoints } from "../utils/routeGeometry";
 import { getAthleteWorldMeta, normalizeAthleteSport } from "../utils/athleteWorlds";
+import RouteLabsPinnacle from "./RouteLabsPinnacle";
+import "../components/RouteLabsPinnacle.css";
 
 export default function AthleteRunDetailPage({ viewerId }) {
   const navigate = useNavigate();
@@ -180,6 +182,11 @@ export default function AthleteRunDetailPage({ viewerId }) {
     }
     handleBack();
   };
+
+  // If we have a run ID, use the pinnacle Route Labs interface
+  if (runId) {
+    return <RouteLabsPinnacle viewerId={viewerId} />;
+  }
 
   return (
     <div className="page-shell athlete-run-detail-page">

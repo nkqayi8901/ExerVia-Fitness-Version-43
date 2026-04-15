@@ -4,8 +4,9 @@ import { supabase } from "../supabaseClient";
 import { recalcUserState } from "../services/stateEngine";
 
 import Navbar from "./Navbar";
-import JournalPage from "./JournalPage";
-import LogsPage from "./LogsPage";
+import JournalPinnacle from "./JournalPinnacle";
+import LogsPinnacle from "./LogsPinnacle";
+import NutritionPinnacle from "./NutritionPinnacle";
 import StrengthProgressTab from "./StrengthProgressTab";
 import CommunityHub from "./CommunityHub";
 import WorkoutProgram from "./WorkoutProgram";
@@ -18,6 +19,10 @@ import AnalyticsDashboard from "./AnalyticsDashboard";
 import { emitToast } from "../utils/toast";
 import { buildProgressionMoment } from "../utils/progressionMoment";
 import { publishProgressionStatus } from "../utils/progressionFeed";
+import ExerviaShop from "./ExerviaShop";
+import DailyQuests from "./DailyQuests";
+import AchievementsPanel from "./AchievementsPanel";
+import { useInventory } from "../hooks/useInventory";
 
 // Component: GymMode - UI layout and interactions.
 // This component renders the gymmode experience and wires up its local UI state.
@@ -39,6 +44,7 @@ import { publishProgressionStatus } from "../utils/progressionFeed";
 function GymDashboard({ profile, id, userState }) {
   const navigate = useNavigate();
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const { activeFlair, activeTitle, activeBoosts } = useInventory(id);
 
 // dayMarker manages a focused piece of logic,
 // it keeps behavior isolated for readability,
@@ -66,7 +72,17 @@ function GymDashboard({ profile, id, userState }) {
               </button>
             </div>
           </div>
-          <p className="page-subtitle">Welcome back, {profile.full_name}. Start your day right.</p>
+          <p className="page-subtitle">
+            Welcome back, {profile.full_name}{activeFlair ? <span className="exervia-flair">{activeFlair}</span> : null}. Start your day right.
+          </p>
+          {activeTitle ? <div className="exervia-title-badge" style={{ marginBottom: 4 }}>{activeTitle}</div> : null}
+          {activeBoosts.length > 0 ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+              {activeBoosts.map((b) => (
+                <span key={b.name} className="boost-active-pill">{b.icon} {b.name}</span>
+              ))}
+            </div>
+          ) : null}
           <div className="page-marker">{dayMarker}</div>
         </div>
       </div>
@@ -107,6 +123,20 @@ function GymDashboard({ profile, id, userState }) {
           <div className="hud-big">Social</div>
           <div className="hud-dim">Groups, forums, challenges</div>
         </button>
+
+        <button className="hud-card clickable dashboard-section-card dashboard-section-card-shop" onClick={() => navigate(`/gym/${id}/shop`)}>
+          <div className="dashboard-section-accent dashboard-section-accent-shop" aria-hidden="true" />
+          <div className="dashboard-shop-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="hud-card-title">SHOP</div>
+          <div className="hud-big">ExerVia Store</div>
+          <div className="hud-dim">Flairs, boosts, titles &amp; more</div>
+        </button>
       </div>
 
       <div className="quick-add-row dashboard-quick-grid">
@@ -122,10 +152,35 @@ function GymDashboard({ profile, id, userState }) {
         <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/nutrition`)}>
           Add meal
         </button>
+        <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/gym/${id}/shop`)}>
+          Shop
+        </button>
         <button className="studio-back home-quick-btn dashboard-quick-btn" onClick={() => navigate(`/settings`)}>
           Settings
         </button>
       </div>
+
+      {/* Daily Quests */}
+      <div className="hud-card" style={{ margin: "0 0 16px", borderRadius: 16, padding: 0, overflow: "hidden" }}>
+        <DailyQuests userId={id} mode="gym" />
+      </div>
+
+      {/* Achievements teaser */}
+      <button
+        className="hud-card clickable dashboard-section-card"
+        style={{ marginBottom: 16, textAlign: "left" }}
+        onClick={() => navigate(`/gym/${id}/achievements`)}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "1.7rem" }}>🏅</span>
+          <div>
+            <div style={{ fontSize: "0.88rem", fontWeight: 800, color: "#fff" }}>Achievements</div>
+            <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+              Unlock permanent badges &amp; bonus XP
+            </div>
+          </div>
+        </div>
+      </button>
       <DashboardWalkthroughModal
         open={walkthroughOpen}
         onClose={() => setWalkthroughOpen(false)}
@@ -445,8 +500,9 @@ export default function GymMode() {
       <Routes>
         <Route index element={<GymDashboard profile={profile} id={id} userState={userState} />} />
         <Route path="progress" element={<StrengthProgressTab userId={id} />} />
-        <Route path="journal" element={<JournalPage mode="gym" />} />
-        <Route path="logs" element={<LogsPage mode="gym" />} />
+        <Route path="journal" element={<JournalPinnacle mode="gym" viewerId={id} />} />
+        <Route path="logs" element={<LogsPinnacle viewerId={id} />} />
+        <Route path="nutrition" element={<NutritionPinnacle viewerId={id} />} />
         <Route path="program/*" element={<WorkoutProgram mode="gym" />} />
         <Route path="analytics" element={<AnalyticsDashboard userId={id} mode="gym" />} />
         <Route path="profile" element={<GymProfileOverview profile={profile} userState={userState} />} />
@@ -459,6 +515,12 @@ export default function GymMode() {
         <Route path="community/group/:groupId" element={<CommunityHub userId={id} forceGroupRoom />} />
         <Route path="community/thread/:threadId" element={<CommunityHub userId={id} forceThreadPage />} />
         <Route path="messages" element={<MessagesPage mode="gym" userId={id} />} />
+        <Route path="shop" element={<ExerviaShop userId={id} />} />
+        <Route path="achievements" element={
+          <div style={{ minHeight: "100vh", background: "#070710" }}>
+            <AchievementsPanel userId={id} />
+          </div>
+        } />
       </Routes>
     </div>
   );

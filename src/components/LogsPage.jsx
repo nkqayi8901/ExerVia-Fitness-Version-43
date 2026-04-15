@@ -6,6 +6,7 @@ import { trackDailyActivity } from "../services/activityTracker";
 import { grantXpEventSafe } from "../services/xpEvents";
 import { emitToast } from "../utils/toast";
 import { isErrorBanner } from "../utils/banner";
+import { questProgress } from "../utils/questProgress";
 import curatedRecipes from "../data/recipes.json";
 import {
   addSavedMeal,
@@ -25,6 +26,8 @@ import {
   upsertDailyLog,
 } from "../services/logsApi";
 import PageWalkthroughModal from "./PageWalkthroughModal";
+import LogsPinnacle from "./LogsPinnacle";
+import "../components/LogsPinnacle.css";
 
 // This component is responsible for rendering the Logs page, which 
 // includes daily logging of meals, supplements, extra activities, and 
@@ -1257,6 +1260,7 @@ export default function LogsPage({ mode = "gym" }) {
       }
 
       setMealInput("");
+      questProgress.meal(1);
       const xp = await markActivity("meal", 12, selectedDay);
       setBanner(xp.awardedXp > 0 ? `Meal logged. +${xp.awardedXp} XP earned.` : "Meal logged.");
     } catch (error) {
@@ -1455,6 +1459,11 @@ export default function LogsPage({ mode = "gym" }) {
       setBanner("Use Meals and Supplements sections below to log today's intake.");
     }
   };
+
+  // Use pinnacle Logs interface for logged-in users
+  if (id && !isBootLoading) {
+    return <LogsPinnacle viewerId={id} />;
+  }
 
   if (isBootLoading) {
     return (

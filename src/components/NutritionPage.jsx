@@ -9,6 +9,7 @@ import localRecipes from "../data/recipes.json";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
 import { emitToast } from "../utils/toast";
 import { isErrorBanner } from "../utils/banner";
+import { questProgress } from "../utils/questProgress";
 import PageWalkthroughModal from "./PageWalkthroughModal";
 // Component: NutritionPage - UI layout and interactions.
 // This component renders the nutrition experience and wires up its local UI state.
@@ -1511,6 +1512,7 @@ export default function NutritionPage() {
       } else {
         setSaveBanner(`${mealName} saved to Logs.`);
       }
+      questProgress.meal(1);
       navigate(pageMode === "athlete" ? `/athlete/${storedId}/logs` : `/gym/${storedId}/logs`);
     } finally {
       setMealAction("");

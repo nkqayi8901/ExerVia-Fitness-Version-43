@@ -1,0 +1,229 @@
+/* CityLeaderboard.css */
+
+.cl-shell {
+  display: grid;
+  gap: 16px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.cl-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cl-kicker {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #f97316;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cl-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────────────── */
+.cl-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cl-tab {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cl-tab:hover  { border-color: #64748b; color: #f8fafc; }
+.cl-tab.active {
+  background: #f97316;
+  border-color: #f97316;
+  color: #fff;
+}
+
+/* ── Row ───────────────────────────────────────────────────────────────────── */
+.cl-list { display: grid; gap: 8px; }
+
+.cl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+}
+.cl-row:hover { border-color: #334155; }
+
+.cl-row.top3 {
+  background: linear-gradient(135deg, rgba(249,115,22,0.05), rgba(11,18,32,0.95));
+}
+.cl-row.self {
+  border-color: rgba(249,115,22,0.4);
+  background: linear-gradient(135deg, rgba(249,115,22,0.1), rgba(15,23,42,0.95));
+}
+
+/* ── Rank column ───────────────────────────────────────────────────────────── */
+.cl-rank {
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.cl-badge { font-size: 1.3rem; }
+.cl-rank-num {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+/* ── Avatar ────────────────────────────────────────────────────────────────── */
+.cl-avatar-wrap { flex-shrink: 0; }
+
+.cl-avatar,
+.cl-avatar-placeholder {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.cl-avatar-placeholder {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* ── Info ──────────────────────────────────────────────────────────────────── */
+.cl-info { flex: 1; min-width: 0; }
+
+.cl-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.cl-you-tag {
+  background: rgba(249,115,22,0.15);
+  color: #f97316;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.cl-city {
+  font-size: 0.7rem;
+  color: #475569;
+  margin-bottom: 3px;
+}
+
+.cl-record {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+.cl-w    { color: #f97316; font-weight: 700; }
+.cl-dash { color: #334155; }
+.cl-l    { color: #64748b; font-weight: 600; }
+.cl-pct  { color: #475569; }
+
+/* ── XP column ─────────────────────────────────────────────────────────────── */
+.cl-xp-col { text-align: right; flex-shrink: 0; }
+.cl-xp {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1;
+}
+.cl-xp-label {
+  font-size: 0.62rem;
+  color: #475569;
+  margin-top: 2px;
+}
+
+/* ── Empty ─────────────────────────────────────────────────────────────────── */
+.cl-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.cl-empty-icon  { font-size: 2.5rem; margin-bottom: 12px; }
+.cl-empty-title { font-size: 1rem; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+.cl-empty-sub   { font-size: 0.82rem; color: #475569; line-height: 1.5; max-width: 300px; margin: 0 auto; }
+
+/* ── Skeleton ──────────────────────────────────────────────────────────────── */
+.cl-skeleton-list { display: grid; gap: 8px; }
+.cl-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+}
+.cl-skeleton-rank   { width: 36px; height: 22px; background: #1e293b; border-radius: 4px; flex-shrink: 0; animation: cl-shimmer 1.4s infinite; }
+.cl-skeleton-avatar { width: 38px; height: 38px; border-radius: 50%; background: #1e293b; flex-shrink: 0; animation: cl-shimmer 1.4s infinite; }
+.cl-skeleton-info   { flex: 1; display: grid; gap: 6px; }
+.cl-skeleton-name   { height: 13px; background: #1e293b; border-radius: 4px; width: 55%; animation: cl-shimmer 1.4s infinite; }
+.cl-skeleton-stat   { height: 10px; background: #1e293b; border-radius: 4px; width: 38%; animation: cl-shimmer 1.4s infinite 0.2s; }
+.cl-skeleton-xp     { width: 44px; height: 28px; background: #1e293b; border-radius: 4px; flex-shrink: 0; animation: cl-shimmer 1.4s infinite 0.1s; }
+
+@keyframes cl-shimmer {
+  0%   { opacity: 0.45; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.45; }
+}
+
+/* ── Reset timer ───────────────────────────────────────────────────────────── */
+.cl-resets {
+  font-size: 0.7rem;
+  color: #334155;
+  text-align: center;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .cl-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .cl-tabs { width: 100%; }
+  .cl-tab { flex: 1; text-align: center; font-size: 0.78rem; padding: 6px 8px; }
+  .cl-xp { font-size: 0.92rem; }
+  .cl-name { font-size: 0.86rem; }
+  .cl-record { font-size: 0.7rem; }
+  .cl-avatar-placeholder { width: 32px; height: 32px; font-size: 0.78rem; }
+  .cl-row { padding: 10px 12px; gap: 10px; }
+}

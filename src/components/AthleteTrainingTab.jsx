@@ -877,6 +877,7 @@ const AthleteTrainingTab = ({ userId, onBack }) => {
           prefillPlanEditor={prefillPlanEditor}
           deletePlan={deletePlan}
           setPlanOpen={setPlanOpen}
+          buildRouteLabUrl={buildRouteLabUrl}
         />
       ) : null}
 

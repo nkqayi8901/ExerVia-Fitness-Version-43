@@ -14,6 +14,7 @@ import { parseBlockedIds, toggleBlockedId } from "../utils/moderation";
 import { toUserFacingNetworkMessage } from "../utils/networkError";
 import { emitToast } from "../utils/toast";
 import { isErrorBanner } from "../utils/banner";
+import { questProgress } from "../utils/questProgress";
 import GroupRoomPanel from "./community/GroupRoomPanel";
 import ActivityFeedPanel from "./community/ActivityFeedPanel";
 import LeaderboardPanel from "./community/LeaderboardPanel";
@@ -23,6 +24,9 @@ import GroupsPanel from "./community/GroupsPanel";
 import CirclePanel from "./community/CirclePanel";
 import CommunityModal from "./community/CommunityModal";
 import PageWalkthroughModal from "./PageWalkthroughModal";
+import CityLeaderboard from "./CityLeaderboard";
+import RivalsPanel from "./RivalsPanel";
+import SpectatorView from "./SpectatorView";
 import useCommunityModalState from "../hooks/useCommunityModalState";
 import useCommunityData from "../hooks/useCommunityData";
 import {
@@ -271,6 +275,8 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
   const [templateDeckAnimating, setTemplateDeckAnimating] = useState(null);
   const [templateQueueExpanded, setTemplateQueueExpanded] = useState(false);
   const [leaderboardGroupId, setLeaderboardGroupId] = useState("");
+  const [spectatorChallengeId, setSpectatorChallengeId] = useState(null);
+  const [leaderboardSubTab, setLeaderboardSubTab] = useState("challenge");
   void templateTriedByMe;
   void templateComments;
   void setTemplateSearch;
@@ -1227,6 +1233,7 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
     setNewPost({ title: "", body: "" });
     setNewPostForum(forumSlug);
     setBanner("Post created.");
+    questProgress.communityPost(1);
     await recordEngagementAction("community_post");
     loadForumThreadCounts();
     loadForumPosts(forumSlug);
@@ -3445,22 +3452,61 @@ export default function CommunityHub({ userId, forceGroupRoom = false, forceThre
           )}
 
           {activeTab === "leaderboard" && (
-            <LeaderboardPanel
-              leaderboardGroupId={leaderboardGroupId}
-              setLeaderboardGroupId={setLeaderboardGroupId}
-              memberships={memberships}
-              groups={groups}
-              leaderboardLoading={leaderboardLoading}
-              groupLeaderboardLoading={groupLeaderboardLoading}
-              globalLeaderboard={globalLeaderboard}
-              groupLeaderboard={groupLeaderboard}
-              leaderboardSignals={leaderboardSignals}
-              globalLeaderboardLoaded={globalLeaderboardLoaded}
-              groupLeaderboardLoaded={groupLeaderboardLoaded}
-              profiles={profiles}
-              openUserProfile={openUserProfile}
-            />
+            <>
+              {/* Sub-tab switcher: Challenge Rankings | XP Rankings | Rivals */}
+              <div className="community-sub-tabs" style={{ display: "flex", gap: "8px", padding: "4px 0 12px", flexWrap: "wrap" }}>
+                {[
+                  { key: "challenge", label: "Challenge Rankings" },
+                  { key: "xp", label: "XP Rankings" },
+                  { key: "rivals", label: "Rivals" },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`community-tab ${leaderboardSubTab === key ? "active" : ""}`}
+                    onClick={() => setLeaderboardSubTab(key)}
+                    style={{ fontSize: "0.8rem", padding: "6px 14px" }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {leaderboardSubTab === "challenge" ? (
+                <div className="hud-card" style={{ padding: "20px" }}>
+                  <CityLeaderboard userId={userId} />
+                </div>
+              ) : leaderboardSubTab === "rivals" ? (
+                <div className="hud-card" style={{ padding: "20px" }}>
+                  <RivalsPanel userId={userId} />
+                </div>
+              ) : (
+                <LeaderboardPanel
+                  leaderboardGroupId={leaderboardGroupId}
+                  setLeaderboardGroupId={setLeaderboardGroupId}
+                  memberships={memberships}
+                  groups={groups}
+                  leaderboardLoading={leaderboardLoading}
+                  groupLeaderboardLoading={groupLeaderboardLoading}
+                  globalLeaderboard={globalLeaderboard}
+                  groupLeaderboard={groupLeaderboard}
+                  leaderboardSignals={leaderboardSignals}
+                  globalLeaderboardLoaded={globalLeaderboardLoaded}
+                  groupLeaderboardLoaded={groupLeaderboardLoaded}
+                  profiles={profiles}
+                  openUserProfile={openUserProfile}
+                />
+              )}
+            </>
           )}
+
+          {/* Spectator overlay — shown over any tab when a live challenge is being watched */}
+          {spectatorChallengeId ? (
+            <SpectatorView
+              challengeId={spectatorChallengeId}
+              onClose={() => setSpectatorChallengeId(null)}
+            />
+          ) : null}
 
 {/* groups discovery + joined sections */}
           {/* discover list comes first */}
